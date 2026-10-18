@@ -5,7 +5,7 @@
 	 * Placement flips via `measureDropdownPlacement`; menu width defaults to trigger.
 	 * Menu is portaled to the nearest `<dialog>` (or `document.body`) with fixed
 	 * positioning so scrollable modal bodies cannot clip the list.
-	 * @see https://design-menzies.netlify.app/ — Select
+	 * @see https://design-menzies.netlify.app/ Select
 	 */
 	import OverflowText from '$lib/component/own/library/menzies/overflow-marquee/OverflowText.svelte';
 	import {
@@ -39,6 +39,10 @@
 		value: string;
 		label: string;
 		disabled?: boolean;
+		/** Compact color preview shown before the label (e.g. Wash pigments). */
+		swatch?: string;
+		/** Optional `font-family` for previewing the option label in that face. */
+		fontFamily?: string;
 	};
 
 	export type WashSelectOptionGroup = {
@@ -410,12 +414,28 @@
 			{disabled}
 			onclick={toggle}
 		>
-			<OverflowText
-				className="min-w-0 flex-1 {selected
-					? ''
-					: 'text-base-content/50'}"
-				text={selected?.label ?? resolvedPlaceholder}
-			/>
+			<span class="flex min-w-0 flex-1 items-center gap-2">
+				{#if selected?.swatch}
+					<span
+						class="inline-block size-4 shrink-0 rounded-sm border border-base-300"
+						style="background:{selected.swatch}"
+						aria-hidden="true"
+					></span>
+				{/if}
+				<span
+					class="min-w-0 flex-1"
+					style={selected?.fontFamily
+						? `font-family:${selected.fontFamily}`
+						: undefined}
+				>
+					<OverflowText
+						className="min-w-0 w-full {selected
+							? ''
+							: 'text-base-content/50'}"
+						text={selected?.label ?? resolvedPlaceholder}
+					/>
+				</span>
+			</span>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				viewBox="0 0 24 24"
@@ -511,7 +531,23 @@
 											if (!opt.disabled) commit(opt.value);
 										}}
 									>
-										<span class="truncate">{opt.label}</span>
+										<span
+											class="flex min-w-0 flex-1 items-center gap-2"
+										>
+											{#if opt.swatch}
+												<span
+													class="inline-block size-4 shrink-0 rounded-sm border border-base-300"
+													style="background:{opt.swatch}"
+													aria-hidden="true"
+												></span>
+											{/if}
+											<span
+												class="truncate"
+												style={opt.fontFamily
+													? `font-family:${opt.fontFamily}`
+													: undefined}>{opt.label}</span
+											>
+										</span>
 										{#if active}
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
@@ -547,7 +583,23 @@
 										if (!item.disabled) commit(item.value);
 									}}
 								>
-									<span class="truncate">{item.label}</span>
+									<span
+										class="flex min-w-0 flex-1 items-center gap-2"
+									>
+										{#if item.swatch}
+											<span
+												class="inline-block size-4 shrink-0 rounded-sm border border-base-300"
+												style="background:{item.swatch}"
+												aria-hidden="true"
+											></span>
+										{/if}
+										<span
+											class="truncate"
+											style={item.fontFamily
+												? `font-family:${item.fontFamily}`
+												: undefined}>{item.label}</span
+										>
+									</span>
 									{#if active}
 										<svg
 											xmlns="http://www.w3.org/2000/svg"

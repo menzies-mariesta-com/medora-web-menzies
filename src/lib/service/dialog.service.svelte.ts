@@ -1,11 +1,9 @@
 import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 import type {
 	DialogInterface,
-	DialogOpenOptions,
-	DialogSlotProps
+	DialogOpenOptions
 } from '$lib/model/interface/dialog.interface';
 import { DialogState } from '$lib/state/dialog.state.svelte';
-import type { Component, Snippet } from 'svelte';
 
 export type { DialogOpenOptions };
 
@@ -27,6 +25,8 @@ export class DialogService {
 				tone: options.tone,
 				fullScreen: options.fullScreen,
 				modalClassName: options.modalClassName,
+				// Default ON: backdrop / Escape dismiss = cancel, never confirm.
+				closeOnOutsideClick: options.closeOnOutsideClick ?? true,
 				children: options.children,
 				component: options.component,
 				props: options.props,

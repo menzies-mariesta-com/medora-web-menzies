@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
@@ -7,6 +8,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideStrikeThrough from '$lib/component/own/library/lucide/LucideStrikeThrough.svelte';
@@ -27,6 +29,7 @@
 	import { buildOpBillingPrintBodyHtml } from '$lib/util/op-billing-print-table.util';
 	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { VisitState } from '$lib/state/visit.state.svelte';
+	import { sanitizeUserFacingErrorText } from '$lib/util/user-facing-error.util';
 
 	const msg = m as Record<
 		string,
@@ -35,6 +38,12 @@
 
 	const visitId = $derived(VisitState.visitId);
 	const hospitalId = $derived(page.params.hospital_id ?? '');
+	const billingApiSegment = $derived(
+		page.url.pathname.includes('/billing/er-billing')
+			? 'er-billing'
+			: 'op-billing'
+	);
+	const isErBilling = $derived(billingApiSegment === 'er-billing');
 
 	function tr(
 		getter: (() => string) | undefined,
@@ -171,7 +180,8 @@
 	function opBillingLineRowKey(line: BillingLine): string {
 		if (
 			line.lineSource === 'medication_order_line' ||
-			line.lineSource === 'service_order_detail'
+			line.lineSource === 'service_order_detail' ||
+			line.lineSource === 'department_consumption_line'
 		) {
 			return `${line.lineSource}-${line.id}`;
 		}
@@ -244,7 +254,7 @@
 		payload: Record<string, unknown>
 	) {
 		const res = await fetch(
-			`/api/medora/hospital/${hospitalId}/home/billing/op-billing/visit-lines`,
+			`/api/medora/hospital/${hospitalId}/home/billing/${billingApiSegment}/visit-lines`,
 			{
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
@@ -265,11 +275,9 @@
 			return;
 		}
 
-		const visitNumeric = Number(currentVisitId);
+		const visitNumeric = parseUuid(currentVisitId) ?? '';
 		if (
-			!visitNumeric ||
-			!Number.isFinite(visitNumeric) ||
-			visitNumeric <= 0
+			!visitNumeric
 		) {
 			groups = [];
 			grandTotal = 0;
@@ -285,7 +293,7 @@
 		loadError = '';
 		try {
 			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/billing/op-billing/visit-lines?visitId=${visitNumeric}`
+				`/api/medora/hospital/${hospitalId}/home/billing/${billingApiSegment}/visit-lines?visitId=${visitNumeric}`
 			);
 			if (requestSeq !== billingLinesLoadSeq) return;
 			if (!res.ok) {
@@ -358,11 +366,9 @@
 		if (!visitId) return;
 		if (!billingMeta) return;
 		if (visitLevelDiscountLocked) return;
-		const visitNumeric = Number(visitId);
+		const visitNumeric = parseUuid(visitId) ?? '';
 		if (
-			!visitNumeric ||
-			!Number.isFinite(visitNumeric) ||
-			visitNumeric <= 0
+			!visitNumeric
 		)
 			return;
 
@@ -401,7 +407,10 @@
 					try {
 						const j = (await res.json()) as { message?: string };
 						loadError =
-							(typeof j?.message === 'string' && j.message.trim()) ||
+							sanitizeUserFacingErrorText(
+								typeof j?.message === 'string' ? j.message : undefined,
+								{ status: res.status }
+							) ||
 							tr(
 								msg.op_billing_discount_locked_after_print,
 								'This bill was printed; the visit-level discount cannot be changed.'
@@ -433,11 +442,9 @@
 
 	async function closeOpBill() {
 		if (!visitId || !canCloseOpBill) return;
-		const visitNumeric = Number(visitId);
+		const visitNumeric = parseUuid(visitId) ?? '';
 		if (
-			!visitNumeric ||
-			!Number.isFinite(visitNumeric) ||
-			visitNumeric <= 0
+			!visitNumeric
 		)
 			return;
 		try {
@@ -448,8 +455,10 @@
 			if (!res.ok) {
 				try {
 					const j = (await res.json()) as { message?: string };
-					const serverMsg =
-						typeof j?.message === 'string' ? j.message.trim() : '';
+					const serverMsg = sanitizeUserFacingErrorText(
+						typeof j?.message === 'string' ? j.message : undefined,
+						{ status: res.status }
+					);
 					loadError =
 						serverMsg ||
 						(res.status === 400
@@ -581,11 +590,9 @@
 			return;
 		}
 
-		const visitNumeric = Number(currentVisitId);
+		const visitNumeric = parseUuid(currentVisitId) ?? '';
 		if (
-			!visitNumeric ||
-			!Number.isFinite(visitNumeric) ||
-			visitNumeric <= 0
+			!visitNumeric
 		) {
 			historyBills = [];
 			historyError = '';
@@ -694,7 +701,7 @@
 			const hasDisc = discountAmt > 0;
 
 			const v: VisitSummary = {
-				id: bill.visit?.id ?? (Number(visitId ?? 0) || 0),
+				id: bill.visit?.id ?? (parseUuid(visitId) ?? ''),
 				visitNo:
 					bill.visit?.visitNo?.trim() ||
 					(bill.visit?.id ? String(bill.visit.id) : String(bill.id)),
@@ -969,46 +976,47 @@
 	>
 		<div class="min-h-0 flex-1 overflow-y-auto">
 			<div class="space-y-3">
-				<label class="form-control w-full">
-					<div class="label">
+				<div class="form-control w-full">
+					<label for="a11y-page-c9753b" class="label">
 						<span class="label-text">
 							{tr(
 								msg.op_billing_discount_type_label,
 								'Discount type'
 							)}
 						</span>
-					</div>
-					<select
-						class="select-bordered select w-full"
+					</label>
+					<WashSelect
+						id="a11y-page-c9753b"
+						className="w-full"
 						value={String(discountType)}
-						onchange={(e) => {
-							const v = Number(
-								(e.currentTarget as HTMLSelectElement).value
-							);
+						options={[
+							{
+								value: String(BillingDiscountTypeEnum.NONE),
+								label: tr(msg.op_billing_discount_type_none, 'None')
+							},
+							{
+								value: String(BillingDiscountTypeEnum.PERCENT),
+								label: tr(
+									msg.op_billing_discount_type_percent,
+									'Percent (%)'
+								)
+							},
+							{
+								value: String(BillingDiscountTypeEnum.FIXED_AMOUNT),
+								label: tr(
+									msg.op_billing_discount_type_fixed_amount,
+									'Fixed amount'
+								)
+							}
+						]}
+						onChange={(next) => {
+							const v = Number(next);
 							discountType = (
 								Number.isFinite(v) ? v : BillingDiscountTypeEnum.NONE
 							) as BillingDiscountTypeEnum;
 						}}
-					>
-						<option value={String(BillingDiscountTypeEnum.NONE)}>
-							{tr(msg.op_billing_discount_type_none, 'None')}
-						</option>
-						<option value={String(BillingDiscountTypeEnum.PERCENT)}>
-							{tr(
-								msg.op_billing_discount_type_percent,
-								'Percent (%)'
-							)}
-						</option>
-						<option
-							value={String(BillingDiscountTypeEnum.FIXED_AMOUNT)}
-						>
-							{tr(
-								msg.op_billing_discount_type_fixed_amount,
-								'Fixed amount'
-							)}
-						</option>
-					</select>
-				</label>
+					/>
+				</div>
 
 				<label class="form-control w-full">
 					<div class="label">

@@ -51,12 +51,21 @@
 		}
 	}
 
+	function handleDocumentKeydown(event: KeyboardEvent) {
+		if (event.key !== 'Escape') return;
+		if (!detailsElement || !detailsElement.open) return;
+		detailsElement.open = false;
+		if (openDropdown === detailsElement) openDropdown = null;
+	}
+
 	onMount(() => {
 		document.addEventListener('click', handleDocumentClick);
+		document.addEventListener('keydown', handleDocumentKeydown);
 		detailsElement?.addEventListener('toggle', handleToggle);
 
 		return () => {
 			document.removeEventListener('click', handleDocumentClick);
+			document.removeEventListener('keydown', handleDocumentKeydown);
 			detailsElement?.removeEventListener('toggle', handleToggle);
 			if (openDropdown === detailsElement) {
 				openDropdown = null;

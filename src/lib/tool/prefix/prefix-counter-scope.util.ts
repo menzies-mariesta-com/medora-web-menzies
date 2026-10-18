@@ -55,6 +55,7 @@ export function defaultCounterScopeForPrefixKey(
 			includeVisit: false
 		};
 	}
+	// PATIENT_CODE, EXTERNAL_PATIENT_CODE, and other defaults
 	return {
 		includeBranch: false,
 		includeFinancialYear: true,
@@ -64,16 +65,7 @@ export function defaultCounterScopeForPrefixKey(
 }
 
 export function defaultCounterScopeForStorageKey(
-	storageKey:
-		| 'PATIENT_CODE'
-		| 'VISIT_NO'
-		| 'ORDER_NO'
-		| 'PURCHASE_REQUISITION_NO'
-		| 'PURCHASE_ORDER_NO'
-		| 'DEPARTMENT_INDENT_NO'
-		| 'DEPARTMENT_ISSUE_NO'
-		| 'DEPARTMENT_CONSUMPTION_NO'
-		| 'MEDICATION_ORDER_BATCH_NO'
+	storageKey: string
 ): PrefixCounterScopeFlags {
 	return defaultCounterScopeForPrefixKey(storageKey);
 }
@@ -110,7 +102,7 @@ export function buildPrefixCounterScopeKey(params: {
 	if (
 		params.scope.includeVisit &&
 		params.visitIdForScope != null &&
-		Number.isFinite(params.visitIdForScope)
+		Boolean(params.visitIdForScope)
 	) {
 		parts.push(String(params.visitIdForScope));
 	}

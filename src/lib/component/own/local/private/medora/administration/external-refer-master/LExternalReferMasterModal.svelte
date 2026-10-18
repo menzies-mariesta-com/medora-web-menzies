@@ -14,6 +14,7 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	type DialogMode = 'create' | 'view' | 'edit';
 
@@ -299,7 +300,7 @@
 							: StatusEnum.INACTIVE
 					})
 				});
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				toastSuccess(
 					toastService,
 					m.entity_external_referral(),
@@ -331,7 +332,7 @@
 							: StatusEnum.INACTIVE
 					})
 				});
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				toastSuccess(
 					toastService,
 					m.entity_external_referral(),

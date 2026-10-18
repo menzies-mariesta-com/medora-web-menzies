@@ -12,7 +12,7 @@ function requireUser(event: RequestEvent): void {
 
 export async function getVisitBasicsForPatientAttachment(
 	event: RequestEvent,
-	input: { hospitalId: string; visitId: number }
+	input: { hospitalId: string; visitId: string }
 ): Promise<{ patientId: string; hospitalId: string } | null> {
 	requireUser(event);
 	await ensureCanAccessHospital(event, input.hospitalId);

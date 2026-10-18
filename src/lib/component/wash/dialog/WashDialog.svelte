@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * Svelte adapter for Menzies Design Wash Dialog (web 1.3.0).
-	 * @see https://design-menzies.netlify.app/ — Components → Dialog
+	 * @see https://design-menzies.netlify.app/ (Components, Dialog)
 	 *
 	 * DialogTemplate slot mapping (Design recipe names → this adapter):
 	 *   header → title | header
@@ -12,8 +12,8 @@
 	 * Sectioned chrome matches Design Dialog:
 	 *   header band → separator → scroll body → separator → modal-action
 	 *
-	 * Medora exception: backdrop is visual-only (no outside-click close).
-	 * Design uses `<form method="dialog">` which closes on backdrop click.
+	 * Default: backdrop click and Escape dismiss (cancel), never confirm.
+	 * Pass `closeOnOutsideClick={false}` only to force a visual-only dimmer.
 	 */
 	import { tick, type Snippet } from 'svelte';
 	import gsap from 'gsap';
@@ -49,6 +49,8 @@
 		showActions = true,
 		/** When true and `actions` is unset, render Design ghost Close. */
 		showDefaultClose = true,
+		/** When true (default), backdrop click dismisses as cancel. */
+		closeOnOutsideClick = true,
 		id
 	}: {
 		open?: boolean;
@@ -67,6 +69,7 @@
 		layout?: DialogLayout;
 		showActions?: boolean;
 		showDefaultClose?: boolean;
+		closeOnOutsideClick?: boolean;
 		id?: string;
 	} = $props();
 
@@ -263,9 +266,11 @@
 		{#if hasBody && bodySnippet}
 			{#if showActions}
 				<!-- Design: separator + scroll body when shell owns actions -->
-				<div class="border-base-300 shrink-0 border-t" role="separator"></div>
+				{#if hasHeader}
+					<div class="border-base-300 shrink-0 border-t" role="separator"></div>
+				{/if}
 				<div
-					class="min-h-0 flex-1 overflow-y-auto px-4 py-3 {layout ===
+					class="wash-dialog-scroll-body min-h-0 flex-1 overflow-y-auto {layout ===
 					'fullscreen'
 						? 'flex flex-col overflow-hidden p-0'
 						: ''}"
@@ -279,9 +284,11 @@
 					child (not this column) so WashDialogFooter stays pinned.
 					Footer uses -mx-4 for a full-bleed separator, then px-4 on actions.
 				-->
-				<div class="border-base-300 shrink-0 border-t" role="separator"></div>
+				{#if hasHeader}
+					<div class="border-base-300 shrink-0 border-t" role="separator"></div>
+				{/if}
 				<div
-					class="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-3 {layout ===
+					class="wash-dialog-form-column flex min-h-0 flex-1 flex-col overflow-hidden {layout ===
 					'fullscreen'
 						? 'p-0'
 						: ''}"
@@ -302,8 +309,17 @@
 			</div>
 		{/if}
 	</div>
-	<!-- Visual dimmer only — do not close on outside click (Medora exception vs Design form method=dialog). -->
-	<div class="modal-backdrop" aria-hidden="true"></div>
+	{#if closeOnOutsideClick}
+		<!-- daisyUI: method=dialog backdrop dismisses (cancel), not confirm -->
+		<form method="dialog" class="modal-backdrop">
+			<button type="submit" class="cursor-default" aria-label="Close">
+				close
+			</button>
+		</form>
+	{:else}
+		<!-- Visual dimmer only: outside click does not dismiss. -->
+		<div class="modal-backdrop" aria-hidden="true"></div>
+	{/if}
 	{#if layer}
 		<!-- Absolute overlay; not a grid item that can displace the box. -->
 		<div class="pointer-events-none absolute inset-0 z-[10001]">

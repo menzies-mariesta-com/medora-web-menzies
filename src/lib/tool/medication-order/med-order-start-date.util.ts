@@ -15,7 +15,7 @@ export function isMedOrderStartBeforeToday(
 	return st.getTime() < medOrderStartOfLocalDay(now).getTime();
 }
 
-/** Minimum value for `<input type="datetime-local">` (start of today, local). */
+/** Minimum value for Wash datetime pickers (start of today, local `YYYY-MM-DDTHH:mm`). */
 export function medOrderMinStartDateTimeLocal(now: Date = new Date()): string {
 	const d = medOrderStartOfLocalDay(now);
 	const y = d.getFullYear();

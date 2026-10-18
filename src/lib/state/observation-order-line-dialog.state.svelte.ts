@@ -1,5 +1,5 @@
 export const ObservationOrderLineDialogState = $state<{
-	visitId: number | null;
+	visitId: string | null;
 	hospitalId: string | null;
 	branchId: string | null;
 	detailId: number | null;

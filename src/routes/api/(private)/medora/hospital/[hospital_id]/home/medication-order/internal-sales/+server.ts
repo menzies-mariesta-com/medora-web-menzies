@@ -3,6 +3,7 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as prescriptionNote from '$lib/server/medora/consultation/cpoe-prescription-note.server';
 import * as mo from '$lib/server/medora/medication-order/medication-order-internal.server';
+import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -51,10 +52,8 @@ export async function GET(event: RequestEvent) {
 		);
 	}
 	if (mode === 'batch.list') {
-		const visitId = Number(
-			event.url.searchParams.get('visitId') ?? '0'
-		);
-		if (!Number.isFinite(visitId) || visitId <= 0) {
+		const visitId = parseUuid(event.url.searchParams.get('visitId'));
+		if (!visitId) {
 			throw error(400, 'visitId is required');
 		}
 		return json(
@@ -77,10 +76,8 @@ export async function GET(event: RequestEvent) {
 		return json(pack);
 	}
 	if (mode === 'prescriptionNote.list') {
-		const visitId = Number(
-			event.url.searchParams.get('visitId') ?? '0'
-		);
-		if (!Number.isFinite(visitId) || visitId <= 0) {
+		const visitId = parseUuid(event.url.searchParams.get('visitId'));
+		if (!visitId) {
 			throw error(400, 'visitId is required');
 		}
 		const rows =
@@ -114,7 +111,7 @@ export async function POST(event: RequestEvent) {
 			storeId?: unknown;
 			lines?: unknown;
 		};
-		const visitId = Number(b.visitId ?? 0);
+		const visitId = parseUuid(b.visitId);
 		const storeId = Number(b.storeId ?? 0);
 		const lines = b.lines;
 		if (!Array.isArray(lines)) throw error(400, 'lines is required');
@@ -131,9 +128,9 @@ export async function POST(event: RequestEvent) {
 	}
 	if (mode === 'batch.reorder') {
 		const b = body as { visitId?: unknown; sourceBatchId?: unknown };
-		const visitId = Number(b.visitId ?? 0);
+		const visitId = parseUuid(b.visitId);
 		const sourceBatchId = Number(b.sourceBatchId ?? 0);
-		if (!Number.isFinite(visitId) || visitId <= 0) {
+		if (!visitId) {
 			throw error(400, 'visitId is required');
 		}
 		if (!Number.isFinite(sourceBatchId) || sourceBatchId <= 0) {

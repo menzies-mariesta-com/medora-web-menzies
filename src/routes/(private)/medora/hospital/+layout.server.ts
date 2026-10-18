@@ -3,8 +3,7 @@ import type { LayoutServerLoad } from './$types';
 import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 import { medoraHospitalHome } from '$lib/model/enum/routes.enum';
 import { RoleEnum } from '$lib/model/enum/db-link';
-
-const COOKIE_SESSION_EXTENDED_FOR = 'heka_session_extended_for';
+import { COOKIE_SESSION_EXTENDED_FOR } from '$lib/server/medora/auth/session-extend.server';
 
 export const load: LayoutServerLoad = async ({
 	locals,

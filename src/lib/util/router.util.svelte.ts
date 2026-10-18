@@ -12,7 +12,7 @@ export class RouterUtil {
 	 * @param path Internal SvelteKit path
 	 */
 	goToRoute(path: string): void {
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		 
 		goto(path);
 	}
 

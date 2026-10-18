@@ -284,7 +284,7 @@
 <div class="flex w-full min-w-0 flex-col gap-4 border-t border-base-200 pt-4">
 	{#if showOutUnitSelect}
 		<div class="flex min-w-0 flex-col gap-1.5">
-			<label>{m.med_order_out_unit()}</label>
+			<label for="a11y-medicationorderinventory-f85733">{m.med_order_out_unit()}</label>
 			<SearchSelect
 				value={outUnitIdStr}
 				searchFn={searchOutUnits}
@@ -295,12 +295,11 @@
 				invalidateKey={outUnitInvalidateKey}
 				className="w-full"
 				minSearchLength={0}
-				debounceMs={0}
-			/>
+				debounceMs={0} inputId="a11y-medicationorderinventory-f85733" />
 		</div>
 	{/if}
 	<div class="flex min-w-0 flex-col gap-1.5">
-		<label>
+		<label for="a11y-medicationorderinventory-6d6ab2">
 			{m.med_order_sale_qty()}
 			{#if outUnitName}
 				<span class="font-normal opacity-70">({outUnitName})</span>
@@ -317,7 +316,7 @@
 				minLength={0}
 				{disabled}
 				oninput={() => applyFefoFromSaleQty()}
-			/>
+			id="a11y-medicationorderinventory-6d6ab2" />
 			<WashButton
 				type="button"
 				className="btn btn-outline  shrink-0"
@@ -329,12 +328,12 @@
 		</div>
 	</div>
 	<div class="flex min-w-0 flex-col gap-1.5">
-		<label>
+		<span>
 			{m.med_order_unit_sale_price()}
 			{#if outUnitName}
 				<span class="font-normal opacity-70">({outUnitName})</span>
 			{/if}
-		</label>
+		</span>
 		<div
 			class="input-bordered input flex w-full items-center gap-2 bg-base-200/50 opacity-90"
 			aria-live="polite"

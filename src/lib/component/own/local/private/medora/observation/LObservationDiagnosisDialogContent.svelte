@@ -14,6 +14,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import { onMount } from 'svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const toastService = new ToastService();
 
@@ -83,7 +84,7 @@
 			}
 		}
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -101,7 +102,7 @@
 				})
 			}
 		);
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -121,7 +122,7 @@
 		diagnosisCodeOptions = rows;
 		return rows.map((row) => ({
 			value: String(row.id),
-			label: `${row.code} — ${row.description}`
+			label: `${row.code}: ${row.description}`
 		}));
 	}
 
@@ -133,7 +134,7 @@
 		);
 		if (row) {
 			description = row.description;
-			return `${row.code} — ${row.description}`;
+			return `${row.code}: ${row.description}`;
 		}
 		return description || value;
 	}

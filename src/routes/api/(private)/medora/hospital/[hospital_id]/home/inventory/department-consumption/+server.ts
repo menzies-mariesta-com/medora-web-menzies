@@ -58,10 +58,17 @@ export const POST: RequestHandler = async (event) => {
 	>;
 	const lines = (body.lines as Record<string, unknown>[]) ?? [];
 
+	const visitIdRaw = body.visitId;
+	const visitId =
+		visitIdRaw != null && String(visitIdRaw).trim() !== ''
+			? String(visitIdRaw).trim()
+			: null;
+
 	const data = await createDepartmentConsumptionSubmitted(event, {
 		hospitalId,
 		storeId: Number(body.storeId ?? 0),
 		remarks: body.remarks != null ? String(body.remarks) : null,
+		visitId,
 		lines: lines.map((l) => ({
 			itemId: Number(l.itemId ?? 0),
 			quantity: String(l.quantity ?? '0'),

@@ -22,6 +22,7 @@ import {
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import type { IpBillingSchema } from '$lib/server/db/schema-type';
+import { parseUuid } from '$lib/util/id.util';
 
 type PendingDetailRow = OpBillingPendingLineRow;
 
@@ -32,7 +33,7 @@ type IpBillingWithAuditStaff = IpBillingSchema & {
 
 type DiscountActionBody = {
 	action?: 'discount';
-	visitId?: number;
+	visitId?: string;
 	discountTypeId?: number;
 	discountPercent?: number | null;
 	discountAmount?: number | null;
@@ -53,11 +54,10 @@ function clamp(n: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, n));
 }
 
-function visitIdFromJsonBody(body: unknown): number {
-	if (typeof body !== 'object' || body === null) return 0;
+function visitIdFromJsonBody(body: unknown): string | null {
+	if (typeof body !== 'object' || body === null) return null;
 	const v = (body as { visitId?: unknown }).visitId;
-	const n = Number(v ?? 0);
-	return n;
+	return parseUuid(v);
 }
 
 function postActionFromBody(body: unknown): unknown {
@@ -98,7 +98,7 @@ async function nextIpBillNo(params: {
 }
 
 async function latestAdmissionIdForVisit(
-	visitId: number
+	visitId: string
 ): Promise<number | null> {
 	const [row] = await ensureDb()
 		.select({ id: table.ipdAdmissionTable.id })
@@ -121,7 +121,7 @@ function assertIpdVisit(visitTypeId: number | null | undefined): void {
 }
 
 async function listOpenIpBillings(opts: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 }): Promise<IpBillingSchema[]> {
 	return ensureDb().query.ipBillingTable.findMany({
@@ -160,7 +160,7 @@ async function softDeleteIpBillingHeader(opts: {
 
 /** At most one open bill per visit; older stray drafts are removed. */
 async function consolidateOpenIpBillings(opts: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 	userId: string;
 	nowIso: string;
@@ -186,7 +186,7 @@ async function consolidateOpenIpBillings(opts: {
  */
 async function syncOpenIpBillingForVisit(opts: {
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 	branchId: string;
 	userId: string;
 	staffId: string | null;
@@ -357,9 +357,9 @@ export const GET: RequestHandler = async (event) => {
 	const hospitalId = params.hospital_id ?? '';
 	await ensureCanAccessHospital(event, hospitalId);
 	const visitIdParam = url.searchParams.get('visitId');
-	const visitId = visitIdParam ? Number(visitIdParam) : 0;
+	const visitId = parseUuid(visitIdParam);
 
-	if (!visitId || !Number.isFinite(visitId) || visitId <= 0) {
+	if (!visitId) {
 		return json(
 			{
 				error: 'Invalid visitId',
@@ -533,7 +533,7 @@ export const POST: RequestHandler = async (event) => {
 	const body: unknown = await request.json().catch(() => ({}));
 
 	const visitId = visitIdFromJsonBody(body);
-	if (!visitId || !Number.isFinite(visitId) || visitId <= 0) {
+	if (!visitId) {
 		throw error(400, 'Invalid visitId');
 	}
 

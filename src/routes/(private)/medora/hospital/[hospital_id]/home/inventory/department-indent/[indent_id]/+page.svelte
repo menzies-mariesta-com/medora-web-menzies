@@ -5,8 +5,6 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
-	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
-	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -19,7 +17,6 @@
 		DepartmentIndentDetailLine
 	} from '$lib/model/type/medora/department-indent-detail.type';
 	import {
-		InvApprovalActionEnum,
 		InvDepartmentIndentStatusTaggingEnum
 	} from '$lib/model/enum/db-link';
 	import { formatPurchaseQtyCellForDetailLine } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
@@ -27,8 +24,8 @@
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-
-	const toastService = new ToastService();
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const toastService = new ToastService();
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
@@ -215,7 +212,7 @@
 			toastService.addToast(
 				m.inv_di_cancel(),
 				StatusColorEnum.ERROR,
-				await res.text()
+				await userFacingDetailFromResponse(res)
 			);
 			throw new Error('cancel_failed');
 		}
@@ -246,7 +243,7 @@
 				toastService.addToast(
 					m.inv_dept_indent_approve(),
 					StatusColorEnum.ERROR,
-					await res.text()
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}

@@ -25,6 +25,13 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+scripts/.docs-capture-2fa-backup.json
+scripts/.docs-capture-checkpoint.json
+scripts/.docs-capture-storage.json
+
 # Paraglide
 src/lib/paraglide
 project.inlang/cache/
+
+# Free Google Translate message cache (scripts/translate-messages.mjs)
+.cache/

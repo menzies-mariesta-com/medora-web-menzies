@@ -15,14 +15,23 @@
 	import LucideWarehouse from '$lib/component/own/library/lucide/LucideWarehouse.svelte';
 	import LucidePackage from '$lib/component/own/library/lucide/LucidePackage.svelte';
 	import LucidePill from '$lib/component/own/library/lucide/LucidePill.svelte';
+	import LucideSiren from '$lib/component/own/library/lucide/LucideSiren.svelte';
+	import LucideSlice from '$lib/component/own/library/lucide/LucideSlice.svelte';
+	import LucideBaby from '$lib/component/own/library/lucide/LucideBaby.svelte';
+	import LucideActivity from '$lib/component/own/library/lucide/LucideActivity.svelte';
+	import LucideBedDouble from '$lib/component/own/library/lucide/LucideBedDouble.svelte';
+	import LucideAppWindow from '$lib/component/own/library/lucide/LucideAppWindow.svelte';
 
 	let {
 		name = null,
+		moduleUrl = null,
 		className = 'size-4 shrink-0',
 		strokeWidth
 	}: {
 		/** Lucide kebab-case name from `module.image_url`. */
 		name?: string | null;
+		/** Fallback when `image_url` is missing (matches `module.module_url`). */
+		moduleUrl?: string | null;
 		className?: string;
 		strokeWidth?: number;
 	} = $props();
@@ -38,8 +47,42 @@
 		'receipt-text': LucideReceiptText,
 		warehouse: LucideWarehouse,
 		package: LucidePackage,
-		pill: LucidePill
+		pill: LucidePill,
+		'bed-double': LucideBedDouble,
+		siren: LucideSiren,
+		scalpel: LucideSlice,
+		slice: LucideSlice,
+		baby: LucideBaby,
+		activity: LucideActivity
 	};
+
+	/** When DB `image_url` is null, infer icon from seeded `module_url`. */
+	const ICON_BY_MODULE_URL: Record<string, string> = {
+		'/medora/home/administration': 'user-cog',
+		'/medora/home/registration': 'users-round',
+		'/medora/home/appointment': 'clipboard-clock',
+		'/medora/home/nursing-workbench': 'heart-pulse',
+		'/medora/home/service-item': 'clipboard-list',
+		'/medora/home/consultation': 'stethoscope',
+		'/medora/home/adt': 'bed-double',
+		'/medora/home/billing': 'receipt-text',
+		'/medora/home/inventory-setup': 'warehouse',
+		'/medora/home/inventory': 'package',
+		'/medora/home/medication-order': 'pill',
+		'/medora/home/emergency': 'siren',
+		'/medora/home/perioperative': 'scalpel',
+		'/medora/home/obstetrics': 'baby',
+		'/medora/home/diagnostics': 'activity'
+	};
+
+	function normalizeModuleUrl(raw: string | null | undefined): string | null {
+		if (raw == null) return null;
+		const trimmed = raw
+			.trim()
+			.replace(/\/$/, '')
+			.replace(/^\/heka\//, '/medora/');
+		return trimmed || null;
+	}
 
 	function normalizeIconName(raw: string | null | undefined): string | null {
 		if (raw == null) return null;
@@ -55,10 +98,15 @@
 		return trimmed.replace(/^lucide-/i, '');
 	}
 
-	const iconName = $derived(normalizeIconName(name));
-	const Icon = $derived(iconName ? (ICONS[iconName] ?? null) : null);
+	const iconNameFromDb = $derived(normalizeIconName(name));
+	const iconNameFromUrl = $derived.by(() => {
+		const url = normalizeModuleUrl(moduleUrl);
+		return url ? (ICON_BY_MODULE_URL[url] ?? null) : null;
+	});
+	const resolvedIconName = $derived(iconNameFromDb ?? iconNameFromUrl);
+	const Icon = $derived(
+		resolvedIconName ? (ICONS[resolvedIconName] ?? LucideAppWindow) : LucideAppWindow
+	);
 </script>
 
-{#if Icon}
-	<Icon {className} {strokeWidth} />
-{/if}
+<Icon {className} {strokeWidth} />

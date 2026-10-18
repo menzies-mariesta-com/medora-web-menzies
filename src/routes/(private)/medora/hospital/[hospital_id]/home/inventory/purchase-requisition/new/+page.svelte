@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { uuidV7 } from '$lib/util/id.util';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -12,7 +13,7 @@
 	import PrLineItemsCard from '$lib/component/own/local/private/medora/inventory/purchase-requisition/PrLineItemsCard.svelte';
 	import PrLineItemDialogContent from '$lib/component/own/local/private/medora/inventory/purchase-requisition/PrLineItemDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import MenziesTable, {
+	import {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -26,8 +27,8 @@
 		type LineItemMetricTile
 	} from '$lib/tool/inventory/line-item-metric-tiles.util';
 	import { formatPurchaseQtyCellWithIssueEquivalent } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
-
-	const hospitalId = $derived(
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
 			? page.params.hospital_id
 			: ''
@@ -122,7 +123,7 @@
 
 	function newLine(): PrLineForm {
 		return {
-			key: crypto.randomUUID(),
+			key: uuidV7(),
 			itemSearch: '',
 			hits: [],
 			itemId: null,
@@ -461,11 +462,10 @@
 				}
 			);
 			if (!res.ok) {
-				const text = await res.text().catch(() => '');
+				const text = await userFacingDetailFromResponse(res).catch(() => '');
 				toastService.addToast(
 					'Could not create PR',
-					StatusColorEnum.ERROR,
-					text || res.statusText
+					StatusColorEnum.ERROR, text || undefined
 				);
 				return;
 			}
@@ -627,15 +627,14 @@
 				>
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					<div class="flex min-w-0 flex-col gap-2">
-						<label class="text-xs opacity-80">{m.inv_nav_from_store()}</label>
+						<label class="text-xs opacity-80" for="a11y-page-7b9f3c">{m.inv_nav_from_store()}</label>
 						<input
 							type="text"
 							readonly
 							disabled
 							class="input-bordered input w-full text-sm"
 							value={fromStoreNavLabel}
-							aria-label={m.inv_nav_from_store()}
-						/>
+							aria-label={m.inv_nav_from_store()} id="a11y-page-7b9f3c" />
 						{#if createFromStoreId == null}
 							<div
 								class="mt-2 alert text-sm alert-warning"
@@ -646,8 +645,8 @@
 						{/if}
 					</div>
 					<div class="flex min-w-0 flex-col gap-2">
-						<label class="text-xs opacity-80">{m.inv_transfer_to_store()}</label>
-						<SearchSelect
+						<label class="text-xs opacity-80" for="a11y-page-69a64a">{m.inv_transfer_to_store()}</label>
+						<SearchSelect inputId="a11y-page-69a64a"
 							value={createToStoreId != null
 								? String(createToStoreId)
 								: ''}
@@ -672,13 +671,13 @@
 					>Requisition Remarks</WashCardBodyTitle
 				>
 				<div class="flex min-w-0 flex-col gap-2">
-					<label class="text-xs opacity-80">{m.inv_common_remarks()}</label>
+					<label class="text-xs opacity-80" for="a11y-page-c09d1e">{m.inv_common_remarks()}</label>
 					<textarea
 						class="textarea-bordered textarea w-full"
 						bind:value={createRemarks}
 						rows="3"
 						aria-label={m.inv_common_remarks()}
-					></textarea>
+					 id="a11y-page-c09d1e"></textarea>
 				</div>
 			</WashCardBody>
 		</WashCard>

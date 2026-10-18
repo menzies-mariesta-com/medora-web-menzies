@@ -11,7 +11,7 @@
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import { seedLogger } from '$lib/logger';
 import { CategoryEnum, RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 import {
@@ -27,6 +27,7 @@ import {
 	type VisitScenarioDef
 } from './visit-history-demo-catalog';
 import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
+import { pathToFileURL } from 'node:url';
 
 const db = drizzle(neon(ensureDatabaseUrl()));
 
@@ -45,7 +46,7 @@ type ItemRow = { id: number; item_name: string | null };
 type MedMasterRow = { id: number };
 type DemoEntryPoint = {
 	patientCode: string;
-	visitId: number;
+	visitId: string;
 	visitNo: string;
 };
 
@@ -197,7 +198,7 @@ async function loadMedOrderMasters(): Promise<{
 async function ensureDemoStore(
 	hospitalId: string,
 	branchId: string
-): Promise<number> {
+): Promise<string> {
 	const existing = rowsOf<{ id: number }>(
 		await db.execute(sql`
 			SELECT s.id
@@ -364,8 +365,8 @@ async function ensureDemoPatient(
 	);
 	if (existing[0]?.id) return existing[0].id;
 
-	const userId = uuidv7();
-	const patientId = uuidv7();
+	const userId = uuidV7();
+	const patientId = uuidV7();
 	const email = `vh-demo-${hospitalId.slice(0, 8)}-${String(def.seq).padStart(2, '0')}@heka-dev.local`;
 	const displayName = `${def.firstName} ${def.lastName}`.trim();
 
@@ -429,9 +430,9 @@ async function insertVisit(
 		visitNo: string;
 		scenario: VisitScenarioDef;
 	}
-): Promise<number> {
+): Promise<string> {
 	const createdAt = formatDateOffset(params.scenario.daysAgo);
-	const rows = rowsOf<{ id: number }>(
+	const rows = rowsOf<{ id: string }>(
 		await db.execute(sql`
 			INSERT INTO patient_visit (
 				patient_id,
@@ -472,7 +473,7 @@ async function seedClinicalForVisit(params: {
 	patientId: string;
 	branchId: string;
 	doctorId: string;
-	visitId: number;
+	visitId: string;
 	scenario: VisitScenarioDef;
 	services: ServiceRow[];
 	pharmacyItems: ItemRow[];
@@ -735,7 +736,7 @@ export async function seedVisitHistoryDemo(): Promise<void> {
 			patientsSkipped++;
 
 			if (patientDef.seq === HERO_DEMO_PATIENT_SEQ) {
-				const heroVisit = rowsOf<{ id: number; visit_no: string }>(
+				const heroVisit = rowsOf<{ id: string; visit_no: string }>(
 					await db.execute(sql`
 						SELECT pv.id, pv.visit_no
 						FROM patient_visit pv
@@ -772,7 +773,7 @@ export async function seedVisitHistoryDemo(): Promise<void> {
 				vi + 1
 			);
 
-			const existingVisit = rowsOf<{ id: number }>(
+			const existingVisit = rowsOf<{ id: string }>(
 				await db.execute(sql`
 					SELECT id FROM patient_visit
 					WHERE hospital_id = ${hospitalId}::uuid
@@ -842,15 +843,21 @@ export async function seedVisitHistoryDemo(): Promise<void> {
 	}
 }
 
-seedVisitHistoryDemo()
-	.then(() => {
-		seedLogger.info('Visit history demo seeding finished');
-		process.exit(0);
-	})
-	.catch((err) => {
-		seedLogger.error(
-			'Error while seeding visit history demo',
-			err instanceof Error ? err : new Error(String(err))
-		);
-		process.exit(1);
-	});
+const isDirectRun =
+	import.meta.url === pathToFileURL(process.argv[1] ?? '').href ||
+	process.argv[1]?.endsWith('visit-history-demo-seed.ts');
+
+if (isDirectRun) {
+	seedVisitHistoryDemo()
+		.then(() => {
+			seedLogger.info('Visit history demo seeding finished');
+			process.exit(0);
+		})
+		.catch((err) => {
+			seedLogger.error(
+				'Error while seeding visit history demo',
+				err instanceof Error ? err : new Error(String(err))
+			);
+			process.exit(1);
+		});
+}

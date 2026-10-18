@@ -24,8 +24,8 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
-
-	const toast = new ToastService();
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const toast = new ToastService();
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
@@ -259,7 +259,7 @@
 				toast.addToast(
 					'Approve',
 					StatusColorEnum.ERROR,
-					await res.text()
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}
@@ -303,7 +303,7 @@
 			toast.addToast(
 				m.inv_di_cancel(),
 				StatusColorEnum.ERROR,
-				await res.text()
+				await userFacingDetailFromResponse(res)
 			);
 			throw new Error('cancel_failed');
 		}

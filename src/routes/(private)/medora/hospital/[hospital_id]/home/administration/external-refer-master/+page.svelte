@@ -1,15 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
-	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
-	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
-	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
-	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import LExternalReferMasterModal from '$lib/component/own/local/private/medora/administration/external-refer-master/LExternalReferMasterModal.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -19,6 +14,7 @@
 	import MenziesTableViewEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableViewEditDeleteActions.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -86,7 +82,7 @@
 				url.searchParams.set('_t', String(Date.now()));
 
 			const res = await fetch(url, { method: 'GET' });
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			referResult =
 				(await res.json()) as PaginatedResult<ExternalReferWithRelations>;
 		} finally {
@@ -134,7 +130,7 @@
 						body: JSON.stringify({ id: referId })
 					}
 				);
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				await fetchRefer();
 				toastService.addToast(
 					m.external_refer_deleted(),

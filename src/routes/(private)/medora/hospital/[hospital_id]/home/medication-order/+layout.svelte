@@ -20,7 +20,7 @@
 			.replace(/\/+$/, '')
 			.replace(/\/+/g, '/') || '/'
 	);
-	/** Walk-in external sales does not use visit context; hide selector and skip visit↔URL sync. */
+	/** External sales registers its own OP visit in-panel; hide shared visit bar and skip visit↔URL sync. */
 	const isExternalMedOrderPage = $derived(
 		currentPath.includes('medication-order/external-sales')
 	);
@@ -72,7 +72,7 @@
 	const selectedVisitId = $derived(VisitState.visitId);
 
 	function handleVisitSelected(data: {
-		visitId: number;
+		visitId: string;
 		patientName: string;
 	}) {
 		VisitState.select(data);

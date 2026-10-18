@@ -86,21 +86,17 @@
 
 	const toastService = new ToastService();
 
-	let orderDateInput = $state(orderDateProp);
-	let orderTimeInput = $state(orderTimeProp);
+	let orderDateInput = $state('');
+	let orderTimeInput = $state('');
 	let serviceFilter = $state<ServiceOrderPendingLineFilter>('all');
-	let detailServiceIdInput = $state(initial?.serviceId ?? '');
-	let detailAdvisingDoctorIdInput = $state(
-		initial?.advisingDoctorId ?? ''
-	);
-	let detailServiceAmountInput = $state(initial?.serviceAmount ?? '');
-	let detailServiceTaxAmountInput = $state(
-		initial?.serviceTaxAmount ?? ''
-	);
-	let detailServiceUnitInput = $state(initial?.serviceUnit ?? '1');
-	let detailInstructionInput = $state(initial?.instruction ?? '');
-	let detailIsUrgentInput = $state(initial?.isUrgent ?? false);
-	let detailAmountEditable = $state(initial?.amountEditable ?? true);
+	let detailServiceIdInput = $state('');
+	let detailAdvisingDoctorIdInput = $state('');
+	let detailServiceAmountInput = $state('');
+	let detailServiceTaxAmountInput = $state('');
+	let detailServiceUnitInput = $state('1');
+	let detailInstructionInput = $state('');
+	let detailIsUrgentInput = $state(false);
+	let detailAmountEditable = $state(true);
 	let isSubmitting = $state(false);
 	/** Skip clear on first bind of serviceFilter. */
 	let serviceFilterReady = $state(false);
@@ -115,6 +111,20 @@
 		detailIsUrgentInput = false;
 		detailAmountEditable = true;
 	}
+
+	$effect(() => {
+		orderDateInput = orderDateProp;
+		orderTimeInput = orderTimeProp;
+		const init = initial;
+		detailServiceIdInput = init?.serviceId ?? '';
+		detailAdvisingDoctorIdInput = init?.advisingDoctorId ?? '';
+		detailServiceAmountInput = init?.serviceAmount ?? '';
+		detailServiceTaxAmountInput = init?.serviceTaxAmount ?? '';
+		detailServiceUnitInput = init?.serviceUnit ?? '1';
+		detailInstructionInput = init?.instruction ?? '';
+		detailIsUrgentInput = init?.isUrgent ?? false;
+		detailAmountEditable = init?.amountEditable ?? true;
+	});
 
 	$effect(() => {
 		void serviceFilter;
@@ -196,22 +206,14 @@
 
 <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-3">
 	<div class="flex flex-wrap items-end gap-4 text-sm">
-		<label class="flex flex-col gap-1">
-			<span class="font-medium">Order Date</span>
-			<WashInputField
+		<div  class="flex flex-col gap-1"><label for="a11y-lserviceorderpendingline-b38846"><span class="font-medium">Order Date</span></label> <WashInputField
 				bind:value={orderDateInput}
 				inputType="date"
-				className="input-sm w-40"
-			/>
-		</label>
-		<label class="flex flex-col gap-1">
-			<span class="font-medium">Order Time</span>
-			<input
-				type="time"
-				class="input-bordered input input-sm w-32"
+				className="input-sm w-40" id="a11y-lserviceorderpendingline-b38846" /></div>
+		<div  class="flex flex-col gap-1"><label for="a11y-lserviceorderpendingline-089ab1"><span class="font-medium">Order Time</span></label> <WashInputField
 				bind:value={orderTimeInput}
-			/>
-		</label>
+				inputType="time"
+				className="input-sm w-32" id="a11y-lserviceorderpendingline-089ab1" /></div>
 	</div>
 
 	<div class="flex flex-wrap items-center gap-6">
@@ -261,9 +263,7 @@
 	<div
 		class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
 	>
-		<label class="flex min-w-0 flex-col gap-1 text-sm">
-			Service Name
-			<SearchSelect
+		<div  class="flex min-w-0 flex-col gap-1 text-sm"><label for="a11y-lserviceorderpendingline-5cf4a9">Service Name</label> <SearchSelect inputId="a11y-lserviceorderpendingline-5cf4a9"
 				bind:value={detailServiceIdInput}
 				placeholder="Select service"
 				searchFn={searchServicesBound}
@@ -276,19 +276,14 @@
 					detailServiceUnitInput = '1';
 					await applyPricing();
 				}}
-			/>
-		</label>
-		<label class="flex min-w-0 flex-col gap-1 text-sm">
-			Order by (Adv Dr.)
-			<SearchSelect
+			/></div>
+		<div  class="flex min-w-0 flex-col gap-1 text-sm"><label for="a11y-lserviceorderpendingline-0def0a">Order by (Adv Dr.)</label> <SearchSelect
 				bind:value={detailAdvisingDoctorIdInput}
 				placeholder="Select doctor"
 				className="w-full"
 				searchFn={searchDoctors}
 				getLabelForValue={getDoctorLabelForValue}
-				minSearchLength={0}
-			/>
-		</label>
+				minSearchLength={0} inputId="a11y-lserviceorderpendingline-0def0a" /></div>
 		<label class="flex min-w-0 flex-col gap-1 text-sm">
 			Unit
 			<input

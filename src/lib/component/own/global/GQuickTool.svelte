@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashFab from '$lib/component/wash/fab/WashFab.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
@@ -8,7 +9,7 @@
 	import LucidePalette from '../library/lucide/LucidePalette.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import ChangeLanguageModal from '$lib/component/own/snippet/modal/ChangeLanguageModal.svelte';
-	import { LanguageEnum } from '$lib/model/enum/language.enum';
+	import type { AppLocale } from '$lib/model/enum/language.enum';
 	import { LanguageTool } from '$lib/tool/language.tool.svelte';
 	import ChangeAppearanceModal from '../snippet/modal/ChangeAppearanceModal.svelte';
 	import SupportTicketDialogContent from '../snippet/modal/SupportTicketDialogContent.svelte';
@@ -28,11 +29,21 @@
 	const fontTool = new FontTool();
 	const msg = m as Record<string, (inputs?: object) => string>;
 
+	const supportEnabled = $derived(Boolean(page.data.user));
+	const supportButtonClass = $derived(
+		[
+			'btn-circle btn-lg',
+			!supportEnabled ? 'cursor-not-allowed btn-disabled' : ''
+		]
+			.filter(Boolean)
+			.join(' ')
+	);
+
 	function openLanguageDialog() {
 		dialogService.open({
 			title: m.change_language(),
 			component: ChangeLanguageModal,
-			onConfirm: (data?: { language: LanguageEnum }) => {
+			onConfirm: (data?: { language: AppLocale }) => {
 				if (data?.language)
 					languageTool.changeLanguage(data.language);
 			}
@@ -62,6 +73,7 @@
 	}
 
 	async function openSupportDialog() {
+		if (!supportEnabled) return;
 		await dialogService.open({
 			title: m.support_it_title(),
 			component: SupportTicketDialogContent,
@@ -83,10 +95,19 @@
 		</WashButton>
 	</WashTooltip>
 
-	<WashTooltip tooltipText={m.support()} className=" ">
+	<WashTooltip
+		tooltipText={supportEnabled
+			? m.support()
+			: msg.support_sign_in_required()}
+		className=" "
+	>
 		<WashButton
-			className="btn-circle btn-lg"
+			className={supportButtonClass}
+			disabled={!supportEnabled}
 			onClick={openSupportDialog}
+			aria-label={supportEnabled
+				? m.support()
+				: msg.support_sign_in_required()}
 		>
 			<LucideMessageCircleQuestionMark />
 		</WashButton>

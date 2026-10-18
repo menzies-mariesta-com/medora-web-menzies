@@ -11,7 +11,9 @@ export enum RoleEnum {
 	OWNER = 2,
 	STAFF = 3,
 	/** Invited admin helpers with per-page CRUD grants (not full SYSTEM_ADMIN). */
-	ADMIN_TEAM = 4
+	ADMIN_TEAM = 4,
+	/** Hospital patient portal / mobile app users (linked via patient.user_id). */
+	PATIENT = 5
 }
 
 /** Admin dashboard page keys for `admin_page_permission.page_key`. */
@@ -21,6 +23,7 @@ export enum AdminPageKeyEnum {
 	HOSPITALS = 'hospitals',
 	STAFF = 'staff',
 	MONITORING = 'monitoring',
+	ICD = 'icd',
 	TEAM = 'team'
 }
 
@@ -179,7 +182,11 @@ export enum StatusTaggingTypeEnum {
 	/** @see information-table-seed / drizzle/0011_adt_booking_transfer_req.sql */
 	IPD_BED_TRANSFER_REQUISITION = 13,
 	/** @see information-table-seed / drizzle/0013_ipd_admission_order_deposit.sql */
-	IPD_ADMISSION_ORDER = 14
+	IPD_ADMISSION_ORDER = 14,
+	/** @see drizzle/0020_perioperative_clinical_forms.sql */
+	SURGICAL_CASE = 15,
+	/** @see drizzle/0020_perioperative_clinical_forms.sql */
+	CLINICAL_FORM_INSTANCE = 16
 }
 
 /**
@@ -221,6 +228,25 @@ export enum IpdAdmissionOrderStatusTaggingEnum {
 	PENDING = 68,
 	CANCELLED = 69,
 	ADMITTED = 70
+}
+
+/** `status_tagging.id` for surgical case workflow. @see information-table-seed */
+export enum SurgicalCaseStatusTaggingEnum {
+	REQUESTED = 71,
+	SCHEDULED = 72,
+	PRE_OP_COMPLETE = 73,
+	IN_OR = 74,
+	IN_PACU = 75,
+	COMPLETED = 76,
+	CANCELLED = 77,
+	PENDING_RESCHEDULE = 78
+}
+
+/** `status_tagging.id` for structured clinical form instances. */
+export enum ClinicalFormInstanceStatusTaggingEnum {
+	DRAFT = 79,
+	COMPLETE = 80,
+	AMENDED = 81
 }
 
 /** Care level requested on an IPD admission order (not status_tagging). */

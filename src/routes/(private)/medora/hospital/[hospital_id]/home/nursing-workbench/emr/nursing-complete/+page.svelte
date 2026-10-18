@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
@@ -55,7 +56,7 @@
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
 	);
-	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const visitId = $derived(parseUuid(visitIdStr) ?? '');
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
 			page.params.hospital_id
@@ -637,7 +638,7 @@
 	{#if !visitId}
 		<WashAlert
 			type={StatusColorEnum.INFO}
-			message={'Choose a visit using the="Choose Visit" button above to view nursing complete items.'}
+			message="Choose a visit using the=&quot;Choose Visit&quot; button above to view nursing complete items."
 			className="z-0"
 		/>
 	{:else if !visit && !isLoading}

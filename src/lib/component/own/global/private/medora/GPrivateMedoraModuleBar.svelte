@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { washRecipes } from '@menzies-mariesta-com/menzies-design-wash-ui/core';
-
-	import type {
+	
+import type {
 		MedoraPageModuleRow,
 		MedoraPageRow
 	} from '$lib/model/type/medora/page.type';
@@ -21,16 +20,24 @@
 		medoraHospitalPageUrl,
 		requestPathToDbPageUrl
 	} from '$lib/model/enum/routes.enum';
-	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
+	import { getStaffPhotoDisplayUrl, getHospitalLogoDisplayUrl } from '$lib/util/staff-photo.util';
 	import AccountModal from '$lib/component/own/snippet/modal/AccountModal.svelte';
+	import type { AccountProfileSeed } from '$lib/model/type/medora/account-settings.type';
 	import { RoleEnum } from '$lib/model/enum/db-link';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import LucideHouse from '$lib/component/own/library/lucide/LucideHouse.svelte';
 	import LucideSearch from '$lib/component/own/library/lucide/LucideSearch.svelte';
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { tick } from 'svelte';
 	import MedoraNotifications from './MedoraNotifications.svelte';
 	import MedoraModuleIcon from './MedoraModuleIcon.svelte';
+	import LucideCircleQuestionMark from '$lib/component/own/library/lucide/LucideCircleQuestionMark.svelte';
+	import MedoraEcosystemNavLink from '$lib/component/own/local/private/medora/MedoraEcosystemNavLink.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { medoraPageUrlToDocsHref } from '$lib/util/docs-help.util';
+	import { paraglideMsg } from '$lib/util/paraglide-fallback.util';
 
 	type StaffUserGroupForNav = { id: number; name: string | null };
 	type StaffBranchForNav = { id: string; name: string | null };
@@ -43,6 +50,7 @@
 	let {
 		hospitalId = null,
 		hospitalName = null,
+		hospitalLogoUrl = null,
 		userEmail = null,
 		moduleList,
 		pageList,
@@ -50,6 +58,7 @@
 		staffPhotoUrl = null,
 		/** Shown next to the profile control (staff full name or user name/email). */
 		staffDisplayName = null,
+		initialProfile = null,
 		userRoleId = null,
 		staffUserGroupsForNav = [],
 		selectedUserGroupId = null,
@@ -63,12 +72,14 @@
 	}: {
 		hospitalId?: string | null;
 		hospitalName?: string | null;
+		hospitalLogoUrl?: string | null;
 		userEmail?: string | null;
 		moduleList: MedoraPageModuleRow[];
 		pageList: MedoraPageRow[];
 		staffId?: string | null;
 		staffPhotoUrl?: string | null;
 		staffDisplayName?: string | null;
+		initialProfile?: AccountProfileSeed | null;
 		userRoleId?: number | null;
 		staffUserGroupsForNav?: StaffUserGroupForNav[];
 		selectedUserGroupId?: number | null;
@@ -79,6 +90,13 @@
 		navbarVisible?: boolean;
 		onToggleNavbar?: () => void;
 	} = $props();
+
+	const docsHelpHref = $derived.by(() => {
+		const hid = hospitalId ?? page.params.hospital_id ?? '';
+		if (!hid) return resolve(WebRoutesEnum.DOCS);
+		const dbUrl = requestPathToDbPageUrl(page.url.pathname, hid);
+		return medoraPageUrlToDocsHref(dbUrl) ?? resolve(WebRoutesEnum.DOCS);
+	});
 
 	const orderedModuleList = $derived.by(() =>
 		[...moduleList].sort(
@@ -97,6 +115,17 @@
 	);
 	const hasProfilePhoto = $derived(!!profilePhotoDisplayUrl);
 
+	/** Hospital chrome brand: name when set; logo only when name is set (else full Medora). */
+	const brandName = $derived(hospitalName?.trim() || null);
+	const brandLogoSrc = $derived(
+		brandName
+			? (getHospitalLogoDisplayUrl(hospitalLogoUrl) ?? null)
+			: null
+	);
+	const brandHref = $derived(
+		hospitalId ? medoraHospitalHome(hospitalId) : WebRoutesEnum.DEFAULT
+	);
+
 	let accountModalOpen = $state(false);
 
 	function openAccountModal() {
@@ -108,21 +137,19 @@
 	}
 
 	let searchDialogOpen = $state(false);
-	let searchQuery = $state('');
-	let searchInputEl = $state<HTMLInputElement | null>(null);
+	let selectedPageId = $state('');
 
 	function openSearchDialog() {
-		searchQuery = '';
+		selectedPageId = '';
 		searchDialogOpen = true;
-		tick().then(() => searchInputEl?.focus());
+		tick().then(() => {
+			document.getElementById('medora-page-search')?.click();
+		});
 	}
 
 	function closeSearchDialog() {
 		searchDialogOpen = false;
 	}
-
-	// Search results: include all allowed pages (parent + sub-pages), with module name.
-	type SearchEntry = { page: MedoraPageRow; moduleName: string };
 
 	function parentChainLabel(p: MedoraPageRow): string {
 		const chain: string[] = [];
@@ -138,24 +165,31 @@
 		return chain.join(' / ');
 	}
 
-	const searchEntries = $derived.by(() => {
-		const q = searchQuery.trim().toLowerCase();
-		const entries: SearchEntry[] = [];
-		for (const p of orderedPageList) {
+	const pageSearchOptions = $derived.by(() =>
+		orderedPageList.map((p) => {
 			const mod = moduleList.find((m) => m.id === p.moduleId);
-			entries.push({ page: p, moduleName: mod?.name ?? '' });
-		}
-		if (!q) return entries.slice(0, 30);
-		return entries
-			.filter(
-				(e) =>
-					(e.page.name ?? '').toLowerCase().includes(q) ||
-					(e.page.pageUrl ?? '').toLowerCase().includes(q) ||
-					e.moduleName.toLowerCase().includes(q) ||
-					parentChainLabel(e.page).toLowerCase().includes(q)
-			)
-			.slice(0, 30);
-	});
+			const moduleName = mod?.name ?? '';
+			const parent = parentChainLabel(p);
+			const pageName = p.name ?? p.pageUrl ?? '';
+			const labelParts = [
+				pageName,
+				moduleName,
+				parent,
+				p.pageUrl ?? ''
+			].filter((part) => part.length > 0);
+			return {
+				value: String(p.id),
+				label: labelParts.join(' · ')
+			};
+		})
+	);
+
+	function handleCommandSearchPick(value: string) {
+		const id = Number(value);
+		if (!Number.isFinite(id)) return;
+		const p = orderedPageList.find((row) => row.id === id);
+		if (p) goToPage(p);
+	}
 
 	const currentSearch = $derived(page.url.search);
 
@@ -280,7 +314,7 @@
 	// Ctrl+K opens search dialog.
 	$effect(() => {
 		function onKeyDown(e: KeyboardEvent) {
-			if (e.ctrlKey && e.key === 'k') {
+			if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
 				e.preventDefault();
 				openSearchDialog();
 			}
@@ -290,6 +324,7 @@
 	});
 
 	const routerUtil = new RouterUtil();
+	const msg = m as Record<string, (inputs?: object) => string>;
 
 	// Map current pathname -> DB page URL (/medora/home/...) for highlighting.
 	const activeDbPageUrl = $derived.by(() => {
@@ -353,19 +388,15 @@
 	}
 
 	let pageLocator = $derived.by(() => {
-		const segments = StringUtil.parseUrlSegments(page.url.pathname);
-		const pageTitle = segments
+		// Drop app/hospital identity segments so crumbs start at Home (or deeper).
+		const structural = new Set(['medora', 'hospital']);
+		const pageTitle = StringUtil.parseUrlSegments(page.url.pathname)
 			.filter((segment) => !(hospitalId && segment === hospitalId))
+			.filter((segment) => !structural.has(segment))
 			.filter((segment) => !isIdLikeSegment(segment))
 			.slice(-2)
 			.map((segment) => StringUtil.segmentToLabel(segment))
 			.join(' / ');
-
-		if (hospitalName?.trim()) {
-			return pageTitle
-				? `${hospitalName} / ${pageTitle}`
-				: hospitalName;
-		}
 
 		return pageTitle;
 	});
@@ -457,7 +488,12 @@
 {#if isNavbarVisible}
 	<div class="flex w-full flex-wrap items-center gap-2 border-b border-base-300/80 px-2 py-2">
 		<div class="shrink-0">
-			<MedoraBrandWordmark className="text-xl" />
+			<MedoraBrandWordmark
+				className="text-xl"
+				href={brandHref}
+				brandName={brandName}
+				logoSrc={brandLogoSrc}
+			/>
 		</div>
 		<div
 			class="flex min-w-0 flex-1 basis-[min(100%,16rem)] justify-center px-1"
@@ -549,6 +585,24 @@
 					triggerClassName={navBarControlBorder}
 				/>
 			</WashTooltip>
+			<MedoraEcosystemNavLink
+				{hospitalId}
+				className={navBarControlBorder}
+			/>
+			<WashTooltip
+				tooltipText={msg.nav_help()}
+				className="tooltip-primary"
+			>
+				<a
+					href={`${docsHelpHref}?from=app`}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="btn btn-circle btn-ghost cursor-pointer {navBarControlBorder}"
+					aria-label={msg.nav_help()}
+				>
+					<LucideCircleQuestionMark className="size-6" />
+				</a>
+			</WashTooltip>
 			<WashTooltip
 				tooltipText="Account"
 				className=""
@@ -597,6 +651,7 @@
 	{hospitalId}
 	{userEmail}
 	{staffId}
+	{initialProfile}
 />
 
 <!-- navbar end -->
@@ -659,30 +714,42 @@
 				>
 					{#if isActiveModule}
 						<div class="aura aura-dual text-primary">
-							<div
-								tabindex="0"
-								role="button"
+							<button
+								type="button"
 								class="btn {navBarControlBorder} cursor-pointer gap-2"
+								aria-haspopup="menu"
+								aria-expanded={hoveredModuleId === m.id}
+								onfocus={(e) =>
+									openModuleMenu(m.id, e.currentTarget)}
+								onclick={(e) =>
+									openModuleMenu(m.id, e.currentTarget)}
 							>
 								<MedoraModuleIcon
 									name={m.imageUrl}
+									moduleUrl={m.moduleUrl}
 									className="size-4 shrink-0"
 								/>
 								<span class="whitespace-nowrap">{m?.name}</span>
-							</div>
+							</button>
 						</div>
 					{:else}
-						<div
-							tabindex="0"
-							role="button"
+						<button
+							type="button"
 							class="btn {navBarControlBorder} cursor-pointer gap-2"
+							aria-haspopup="menu"
+							aria-expanded={hoveredModuleId === m.id}
+							onfocus={(e) =>
+								openModuleMenu(m.id, e.currentTarget)}
+							onclick={(e) =>
+								openModuleMenu(m.id, e.currentTarget)}
 						>
 							<MedoraModuleIcon
 								name={m.imageUrl}
+								moduleUrl={m.moduleUrl}
 								className="size-4 shrink-0"
 							/>
 							<span class="whitespace-nowrap">{m?.name}</span>
-						</div>
+						</button>
 					{/if}
 				</div>
 			{/each}
@@ -745,7 +812,10 @@
 	</div>
 	<div class="shrink-0">
 		<WashTooltip
-			tooltipText="Search (Ctrl+K)"
+			tooltipText={paraglideMsg(
+				'medora_command_search_shortcut',
+				'Search (Ctrl+K)'
+			)}
 			className="tooltip-secondary"
 		>
 			<WashButton
@@ -763,47 +833,41 @@
 	className="modal-middle"
 	open={searchDialogOpen}
 	onClose={closeSearchDialog}
-	title="Search modules & pages"
-	boxClassName="flex max-h-[80vh] flex-col gap-3"
+	title={paraglideMsg(
+		'medora_command_search_title',
+		'Search modules and pages'
+	)}
+	showActions={false}
+	boxClassName="max-w-lg"
 >
-		<input
-			bind:this={searchInputEl}
-			bind:value={searchQuery}
-			type="text"
-			placeholder="Type to search..."
-			class="input-bordered input w-full"
-			aria-label="Search"
+	<div class="flex min-h-0 flex-1 flex-col px-4 py-3">
+		<SearchSelect
+			inputId="medora-page-search"
+			label={paraglideMsg(
+				'medora_command_search_select',
+				'Go to page'
+			)}
+			placeholder={paraglideMsg(
+				'medora_command_search_select',
+				'Go to page'
+			)}
+			filterPlaceholder={paraglideMsg(
+				'medora_command_search_filter',
+				'Search by page or module'
+			)}
+			emptyMessage={paraglideMsg(
+				'medora_command_search_empty',
+				'No pages match your search.'
+			)}
+			className="w-full"
+			options={pageSearchOptions}
+			bind:value={selectedPageId}
+			onChange={handleCommandSearchPick}
 		/>
-		<ul class="flex max-h-80 flex-col gap-1 overflow-y-auto">
-			{#each searchEntries as entry (entry.page.id)}
-				{@const parentPath = parentChainLabel(entry.page)}
-				<li>
-					<button
-						type="button"
-						class="btn w-full justify-start text-left btn-ghost"
-						onclick={() => goToPage(entry.page)}
-					>
-						<span class="font-medium"
-							>{entry.page.name ?? entry.page.pageUrl ?? ''}</span
-						>
-						{#if entry.moduleName}
-							<span class="text-sm text-base-content/60">
-								— {entry.moduleName}</span
-							>
-						{/if}
-						{#if parentPath}
-							<span class="text-xs text-base-content/50">
-								({parentPath})
-							</span>
-						{/if}
-					</button>
-				</li>
-			{/each}
-		</ul>
-		{#if searchEntries.length === 0}
-			<p class="text-sm text-base-content/60">No matches.</p>
-		{/if}
-		{#snippet actions()}
-			<WashButton variant="ghost" onClick={closeSearchDialog}>Close</WashButton>
-		{/snippet}
+	</div>
+	<WashDialogFooter className="gap-2">
+		<WashButton className="btn" onClick={closeSearchDialog}>
+			{m.cancel()}
+		</WashButton>
+	</WashDialogFooter>
 </WashDialog>

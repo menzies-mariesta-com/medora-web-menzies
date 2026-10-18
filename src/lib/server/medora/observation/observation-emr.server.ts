@@ -10,13 +10,13 @@ import {
 	isNotNull,
 	isNull,
 	max,
-	min,
 	ne,
 	or,
 	sql
 } from 'drizzle-orm';
 import {
 	BillingStatusTaggingEnum,
+	InvDepartmentConsumptionStatusTaggingEnum,
 	StaffTypeEnum,
 	StatusEnum,
 	VisitStatusTaggingEnum
@@ -49,7 +49,6 @@ import type {
 	PlanOfCareSchemaUpdate,
 	ProgressNoteSchema,
 	ProgressNoteSchemaUpdate,
-	PatientVisitSchemaUpdate,
 	PatientVisitSchema,
 	ServiceItemSchema,
 	ServiceOrderDetailSchema,
@@ -108,7 +107,7 @@ export async function getDiagnosisById(input: {
 }
 
 export async function getDiagnosesByVisitId(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<DiagnosisWithType[]> {
 	const rows = await ensureDb().query.diagnosisTable.findMany({
 		where: (t, { and, eq, ne }) =>
@@ -207,7 +206,7 @@ export async function deleteDiagnosis(input: {
 }
 
 export async function getPlanOfCareRowsByVisitId(input: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 }) {
 	const visit = await getPatientVisitById({
@@ -255,7 +254,7 @@ export async function getPlanOfCareById(input: {
 export async function createPlanOfCare(
 	hospitalId: string,
 	payload: {
-		visitId: number;
+		visitId: string;
 		note: string;
 		doctorId?: string | null;
 		statusId?: number;
@@ -350,7 +349,7 @@ export async function deletePlanOfCare(input: {
 }
 
 export async function getProgressNoteRowsByVisitId(input: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 }) {
 	const visit = await getPatientVisitById({
@@ -398,7 +397,7 @@ export async function getProgressNoteById(input: {
 export async function createProgressNote(
 	hospitalId: string,
 	payload: {
-		visitId: number;
+		visitId: string;
 		note: string;
 		subjective?: string | null;
 		objective?: string | null;
@@ -469,6 +468,9 @@ export async function updateProgressNote(
 	} = payload;
 	const existing = await getProgressNoteById({ id, hospitalId });
 	if (!existing) throw new Error('Progress note not found');
+	if (existing.signedAt != null && String(existing.signedAt).trim() !== '') {
+		throw new Error('Signed progress notes cannot be edited. Add an addendum.');
+	}
 	await assertVisitNotClinicallySigned(existing.visitId);
 	const patch: ProgressNoteSchemaUpdate = {};
 	if (note !== undefined) patch.note = String(note).trim();
@@ -542,6 +544,74 @@ export async function cosignProgressNote(input: {
 	return row;
 }
 
+export async function signProgressNote(input: {
+	id: number;
+	hospitalId: string;
+	staffId: string;
+}): Promise<ProgressNoteSchema> {
+	const existing = await getProgressNoteById({
+		id: input.id,
+		hospitalId: input.hospitalId
+	});
+	if (!existing) throw error(404, 'Progress note not found');
+	if (existing.signedAt != null) throw error(409, 'Already signed');
+	const [row] = await ensureDb()
+		.update(table.progressNoteTable)
+		.set({
+			signedAt: new Date(),
+			signedBy: input.staffId
+		})
+		.where(eq(table.progressNoteTable.id, input.id))
+		.returning();
+	if (!row) throw error(500, 'Unable to sign progress note');
+	return row;
+}
+
+export async function addProgressNoteAddendum(input: {
+	hospitalId: string;
+	progressNoteId: number;
+	reasonCode: string;
+	body: string;
+	authorStaffId: string;
+}) {
+	const existing = await getProgressNoteById({
+		id: input.progressNoteId,
+		hospitalId: input.hospitalId
+	});
+	if (!existing) throw error(404, 'Progress note not found');
+	if (existing.signedAt == null) {
+		throw error(400, 'Note must be signed before addendum');
+	}
+	const [row] = await ensureDb()
+		.insert(table.progressNoteAddendumTable)
+		.values({
+			progressNoteId: input.progressNoteId,
+			reasonCode: input.reasonCode,
+			body: input.body.trim(),
+			authorStaffId: input.authorStaffId
+		})
+		.returning();
+	return row;
+}
+
+export async function listProgressNoteAddenda(input: {
+	hospitalId: string;
+	progressNoteId: number;
+}) {
+	const existing = await getProgressNoteById({
+		id: input.progressNoteId,
+		hospitalId: input.hospitalId
+	});
+	if (!existing) return [];
+	return ensureDb()
+		.select()
+		.from(table.progressNoteAddendumTable)
+		.where(
+			eq(table.progressNoteAddendumTable.progressNoteId, input.progressNoteId)
+		)
+		.orderBy(table.progressNoteAddendumTable.createdAt);
+}
+
 function prettifyFormCode(code: string): string {
 	return code
 		.trim()
@@ -567,7 +637,7 @@ export async function getPatientFormEntryById(input: {
 }
 
 export async function getPatientFormEntriesByVisitIdAndFormCode(input: {
-	visitId: number;
+	visitId: string;
 	formCode: string;
 }): Promise<PatientFormEntryWithRelations[]> {
 	const code = input.formCode.trim();
@@ -652,7 +722,7 @@ async function ensureFormNameIdByCode(code: string): Promise<number> {
 export async function createPatientFormEntry(payload: {
 	branchId: string;
 	patientId: string;
-	visitId: number;
+	visitId: string;
 	description: string;
 	statusId: number;
 	formCode: string;
@@ -738,7 +808,7 @@ export async function getDocumentsWithRelations(): Promise<
 }
 
 export async function getPatientDocumentsByVisitIdWithRelations(input: {
-	visitId: number;
+	visitId: string;
 }) {
 	return ensureDb().query.patientDocumentTable.findMany({
 		where: (t, { and, eq, ne }) =>
@@ -806,7 +876,7 @@ export async function updatePatientDocument(
 }
 
 export async function getPatientVisitById(input: {
-	id: number;
+	id: string;
 	hospitalId: string;
 }): Promise<PatientVisitSchema | null> {
 	const row = await ensureDb().query.patientVisitTable.findFirst({
@@ -847,7 +917,7 @@ export async function updatePatientVisit(input: {
 }
 
 export async function signPatientVisitClinical(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<PatientVisitSchema> {
 	// Delegate to existing logic by reproducing minimal checks.
 	const [cur] = await ensureDb()
@@ -877,7 +947,7 @@ export async function signPatientVisitClinical(input: {
 }
 
 export async function unsignPatientVisitClinical(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<PatientVisitSchema> {
 	const [cur] = await ensureDb()
 		.select({
@@ -1289,7 +1359,7 @@ export async function updatePatientAllergyRecord(
 }
 
 export async function getPatientVitalsByVisitId(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<PatientDiagnosisSchema[]> {
 	return ensureDb()
 		.select()
@@ -1324,7 +1394,7 @@ export async function deletePatientVital(input: {
  * OP billing and other consumers use this as-is so charges can be captured before nursing marks lines complete.
  */
 export async function getServiceOrderDetailRowsForVisit(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<
 	(ServiceOrderDetailSchema & {
 		orderNo: string | null;
@@ -1402,7 +1472,7 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 
 /** Service order detail IDs already on a closed OP or IP bill for this visit. */
 export async function getServiceOrderDetailIdsOnClosedOpBillsForVisit(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<Set<number>> {
 	const [opRows, ipRows] = await Promise.all([
 		ensureDb()
@@ -1463,7 +1533,7 @@ export async function getServiceOrderDetailIdsOnClosedOpBillsForVisit(input: {
 
 /** Medication order line IDs already on a closed OP or IP bill for this visit. */
 export async function getMedicationOrderLineIdsOnClosedOpBillsForVisit(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<Set<number>> {
 	const [opRows, ipRows] = await Promise.all([
 		ensureDb()
@@ -1525,8 +1595,9 @@ export async function getMedicationOrderLineIdsOnClosedOpBillsForVisit(input: {
 export type OpBillingPendingServiceLineRow = Awaited<
 	ReturnType<typeof getServiceOrderDetailRowsForVisit>
 >[number] & {
-	lineSource: 'service_order_detail';
+		lineSource: 'service_order_detail';
 	medicationOrderLineId: null;
+	departmentConsumptionLineId: null;
 };
 
 export type OpBillingPendingMedicationLineRow = {
@@ -1534,6 +1605,7 @@ export type OpBillingPendingMedicationLineRow = {
 	/** `medication_order_line.id` (used as stable row id and for OP billing line FK) */
 	id: number;
 	medicationOrderLineId: number;
+	departmentConsumptionLineId: null;
 	serviceId: number;
 	/** Shown on bill: the inventory item (drug) name. */
 	serviceName: string | null;
@@ -1546,9 +1618,26 @@ export type OpBillingPendingMedicationLineRow = {
 	serviceUnit: number | null;
 };
 
+export type OpBillingPendingConsumptionLineRow = {
+	lineSource: 'department_consumption_line';
+	id: number;
+	medicationOrderLineId: null;
+	departmentConsumptionLineId: number;
+	serviceId: number;
+	serviceName: string | null;
+	subCategoryId: number | null;
+	subCategoryName: string | null;
+	orderNo: string | null;
+	discount: string | null;
+	serviceAmount: string | null;
+	serviceTaxAmount: string | null;
+	serviceUnit: number | null;
+};
+
 export type OpBillingPendingLineRow =
 	| OpBillingPendingServiceLineRow
-	| OpBillingPendingMedicationLineRow;
+	| OpBillingPendingMedicationLineRow
+	| OpBillingPendingConsumptionLineRow;
 
 async function getDefaultServiceItemForPharmacyOpBilling(input: {
 	hospitalId: string;
@@ -1611,7 +1700,7 @@ async function getDefaultServiceItemForPharmacyOpBilling(input: {
 }
 
 async function getPendingMedicationOrderRowsForOpBilling(input: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 	branchId: string;
 }): Promise<OpBillingPendingMedicationLineRow[]> {
@@ -1747,6 +1836,7 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 			lineSource: 'medication_order_line',
 			id: r.id,
 			medicationOrderLineId: r.id,
+			departmentConsumptionLineId: null,
 			serviceId: svc.id,
 			serviceName: r.itemName?.trim() || null,
 			subCategoryId: svc.subCategoryId,
@@ -1770,13 +1860,149 @@ function isNursingCompleteTimeSet(
 	);
 }
 
+async function getDepartmentConsumptionLineIdsOnClosedOpBillsForVisit(
+	visitId: string
+): Promise<Set<number>> {
+	const rows = await ensureDb()
+		.select({
+			lineId: table.opBillingLineTable.departmentConsumptionLineId
+		})
+		.from(table.opBillingLineTable)
+		.innerJoin(
+			table.opBillingTable,
+			eq(table.opBillingLineTable.opBillingId, table.opBillingTable.id)
+		)
+		.where(
+			and(
+				eq(table.opBillingTable.visitId, visitId),
+				eq(
+					table.opBillingTable.statusTaggingId,
+					BillingStatusTaggingEnum.CLOSED
+				),
+				ne(table.opBillingTable.statusId, StatusEnum.DELETED),
+				isNotNull(table.opBillingLineTable.departmentConsumptionLineId)
+			)
+		);
+	const set = new Set<number>();
+	for (const r of rows) {
+		if (r.lineId != null) set.add(r.lineId);
+	}
+	return set;
+}
+
+async function getPendingDepartmentConsumptionRowsForOpBilling(input: {
+	visitId: string;
+	hospitalId: string;
+	branchId: string;
+}): Promise<OpBillingPendingConsumptionLineRow[]> {
+	const { getOrCreateHospitalEdBillingConfig } = await import(
+		'$lib/server/medora/ed/hospital-ed-billing-config.server'
+	);
+	const config = await getOrCreateHospitalEdBillingConfig(input.hospitalId);
+	const serviceItemId = config.erConsumableServiceItemId;
+	if (serviceItemId == null || serviceItemId <= 0) return [];
+
+	const [svc] = await ensureDb()
+		.select({
+			id: table.serviceItemTable.id,
+			subCategoryId: table.serviceItemTable.subCategoryId
+		})
+		.from(table.serviceItemTable)
+		.where(
+			and(
+				eq(table.serviceItemTable.id, serviceItemId),
+				eq(table.serviceItemTable.hospitalId, input.hospitalId),
+				eq(table.serviceItemTable.statusId, StatusEnum.ACTIVE)
+			)
+		)
+		.limit(1);
+	if (!svc) return [];
+
+	let subCategoryName: string | null = null;
+	if (svc.subCategoryId != null) {
+		const [sc] = await ensureDb()
+			.select({ name: table.subCategoryTable.subCategoryName })
+			.from(table.subCategoryTable)
+			.where(eq(table.subCategoryTable.id, svc.subCategoryId))
+			.limit(1);
+		subCategoryName = sc?.name ?? null;
+	}
+
+	const onClosed = await getDepartmentConsumptionLineIdsOnClosedOpBillsForVisit(
+		input.visitId
+	);
+
+	const raw = await ensureDb()
+		.select({
+			lineId: table.invDepartmentConsumptionLineTable.id,
+			itemName: table.itemMasterTable.itemName,
+			consumptionNo: table.invDepartmentConsumptionTable.consumptionNo,
+			empSalePrice: table.invDepartmentConsumptionLineTable.empSalePrice,
+			quantity: table.invDepartmentConsumptionLineTable.quantity
+		})
+		.from(table.invDepartmentConsumptionLineTable)
+		.innerJoin(
+			table.invDepartmentConsumptionTable,
+			eq(
+				table.invDepartmentConsumptionLineTable.consumptionId,
+				table.invDepartmentConsumptionTable.id
+			)
+		)
+		.innerJoin(
+			table.itemMasterTable,
+			eq(
+				table.invDepartmentConsumptionLineTable.itemId,
+				table.itemMasterTable.id
+			)
+		)
+		.where(
+			and(
+				eq(table.invDepartmentConsumptionTable.visitId, input.visitId),
+				eq(
+					table.invDepartmentConsumptionTable.hospitalId,
+					input.hospitalId
+				),
+				eq(
+					table.invDepartmentConsumptionTable.statusTaggingId,
+					InvDepartmentConsumptionStatusTaggingEnum.POSTED
+				),
+				isNull(table.invDepartmentConsumptionLineTable.deletedAt),
+				isNull(table.invDepartmentConsumptionTable.deletedAt)
+			)
+		)
+		.orderBy(asc(table.invDepartmentConsumptionLineTable.id));
+
+	const out: OpBillingPendingConsumptionLineRow[] = [];
+	for (const r of raw) {
+		if (onClosed.has(r.lineId)) continue;
+		const unitPrice = r.empSalePrice != null ? String(r.empSalePrice) : '0';
+		const qty = Number(r.quantity) > 0 ? Number(r.quantity) : 1;
+		out.push({
+			lineSource: 'department_consumption_line',
+			id: r.lineId,
+			medicationOrderLineId: null,
+			departmentConsumptionLineId: r.lineId,
+			serviceId: svc.id,
+			serviceName: r.itemName?.trim() || null,
+			subCategoryId: svc.subCategoryId,
+			subCategoryName,
+			orderNo: r.consumptionNo?.trim() || null,
+			discount: null,
+			serviceAmount: unitPrice,
+			serviceTaxAmount: '0',
+			serviceUnit: qty
+		});
+	}
+	return out;
+}
+
 /**
  * Nursing-complete service lines plus in-house medication order lines for the visit that
  * are not already on a **closed** OP bill. Medication lines never use nursing-complete; they
  * appear when saved for the visit until billed on a closed print.
  */
 export async function getPendingOpBillingServiceDetailRowsForVisit(input: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 	branchId: string;
 }): Promise<OpBillingPendingLineRow[]> {
@@ -1793,14 +2019,16 @@ export async function getPendingOpBillingServiceDetailRowsForVisit(input: {
 		.map((r) => ({
 			...r,
 			lineSource: 'service_order_detail' as const,
-			medicationOrderLineId: null
+			medicationOrderLineId: null,
+			departmentConsumptionLineId: null
 		}));
 	const medRows = await getPendingMedicationOrderRowsForOpBilling({
 		visitId: input.visitId,
 		hospitalId: input.hospitalId,
 		branchId: input.branchId
 	});
-	return [...serviceRows, ...medRows];
+	const dcRows = await getPendingDepartmentConsumptionRowsForOpBilling(input);
+	return [...serviceRows, ...medRows, ...dcRows];
 }
 
 export async function assertServiceOrderDetailNotLockedByClosedOpBill(
@@ -1866,6 +2094,14 @@ export async function createServiceOrderDetail(
 		.values(payload)
 		.returning();
 	if (!row) throw new Error('Insert failed');
+	try {
+		const { ensureLabOrderForDetail } = await import(
+			'$lib/server/medora/diagnostics/lab-order.server'
+		);
+		await ensureLabOrderForDetail(row.id);
+	} catch {
+		// Lab bridge is best-effort if diagnostics schema is not migrated yet
+	}
 	return row;
 }
 
@@ -1932,10 +2168,18 @@ export async function deleteServiceOrderDetail(input: {
 				: {})
 		})
 		.where(eq(table.serviceOrderDetailTable.id, id));
+	try {
+		const { cancelLabOrderForDetail } = await import(
+			'$lib/server/medora/diagnostics/lab-order.server'
+		);
+		await cancelLabOrderForDetail(id);
+	} catch {
+		// best-effort
+	}
 }
 
 export async function getServiceOrder(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<ServiceOrderSchema[]> {
 	return ensureDb()
 		.select()
@@ -1981,7 +2225,7 @@ export async function createServiceOrder(
 	event: RequestEvent,
 	payload: {
 		branchId: string;
-		visitId: number;
+		visitId: string;
 		orderDate: string;
 		orderTime: string;
 		/** Ignored; order number is always allocated server-side from prefix configuration. */
@@ -2247,7 +2491,7 @@ function formatPrintDateTime(
 
 /** Service order lines for EMR print placeholders (nursing complete / clinical document). */
 export async function getVisitServiceLinePrintRows(input: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 }): Promise<VisitServiceLinePrintRow[]> {
 	const orders = await getServiceOrder({ visitId: input.visitId });

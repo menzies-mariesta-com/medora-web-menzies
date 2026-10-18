@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { TigrisUtil } from '$lib/util/tigris.util.svelte';
+import { uuidV7 } from '$lib/util/id.util';
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = [
@@ -35,7 +36,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 		const ext =
 			type === 'image/jpeg' ? 'jpg' : type.split('/')[1] || 'bin';
-		const path = `patient-photos/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+		const path = `patient-photos/${Date.now()}-${uuidV7().slice(0, 8)}.${ext}`;
 		await TigrisUtil.upload(path, file, {
 			contentType: type,
 			access: 'public'

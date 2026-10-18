@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
@@ -23,7 +24,7 @@
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
 	);
-	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const visitId = $derived(parseUuid(visitIdStr) ?? '');
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
 			page.params.hospital_id
@@ -406,7 +407,7 @@
 	{#if !visitId}
 		<WashAlert
 			type={StatusColorEnum.INFO}
-			message={'Choose a visit using the="Choose Visit" button above to add or view allergies.'}
+			message="Choose a visit using the=&quot;Choose Visit&quot; button above to add or view allergies."
 			className="z-0"
 		/>
 	{:else if !visit && !isLoadingVisit}
@@ -441,6 +442,7 @@
 				actionsVariant="none"
 				enableColumnFilters={true}
 				columnFilters={tableFilters}
+				wash={true}
 				on:refresh={() => {
 					if (visit?.patientId && visit?.hospitalId) {
 						fetchAllergies(visit.patientId, visit.hospitalId, {

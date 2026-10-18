@@ -20,9 +20,8 @@ import {
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import {
-	assertStaffAssignedForModule,
 	assertStaffCanApproveLevel,
 	getMaxApprovalLevel,
 	listDcApproverStoreLevelsForStaff,
@@ -46,6 +45,23 @@ export type ConsumptionLineInput = {
 	batchId: number;
 	remarks?: string | null;
 };
+
+const ED_RETURN_REMARKS_PREFIX = 'ED_RETURN|';
+
+export function isEdReturnConsumptionRemarks(
+	remarks: string | null | undefined
+): boolean {
+	return (remarks ?? '').startsWith(ED_RETURN_REMARKS_PREFIX);
+}
+
+export function buildEdReturnConsumptionRemarks(
+	visitId: string,
+	userRemarks: string | null
+): string {
+	const base = `${ED_RETURN_REMARKS_PREFIX}visitId=${visitId}`;
+	const extra = userRemarks?.trim();
+	return extra ? `${base}|${extra}` : base;
+}
 
 async function validateLineBatchesForHospital(
 	hospitalId: string,
@@ -530,6 +546,7 @@ export async function createDepartmentConsumptionSubmitted(
 		hospitalId: string;
 		storeId: number;
 		remarks: string | null;
+		visitId?: string | null;
 		lines: ConsumptionLineInput[];
 	}
 ) {
@@ -551,13 +568,25 @@ export async function createDepartmentConsumptionSubmitted(
 	const branchId = store.branchId;
 	if (!branchId) throw error(400, 'Store is missing branch context');
 
+	let visitId: string | null = null;
+	if (input.visitId != null && String(input.visitId).trim() !== '') {
+		const { assertEdVisitForHospital } = await import(
+			'$lib/server/medora/ed/ed-visit.server'
+		);
+		await assertEdVisitForHospital({
+			hospitalId: input.hospitalId,
+			visitId: String(input.visitId).trim()
+		});
+		visitId = String(input.visitId).trim();
+	}
+
 	const consumptionNo = await allocateConsumptionNo(
 		input.hospitalId,
 		branchId
 	);
 
 	const id = await ensureDb().transaction(async (tx) => {
-		const newId = uuidv7();
+		const newId = uuidV7();
 		await tx.insert(table.invDepartmentConsumptionTable).values({
 			id: newId,
 			hospitalId: input.hospitalId,
@@ -568,6 +597,7 @@ export async function createDepartmentConsumptionSubmitted(
 				InvDepartmentConsumptionStatusTaggingEnum.PENDING,
 			currentLevel: 1,
 			remarks: input.remarks,
+			visitId,
 			createdBy: userId,
 			updatedBy: userId
 		});
@@ -589,6 +619,28 @@ export async function createDepartmentConsumptionSubmitted(
 	return getDepartmentConsumptionById(event, {
 		hospitalId: input.hospitalId,
 		id
+	});
+}
+
+/** ED drug consumable return: same approval flow; final post adds stock back. */
+export async function createDepartmentConsumptionReturnSubmitted(
+	event: RequestEvent,
+	input: {
+		hospitalId: string;
+		storeId: number;
+		visitId: string;
+		remarks: string | null;
+		lines: ConsumptionLineInput[];
+	}
+) {
+	const visitId = input.visitId.trim();
+	if (!visitId) throw error(400, 'visitId is required');
+	return createDepartmentConsumptionSubmitted(event, {
+		hospitalId: input.hospitalId,
+		storeId: input.storeId,
+		visitId,
+		remarks: buildEdReturnConsumptionRemarks(visitId, input.remarks),
+		lines: input.lines
 	});
 }
 
@@ -731,6 +783,8 @@ export async function approveDepartmentConsumption(
 			)
 			.orderBy(asc(table.invDepartmentConsumptionLineTable.id));
 
+		const isReturnDoc = isEdReturnConsumptionRemarks(doc.remarks);
+
 		for (const line of lines) {
 			const prices = await computeSalePriceAtTransactionDb({
 				hospitalId: input.hospitalId,
@@ -755,22 +809,24 @@ export async function approveDepartmentConsumption(
 			});
 			const needN = parsePositiveIntQty(needIssue, 'quantity');
 
-			const [stockRow] = await tx
-				.select()
-				.from(table.invStockTable)
-				.where(
-					and(
-						eq(table.invStockTable.storeId, doc.storeId),
-						eq(table.invStockTable.batchId, line.batchId),
-						eq(table.invStockTable.itemId, line.itemId),
-						isNull(table.invStockTable.deletedAt)
+			if (!isReturnDoc) {
+				const [stockRow] = await tx
+					.select()
+					.from(table.invStockTable)
+					.where(
+						and(
+							eq(table.invStockTable.storeId, doc.storeId),
+							eq(table.invStockTable.batchId, line.batchId),
+							eq(table.invStockTable.itemId, line.itemId),
+							isNull(table.invStockTable.deletedAt)
+						)
 					)
-				)
-				.limit(1);
+					.limit(1);
 
-			const avail = stockRow ? Number(stockRow.quantity) : 0;
-			if (avail + 1e-9 < needN) {
-				throw error(400, 'Insufficient stock for a line');
+				const avail = stockRow ? Number(stockRow.quantity) : 0;
+				if (avail + 1e-9 < needN) {
+					throw error(400, 'Insufficient stock for a line');
+				}
 			}
 
 			await addDeltaToInvStock(tx, {
@@ -778,7 +834,7 @@ export async function approveDepartmentConsumption(
 				itemId: line.itemId,
 				storeId: doc.storeId,
 				batchId: line.batchId,
-				delta: String(-needN),
+				delta: isReturnDoc ? String(needN) : String(-needN),
 				userId
 			});
 		}

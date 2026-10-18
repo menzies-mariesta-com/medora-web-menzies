@@ -131,7 +131,7 @@ export async function createBooking(
 	if (!patientId && !patientName) {
 		throw error(400, 'Select an existing patient or enter a patient name');
 	}
-	if (!input.branchId) throw error(400, 'branchId is required');
+	if (!input.branchId) throw error(400, 'Select a branch');
 
 	const [row] = await ensureDb()
 		.insert(table.ipdBedBookingTable)

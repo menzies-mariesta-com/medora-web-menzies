@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import { medoraHospitalPageUrl, WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import {
@@ -17,6 +18,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { toastError } from '$lib/util/toast-copy.util';
 	import { untrack } from 'svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	let { children } = $props();
 
@@ -98,13 +100,13 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ mode, ...payload })
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
 	async function handleUnsignVisit() {
-		const visitId = Number(VisitState.visitId ?? 0);
-		if (!Number.isFinite(visitId) || visitId <= 0) return;
+		const visitId = (parseUuid(VisitState.visitId) ?? '');
+		if (!visitId) return;
 
 		const result = await dialogService.open({
 			title: msg.clinical_visit_unsign_title(),
@@ -132,7 +134,7 @@
 	}
 
 	function handleVisitSelected(data: {
-		visitId: number;
+		visitId: string;
 		patientName: string;
 	}) {
 		VisitState.select(data);

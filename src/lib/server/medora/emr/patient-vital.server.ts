@@ -12,7 +12,7 @@ import {
 import type { PatientDiagnosisSchema } from '$lib/server/db/schema-type';
 
 export type PatientVitalWithVisit = PatientDiagnosisSchema & {
-	visit?: { id: number; visitNo: string | null } | null;
+	visit?: { id: string; visitNo: string | null } | null;
 };
 
 function requireUser(event: RequestEvent): void {
@@ -21,7 +21,7 @@ function requireUser(event: RequestEvent): void {
 
 export async function getVisitBasicsForVital(
 	event: RequestEvent,
-	input: { hospitalId: string; visitId: number }
+	input: { hospitalId: string; visitId: string }
 ): Promise<{ patientId: string; hospitalId: string } | null> {
 	requireUser(event);
 	await ensureCanAccessHospital(event, input.hospitalId);
@@ -61,7 +61,7 @@ export async function getPatientVitalsByVisitId(
 	event: RequestEvent,
 	input: {
 		hospitalId: string;
-		visitId: number;
+		visitId: string;
 		statusId?: number | null;
 	}
 ): Promise<PatientDiagnosisSchema[]> {
@@ -198,7 +198,7 @@ export async function createPatientVital(
 	> & {
 		hospitalId: string;
 		patientId: string;
-		visitId: number;
+		visitId: string;
 	}
 ): Promise<PatientDiagnosisSchema> {
 	requireUser(event);

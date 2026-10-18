@@ -72,7 +72,7 @@ function uniqueSymptomsFromVitals(rows: unknown[]): string[] {
 }
 
 async function getMedicationLinesForVisit(
-	visitId: number,
+	visitId: string,
 	hospitalId: string
 ): Promise<VisitDashboardMedicationLineRow[]> {
 	const db = ensureDb();
@@ -130,7 +130,7 @@ async function getMedicationLinesForVisit(
 }
 
 async function getSelectedVisitClinicalData(
-	input: { hospitalId: string; visitId: number }
+	input: { hospitalId: string; visitId: string }
 ): Promise<typeof emptyClinicalPayload> {
 	const [
 		vitals,
@@ -220,11 +220,11 @@ async function getSelectedVisitClinicalData(
 
 export async function getVisitDashboardPayload(
 	event: RequestEvent,
-	input: { hospitalId: string; visitId: number }
+	input: { hospitalId: string; visitId: string }
 ): Promise<VisitDashboardPayload> {
 	await ensureCanAccessHospital(event, input.hospitalId);
 
-	if (!Number.isFinite(input.visitId) || input.visitId <= 0) {
+	if (!input.visitId) {
 		throw error(400, 'visitId is required');
 	}
 
@@ -335,7 +335,7 @@ export async function getVisitDashboardPayload(
 }
 
 async function getOrderLinesForVisit(
-	visitId: number
+	visitId: string
 ): Promise<ServiceOrderDetailRowForVisit[]> {
 	const orders = await ensureDb().query.serviceOrderTable.findMany({
 		where: (t, { and, eq, ne }) =>

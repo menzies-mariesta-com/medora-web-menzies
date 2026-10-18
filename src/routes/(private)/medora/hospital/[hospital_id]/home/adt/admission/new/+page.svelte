@@ -28,6 +28,7 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -202,7 +203,7 @@
 				`${orderApi}?id=${encodeURIComponent(String(orderId))}`,
 				{ credentials: 'include' }
 			);
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			const order = (await res.json()) as IpdAdmissionOrderRow;
 			admissionOrderId = order.id;
 			orderLocked = true;
@@ -298,13 +299,13 @@
 					bedId: Number(bedId),
 					reasonNotes: reasonNotes.trim() || null,
 					sourceOpdVisitId: sourceOpdVisitId
-						? Number(sourceOpdVisitId)
+						? sourceOpdVisitId
 						: null,
 					admissionOrderId,
 					admittingDoctorId: orderingDoctorId
 				})
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			toastService.addToast(
 				'Patient admitted (new IPD visit created)',
 				StatusColorEnum.SUCCESS
@@ -352,7 +353,7 @@
 				{/if}
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 					<div>
-						<label class="label-ink mb-1 block text-sm"
+						<label for="a11y-page-d34360" class="label-ink mb-1 block text-sm"
 							>Patient <span class="text-error">*</span></label
 						>
 						<SearchSelect
@@ -363,6 +364,7 @@
 							getLabelForValue={getPatientLabelForValue}
 							minSearchLength={0}
 							disabled={orderLocked}
+							inputId="a11y-page-d34360"
 						/>
 					</div>
 					{#if patientId && (loadingSource || sourceOpdVisits.length > 0 || orderLocked)}

@@ -18,8 +18,8 @@
 	import { InvDepartmentIssueStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-
-	const dt = new DateTimeUtil();
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const dt = new DateTimeUtil();
 	const toast = new ToastService();
 
 	const hospitalId = $derived(
@@ -229,7 +229,7 @@
 				toast.addToast(
 					m.inv_dept_indent_receive(),
 					StatusColorEnum.ERROR,
-					await res.text()
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}
@@ -273,7 +273,7 @@
 			toast.addToast(
 				m.inv_di_cancel(),
 				StatusColorEnum.ERROR,
-				await res.text()
+				await userFacingDetailFromResponse(res)
 			);
 			throw new Error('cancel_failed');
 		}

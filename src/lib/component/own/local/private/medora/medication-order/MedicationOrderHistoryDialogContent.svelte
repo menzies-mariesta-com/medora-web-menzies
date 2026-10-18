@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideShoppingBasket from '$lib/component/own/library/lucide/LucideShoppingBasket.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import MenziesTable, {
@@ -18,20 +20,23 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 
 	let {
-		cancel,
 		apiRoot,
 		visitId,
+		title = m.med_order_int_history(),
 		enableColumnFilters = true,
 		onEdit,
 		onReorder,
-		onDelete
+		onDelete,
+		onPrintReceipt
 	}: DialogSlotProps & {
 		apiRoot: string;
-		visitId?: number;
+		visitId?: string;
+		title?: string;
 		enableColumnFilters?: boolean;
 		onEdit: (batchId: number) => void | Promise<void>;
 		onReorder: (batchId: number) => void | Promise<boolean>;
 		onDelete: (batchId: number) => void | Promise<boolean>;
+		onPrintReceipt?: (batchId: number) => void | Promise<void>;
 	} = $props();
 
 	let rows = $state<MedicationOrderBatchHistoryRow[]>([]);
@@ -85,7 +90,7 @@
 		try {
 			const u = new URL(apiRoot, window.location.origin);
 			u.searchParams.set('mode', 'batch.list');
-			if (visitId != null && Number.isFinite(visitId) && visitId > 0) {
+			if (visitId != null && Boolean(visitId)) {
 				u.searchParams.set('visitId', String(visitId));
 			}
 			const res = await fetch(u, { credentials: 'include' });
@@ -113,6 +118,16 @@
 		isActing = true;
 		try {
 			await onEdit(batchId);
+		} finally {
+			isActing = false;
+		}
+	}
+
+	async function handlePrintReceipt(batchId: number) {
+		if (isActing || !onPrintReceipt) return;
+		isActing = true;
+		try {
+			await onPrintReceipt(batchId);
 		} finally {
 			isActing = false;
 		}
@@ -168,9 +183,10 @@
 	);
 </script>
 
-<div class="relative flex h-full min-h-0 flex-col gap-0 overflow-hidden">
-	<div class="flex min-h-0 flex-1 flex-col px-4 py-2">
+<div class="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+	<div class="flex min-h-0 flex-1 flex-col overflow-hidden">
 		<MenziesTable
+			{title}
 			{rows}
 			columns={historyColumns}
 			bind:currentPage
@@ -185,19 +201,30 @@
 			{enableColumnFilters}
 			totalRowCount={rows.length}
 			fillParent={true}
+			embedded={true}
 			bind:columnFilters
 			on:refresh={() => void refresh()}
 		>
-			{#snippet rowActions(row, _localIdx)}
+			{#snippet rowActions(row)}
+				{@const histRow = row as MedicationOrderBatchHistoryRow}
 				<MenziesTableRowActionGroup>
+					{#if onPrintReceipt && histRow.isPaid}
+						<MenziesTableIconAction
+							tooltipText={m.med_order_receipt_print()}
+							color="primary"
+							disabled={busy}
+							onClick={() => void handlePrintReceipt(histRow.id)}
+						>
+							{#snippet icon()}
+								<LucidePrinter className="size-4" />
+							{/snippet}
+						</MenziesTableIconAction>
+					{/if}
 					<MenziesTableIconAction
 						tooltipText={m.med_order_int_tooltip_edit()}
 						color="accent"
 						disabled={busy}
-						onClick={() =>
-							void handleEdit(
-								(row as MedicationOrderBatchHistoryRow).id
-							)}
+						onClick={() => void handleEdit(histRow.id)}
 					>
 						{#snippet icon()}
 							<LucidePencil className="size-4" />
@@ -207,10 +234,7 @@
 						tooltipText={m.med_order_int_tooltip_reorder()}
 						color="primary"
 						disabled={busy}
-						onClick={() =>
-							requestReorder(
-								(row as MedicationOrderBatchHistoryRow).id
-							)}
+						onClick={() => requestReorder(histRow.id)}
 					>
 						{#snippet icon()}
 							<LucideShoppingBasket className="size-4" />
@@ -219,11 +243,8 @@
 					<MenziesTableIconAction
 						tooltipText={m.med_order_int_tooltip_delete()}
 						color="error"
-						disabled={busy}
-						onClick={() =>
-							requestDelete(
-								(row as MedicationOrderBatchHistoryRow).id
-							)}
+						disabled={busy || Boolean(histRow.isPaid)}
+						onClick={() => requestDelete(histRow.id)}
 					>
 						{#snippet icon()}
 							<LucideTrash2 className="size-4" />
@@ -234,20 +255,21 @@
 		</MenziesTable>
 	</div>
 
-	<WashDialogFooter>
-		<WashButton variant="ghost" onClick={cancel} disabled={busy}
-			>{m.cancel()}</WashButton
-		>
-	</WashDialogFooter>
-
 	{#if pendingConfirm}
 		<div
-			class="absolute inset-0 z-10 flex items-center justify-center bg-base-300/60 p-4"
+			class="absolute inset-0 z-10 flex items-center justify-center bg-base-300/60 p-4 cursor-pointer"
 			role="presentation"
+			onclick={(e) => {
+				if (e.target === e.currentTarget) dismissConfirm();
+			}}
+			onkeydown={(e) => {
+				if (e.key === 'Escape') dismissConfirm();
+			}}
 		>
 			<div
-				class="modal-box flex w-full max-w-md flex-col gap-4 border border-ink-border bg-base-100 p-6 shadow-lg"
+				class="modal-box flex w-full max-w-md flex-col gap-4 border border-ink-border bg-base-100 p-6 shadow-lg cursor-default"
 				role="alertdialog"
+				tabindex="-1"
 				aria-labelledby="med-order-history-confirm-title"
 				aria-describedby="med-order-history-confirm-message"
 			>

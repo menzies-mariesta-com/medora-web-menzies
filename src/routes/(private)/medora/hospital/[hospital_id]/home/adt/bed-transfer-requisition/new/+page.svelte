@@ -20,6 +20,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -142,7 +143,7 @@
 					remark: remark.trim() || null
 				})
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			toastService.addToast(
 				'Requisition created',
 				StatusColorEnum.SUCCESS

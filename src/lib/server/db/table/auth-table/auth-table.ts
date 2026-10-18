@@ -9,7 +9,7 @@ import {
 	unique,
 	varchar
 } from 'drizzle-orm/pg-core';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '../../../../util/id.util';
 import { statusTable } from '../master-table/master-table';
 import { StatusEnum } from '../../../../model/enum/db-link';
 
@@ -34,7 +34,7 @@ const timestamps = {
 export const userTable = pgTable('user', {
 	id: text('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	name: text('name').notNull(),
 	email: text('email').notNull().unique(),
 	emailVerified: boolean('email_verified').notNull().default(false),
@@ -44,13 +44,17 @@ export const userTable = pgTable('user', {
 	twoFactorEnabled: boolean('two_factor_enabled')
 		.notNull()
 		.default(false),
+	/** Patient portal: force password change after default (patient code) login. */
+	mustChangePassword: boolean('must_change_password')
+		.notNull()
+		.default(false),
 	...timestamps
 });
 
 export const sessionTable = pgTable('session', {
 	id: text('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	userId: text('user_id')
 		.notNull()
 		.references(() => userTable.id, { onDelete: 'cascade' }),
@@ -67,7 +71,7 @@ export const sessionTable = pgTable('session', {
 export const accountTable = pgTable('account', {
 	id: text('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	userId: text('user_id')
 		.notNull()
 		.references(() => userTable.id, { onDelete: 'cascade' }),
@@ -92,12 +96,17 @@ export const accountTable = pgTable('account', {
 export const verificationTable = pgTable('verification', {
 	id: text('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	identifier: text('identifier').notNull(),
 	value: text('value').notNull(),
+	/**
+	 * Must be `mode: 'date'` (Date), not string.
+	 * Better Auth trust-device / 2FA checks use `expiresAt > new Date()`;
+	 * a string expiry always fails that comparison and ignores trusted devices.
+	 */
 	expiresAt: timestamp('expires_at', {
 		withTimezone: true,
-		mode: 'string'
+		mode: 'date'
 	}).notNull(),
 	...timestamps
 });
@@ -106,7 +115,7 @@ export const verificationTable = pgTable('verification', {
 export const twoFactorTable = pgTable('two_factor', {
 	id: text('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	userId: text('user_id')
 		.notNull()
 		.references(() => userTable.id, { onDelete: 'cascade' }),
