@@ -53,8 +53,12 @@ export type HospitalHomeDashboardFilters = {
 };
 
 export type HospitalHomeDashboardPayload = {
-	stats: HospitalHomeDashboardStats;
+	stats: HospitalHomeDashboardStats | null;
 	visitsByDay: HospitalHomeDailyVisitCount[];
 	filters: HospitalHomeDashboardFilters;
 	branchScopeName: string | null;
+	/** True when the aggregate loader failed entirely (page shell still renders). */
+	dashboardLoadError?: boolean;
+	/** Metric keys that failed individually; stats use safe fallbacks for those. */
+	partialErrors?: string[];
 };

@@ -30,6 +30,10 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { StatusEnum, VisitTypeEnum } from '$lib/model/enum/db-link';
+	import {
+		medoraHospitalPageUrl,
+		WebRoutesEnum
+	} from '$lib/model/enum/routes.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -795,6 +799,29 @@
 		!!visitRow?.branchId &&
 			visitRow?.visitTypeId === VisitTypeEnum.OPD &&
 			pendingAdmissionOrderId == null &&
+			!isLoadingVisit
+	);
+
+	function goToEdRegistration() {
+		if (!hospitalId || !visitId || !visitRow?.patientId) return;
+		if (visitRow.visitTypeId !== VisitTypeEnum.OPD) {
+			toastService.addToast(
+				msg.observation_emr_send_to_ed_opd_only?.() ??
+					'ED registration from EMR is only available on an OPD visit',
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
+		const url = `${medoraHospitalPageUrl(
+			hospitalId,
+			WebRoutesEnum.MEDORA_HOME_EMERGENCY_ADMISSION_NEW
+		)}?patientId=${encodeURIComponent(String(visitRow.patientId))}&sourceOpdVisitId=${encodeURIComponent(visitId)}`;
+		void goto(url);
+	}
+
+	const canSendToEd = $derived(
+		!!visitRow?.patientId &&
+			visitRow?.visitTypeId === VisitTypeEnum.OPD &&
 			!isLoadingVisit
 	);
 
@@ -1682,12 +1709,24 @@
 					{#if visitRow?.visitTypeId === VisitTypeEnum.OPD}
 						<span
 							class="tooltip tooltip-left"
+							data-tip={msg.observation_emr_send_to_ed_tip()}
+						>
+							<WashButton
+								className="btn-outline btn-sm cursor-pointer"
+								disabled={!canSendToEd}
+								onClick={goToEdRegistration}
+							>
+								{msg.observation_emr_send_to_ed()}
+							</WashButton>
+						</span>
+						<span
+							class="tooltip tooltip-left"
 							data-tip={pendingAdmissionOrderId != null
 								? msg.observation_emr_order_ipd_pending_tip()
 								: msg.observation_emr_order_ipd_send_tip()}
 						>
 							<WashButton
-								className="btn-outline btn-sm"
+								className="btn-outline btn-sm cursor-pointer"
 								disabled={!canOrderIpdAdmission}
 								onClick={() => void openOrderIpdAdmission()}
 							>

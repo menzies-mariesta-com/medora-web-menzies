@@ -1,11 +1,7 @@
 import type { RequestHandler } from './$types';
 import { getSiteOrigin } from '$lib/server/seo/site-origin.server';
-import {
-	PUBLIC_SITEMAP_PATHS,
-	absoluteUrl
-} from '$lib/util/seo.util';
-
-/** SSR so `<loc>` uses the live deploy origin, not a build-time localhost default. */
+import { PUBLIC_SITEMAP_PATHS, absoluteUrl } from '$lib/util/seo.util';
+import { getDocsManifest } from '$lib/docs/load-doc.server';
 
 function escapeXml(value: string): string {
 	return value
@@ -16,23 +12,29 @@ function escapeXml(value: string): string {
 		.replace(/'/g, '&apos;');
 }
 
-/** Canonical indexable public URLs only (cookie locale; no /xx/ duplicates). */
 export const GET: RequestHandler = async () => {
 	const origin = getSiteOrigin();
 	const lastmod = new Date().toISOString().slice(0, 10);
+	const manifest = getDocsManifest();
+	const paths = [
+		...PUBLIC_SITEMAP_PATHS,
+		...manifest.prerenderPaths.filter((p) => p !== '/docs')
+	];
 
-	const urls = PUBLIC_SITEMAP_PATHS.map((path) => {
-		const loc = absoluteUrl(origin, path);
-		const priority = path === '/' ? '1.0' : '0.8';
-		return [
-			'  <url>',
-			`    <loc>${escapeXml(loc)}</loc>`,
-			`    <lastmod>${lastmod}</lastmod>`,
-			'    <changefreq>weekly</changefreq>',
-			`    <priority>${priority}</priority>`,
-			'  </url>'
-		].join('\n');
-	}).join('\n');
+	const urls = [...new Set(paths)]
+		.map((path) => {
+			const loc = absoluteUrl(origin, path);
+			const priority = path === '/' ? '1.0' : path.startsWith('/docs') ? '0.7' : '0.8';
+			return [
+				'  <url>',
+				`    <loc>${escapeXml(loc)}</loc>`,
+				`    <lastmod>${lastmod}</lastmod>`,
+				'    <changefreq>weekly</changefreq>',
+				`    <priority>${priority}</priority>`,
+				'  </url>'
+			].join('\n');
+		})
+		.join('\n');
 
 	const body = [
 		'<?xml version="1.0" encoding="UTF-8"?>',

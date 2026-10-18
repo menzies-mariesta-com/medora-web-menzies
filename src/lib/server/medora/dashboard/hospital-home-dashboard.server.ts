@@ -147,6 +147,21 @@ function emptyStats(): HospitalHomeDashboardStats {
 	};
 }
 
+async function runDashboardQuery<T>(
+	label: string,
+	fn: () => Promise<T>,
+	fallback: T,
+	partialErrors: string[]
+): Promise<T> {
+	try {
+		return await fn();
+	} catch (err) {
+		partialErrors.push(label);
+		console.error(`[hospital-home-dashboard] ${label}`, err);
+		return fallback;
+	}
+}
+
 function buildVisitsByDayBuckets(
 	dateFrom: string,
 	dateTo: string
@@ -359,15 +374,23 @@ export async function loadHospitalHomeDashboard(input: {
 		branchClausePv
 	);
 
-	const storeRows = await db
-		.select({ id: store.id })
-		.from(store)
-		.where(
-			and(
-				inArray(store.branchId, branchIds),
-				ne(store.statusId, StatusEnum.DELETED)
-			)
-		);
+	const partialErrors: string[] = [];
+
+	const storeRows = await runDashboardQuery(
+		'stores',
+		() =>
+			db
+				.select({ id: store.id })
+				.from(store)
+				.where(
+					and(
+						inArray(store.branchId, branchIds),
+						ne(store.statusId, StatusEnum.DELETED)
+					)
+				),
+		[],
+		partialErrors
+	);
 	const storeIds = storeRows.map((r) => r.id);
 
 	const [
@@ -387,184 +410,274 @@ export async function loadHospitalHomeDashboard(input: {
 		openPoRow,
 		stockEval
 	] = await Promise.all([
-		db
-			.select({ n: sql<number>`count(distinct ${ds.staffId})::int` })
-			.from(ds)
-			.where(
-				and(
-					eq(ds.hospitalId, hospitalId),
-					eq(ds.statusId, StatusEnum.ACTIVE),
-					branchClauseDs
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(apt)
-			.where(
-				and(
-					eq(apt.hospitalId, hospitalId),
-					eq(apt.statusId, StatusEnum.ACTIVE),
-					branchClauseApt,
-					gte(apt.appointmentDate, filters.dateFrom),
-					lte(apt.appointmentDate, filters.dateTo)
-				)
-			),
-		db
-			.select({ statusTaggingId: apt.statusTaggingId })
-			.from(apt)
-			.where(
-				and(
-					eq(apt.hospitalId, hospitalId),
-					eq(apt.statusId, StatusEnum.ACTIVE),
-					branchClauseApt,
-					gte(apt.appointmentDate, filters.dateFrom),
-					lte(apt.appointmentDate, filters.dateTo)
-				)
-			),
-		db
-			.select({ createdAt: pv.createdAt })
-			.from(pv)
-			.where(
-				and(
-					activeVisitPredicate,
-					isNotNull(pv.createdAt),
-					gte(pv.createdAt, startTs),
-					lt(pv.createdAt, endExclusiveTs)
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(pv)
-			.where(
-				and(
-					activeVisitPredicate,
-					eq(pv.visitTypeId, VisitTypeEnum.OPD),
-					isNotNull(pv.createdAt),
-					gte(pv.createdAt, startTs),
-					lt(pv.createdAt, endExclusiveTs)
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(p)
-			.where(
-				and(
-					eq(p.hospitalId, hospitalId),
-					ne(p.statusId, StatusEnum.DELETED),
-					isNotNull(p.createdAt),
-					gte(p.createdAt, startTs),
-					lt(p.createdAt, endExclusiveTs)
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(adm)
-			.where(
-				and(
-					eq(adm.hospitalId, hospitalId),
-					ne(adm.statusId, StatusEnum.DELETED),
-					branchClauseAdm,
-					gte(adm.admittedAt, startTs),
-					lt(adm.admittedAt, endExclusiveTs)
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(adm)
-			.where(
-				and(
-					eq(adm.hospitalId, hospitalId),
-					ne(adm.statusId, StatusEnum.DELETED),
-					eq(adm.admissionStatus, IpdAdmissionStatusEnum.ADMITTED),
-					branchClauseAdm
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(opBill)
-			.where(
-				and(
-					eq(opBill.hospitalId, hospitalId),
-					eq(opBill.statusId, StatusEnum.ACTIVE),
-					eq(opBill.statusTaggingId, BillingStatusTaggingEnum.OPEN),
-					branchClauseOpBill
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(ipBill)
-			.where(
-				and(
-					eq(ipBill.hospitalId, hospitalId),
-					eq(ipBill.statusId, StatusEnum.ACTIVE),
-					eq(ipBill.statusTaggingId, BillingStatusTaggingEnum.OPEN),
-					branchClauseIpBill
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(opBill)
-			.where(
-				and(
-					eq(opBill.hospitalId, hospitalId),
-					eq(opBill.statusId, StatusEnum.ACTIVE),
-					eq(opBill.statusTaggingId, BillingStatusTaggingEnum.CLOSED),
-					branchClauseOpBill,
-					gte(opBill.updatedAt, startTs),
-					lt(opBill.updatedAt, endExclusiveTs)
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(ipBill)
-			.where(
-				and(
-					eq(ipBill.hospitalId, hospitalId),
-					eq(ipBill.statusId, StatusEnum.ACTIVE),
-					eq(ipBill.statusTaggingId, BillingStatusTaggingEnum.CLOSED),
-					branchClauseIpBill,
-					gte(ipBill.updatedAt, startTs),
-					lt(ipBill.updatedAt, endExclusiveTs)
-				)
-			),
-		storeIds.length === 0
-			? Promise.resolve([{ n: 0 }])
-			: db
-					.select({ n: count() })
-					.from(pr)
+		runDashboardQuery(
+			'doctors',
+			() =>
+				db
+					.select({ n: sql<number>`count(distinct ${ds.staffId})::int` })
+					.from(ds)
 					.where(
 						and(
-							eq(pr.hospitalId, hospitalId),
-							isNull(pr.deletedAt),
-							inArray(pr.fromStoreId, storeIds),
-							inArray(pr.statusTaggingId, [...OPEN_PR_STATUSES])
+							eq(ds.hospitalId, hospitalId),
+							eq(ds.statusId, StatusEnum.ACTIVE),
+							branchClauseDs
 						)
 					),
-		storeIds.length === 0
-			? Promise.resolve([{ n: 0 }])
-			: db
+			[{ n: 0 }],
+			partialErrors
+		),
+		runDashboardQuery(
+			'appointmentsInRange',
+			() =>
+				db
 					.select({ n: count() })
-					.from(po)
+					.from(apt)
 					.where(
 						and(
-							eq(po.hospitalId, hospitalId),
-							isNull(po.deletedAt),
-							inArray(po.storeId, storeIds),
-							inArray(po.statusTaggingId, [...OPEN_PO_STATUSES])
+							eq(apt.hospitalId, hospitalId),
+							eq(apt.statusId, StatusEnum.ACTIVE),
+							branchClauseApt,
+							gte(apt.appointmentDate, filters.dateFrom),
+							lte(apt.appointmentDate, filters.dateTo)
 						)
 					),
-		evaluateStockAlertsForHospital(null, {
-			hospitalId,
-			storeIdsInScope: storeIds
-		}).catch(() => ({
-			summary: {
-				lowStockCount: 0,
-				expiredLotCount: 0,
-				expiringSoonLotCount: 0
+			[{ n: 0 }],
+			partialErrors
+		),
+		runDashboardQuery(
+			'checkInRatio',
+			() =>
+				db
+					.select({ statusTaggingId: apt.statusTaggingId })
+					.from(apt)
+					.where(
+						and(
+							eq(apt.hospitalId, hospitalId),
+							eq(apt.statusId, StatusEnum.ACTIVE),
+							branchClauseApt,
+							gte(apt.appointmentDate, filters.dateFrom),
+							lte(apt.appointmentDate, filters.dateTo)
+						)
+					),
+			[],
+			partialErrors
+		),
+		runDashboardQuery(
+			'visitsInRange',
+			() =>
+				db
+					.select({ createdAt: pv.createdAt })
+					.from(pv)
+					.where(
+						and(
+							activeVisitPredicate,
+							isNotNull(pv.createdAt),
+							gte(pv.createdAt, startTs),
+							lt(pv.createdAt, endExclusiveTs)
+						)
+					),
+			[],
+			partialErrors
+		),
+		runDashboardQuery(
+			'opVisitsInRange',
+			() =>
+				db
+					.select({ n: count() })
+					.from(pv)
+					.where(
+						and(
+							activeVisitPredicate,
+							eq(pv.visitTypeId, VisitTypeEnum.OPD),
+							isNotNull(pv.createdAt),
+							gte(pv.createdAt, startTs),
+							lt(pv.createdAt, endExclusiveTs)
+						)
+					),
+			[{ n: 0 }],
+			partialErrors
+		),
+		runDashboardQuery(
+			'newPatientsInRange',
+			() =>
+				db
+					.select({ n: count() })
+					.from(p)
+					.where(
+						and(
+							eq(p.hospitalId, hospitalId),
+							ne(p.statusId, StatusEnum.DELETED),
+							isNotNull(p.createdAt),
+							gte(p.createdAt, startTs),
+							lt(p.createdAt, endExclusiveTs)
+						)
+					),
+			[{ n: 0 }],
+			partialErrors
+		),
+		runDashboardQuery(
+			'admissionsInRange',
+			() =>
+				db
+					.select({ n: count() })
+					.from(adm)
+					.where(
+						and(
+							eq(adm.hospitalId, hospitalId),
+							ne(adm.statusId, StatusEnum.DELETED),
+							branchClauseAdm,
+							gte(adm.admittedAt, startTs),
+							lt(adm.admittedAt, endExclusiveTs)
+						)
+					),
+			[{ n: 0 }],
+			partialErrors
+		),
+		runDashboardQuery(
+			'ipCensus',
+			() =>
+				db
+					.select({ n: count() })
+					.from(adm)
+					.where(
+						and(
+							eq(adm.hospitalId, hospitalId),
+							ne(adm.statusId, StatusEnum.DELETED),
+							eq(adm.admissionStatus, IpdAdmissionStatusEnum.ADMITTED),
+							branchClauseAdm
+						)
+					),
+			[{ n: 0 }],
+			partialErrors
+		),
+		runDashboardQuery(
+			'openOpBills',
+			() =>
+				db
+					.select({ n: count() })
+					.from(opBill)
+					.where(
+						and(
+							eq(opBill.hospitalId, hospitalId),
+							eq(opBill.statusId, StatusEnum.ACTIVE),
+							eq(opBill.statusTaggingId, BillingStatusTaggingEnum.OPEN),
+							branchClauseOpBill
+						)
+					),
+			[{ n: 0 }],
+			partialErrors
+		),
+		runDashboardQuery(
+			'openIpBills',
+			() =>
+				db
+					.select({ n: count() })
+					.from(ipBill)
+					.where(
+						and(
+							eq(ipBill.hospitalId, hospitalId),
+							eq(ipBill.statusId, StatusEnum.ACTIVE),
+							eq(ipBill.statusTaggingId, BillingStatusTaggingEnum.OPEN),
+							branchClauseIpBill
+						)
+					),
+			[{ n: 0 }],
+			partialErrors
+		),
+		runDashboardQuery(
+			'closedOpBillsInRange',
+			() =>
+				db
+					.select({ n: count() })
+					.from(opBill)
+					.where(
+						and(
+							eq(opBill.hospitalId, hospitalId),
+							eq(opBill.statusId, StatusEnum.ACTIVE),
+							eq(opBill.statusTaggingId, BillingStatusTaggingEnum.CLOSED),
+							branchClauseOpBill,
+							gte(opBill.updatedAt, startTs),
+							lt(opBill.updatedAt, endExclusiveTs)
+						)
+					),
+			[{ n: 0 }],
+			partialErrors
+		),
+		runDashboardQuery(
+			'closedIpBillsInRange',
+			() =>
+				db
+					.select({ n: count() })
+					.from(ipBill)
+					.where(
+						and(
+							eq(ipBill.hospitalId, hospitalId),
+							eq(ipBill.statusId, StatusEnum.ACTIVE),
+							eq(ipBill.statusTaggingId, BillingStatusTaggingEnum.CLOSED),
+							branchClauseIpBill,
+							gte(ipBill.updatedAt, startTs),
+							lt(ipBill.updatedAt, endExclusiveTs)
+						)
+					),
+			[{ n: 0 }],
+			partialErrors
+		),
+		storeIds.length === 0
+			? Promise.resolve([{ n: 0 }])
+			: runDashboardQuery(
+					'openPrs',
+					() =>
+						db
+							.select({ n: count() })
+							.from(pr)
+							.where(
+								and(
+									eq(pr.hospitalId, hospitalId),
+									isNull(pr.deletedAt),
+									inArray(pr.fromStoreId, storeIds),
+									inArray(pr.statusTaggingId, [...OPEN_PR_STATUSES])
+								)
+							),
+					[{ n: 0 }],
+					partialErrors
+				),
+		storeIds.length === 0
+			? Promise.resolve([{ n: 0 }])
+			: runDashboardQuery(
+					'openPos',
+					() =>
+						db
+							.select({ n: count() })
+							.from(po)
+							.where(
+								and(
+									eq(po.hospitalId, hospitalId),
+									isNull(po.deletedAt),
+									inArray(po.storeId, storeIds),
+									inArray(po.statusTaggingId, [...OPEN_PO_STATUSES])
+								)
+							),
+					[{ n: 0 }],
+					partialErrors
+				),
+		runDashboardQuery(
+			'lowStock',
+			() =>
+				evaluateStockAlertsForHospital(null, {
+					hospitalId,
+					storeIdsInScope: storeIds
+				}),
+			{
+				summary: {
+					lowStockCount: 0,
+					expiredLotCount: 0,
+					expiringSoonLotCount: 0
+				},
+				settings: null,
+				baselineSoon: 30
 			},
-			settings: null,
-			baselineSoon: 30
-		}))
+			partialErrors
+		)
 	]);
 
 	const visitsByDate = new Map(visitsByDay.map((x) => [x.date, x]));
@@ -610,7 +723,8 @@ export async function loadHospitalHomeDashboard(input: {
 		stats,
 		visitsByDay,
 		filters,
-		branchScopeName
+		branchScopeName,
+		...(partialErrors.length > 0 ? { partialErrors } : {})
 	};
 }
 

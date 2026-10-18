@@ -38,6 +38,12 @@
 
 	const visitId = $derived(VisitState.visitId);
 	const hospitalId = $derived(page.params.hospital_id ?? '');
+	const billingApiSegment = $derived(
+		page.url.pathname.includes('/billing/er-billing')
+			? 'er-billing'
+			: 'op-billing'
+	);
+	const isErBilling = $derived(billingApiSegment === 'er-billing');
 
 	function tr(
 		getter: (() => string) | undefined,
@@ -174,7 +180,8 @@
 	function opBillingLineRowKey(line: BillingLine): string {
 		if (
 			line.lineSource === 'medication_order_line' ||
-			line.lineSource === 'service_order_detail'
+			line.lineSource === 'service_order_detail' ||
+			line.lineSource === 'department_consumption_line'
 		) {
 			return `${line.lineSource}-${line.id}`;
 		}
@@ -247,7 +254,7 @@
 		payload: Record<string, unknown>
 	) {
 		const res = await fetch(
-			`/api/medora/hospital/${hospitalId}/home/billing/op-billing/visit-lines`,
+			`/api/medora/hospital/${hospitalId}/home/billing/${billingApiSegment}/visit-lines`,
 			{
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
@@ -286,7 +293,7 @@
 		loadError = '';
 		try {
 			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/billing/op-billing/visit-lines?visitId=${visitNumeric}`
+				`/api/medora/hospital/${hospitalId}/home/billing/${billingApiSegment}/visit-lines?visitId=${visitNumeric}`
 			);
 			if (requestSeq !== billingLinesLoadSeq) return;
 			if (!res.ok) {

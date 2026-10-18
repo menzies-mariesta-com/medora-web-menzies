@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashFab from '$lib/component/wash/fab/WashFab.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
@@ -27,6 +28,16 @@
 	const washThemeTool = new WashThemeTool();
 	const fontTool = new FontTool();
 	const msg = m as Record<string, (inputs?: object) => string>;
+
+	const supportEnabled = $derived(Boolean(page.data.user));
+	const supportButtonClass = $derived(
+		[
+			'btn-circle btn-lg',
+			!supportEnabled ? 'cursor-not-allowed btn-disabled' : ''
+		]
+			.filter(Boolean)
+			.join(' ')
+	);
 
 	function openLanguageDialog() {
 		dialogService.open({
@@ -62,6 +73,7 @@
 	}
 
 	async function openSupportDialog() {
+		if (!supportEnabled) return;
 		await dialogService.open({
 			title: m.support_it_title(),
 			component: SupportTicketDialogContent,
@@ -83,10 +95,19 @@
 		</WashButton>
 	</WashTooltip>
 
-	<WashTooltip tooltipText={m.support()} className=" ">
+	<WashTooltip
+		tooltipText={supportEnabled
+			? m.support()
+			: msg.support_sign_in_required()}
+		className=" "
+	>
 		<WashButton
-			className="btn-circle btn-lg"
+			className={supportButtonClass}
+			disabled={!supportEnabled}
 			onClick={openSupportDialog}
+			aria-label={supportEnabled
+				? m.support()
+				: msg.support_sign_in_required()}
 		>
 			<LucideMessageCircleQuestionMark />
 		</WashButton>

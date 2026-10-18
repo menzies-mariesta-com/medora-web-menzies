@@ -78,7 +78,11 @@ export async function seedInformationTables() {
 			(8, 'Billing', 8, 1, '/medora/home/billing', 'receipt-text'),
 			(9, 'Inventory Setup', 9, 1, '/medora/home/inventory-setup', 'warehouse'),
 			(10, 'Inventory', 10, 1, '/medora/home/inventory', 'package'),
-			(11, 'Medication Order', 11, 1, '/medora/home/medication-order', 'pill')
+			(11, 'Medication Order', 11, 1, '/medora/home/medication-order', 'pill'),
+			(12, 'Emergency', 12, 1, '/medora/home/emergency', 'siren'),
+			(13, 'Perioperative', 13, 1, '/medora/home/perioperative', 'scalpel'),
+			(14, 'Obstetrics', 14, 1, '/medora/home/obstetrics', 'baby'),
+			(15, 'Diagnostics', 15, 1, '/medora/home/diagnostics', 'activity')
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			sequence_no = EXCLUDED.sequence_no,
@@ -141,6 +145,8 @@ export async function seedInformationTables() {
 			(100007, 'Document Type', 1, 1, 10, '/medora/home/administration/document-master/document-type', 1),
 			(100008, 'Document', 1, 1, 10, '/medora/home/administration/document-master/document', 2),
 			(100009, 'Document Setting', 1, 1, 10, '/medora/home/administration/document-master/document-setting', 3),
+			(100010, 'Master Templates', 1, 1, 10, '/medora/home/administration/document-master/template-library', 4),
+			(100011, 'Hospital Template Access', 1, 1, 10, '/medora/home/administration/document-master/hospital-templates', 5),
 
 			-- Registration Module
 			-- patient pages
@@ -174,6 +180,19 @@ export async function seedInformationTables() {
 			(1900007, 'Order', 4, 1, 44, '/medora/home/nursing-workbench/ipd/order', 7),
 			(1900008, 'Nursing Complete', 4, 1, 44, '/medora/home/nursing-workbench/ipd/nursing-complete', 8),
 
+			-- Nursing ED (ids 481 / 481002+; 120/121/122 moved from Emergency)
+			(481, 'Nursing ED', 4, 1, null, '/medora/home/nursing-workbench/ed', 3),
+			(120, 'Track Board', 4, 1, 481, '/medora/home/nursing-workbench/ed/track-board', 1),
+			(481002, 'Vital', 4, 1, 481, '/medora/home/nursing-workbench/ed/vital', 2),
+			(481003, 'Allergy', 4, 1, 481, '/medora/home/nursing-workbench/ed/allergy', 3),
+			(481004, 'Patient Attachment', 4, 1, 481, '/medora/home/nursing-workbench/ed/patient-attachment', 4),
+			(481005, 'Clinical Document', 4, 1, 481, '/medora/home/nursing-workbench/ed/clinical-document', 5),
+			(481006, 'Case Sheet', 4, 1, 481, '/medora/home/nursing-workbench/ed/case-sheet', 6),
+			(481007, 'Order', 4, 1, 481, '/medora/home/nursing-workbench/ed/order', 7),
+			(481008, 'Nursing Complete', 4, 1, 481, '/medora/home/nursing-workbench/ed/nursing-complete', 8),
+			(121, 'Triage', 4, 1, 481, '/medora/home/nursing-workbench/ed/triage', 9),
+			(122, 'Trauma Log', 4, 1, 481, '/medora/home/nursing-workbench/ed/trauma-log', 10),
+
 			-- Consultation Module
 			(13, 'EMR', 6, 1, null, '/medora/home/consultation/emr', 1),
 			(1500001, 'CPOE', 6, 1, null, '/medora/home/consultation/cpoe', 2),
@@ -186,6 +205,36 @@ export async function seedInformationTables() {
 			(49, 'Discharge Summary', 6, 1, null, '/medora/home/consultation/discharge-summary', 4),
 			(50, 'Procedures', 6, 1, null, '/medora/home/consultation/procedures', 5),
 			(51, 'Operative Notes', 6, 1, null, '/medora/home/consultation/operative-notes', 6),
+
+			-- Emergency module (12)
+			(123, 'Registration', 12, 1, null, '/medora/home/emergency/admission', 1),
+			(123001, 'ER patient registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
+			(123003, 'New patient', 12, 1, 123, '/medora/home/emergency/admission/new-patient', 2),
+			(123002, 'Registration list', 12, 1, 123, '/medora/home/emergency/admission/list', 3),
+			(125, 'Purchase item', 12, 1, null, '/medora/home/emergency/purchase-item', 2),
+
+			-- Perioperative module (13)
+			(130, 'OT Board', 13, 1, null, '/medora/home/perioperative/ot-board', 1),
+			(131, 'Cases', 13, 1, null, '/medora/home/perioperative/cases', 2),
+			(132, 'Pre-op Worklist', 13, 1, null, '/medora/home/perioperative/pre-op', 3),
+			(133, 'Room Setup', 13, 1, null, '/medora/home/perioperative/room-setup', 4),
+			(134, 'Procedure Log', 13, 1, null, '/medora/home/perioperative/procedure-log', 5),
+
+			-- Obstetrics module (14)
+			(140, 'Labor Board', 14, 1, null, '/medora/home/obstetrics/labor-board', 1),
+			(141, 'Partogram', 14, 1, null, '/medora/home/obstetrics/partogram', 2),
+
+			-- Diagnostics module (15)
+			(150, 'Lab Dashboard', 15, 1, null, '/medora/home/diagnostics/lab/dashboard', 1),
+			(151, 'Collection Worklist', 15, 1, null, '/medora/home/diagnostics/lab/collection-worklist', 2),
+			(152, 'Lab Receive', 15, 1, null, '/medora/home/diagnostics/lab/receive', 3),
+			(153, 'Hematology Worklist', 15, 1, null, '/medora/home/diagnostics/lab/worklist/hematology', 4),
+			(154, 'Chemistry Worklist', 15, 1, null, '/medora/home/diagnostics/lab/worklist/chemistry', 5),
+			(155, 'Microbiology Worklist', 15, 1, null, '/medora/home/diagnostics/lab/worklist/microbiology', 6),
+			(156, 'Lab Results', 15, 1, null, '/medora/home/diagnostics/lab/results', 7),
+			(157, 'Critical Callbacks', 15, 1, null, '/medora/home/diagnostics/lab/critical-callback', 8),
+			(158, 'Lab Catalog', 15, 1, null, '/medora/home/diagnostics/lab/catalog', 9),
+			(159, 'Integration Health', 15, 1, null, '/medora/home/diagnostics/lab/integration', 10),
 
 			-- ADT Module (ids 52–55 parents; 530001+/540001+/550001+ children; module 7)
 			(52, 'Bed Status', 7, 1, null, '/medora/home/adt/bed-status', 1),
@@ -205,6 +254,7 @@ export async function seedInformationTables() {
 			(150001, 'IP Billing', 8, 1, null, '/medora/home/billing/ip-billing', 2),
 			(150003, 'Bill', 8, 1, 150001, '/medora/home/billing/ip-billing/bill', 1),
 			(150002, 'Advance Deposit', 8, 1, 150001, '/medora/home/billing/ip-billing/advance-deposit', 2),
+			(150004, 'ER Billing', 8, 1, null, '/medora/home/billing/er-billing', 3),
 
 			-- Administration: Financial Year & Prefix Configuration
 			(16, 'Prefix Configuration', 1, 1, null, '/medora/home/administration/prefix-configuration', 9),
@@ -230,6 +280,22 @@ export async function seedInformationTables() {
 			(350005, 'Order type', 1, 1, 35, '/medora/home/administration/medication-order-setup/order-type', 5),
 			(350006, 'Dose unit', 1, 1, 35, '/medora/home/administration/medication-order-setup/dose-unit', 6),
 			(350007, 'Food relation', 1, 1, 35, '/medora/home/administration/medication-order-setup/food-relation', 7),
+
+			(360, 'Clinical platform', 1, 1, null, '/medora/home/administration/clinical-order-sets', 13),
+			(360001, 'Order sets', 1, 1, 360, '/medora/home/administration/clinical-order-sets', 1),
+			(360002, 'RxNorm drug mapping', 1, 1, 360, '/medora/home/administration/rxnorm-drug-mapping', 2),
+			(360006, 'RxNorm catalog', 1, 1, 360, '/medora/home/administration/rxnorm-catalog', 6),
+			(360003, 'Formulary', 1, 1, 360, '/medora/home/administration/formulary', 3),
+			(360004, 'Product barcodes', 1, 1, 360, '/medora/home/administration/pharmacy-product-identifier', 4),
+			(360005, 'Care plan templates', 1, 1, 360, '/medora/home/administration/nursing-care-plan-templates', 5),
+			(361, 'Clinical tasks', 1, 1, null, '/medora/home/clinical-tasks', 14),
+			(362, 'eMAR', 4, 1, null, '/medora/home/nursing-workbench/emar', 16),
+			(363, 'Care plans', 4, 1, null, '/medora/home/nursing-workbench/care-plan', 17),
+			(364, 'Medical records ROI', 1, 1, null, '/medora/home/medical-records/roi', 15),
+			(365, 'Ambulatory', 1, 1, null, '/medora/home/ambulatory/immunization', 16),
+			(365001, 'Immunizations', 1, 1, 365, '/medora/home/ambulatory/immunization', 1),
+			(365002, 'Registries', 1, 1, 365, '/medora/home/ambulatory/registry', 2),
+			(365003, 'Growth charts', 1, 1, 365, '/medora/home/ambulatory/growth-charts', 3),
 
 			-- Inventory Setup Module (main pages; no parent Inventory Setup page)
 			(19, 'Stores', 9, 1, null, '/medora/home/inventory-setup/stores', 1),
@@ -278,6 +344,167 @@ export async function seedInformationTables() {
 			parent_id = EXCLUDED.parent_id,
 			page_url = EXCLUDED.page_url,
 			sequence_no = EXCLUDED.sequence_no;
+		`);
+	await db.execute(sql`
+		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
+		VALUES
+			(123, 'Registration', 12, 1, null, '/medora/home/emergency/admission', 1),
+			(123001, 'ER patient registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
+			(123003, 'New patient', 12, 1, 123, '/medora/home/emergency/admission/new-patient', 2),
+			(123002, 'Registration list', 12, 1, 123, '/medora/home/emergency/admission/list', 3)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			module_id = EXCLUDED.module_id,
+			status_id = EXCLUDED.status_id,
+			parent_id = EXCLUDED.parent_id,
+			page_url = EXCLUDED.page_url,
+			sequence_no = EXCLUDED.sequence_no;
+		`);
+	await db.execute(sql`
+		INSERT INTO user_group_page (user_group_id, page_id)
+		SELECT ugp.user_group_id, child.page_id
+		FROM user_group_page ugp
+		CROSS JOIN (VALUES (123), (123001), (123002), (123003)) AS child(page_id)
+		WHERE ugp.page_id IN (120, 121, 122, 481)
+			AND NOT EXISTS (
+				SELECT 1
+				FROM user_group_page x
+				WHERE x.user_group_id = ugp.user_group_id
+					AND x.page_id = child.page_id
+			);
+		`);
+	await db.execute(sql`
+		INSERT INTO user_group_page (user_group_id, page_id)
+		SELECT ugp.user_group_id, child.page_id
+		FROM user_group_page ugp
+		CROSS JOIN (VALUES (123003)) AS child(page_id)
+		WHERE ugp.page_id IN (123, 123001, 123002)
+			AND NOT EXISTS (
+				SELECT 1
+				FROM user_group_page x
+				WHERE x.user_group_id = ugp.user_group_id
+					AND x.page_id = child.page_id
+			);
+		`);
+	await db.execute(sql`
+		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
+		VALUES (123003, 'New patient', 12, 1, 123, '/medora/home/emergency/admission/new-patient', 2)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			module_id = EXCLUDED.module_id,
+			status_id = EXCLUDED.status_id,
+			parent_id = EXCLUDED.parent_id,
+			page_url = EXCLUDED.page_url,
+			sequence_no = EXCLUDED.sequence_no;
+		`);
+	await db.execute(sql`UPDATE page SET name = 'ER patient registration', sequence_no = 1 WHERE id = 123001`);
+	await db.execute(sql`UPDATE page SET sequence_no = 3 WHERE id = 123002`);
+	await db.execute(sql`
+		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
+		VALUES
+			(451, 'ER Ward Master', 1, 1, null, '/medora/home/administration/er-ward-master', 16),
+			(451001, 'ER Ward Category', 1, 1, 451, '/medora/home/administration/er-ward-master/ward-category', 1),
+			(451002, 'ER Ward', 1, 1, 451, '/medora/home/administration/er-ward-master/ward', 2),
+			(452, 'ER Room Master', 1, 1, null, '/medora/home/administration/er-room-master', 17),
+			(452001, 'ER Room Category', 1, 1, 452, '/medora/home/administration/er-room-master/room-category', 1),
+			(452002, 'ER Room', 1, 1, 452, '/medora/home/administration/er-room-master/room', 2),
+			(453, 'ER Bed Master', 1, 1, null, '/medora/home/administration/er-bed-master', 18),
+			(124, 'ER Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 5),
+			(454, 'ER Triage Levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
+			(455, 'ER Billing Setup', 1, 1, null, '/medora/home/administration/er-billing-setup', 20),
+			(125, 'Purchase item', 12, 1, null, '/medora/home/emergency/purchase-item', 2),
+			(150004, 'ER Billing', 8, 1, null, '/medora/home/billing/er-billing', 3)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			module_id = EXCLUDED.module_id,
+			status_id = EXCLUDED.status_id,
+			parent_id = EXCLUDED.parent_id,
+			page_url = EXCLUDED.page_url,
+			sequence_no = EXCLUDED.sequence_no;
+		`);
+	await db.execute(sql`
+		INSERT INTO user_group_page (user_group_id, page_id)
+		SELECT ugp.user_group_id, child.page_id
+		FROM user_group_page ugp
+		CROSS JOIN (
+			VALUES (451), (451001), (451002), (452), (452001), (452002), (453), (124), (454)
+		) AS child(page_id)
+		WHERE ugp.page_id IN (45, 46, 47, 120, 121, 122)
+			AND NOT EXISTS (
+				SELECT 1
+				FROM user_group_page x
+				WHERE x.user_group_id = ugp.user_group_id
+					AND x.page_id = child.page_id
+			);
+		`);
+	await db.execute(sql`
+		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
+		VALUES
+			(481, 'Nursing ED', 4, 1, null, '/medora/home/nursing-workbench/ed', 3),
+			(120, 'Track Board', 4, 1, 481, '/medora/home/nursing-workbench/ed/track-board', 1),
+			(481002, 'Vital', 4, 1, 481, '/medora/home/nursing-workbench/ed/vital', 2),
+			(481003, 'Allergy', 4, 1, 481, '/medora/home/nursing-workbench/ed/allergy', 3),
+			(481004, 'Patient Attachment', 4, 1, 481, '/medora/home/nursing-workbench/ed/patient-attachment', 4),
+			(481005, 'Clinical Document', 4, 1, 481, '/medora/home/nursing-workbench/ed/clinical-document', 5),
+			(481006, 'Case Sheet', 4, 1, 481, '/medora/home/nursing-workbench/ed/case-sheet', 6),
+			(481007, 'Order', 4, 1, 481, '/medora/home/nursing-workbench/ed/order', 7),
+			(481008, 'Nursing Complete', 4, 1, 481, '/medora/home/nursing-workbench/ed/nursing-complete', 8),
+			(121, 'Triage', 4, 1, 481, '/medora/home/nursing-workbench/ed/triage', 9),
+			(122, 'Trauma Log', 4, 1, 481, '/medora/home/nursing-workbench/ed/trauma-log', 10)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			module_id = EXCLUDED.module_id,
+			status_id = EXCLUDED.status_id,
+			parent_id = EXCLUDED.parent_id,
+			page_url = EXCLUDED.page_url,
+			sequence_no = EXCLUDED.sequence_no;
+		`);
+	await db.execute(sql`UPDATE page SET sequence_no = 2 WHERE id = 124`);
+	await db.execute(sql`
+		INSERT INTO user_group_page (user_group_id, page_id)
+		SELECT ugp.user_group_id, child.page_id
+		FROM user_group_page ugp
+		CROSS JOIN (
+			VALUES
+				(481),
+				(120),
+				(481002),
+				(481003),
+				(481004),
+				(481005),
+				(481006),
+				(481007),
+				(481008),
+				(121),
+				(122)
+		) AS child(page_id)
+		WHERE ugp.page_id IN (8, 44, 481, 120, 121, 122)
+			AND NOT EXISTS (
+				SELECT 1
+				FROM user_group_page x
+				WHERE x.user_group_id = ugp.user_group_id
+					AND x.page_id = child.page_id
+			);
+		`);
+	await db.execute(sql`
+		INSERT INTO user_group_page (user_group_id, page_id)
+		SELECT ugp.user_group_id, 150004
+		FROM user_group_page ugp
+		WHERE ugp.page_id IN (15, 150001, 150004)
+			AND NOT EXISTS (
+				SELECT 1 FROM user_group_page x
+				WHERE x.user_group_id = ugp.user_group_id AND x.page_id = 150004
+			);
+		`);
+	await db.execute(sql`
+		INSERT INTO user_group_page (user_group_id, page_id)
+		SELECT ugp.user_group_id, 125
+		FROM user_group_page ugp
+		WHERE ugp.page_id IN (123, 120, 121, 122, 124, 125)
+			AND NOT EXISTS (
+				SELECT 1 FROM user_group_page x
+				WHERE x.user_group_id = ugp.user_group_id AND x.page_id = 125
+			);
 		`);
 	await db.execute(sql`
 		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
@@ -364,7 +591,9 @@ export async function seedInformationTables() {
 			(11, 'Billing'),
 			(12, 'IPD Bed Booking'),
 			(13, 'IPD Bed Transfer Requisition'),
-			(14, 'IPD Admission Order')
+			(14, 'IPD Admission Order'),
+			(15, 'Surgical Case'),
+			(16, 'Clinical Form Instance')
 		ON CONFLICT (id) DO NOTHING;
 		`);
 	// Align Billing type name; drop obsolete IP Billing type if present.
@@ -471,7 +700,22 @@ export async function seedInformationTables() {
 			-- IPD Admission Order (68–70; type 14 — IpdAdmissionOrderStatusTaggingEnum)
 			(68, 'Pending', 'pending', 1, 14),
 			(69, 'Cancelled', 'cancelled', 2, 14),
-			(70, 'Admitted', 'admitted', 3, 14)
+			(70, 'Admitted', 'admitted', 3, 14),
+
+			-- Surgical Case (71-78; type 15)
+			(71, 'Requested', 'requested', 1, 15),
+			(72, 'Scheduled', 'scheduled', 2, 15),
+			(73, 'Pre-op complete', 'pre_op_complete', 3, 15),
+			(74, 'In OR', 'in_or', 4, 15),
+			(75, 'In PACU', 'in_pacu', 5, 15),
+			(76, 'Completed', 'completed', 6, 15),
+			(77, 'Cancelled', 'cancelled', 7, 15),
+			(78, 'Pending reschedule', 'pending_reschedule', 8, 15),
+
+			-- Clinical Form Instance (79-81; type 16)
+			(79, 'Draft', 'draft', 1, 16),
+			(80, 'Complete', 'complete', 2, 16),
+			(81, 'Amended', 'amended', 3, 16)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);
@@ -552,7 +796,12 @@ export async function seedInformationTables() {
 			(2, 'Form', 1),
 			(3, 'Instruction', 1),
 			(4, 'Certificate', 1),
-			(5, 'Help', 1)
+			(5, 'Help', 1),
+			(6, 'Letter', 1),
+			(7, 'Report', 1),
+			(8, 'Finance', 1),
+			(9, 'HR', 1),
+			(10, 'Legal', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	seedLogger.info('Seeded: document_type');
@@ -738,6 +987,19 @@ export async function seedInformationTables() {
 	);
 	seedLogger.info('Seeded: document (clinical blank forms)');
 
+	// Catalog sync is source of truth for CATALOG_* system documents (updates legacy 900xx / 901xx rows).
+	try {
+		const { ensureDocumentCatalogSynced } = await import(
+			'$lib/server/medora/document-master/document-catalog-sync.server'
+		);
+		const { synced } = await ensureDocumentCatalogSynced();
+		seedLogger.info(`Synced document catalog (${synced} templates)`);
+	} catch {
+		seedLogger.info(
+			'Skipped: document catalog sync (tables not present or migration pending)'
+		);
+	}
+
 	// 8c. Subcategories for EMR/CPOE order “Service Type” filter testing (category_id: 1=RADIOLOGY, 2=NURSING, 5=LAB)
 	await db.execute(sql`
 		INSERT INTO sub_category (id, category_id, sub_category_name, status_id)
@@ -761,6 +1023,53 @@ export async function seedInformationTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	seedLogger.info('Seeded: allergy');
+
+	// Diagnostics LIS dev catalog (no-op if migration 0024 not applied)
+	try {
+		await db.execute(sql`
+			INSERT INTO lab_test (id, code, name, section, data_type, unit, ref_range_low, ref_range_high, critical_low, critical_high, status_id)
+			VALUES
+				(900001, 'HGB', 'Hemoglobin', 'hematology', 'numeric', 'g/dL', 12, 16, 7, 20, 1),
+				(900002, 'WBC', 'White blood cell count', 'hematology', 'numeric', '10^3/uL', 4, 11, 2, 30, 1),
+				(900003, 'GLU', 'Glucose', 'chemistry', 'numeric', 'mg/dL', 70, 100, 40, 500, 1)
+			ON CONFLICT (id) DO NOTHING;
+		`);
+		await db.execute(sql`
+			INSERT INTO lab_panel (id, code, name, section, status_id)
+			VALUES (900001, 'CBC', 'Complete blood count', 'hematology', 1)
+			ON CONFLICT (id) DO NOTHING;
+		`);
+		await db.execute(sql`
+			INSERT INTO lab_panel_member (panel_id, test_id, sort_order)
+			VALUES (900001, 900001, 1), (900001, 900002, 2)
+			ON CONFLICT (panel_id, test_id) DO NOTHING;
+		`);
+		seedLogger.info('Seeded: lab_test / lab_panel (diagnostics dev)');
+	} catch {
+		seedLogger.info('Skipped: diagnostics lab catalog (tables not present)');
+	}
+
+	try {
+		const { seedDemoErMasterForHospitals } = await import(
+			'$lib/server/db/seed/seed-demo-er-master.server'
+		);
+		await seedDemoErMasterForHospitals(db);
+	} catch (e) {
+		seedLogger.warn(
+			`Skipped: demo ER master (${e instanceof Error ? e.message : String(e)})`
+		);
+	}
+
+	try {
+		const { seedEdTriageLevelsForHospitals } = await import(
+			'$lib/server/db/seed/seed-ed-triage-levels.server'
+		);
+		await seedEdTriageLevelsForHospitals(db);
+	} catch (e) {
+		seedLogger.warn(
+			`Skipped: ed_triage_level (${e instanceof Error ? e.message : String(e)})`
+		);
+	}
 
 	await seedEmrDemoForAllHospitals(db);
 }

@@ -27,6 +27,7 @@ import {
 	type VisitScenarioDef
 } from './visit-history-demo-catalog';
 import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
+import { pathToFileURL } from 'node:url';
 
 const db = drizzle(neon(ensureDatabaseUrl()));
 
@@ -842,15 +843,21 @@ export async function seedVisitHistoryDemo(): Promise<void> {
 	}
 }
 
-seedVisitHistoryDemo()
-	.then(() => {
-		seedLogger.info('Visit history demo seeding finished');
-		process.exit(0);
-	})
-	.catch((err) => {
-		seedLogger.error(
-			'Error while seeding visit history demo',
-			err instanceof Error ? err : new Error(String(err))
-		);
-		process.exit(1);
-	});
+const isDirectRun =
+	import.meta.url === pathToFileURL(process.argv[1] ?? '').href ||
+	process.argv[1]?.endsWith('visit-history-demo-seed.ts');
+
+if (isDirectRun) {
+	seedVisitHistoryDemo()
+		.then(() => {
+			seedLogger.info('Visit history demo seeding finished');
+			process.exit(0);
+		})
+		.catch((err) => {
+			seedLogger.error(
+				'Error while seeding visit history demo',
+				err instanceof Error ? err : new Error(String(err))
+			);
+			process.exit(1);
+		});
+}

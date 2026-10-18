@@ -15,7 +15,7 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
+import { PasswordHashUtil } from '$lib/server/auth/password-hash.server';
 import { and, count, eq, ilike } from 'drizzle-orm';
 import { uuidV7 } from '$lib/util/id.util';
 import { requireAdminPagePermission } from '$lib/server/medora/admin/admin-permission.server';
