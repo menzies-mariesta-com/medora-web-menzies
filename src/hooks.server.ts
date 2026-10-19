@@ -18,6 +18,8 @@ import {
 } from '$lib/server/http/cors-patient-api.server';
 import { getPatientByUserId } from '$lib/server/medora/patient-portal/patient-session.server';
 
+const NOISE_404_PATHS = new Set(['/favicon.ico', '/robots.txt']);
+
 export const handle: Handle = async ({ event, resolve }) => {
 	const pathname = event.url.pathname;
 
@@ -165,6 +167,9 @@ export const handleError: HandleServerError = ({
 	status,
 	message
 }) => {
+	if (status === 404 && NOISE_404_PATHS.has(event.url.pathname)) {
+		return { message: message || 'Not found' };
+	}
 	console.error('[handleError]', {
 		url: event.url.pathname,
 		status,
