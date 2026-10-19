@@ -68,17 +68,21 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
 
+      - name: Verify Netlify build artifacts
+        run: |
+          test -d build || (echo "::error::Missing build/ — vite build failed?" && exit 1)
+          test -f .netlify/functions-internal/sveltekit-render.mjs || (echo "::error::Missing .netlify/functions-internal — adapter-netlify output?" && exit 1)
+          test -d .netlify/server || (echo "::error::Missing .netlify/server" && exit 1)
+
+      # Use Netlify CLI (not a separate functions-dir upload). Internal functions live under
+      # .netlify/functions-internal; CLI + netlify.toml deploy them with the static build/.
       - name: Deploy to Netlify
-        uses: nwtgck/actions-netlify@v3.0
-        with:
-          publish-dir: ./build
-          # SvelteKit adapter-netlify puts SSR/API in .netlify/functions-internal (not in build/).
-          functions-dir: .netlify/functions-internal
-          netlify-config-path: ./netlify.toml
-          production-deploy: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: 'Deploy from GitHub Actions'
+        run: |
+          npx --yes netlify-cli@23 deploy --prod \
+            --dir=build \
+            --site="$NETLIFY_SITE_ID" \
+            --message "Deploy from GitHub Actions"
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        timeout-minutes: 10
+        timeout-minutes: 20
