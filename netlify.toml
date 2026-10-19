@@ -42,3 +42,8 @@
 	for = "/medora-logo.svg"
 	[headers.values]
 	Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+	for = "/favicon.ico"
+	[headers.values]
+	Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"

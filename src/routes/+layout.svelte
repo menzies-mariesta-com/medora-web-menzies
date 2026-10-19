@@ -72,8 +72,6 @@
 	<title>
 		{m.menzies_medora()}
 	</title>
-	<link rel="icon" type="image/svg+xml" href="/medora-logo.svg" />
-	<link rel="apple-touch-icon" href="/medora-logo.svg" />
 </svelte:head>
 
 <!-- Pure Wash: single shell only — never nest washShell / washPanel / page-wash below. -->
