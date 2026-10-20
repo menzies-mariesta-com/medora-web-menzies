@@ -1,6 +1,7 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
 import { RoleEnum } from '$lib/model/enum/db-link';
 import type { PatientSessionRow } from './patient-session.server';
+import { writePatientPortalAudit } from './audit.server';
 
 export type PatientPortalContext = {
 	userId: string;
@@ -40,4 +41,21 @@ export function requirePatientContext(
 		hospitalId: patient.hospitalId,
 		patient
 	};
+}
+
+/**
+ * Guard for every read endpoint. Enforces the patient/session rules above and
+ * records the access in `patient_portal_audit` so all PHI reads are traceable.
+ */
+export async function requirePatientReadContext(
+	event: RequestEvent
+): Promise<PatientPortalContext> {
+	const ctx = requirePatientContext(event);
+	await writePatientPortalAudit({
+		userId: ctx.userId,
+		patientId: ctx.patientId,
+		hospitalId: ctx.hospitalId,
+		endpoint: event.url.pathname
+	});
+	return ctx;
 }
