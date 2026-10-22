@@ -38,6 +38,20 @@ function text(value: string | null | undefined): string | null {
 	return value?.trim() ? value : null;
 }
 
+function distinctTexts(values: (string | null | undefined)[]): string[] {
+	const seen = new Set<string>();
+	const out: string[] = [];
+	for (const value of values) {
+		const trimmed = value?.trim();
+		if (!trimmed) continue;
+		const key = trimmed.toLowerCase();
+		if (seen.has(key)) continue;
+		seen.add(key);
+		out.push(trimmed);
+	}
+	return out;
+}
+
 export async function listPatientVisits(ctx: PatientPortalContext) {
 	const rows = await ensureDb().query.patientVisitTable.findMany({
 		where: and(
@@ -114,6 +128,24 @@ export async function getPatientVisitDetail(
 		listVisitDocuments(ctx, visitId)
 	]);
 
+	const chiefComplaints = distinctTexts([
+		visit.chiefComplaint,
+		...formEntries
+			.filter((entry) => entry.formCode === 'chief_complaint')
+			.map((entry) => entry.description)
+	]);
+	const patientConditions = distinctTexts([
+		visit.patientCondition,
+		...formEntries
+			.filter((entry) => entry.formCode === 'patient_condition')
+			.map((entry) => entry.description)
+	]);
+	const visitFormEntries = formEntries.filter(
+		(entry) =>
+			entry.formCode !== 'chief_complaint' &&
+			entry.formCode !== 'patient_condition'
+	);
+
 	return {
 		visitId: visit.id,
 		visitNo: visit.visitNo,
@@ -123,8 +155,10 @@ export async function getPatientVisitDetail(
 		visitTypeName: visit.visitType?.name ?? null,
 		statusName: visit.status?.name ?? null,
 		doctorName: doctorDisplayName(visit.doctor),
-		chiefComplaint: text(visit.chiefComplaint),
-		patientCondition: text(visit.patientCondition),
+		chiefComplaint: chiefComplaints[0] ?? null,
+		chiefComplaints,
+		patientCondition: patientConditions[0] ?? null,
+		patientConditions,
 		diagnosisNotes: text(visit.diagnosisNotes),
 		clinicalSignedAt: visit.clinicalSignedAt,
 		diagnoses: visit.classificationDiagnoses
@@ -141,7 +175,7 @@ export async function getPatientVisitDetail(
 		carePlan,
 		progressNotes,
 		prescriptionNotes,
-		formEntries,
+		formEntries: visitFormEntries,
 		documents
 	};
 }
@@ -281,11 +315,14 @@ async function listVisitFormEntries(
 		with: { formName: true }
 	});
 
-	return rows.map((row) => ({
-		formName: row.formName?.name ?? row.formName?.code ?? null,
-		description: text(row.description),
-		createdAt: row.createdAt
-	}));
+	return rows
+		.filter((row) => row.statusId === StatusEnum.ACTIVE)
+		.map((row) => ({
+			formName: row.formName?.name ?? row.formName?.code ?? null,
+			formCode: row.formName?.code ?? null,
+			description: text(row.description),
+			createdAt: row.createdAt
+		}));
 }
 
 async function listVisitDocuments(
