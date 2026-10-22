@@ -1,8 +1,19 @@
-import { and, desc, eq, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, ne, or } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { listReleasedResultsForVisit } from '$lib/server/medora/diagnostics/lab-result.server';
 import type { PatientPortalContext } from './require-patient-context.server';
+import {
+	listPatientAllergies,
+	listPatientMedications,
+	listPatientVitals
+} from './clinical.server';
+import {
+	contentTypeFromStorageKey,
+	patientAttachmentStorageKey,
+	PATIENT_DOCUMENT_CONTENT_PREFIX
+} from './documents.server';
 
 function doctorDisplayName(
 	doctor: {
@@ -21,6 +32,10 @@ function doctorDisplayName(
 	].filter(Boolean);
 	const name = parts.join(' ').trim();
 	return name || null;
+}
+
+function text(value: string | null | undefined): string | null {
+	return value?.trim() ? value : null;
 }
 
 export async function listPatientVisits(ctx: PatientPortalContext) {
@@ -72,6 +87,33 @@ export async function getPatientVisitDetail(
 
 	if (!visit) return null;
 
+	const [
+		vitals,
+		allergies,
+		medications,
+		labResults,
+		serviceOrders,
+		carePlan,
+		progressNotes,
+		prescriptionNotes,
+		formEntries,
+		documents
+	] = await Promise.all([
+		listPatientVitals(ctx, { visitId, limit: 50 }),
+		listPatientAllergies(ctx, { limit: 50 }),
+		listPatientMedications(ctx, { visitId, limit: 50 }),
+		listReleasedResultsForVisit({
+			hospitalId: ctx.hospitalId,
+			visitId
+		}),
+		listVisitServiceOrders(visitId),
+		listVisitCarePlan(ctx, visitId),
+		listVisitProgressNotes(ctx, visitId),
+		listVisitPrescriptionNotes(ctx, visitId),
+		listVisitFormEntries(ctx, visitId),
+		listVisitDocuments(ctx, visitId)
+	]);
+
 	return {
 		visitId: visit.id,
 		visitNo: visit.visitNo,
@@ -81,15 +123,211 @@ export async function getPatientVisitDetail(
 		visitTypeName: visit.visitType?.name ?? null,
 		statusName: visit.status?.name ?? null,
 		doctorName: doctorDisplayName(visit.doctor),
-		chiefComplaint: visit.chiefComplaint,
-		patientCondition: visit.patientCondition,
-		diagnosisNotes: visit.diagnosisNotes,
+		chiefComplaint: text(visit.chiefComplaint),
+		patientCondition: text(visit.patientCondition),
+		diagnosisNotes: text(visit.diagnosisNotes),
 		clinicalSignedAt: visit.clinicalSignedAt,
 		diagnoses: visit.classificationDiagnoses
 			.filter((d) => d.statusId !== StatusEnum.DELETED)
 			.map((d) => ({
-				description: d.description,
+				description: text(d.description),
 				typeName: d.diagnosisType?.name ?? null
-			}))
+			})),
+		vitals,
+		allergies,
+		medications,
+		labResults,
+		serviceOrders,
+		carePlan,
+		progressNotes,
+		prescriptionNotes,
+		formEntries,
+		documents
 	};
+}
+
+async function listVisitServiceOrders(visitId: string) {
+	const orders = await ensureDb().query.serviceOrderTable.findMany({
+		where: and(
+			eq(table.serviceOrderTable.visitId, visitId),
+			ne(table.serviceOrderTable.statusId, StatusEnum.DELETED)
+		),
+		orderBy: [desc(table.serviceOrderTable.createdAt)],
+		with: {
+			details: {
+				with: {
+					serviceItem: true,
+					status: true
+				}
+			}
+		}
+	});
+
+	return orders
+		.map((order) => ({
+			orderNo: order.orderNo,
+			orderDate: order.orderDate,
+			orderTime: order.orderTime,
+			items: order.details
+				.filter((detail) => detail.statusId !== StatusEnum.DELETED)
+				.map((detail) => ({
+					serviceName: detail.serviceItem?.serviceName ?? null,
+					instruction: text(detail.instruction),
+					isUrgent: detail.isUrgent,
+					statusName: detail.status?.name ?? null,
+					completedAt: detail.nursingCompleteTime
+				}))
+		}))
+		.filter((order) => order.items.length > 0);
+}
+
+async function listVisitCarePlan(
+	ctx: PatientPortalContext,
+	visitId: string
+) {
+	const rows = await ensureDb().query.planOfCareTable.findMany({
+		where: and(
+			eq(table.planOfCareTable.visitId, visitId),
+			eq(table.planOfCareTable.patientId, ctx.patientId),
+			ne(table.planOfCareTable.statusId, StatusEnum.DELETED)
+		),
+		orderBy: [
+			asc(table.planOfCareTable.sequenceNo),
+			asc(table.planOfCareTable.createdAt)
+		],
+		with: { doctor: { with: { title: true } } }
+	});
+
+	return rows
+		.map((row) => ({
+			note: text(row.note),
+			doctorName: doctorDisplayName(row.doctor),
+			createdAt: row.createdAt
+		}))
+		.filter((row) => row.note);
+}
+
+async function listVisitProgressNotes(
+	ctx: PatientPortalContext,
+	visitId: string
+) {
+	const rows = await ensureDb().query.progressNoteTable.findMany({
+		where: and(
+			eq(table.progressNoteTable.visitId, visitId),
+			eq(table.progressNoteTable.patientId, ctx.patientId),
+			ne(table.progressNoteTable.statusId, StatusEnum.DELETED),
+			or(
+				isNotNull(table.progressNoteTable.signedAt),
+				isNotNull(table.progressNoteTable.cosignedAt)
+			)
+		),
+		orderBy: [
+			asc(table.progressNoteTable.sequenceNo),
+			asc(table.progressNoteTable.createdAt)
+		],
+		with: { doctor: { with: { title: true } } }
+	});
+
+	return rows.map((row) => ({
+		note: text(row.note),
+		subjective: text(row.subjective),
+		objective: text(row.objective),
+		assessment: text(row.assessment),
+		plan: text(row.plan),
+		doctorName: doctorDisplayName(row.doctor),
+		signedAt: row.signedAt,
+		cosignedAt: row.cosignedAt,
+		createdAt: row.createdAt
+	}));
+}
+
+async function listVisitPrescriptionNotes(
+	ctx: PatientPortalContext,
+	visitId: string
+) {
+	const rows = await ensureDb().query.cpoePrescriptionNoteTable.findMany({
+		where: and(
+			eq(table.cpoePrescriptionNoteTable.visitId, visitId),
+			eq(table.cpoePrescriptionNoteTable.patientId, ctx.patientId),
+			ne(table.cpoePrescriptionNoteTable.statusId, StatusEnum.DELETED)
+		),
+		orderBy: [
+			asc(table.cpoePrescriptionNoteTable.sequenceNo),
+			asc(table.cpoePrescriptionNoteTable.createdAt)
+		],
+		with: { doctor: { with: { title: true } } }
+	});
+
+	return rows
+		.map((row) => ({
+			note: text(row.note),
+			doctorName: doctorDisplayName(row.doctor),
+			createdAt: row.createdAt
+		}))
+		.filter((row) => row.note);
+}
+
+async function listVisitFormEntries(
+	ctx: PatientPortalContext,
+	visitId: string
+) {
+	const rows = await ensureDb().query.patientFormEntryTable.findMany({
+		where: and(
+			eq(table.patientFormEntryTable.visitId, visitId),
+			eq(table.patientFormEntryTable.patientId, ctx.patientId),
+			ne(table.patientFormEntryTable.statusId, StatusEnum.DELETED)
+		),
+		orderBy: [desc(table.patientFormEntryTable.createdAt)],
+		with: { formName: true }
+	});
+
+	return rows.map((row) => ({
+		formName: row.formName?.name ?? row.formName?.code ?? null,
+		description: text(row.description),
+		createdAt: row.createdAt
+	}));
+}
+
+async function listVisitDocuments(
+	ctx: PatientPortalContext,
+	visitId: string
+) {
+	const rows = await ensureDb().query.patientDocumentTable.findMany({
+		where: and(
+			eq(table.patientDocumentTable.visitId, visitId),
+			eq(table.patientDocumentTable.patientId, ctx.patientId),
+			ne(table.patientDocumentTable.statusId, StatusEnum.DELETED)
+		),
+		orderBy: [desc(table.patientDocumentTable.createdAt)],
+		with: {
+			document: true,
+			patientAttachment: true
+		}
+	});
+
+	return rows.flatMap((row) => {
+		const attachment = row.patientAttachment;
+		if (
+			!attachment ||
+			attachment.patientId !== ctx.patientId ||
+			attachment.statusId === StatusEnum.DELETED
+		) {
+			return [];
+		}
+		const storageKey = patientAttachmentStorageKey(attachment.fileUrl);
+		if (!storageKey) return [];
+		return [
+			{
+				id: attachment.id,
+				description:
+					attachment.description ??
+					row.document?.code ??
+					row.document?.documentNumber ??
+					null,
+				createdAt: row.createdAt,
+				contentType: contentTypeFromStorageKey(storageKey),
+				contentUrl: `${PATIENT_DOCUMENT_CONTENT_PREFIX}/${attachment.id}/content`
+			}
+		];
+	});
 }
