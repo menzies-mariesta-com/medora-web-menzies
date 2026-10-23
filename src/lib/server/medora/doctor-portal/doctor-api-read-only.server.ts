@@ -11,7 +11,8 @@ const ALLOWED_WRITE_PATHS = new Set([
 	`${DOCTOR_API_PREFIX}/auth/sign-in`,
 	`${DOCTOR_API_PREFIX}/auth/sign-out`,
 	`${DOCTOR_API_PREFIX}/auth/two-factor/verify`,
-	`${DOCTOR_API_PREFIX}/auth/change-password`
+	`${DOCTOR_API_PREFIX}/auth/change-password`,
+	`${DOCTOR_API_PREFIX}/auth/forgot-password`
 ]);
 
 export function isDoctorApiReadOnlyViolation(
