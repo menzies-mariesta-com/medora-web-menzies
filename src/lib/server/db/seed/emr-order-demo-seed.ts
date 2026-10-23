@@ -3,7 +3,11 @@ import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import argon2 from 'argon2';
 import { uuidV7 } from '$lib/util/id.util';
 import { seedLogger } from '$lib/logger';
-import { RoleEnum, StaffTypeEnum, StatusEnum } from '$lib/model/enum/db-link';
+import {
+	RoleEnum,
+	StaffTypeEnum,
+	StatusEnum
+} from '$lib/model/enum/db-link';
 import {
 	EMR_DEMO_SERVICES,
 	EMR_DEMO_SUB_CATEGORIES,
@@ -21,7 +25,11 @@ function rowsOf<T>(result: unknown): T[] {
 	return Array.isArray(r?.rows) ? r.rows : [];
 }
 
-type HospitalRow = { id: string; code: string | null; name: string | null };
+type HospitalRow = {
+	id: string;
+	code: string | null;
+	name: string | null;
+};
 type BranchRow = { id: string };
 type IdRow = { id: number };
 
@@ -83,7 +91,9 @@ function escapeSqlString(value: string): string {
 	return value.replace(/'/g, "''");
 }
 
-async function hashSeedDoctorPassword(password: string): Promise<string> {
+async function hashSeedDoctorPassword(
+	password: string
+): Promise<string> {
 	return argon2.hash(password, {
 		type: argon2.argon2id,
 		memoryCost: Number(process.env.ARGON2_MEMORY_COST ?? 64 * 1024),
@@ -93,7 +103,9 @@ async function hashSeedDoctorPassword(password: string): Promise<string> {
 	});
 }
 
-export async function seedEmrDemoSubCategories(db: SeedDb): Promise<void> {
+export async function seedEmrDemoSubCategories(
+	db: SeedDb
+): Promise<void> {
 	const values = EMR_DEMO_SUB_CATEGORIES.map(
 		(sc) =>
 			`(${sc.id}, ${sc.categoryId}, '${escapeSqlString(sc.name)}', ${StatusEnum.ACTIVE})`
@@ -146,7 +158,9 @@ async function countHospitalDoctors(
 	return Number(rows[0]?.count ?? 0);
 }
 
-async function loadActiveHospitals(db: SeedDb): Promise<HospitalRow[]> {
+async function loadActiveHospitals(
+	db: SeedDb
+): Promise<HospitalRow[]> {
 	return rowsOf<HospitalRow>(
 		await db.execute(
 			sql`SELECT id::text AS id, code, name FROM hospital WHERE status_id = ${StatusEnum.ACTIVE}`
@@ -184,10 +198,18 @@ async function seedServicesForHospital(
 	db: SeedDb,
 	hospitalId: string,
 	branches: BranchRow[]
-): Promise<{ insertedServices: number; insertedTaggings: number; skipped: boolean }> {
+): Promise<{
+	insertedServices: number;
+	insertedTaggings: number;
+	skipped: boolean;
+}> {
 	const existingCount = await countHospitalServices(db, hospitalId);
 	if (existingCount >= MIN_SEEDED_SERVICES) {
-		return { insertedServices: 0, insertedTaggings: 0, skipped: true };
+		return {
+			insertedServices: 0,
+			insertedTaggings: 0,
+			skipped: true
+		};
 	}
 
 	if (branches.length === 0) {
@@ -291,7 +313,9 @@ async function seedDoctorsForHospital(
 
 	const toCreate = MIN_SEEDED_DOCTORS - existingCount;
 	const slug = hospitalSlug(hospital);
-	const hashedPassword = await hashSeedDoctorPassword(SEED_DOCTOR_PASSWORD);
+	const hashedPassword = await hashSeedDoctorPassword(
+		SEED_DOCTOR_PASSWORD
+	);
 
 	let insertedDoctors = 0;
 	const startIndex = existingCount + 1;
@@ -299,19 +323,24 @@ async function seedDoctorsForHospital(
 	for (let i = 0; i < toCreate; i += 1) {
 		const seq = startIndex + i;
 		const seqPadded = String(seq).padStart(3, '0');
-		const email = `seed-doctor-${slug}-${seqPadded}@heka-dev.local`;
+		// Better Auth normalizes email/password sign-in emails to lowercase.
+		// Seed accounts must match, or the email/password sign-in cannot find them.
+		const email =
+			`seed-doctor-${slug}-${seqPadded}@heka-dev.local`.toLowerCase();
 
 		const emailTaken = rowsOf<{ id: string }>(
 			await db.execute(
-				sql`SELECT id FROM "user" WHERE email = ${email} LIMIT 1`
+				sql`SELECT id FROM "user" WHERE lower(email) = ${email} LIMIT 1`
 			)
 		);
 		if (emailTaken.length > 0) continue;
 
 		const firstName =
-			DOCTOR_FIRST_NAMES[(seq - 1) % DOCTOR_FIRST_NAMES.length] ?? 'Seed';
+			DOCTOR_FIRST_NAMES[(seq - 1) % DOCTOR_FIRST_NAMES.length] ??
+			'Seed';
 		const lastName =
-			DOCTOR_LAST_NAMES[(seq - 1) % DOCTOR_LAST_NAMES.length] ?? 'Doctor';
+			DOCTOR_LAST_NAMES[(seq - 1) % DOCTOR_LAST_NAMES.length] ??
+			'Doctor';
 		const fullName = `${firstName} ${lastName}`;
 		const userId = uuidV7();
 		const accountId = uuidV7();
@@ -416,7 +445,9 @@ async function seedDoctorsForHospital(
 	return { insertedDoctors, skipped: false };
 }
 
-export async function seedEmrDemoForAllHospitals(db: SeedDb): Promise<void> {
+export async function seedEmrDemoForAllHospitals(
+	db: SeedDb
+): Promise<void> {
 	const hospitals = await loadActiveHospitals(db);
 	if (hospitals.length === 0) {
 		seedLogger.info(
