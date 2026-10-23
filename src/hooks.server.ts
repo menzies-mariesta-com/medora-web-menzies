@@ -21,6 +21,10 @@ import {
 	isPatientApiReadOnlyViolation,
 	patientApiReadOnlyResponse
 } from '$lib/server/medora/patient-portal/patient-api-read-only.server';
+import {
+	doctorApiReadOnlyResponse,
+	isDoctorApiReadOnlyViolation
+} from '$lib/server/medora/doctor-portal/doctor-api-read-only.server';
 
 const NOISE_404_PATHS = new Set(['/favicon.ico', '/robots.txt']);
 
@@ -36,9 +40,18 @@ export const handle: Handle = async ({ event, resolve }) => {
 		);
 	}
 
+	// The doctor mobile app is read-only for clinical data in this release.
+	if (isDoctorApiReadOnlyViolation(event.request.method, pathname)) {
+		return applySecurityHeaders(
+			doctorApiReadOnlyResponse(event),
+			event
+		);
+	}
+
 	if (
 		event.request.method === 'OPTIONS' &&
 		(pathname.startsWith('/api/patient/') ||
+			pathname.startsWith('/api/doctor/') ||
 			pathname.startsWith('/api/auth'))
 	) {
 		return applySecurityHeaders(
@@ -164,7 +177,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return applySecurityHeaders(withCors, event);
 	}
 
-	return paraglideMiddleware(
+	const response = await paraglideMiddleware(
 		event.request,
 		({
 			request,
@@ -180,6 +193,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 			}).then((response) => applySecurityHeaders(response, event));
 		}
 	);
+	if (pathname.startsWith('/api/doctor/')) {
+		return applyCorsToResponse(response, event.request);
+	}
+	return response;
 };
 
 export const handleError: HandleServerError = ({
