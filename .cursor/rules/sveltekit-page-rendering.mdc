@@ -1,0 +1,42 @@
+---
+description: SvelteKit prerender, form actions, aggregate loads, and error pages
+globs:
+  - src/routes/**
+  - src/hooks.server.ts
+alwaysApply: false
+---
+
+# SvelteKit page rendering (Medora)
+
+## Prerender vs form actions (mandatory)
+
+SvelteKit **cannot** prerender a route that exports `actions` on the same `+page.server.ts` or under a `+layout.server.ts` with `export const prerender = true`.
+
+- **Do:** keep `export const prerender = true` for static public HTML (SEO) and handle POST/mutations via a **mirrored** endpoint under `src/routes/api/(public|private)/.../+server.ts`.
+- **Do not:** combine `export const prerender = true` with `export const actions` on the same route tree.
+- **Example:** [`/pricing`](src/routes/(public)/pricing/+page.server.ts) prerender + [`POST /api/pricing/trial-request`](src/routes/api/(public)/pricing/trial-request/+server.ts).
+
+Enforced by `scripts/check-kit-prerender.mjs` and `npm run check` (includes production `vite build`).
+
+See also [remote-api-pages-flow.mdc](remote-api-pages-flow.mdc).
+
+## Aggregate dashboard loads
+
+Hospital-wide stats and similar **multi-query** loaders must not turn one failed SQL query into a full-page 500.
+
+- Wrap each sub-query (or use `Promise.allSettled` / per-query `try/catch`) with safe fallbacks.
+- Return optional `partialErrors` and/or `dashboardLoadError` on the payload; show an inline `alert-warning` on the page.
+- Prefer [`$lib/model/type/**`](src/lib/model/type/) for UI-facing payload shapes.
+
+Reference: [`hospital-home-dashboard.server.ts`](src/lib/server/medora/dashboard/hospital-home-dashboard.server.ts).
+
+## Error pages and logging
+
+- [`+error.svelte`](src/routes/+error.svelte) must reflect `$page.status` (404 vs 5xx vs other), not a hard-coded 404 message.
+- Implement [`handleError`](src/hooks.server.ts) for server-side logging (URL, status, message; no secrets in logs).
+
+## Checklist before shipping route changes
+
+- [ ] No prerender + actions conflict (`npm run check:kit-prerender`)
+- [ ] `npm run build` passes for prerendered public routes
+- [ ] Aggregate loads degrade gracefully with user-visible warning, not naked 500

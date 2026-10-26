@@ -36,7 +36,10 @@
 		strokeWidth?: number;
 	} = $props();
 
-	const ICONS: Record<string, Component<{ className?: string; strokeWidth?: number }>> = {
+	const ICONS: Record<
+		string,
+		Component<{ className?: string; strokeWidth?: number }>
+	> = {
 		'user-cog': LucideUserCog,
 		'user-star': LucideUserCog,
 		'users-round': LucideUsersRound,
@@ -71,11 +74,14 @@
 		'/medora/home/medication-order': 'pill',
 		'/medora/home/emergency': 'siren',
 		'/medora/home/perioperative': 'scalpel',
+		'/medora/home/operation-theatre': 'scalpel',
 		'/medora/home/obstetrics': 'baby',
 		'/medora/home/diagnostics': 'activity'
 	};
 
-	function normalizeModuleUrl(raw: string | null | undefined): string | null {
+	function normalizeModuleUrl(
+		raw: string | null | undefined
+	): string | null {
 		if (raw == null) return null;
 		const trimmed = raw
 			.trim()
@@ -84,15 +90,18 @@
 		return trimmed || null;
 	}
 
-	function normalizeIconName(raw: string | null | undefined): string | null {
+	function normalizeIconName(
+		raw: string | null | undefined
+	): string | null {
 		if (raw == null) return null;
 		const trimmed = raw.trim();
 		if (!trimmed) return null;
 		// Legacy: full SVG markup — pull Lucide slug from class if present.
 		if (trimmed.startsWith('<')) {
 			const fromClass =
-				trimmed.match(/\blucide-([a-z0-9-]+?)(?:-icon)?(?:\s|["']|$)/i)?.[1] ??
-				null;
+				trimmed.match(
+					/\blucide-([a-z0-9-]+?)(?:-icon)?(?:\s|["']|$)/i
+				)?.[1] ?? null;
 			return fromClass;
 		}
 		return trimmed.replace(/^lucide-/i, '');
@@ -103,9 +112,13 @@
 		const url = normalizeModuleUrl(moduleUrl);
 		return url ? (ICON_BY_MODULE_URL[url] ?? null) : null;
 	});
-	const resolvedIconName = $derived(iconNameFromDb ?? iconNameFromUrl);
+	const resolvedIconName = $derived(
+		iconNameFromDb ?? iconNameFromUrl
+	);
 	const Icon = $derived(
-		resolvedIconName ? (ICONS[resolvedIconName] ?? LucideAppWindow) : LucideAppWindow
+		resolvedIconName
+			? (ICONS[resolvedIconName] ?? LucideAppWindow)
+			: LucideAppWindow
 	);
 </script>
 

@@ -1,0 +1,42 @@
+---
+description: Padding and gap math so focus, hover, and shadows are not clipped in scroll regions
+alwaysApply: true
+---
+
+# Interaction-safe space (Medora)
+
+Use tokens from `src/lib/asset/style/interaction-safe-space.css` (imported in `layout.css`).
+
+## Formula
+
+On any ancestor with `overflow` other than `visible`:
+
+`pad = max(R, L, S, B) + G + ε`
+
+| Symbol | Meaning |
+|--------|---------|
+| R | `outline-width + outline-offset` (`--wash-state-ring`) |
+| L | Hover/focus lift (`--wash-state-lift`, e.g. 2px) |
+| S | Focus/hover shadow footprint (`--wash-state-shadow`) |
+| B | Half border-width change on focus; keep **0** with stable `border-width` |
+| G | Dropdown gap (`--wash-dropdown-gap`) |
+| ε | 1px (`--wash-state-epsilon`) |
+
+Computed token: `--wash-interaction-inset`.
+
+Stacked fields: `gap >= pad` (use class `wash-form-stack`).
+
+Scroll containers with fields: `scroll-padding >= pad`.
+
+## Apply
+
+- **WashDialog** body: `wash-dialog-scroll-body` or `wash-dialog-form-column` (already on shell).
+- **Inner dialog forms**: `wash-form-stack` on field column; inner `overflow-y-auto` gets auto padding via `:has()` or `wash-interaction-scroll`.
+- **Tables**: keep `menzies-table-scroll` on table body; do not add form padding there. Row menus portaled (fixed), not clipped dropdowns.
+- **Opt out**: `wash-interaction-scroll-opt-out` on a scroller that must stay flush.
+
+## Do not
+
+- Put `overflow-auto` on a form column with `pr-1` or zero padding only; rings will clip.
+- Use `class:` on `WashButton` for loading; use `loading` prop.
+- Rely on daisyUI `dropdown` inside `overflow-auto` without portal; use `measureDropdownPlacement` + fixed panel (SearchSelect / WashSelect / row menus).

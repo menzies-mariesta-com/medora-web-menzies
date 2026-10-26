@@ -27,7 +27,7 @@
 	const uniqueModuleData = $derived(getUniqueModuleData());
 	const pageData = $derived(getPageData());
 	const isEmbed = $derived(
-		page.url.searchParams.get('embed') === '1'
+		new URL(page.url.href).searchParams.get('embed') === '1'
 	);
 	const isInEmrCloneEmr = $derived(
 		pathnameForPageMatch().startsWith(
@@ -108,7 +108,7 @@
 						signatureImageUrl?: string | null;
 						signatureText?: string | null;
 					} | null;
-				})
+			  })
 			| null
 			| undefined;
 		if (!s?.id) return null;
@@ -152,10 +152,9 @@
 				{hospitalId}
 				{userEmail}
 				hospitalName={data?.currentHospitalName ?? null}
-				hospitalLogoUrl={
-					(data as { currentHospitalLogoUrl?: string | null })
-						?.currentHospitalLogoUrl ?? null
-				}
+				hospitalLogoUrl={(
+					data as { currentHospitalLogoUrl?: string | null }
+				)?.currentHospitalLogoUrl ?? null}
 				moduleList={uniqueModuleData}
 				pageList={pageData}
 				staffId={currentStaffId}

@@ -66,10 +66,10 @@
 
 <div class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-2 sm:p-4">
 	<header class="flex flex-col gap-2">
-		<h1 class="card-title text-primary font-bold text-xl sm:text-2xl">
+		<h1 class="card-title text-xl font-bold text-primary sm:text-2xl">
 			{paraglideMsg('ecosystem_page_title', 'Menzies ecosystem')}
 		</h1>
-		<p class="text-base-content/80 text-sm sm:text-base max-w-2xl">
+		<p class="max-w-2xl text-sm text-base-content/80 sm:text-base">
 			{paraglideMsg(
 				'ecosystem_page_blurb',
 				'Apps your organization can add alongside Medora. Subscribed products open in a new tab when integration is enabled.'
@@ -78,7 +78,7 @@
 	</header>
 
 	<ul
-		class="grid list-none gap-4 p-0 m-0 sm:grid-cols-2 lg:grid-cols-3"
+		class="m-0 grid list-none gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3"
 		role="list"
 	>
 		{#each products as product (product.id)}
@@ -88,7 +88,7 @@
 						href={product.externalUrl}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="card card-border bg-base-100 hover:border-primary/50 hover:bg-primary/5 flex h-full cursor-pointer flex-col gap-3 p-4 shadow-sm transition-colors"
+						class="card card-border flex h-full cursor-pointer flex-col gap-3 bg-base-100 p-4 shadow-sm transition-colors hover:border-primary/50 hover:bg-primary/5"
 					>
 						<div
 							class="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-accent/15 text-accent"
@@ -96,10 +96,10 @@
 							{@render productIcon(product.id)}
 						</div>
 						<div class="flex min-w-0 flex-1 flex-col gap-1">
-							<h2 class="font-semibold text-base leading-snug">
+							<h2 class="text-base leading-snug font-semibold">
 								{productTitle(product.id)}
 							</h2>
-							<p class="text-base-content/70 text-sm">
+							<p class="text-sm text-base-content/70">
 								{productBlurb(product.id)}
 							</p>
 						</div>
@@ -115,8 +115,7 @@
 					</a>
 				{:else}
 					<article
-						class="card card-border bg-base-200/40 flex h-full flex-col gap-3 p-4 opacity-95"
-						aria-disabled="true"
+						class="card card-border flex h-full flex-col gap-3 bg-base-200/40 p-4 opacity-95"
 					>
 						<div
 							class="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-base-300 text-base-content/60"
@@ -124,10 +123,10 @@
 							{@render productIcon(product.id)}
 						</div>
 						<div class="flex min-w-0 flex-1 flex-col gap-1">
-							<h2 class="font-semibold text-base leading-snug">
+							<h2 class="text-base leading-snug font-semibold">
 								{productTitle(product.id)}
 							</h2>
-							<p class="text-base-content/70 text-sm">
+							<p class="text-sm text-base-content/70">
 								{productBlurb(product.id)}
 							</p>
 						</div>

@@ -133,3 +133,17 @@ src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/emr/or
 src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/emr/vital/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/ipd/census/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/registration/patient/list/+page.svelte: own/library/menzies clone path
+src/lib/component/own/global/private/medora/GPrivateMedoraModuleBar.svelte: own/library/menzies clone path
+src/lib/component/own/local/private/medora/emergency/LEdCreateEncounterDialogContent.svelte: own/library/menzies clone path
+src/lib/component/own/local/private/medora/emergency/LEdEditRegistrationDialogContent.svelte: own/library/menzies clone path
+src/lib/component/own/snippet/modal/ChangeLanguageModal.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/administration/er-bed-master/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/administration/er-room-master/room/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/administration/er-room-master/room-category/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/administration/er-triage-level/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/administration/er-ward-master/ward/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/administration/er-ward-master/ward-category/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/emergency/admission/list/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/emergency/admission/new/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/emergency/bed-status/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/inventory/department-consumption/return/new/+page.svelte: own/library/menzies clone path
