@@ -9,4 +9,4 @@ workflowSlugs: ["emergency-triage"]
 
 Longitudinal chart section. Related workflows:
 
-- [emergency-triage](/docs/workflows/emergency-triage)
+- [emergency-triage](/docs/workflows/nursing-workbench-ed-triage)

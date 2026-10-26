@@ -5,6 +5,6 @@ import Page from './(public)/auth/login/+page.svelte';
 describe('/(public)/auth/login/+page.svelte', () => {
 	it('should render login email field', () => {
 		const { container } = render(Page);
-		expect(container.querySelector('#email-input')).toBeTruthy();
+		expect(container.querySelector('#auth-login-email')).toBeTruthy();
 	});
 });

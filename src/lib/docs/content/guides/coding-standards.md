@@ -13,4 +13,4 @@ Diagnosis coding standards guide for hospital teams implementing Medora.
 
 ## Next steps
 
-Browse [workflows](/docs/workflows) by module or use **Ctrl+K** search.
+Browse [workflows](/docs) by module or use **Ctrl+K** search.

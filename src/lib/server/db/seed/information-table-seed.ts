@@ -82,7 +82,8 @@ export async function seedInformationTables() {
 			(12, 'Emergency', 12, 1, '/medora/home/emergency', 'siren'),
 			(13, 'Perioperative', 13, 1, '/medora/home/perioperative', 'scalpel'),
 			(14, 'Obstetrics', 14, 1, '/medora/home/obstetrics', 'baby'),
-			(15, 'Diagnostics', 15, 1, '/medora/home/diagnostics', 'activity')
+			(15, 'Diagnostics', 15, 1, '/medora/home/diagnostics', 'activity'),
+			(16, 'Operation Theatre', 16, 1, '/medora/home/operation-theatre', 'scalpel')
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			sequence_no = EXCLUDED.sequence_no,
@@ -91,6 +92,9 @@ export async function seedInformationTables() {
 			image_url = EXCLUDED.image_url,
 			updated_at = now();
 	`);
+	await db.execute(sql`
+		UPDATE module SET status_id = 2 WHERE id = 13
+		`);
 	seedLogger.info('Seeded: module');
 
 	// 2. Hospital (depends: status). id is UUID.
@@ -220,6 +224,17 @@ export async function seedInformationTables() {
 			(133, 'Room Setup', 13, 1, null, '/medora/home/perioperative/room-setup', 4),
 			(134, 'Procedure Log', 13, 1, null, '/medora/home/perioperative/procedure-log', 5),
 
+			-- Operation Theatre module (16)
+			(160, 'OT Scheduler', 16, 1, null, '/medora/home/operation-theatre/ot-scheduler', 1),
+			(161, 'Registration', 16, 1, null, '/medora/home/operation-theatre/registration', 2),
+			(161001, 'OT Patient Registration', 16, 1, 161, '/medora/home/operation-theatre/registration/ot-patient', 1),
+			(161002, 'New Patient', 16, 1, 161, '/medora/home/operation-theatre/registration/new-patient', 2),
+			(161003, 'Registration List', 16, 1, 161, '/medora/home/operation-theatre/registration/list', 3),
+			(162, 'Booking Details', 16, 1, null, '/medora/home/operation-theatre/booking-details', 3),
+			(163, 'Ward to OT Acknowledgement', 16, 1, null, '/medora/home/operation-theatre/ward-to-ot', 4),
+			(164, 'Reports', 16, 1, null, '/medora/home/operation-theatre/reports', 5),
+			(165, 'OT Master', 16, 1, null, '/medora/home/operation-theatre/ot-master', 6),
+
 			-- Obstetrics module (14)
 			(140, 'Labor Board', 14, 1, null, '/medora/home/obstetrics/labor-board', 1),
 			(141, 'Partogram', 14, 1, null, '/medora/home/obstetrics/partogram', 2),
@@ -255,6 +270,7 @@ export async function seedInformationTables() {
 			(150003, 'Bill', 8, 1, 150001, '/medora/home/billing/ip-billing/bill', 1),
 			(150002, 'Advance Deposit', 8, 1, 150001, '/medora/home/billing/ip-billing/advance-deposit', 2),
 			(150004, 'ER Billing', 8, 1, null, '/medora/home/billing/er-billing', 3),
+			(150005, 'OT Billing', 8, 1, null, '/medora/home/billing/ot-billing', 4),
 
 			-- Administration: Financial Year & Prefix Configuration
 			(16, 'Prefix Configuration', 1, 1, null, '/medora/home/administration/prefix-configuration', 9),
@@ -397,8 +413,12 @@ export async function seedInformationTables() {
 			page_url = EXCLUDED.page_url,
 			sequence_no = EXCLUDED.sequence_no;
 		`);
-	await db.execute(sql`UPDATE page SET name = 'ER patient registration', sequence_no = 1 WHERE id = 123001`);
-	await db.execute(sql`UPDATE page SET sequence_no = 3 WHERE id = 123002`);
+	await db.execute(
+		sql`UPDATE page SET name = 'ER patient registration', sequence_no = 1 WHERE id = 123001`
+	);
+	await db.execute(
+		sql`UPDATE page SET sequence_no = 3 WHERE id = 123002`
+	);
 	await db.execute(sql`
 		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 		VALUES
@@ -413,7 +433,8 @@ export async function seedInformationTables() {
 			(454, 'ER Triage Levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
 			(455, 'ER Billing Setup', 1, 1, null, '/medora/home/administration/er-billing-setup', 20),
 			(125, 'Purchase item', 12, 1, null, '/medora/home/emergency/purchase-item', 2),
-			(150004, 'ER Billing', 8, 1, null, '/medora/home/billing/er-billing', 3)
+			(150004, 'ER Billing', 8, 1, null, '/medora/home/billing/er-billing', 3),
+			(150005, 'OT Billing', 8, 1, null, '/medora/home/billing/ot-billing', 4)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			module_id = EXCLUDED.module_id,
@@ -459,7 +480,9 @@ export async function seedInformationTables() {
 			page_url = EXCLUDED.page_url,
 			sequence_no = EXCLUDED.sequence_no;
 		`);
-	await db.execute(sql`UPDATE page SET sequence_no = 2 WHERE id = 124`);
+	await db.execute(
+		sql`UPDATE page SET sequence_no = 2 WHERE id = 124`
+	);
 	await db.execute(sql`
 		INSERT INTO user_group_page (user_group_id, page_id)
 		SELECT ugp.user_group_id, child.page_id
@@ -494,6 +517,16 @@ export async function seedInformationTables() {
 			AND NOT EXISTS (
 				SELECT 1 FROM user_group_page x
 				WHERE x.user_group_id = ugp.user_group_id AND x.page_id = 150004
+			);
+		`);
+	await db.execute(sql`
+		INSERT INTO user_group_page (user_group_id, page_id)
+		SELECT DISTINCT ugp.user_group_id, 150005
+		FROM user_group_page ugp
+		WHERE ugp.page_id IN (15, 150001, 150004, 150005)
+			AND NOT EXISTS (
+				SELECT 1 FROM user_group_page x
+				WHERE x.user_group_id = ugp.user_group_id AND x.page_id = 150005
 			);
 		`);
 	await db.execute(sql`
@@ -593,7 +626,8 @@ export async function seedInformationTables() {
 			(13, 'IPD Bed Transfer Requisition'),
 			(14, 'IPD Admission Order'),
 			(15, 'Surgical Case'),
-			(16, 'Clinical Form Instance')
+			(16, 'Clinical Form Instance'),
+			(17, 'OT Booking')
 		ON CONFLICT (id) DO NOTHING;
 		`);
 	// Align Billing type name; drop obsolete IP Billing type if present.
@@ -715,7 +749,15 @@ export async function seedInformationTables() {
 			-- Clinical Form Instance (79-81; type 16)
 			(79, 'Draft', 'draft', 1, 16),
 			(80, 'Complete', 'complete', 2, 16),
-			(81, 'Amended', 'amended', 3, 16)
+			(81, 'Amended', 'amended', 3, 16),
+
+			-- OT Booking (90-95; type 17 — OtBookingStatusTaggingEnum)
+			(90, 'Unconfirmed', 'ot_unconfirmed', 1, 17),
+			(91, 'Confirmed', 'ot_confirmed', 2, 17),
+			(92, 'OT-PAC', 'ot_pac', 3, 17),
+			(93, 'Checked-In/Pre-Op', 'ot_check_in_pre_op', 4, 17),
+			(94, 'Post-Op', 'ot_post_op', 5, 17),
+			(95, 'OT Abort', 'ot_aborted', 6, 17)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);
@@ -989,9 +1031,8 @@ export async function seedInformationTables() {
 
 	// Catalog sync is source of truth for CATALOG_* system documents (updates legacy 900xx / 901xx rows).
 	try {
-		const { ensureDocumentCatalogSynced } = await import(
-			'$lib/server/medora/document-master/document-catalog-sync.server'
-		);
+		const { ensureDocumentCatalogSynced } =
+			await import('$lib/server/medora/document-master/document-catalog-sync.server');
 		const { synced } = await ensureDocumentCatalogSynced();
 		seedLogger.info(`Synced document catalog (${synced} templates)`);
 	} catch {
@@ -1046,13 +1087,14 @@ export async function seedInformationTables() {
 		`);
 		seedLogger.info('Seeded: lab_test / lab_panel (diagnostics dev)');
 	} catch {
-		seedLogger.info('Skipped: diagnostics lab catalog (tables not present)');
+		seedLogger.info(
+			'Skipped: diagnostics lab catalog (tables not present)'
+		);
 	}
 
 	try {
-		const { seedDemoErMasterForHospitals } = await import(
-			'$lib/server/db/seed/seed-demo-er-master.server'
-		);
+		const { seedDemoErMasterForHospitals } =
+			await import('$lib/server/db/seed/seed-demo-er-master.server');
 		await seedDemoErMasterForHospitals(db);
 	} catch (e) {
 		seedLogger.warn(
@@ -1061,15 +1103,40 @@ export async function seedInformationTables() {
 	}
 
 	try {
-		const { seedEdTriageLevelsForHospitals } = await import(
-			'$lib/server/db/seed/seed-ed-triage-levels.server'
-		);
+		const { seedEdTriageLevelsForHospitals } =
+			await import('$lib/server/db/seed/seed-ed-triage-levels.server');
 		await seedEdTriageLevelsForHospitals(db);
 	} catch (e) {
 		seedLogger.warn(
 			`Skipped: ed_triage_level (${e instanceof Error ? e.message : String(e)})`
 		);
 	}
+
+	await db.execute(sql`
+		UPDATE page SET status_id = 2
+		WHERE id IN (130, 131, 132, 133, 134)
+		`);
+	await db.execute(sql`
+		INSERT INTO user_group_page (user_group_id, page_id)
+		SELECT DISTINCT ugp.user_group_id, child.page_id
+		FROM user_group_page ugp
+		CROSS JOIN (
+			VALUES (160), (161), (161001), (161002), (161003),
+				(162), (163), (164), (165)
+		) AS child(page_id)
+		WHERE ugp.page_id IN (
+				130, 131, 132, 133, 134,
+				120, 121, 122, 123, 124, 125
+			)
+			AND NOT EXISTS (
+				SELECT 1 FROM user_group_page x
+				WHERE x.user_group_id = ugp.user_group_id
+					AND x.page_id = child.page_id
+			);
+		`);
+	await db.execute(sql`
+		DELETE FROM user_group_page WHERE page_id IN (130, 131, 132, 133, 134)
+		`);
 
 	await seedEmrDemoForAllHospitals(db);
 }

@@ -507,5 +507,80 @@ export const SYSTEM_CLINICAL_FORM_TEMPLATES: {
 				}
 			]
 		}
+	},
+	{
+		code: 'ot_procedure_note_v1',
+		title: 'OT Procedure Note',
+		schemaJson: {
+			sections: [
+				{
+					id: 'procedure_performed',
+					type: 'textarea',
+					label: 'Procedure performed',
+					required: true
+				},
+				{
+					id: 'findings',
+					type: 'textarea',
+					label: 'Operative findings',
+					required: true
+				},
+				{
+					id: 'complications',
+					type: 'textarea',
+					label: 'Complications / blood loss'
+				},
+				{
+					id: 'specimens',
+					type: 'text',
+					label: 'Specimens sent'
+				},
+				{
+					id: 'post_op_plan',
+					type: 'textarea',
+					label: 'Post-operative plan'
+				}
+			]
+		}
+	},
+	{
+		code: 'ot_procedure_consent_v1',
+		title: 'OT Procedure Consent',
+		schemaJson: {
+			sections: [
+				{
+					id: 'procedure_explained',
+					type: 'boolean',
+					label: 'Procedure and risks explained',
+					required: true
+				},
+				{
+					id: 'anesthesia_consent',
+					type: 'boolean',
+					label: 'Anesthesia consent obtained',
+					required: true
+				},
+				{
+					id: 'blood_consent',
+					type: 'boolean',
+					label: 'Blood / blood product consent discussed'
+				},
+				{
+					id: 'guardian_consent',
+					type: 'text',
+					label: 'Guardian name (if applicable)'
+				},
+				{
+					id: 'consent_notes',
+					type: 'textarea',
+					label: 'Consent notes'
+				},
+				{
+					id: 'consent_at',
+					type: 'datetime',
+					label: 'Consent obtained at'
+				}
+			]
+		}
 	}
 ];

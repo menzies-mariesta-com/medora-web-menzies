@@ -19,10 +19,12 @@
 	lifeCycle.onMount(() => {
 		if (hospitalId && visitId) {
 			void goto(
-				`/medora/hospital/${hospitalId}/home/perioperative/cases?visitId=${visitId}`
+				`/medora/hospital/${hospitalId}/home/operation-theatre/registration/ot-patient?visitId=${visitId}`
 			);
 		}
 	});
 </script>
 
-<p class="p-4 text-sm opacity-80">{msg.periop_operative_notes_redirect()}</p>
+<p class="p-4 text-sm opacity-80">
+	{msg.periop_operative_notes_redirect()}
+</p>

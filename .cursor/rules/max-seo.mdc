@@ -1,0 +1,76 @@
+---
+description: Medora peak SEO — SeoHead, sitemap, robots, prerender, docs manifest
+alwaysApply: true
+---
+
+# Maximum SEO (Medora)
+
+**Priority:** SEO to the max is a product requirement. This rule **extends** user-level max-seo guidance and **specializes** it for Medora, SvelteKit prerender, and the public docs catalog. Do not weaken global SEO requirements.
+
+## Mandatory head (indexable public pages)
+
+- Use [`SeoHead.svelte`](src/lib/component/own/snippet/seo/SeoHead.svelte) on every **indexable** public page (`/`, `/pricing`, `/docs`, doc articles, future marketing routes).
+- Build URLs with [`getSiteOrigin()`](src/lib/server/seo/site-origin.server.ts) (server/load) plus [`absoluteUrl`](src/lib/util/seo.util.ts) / [`absoluteAssetUrl`](src/lib/util/seo.util.ts).
+- [`DEFAULT_OG_IMAGE_PATH`](src/lib/util/seo.util.ts) (`/og-medora.png`) must exist under `static/` and match `ogImage` passed to `SeoHead`.
+- Unique title (~50-60 chars) and description (~150-160 chars) per URL; full OG + Twitter set (handled by `SeoHead` when props are complete).
+- One clear `h1` matching page intent; logical `h2`/`h3` (no skipped levels for styling).
+- Meaningful images: descriptive `alt`; decorative only use `alt=""`.
+
+## Robots and index policy
+
+| Area | Policy |
+|------|--------|
+| Auth [`(public)/auth`](src/routes/(public)/auth/+layout.svelte) | Layout `noindex, nofollow` (defense in depth on pages OK) |
+| Onboarding [`(public)/onboarding`](src/routes/(public)/onboarding/+layout.svelte) | `noindex, nofollow` |
+| Private app [`(private)/medora`](src/routes/(private)/medora/+layout.svelte) | `noindex, nofollow` |
+| Docs drafts | `SeoHead` `robots={draft ? 'noindex,nofollow' : 'index,follow'}` |
+| APIs, `/medora/**`, `/api/**` | Never index; [`robots.txt`](src/routes/robots.txt/+server.ts) Disallow |
+
+Soft-404 / thin pages: `noindex` or real 404. Do not index empty marketplace or staging shells.
+
+## Sitemap and crawl files
+
+- [`PUBLIC_SITEMAP_PATHS`](src/lib/util/seo.util.ts) lists static marketing paths; [`sitemap.xml`](src/routes/sitemap.xml/+server.ts) merges docs [`getDocsManifest()`](src/lib/docs/load-doc.server) prerender paths.
+- Adding a new **indexable** public route: update sitemap sources and run `npm run check:docs-manifest` / `check:public-seo` as applicable.
+- [`robots.txt`](src/routes/robots.txt/+server.ts): `Sitemap:` absolute origin; Disallow auth, onboarding, app, APIs.
+
+## Rendering (SEO + Kit)
+
+See [`sveltekit-page-rendering.mdc`](sveltekit-page-rendering.mdc):
+
+- Prerender static public HTML where data allows (`export const prerender = true`).
+- **No** `export const actions` on the same prerender tree; POST via mirrored [`src/routes/api/**/+server.ts`](src/routes/api/).
+- Critical meta must be in SSR/prerender HTML, not client-only injection after hydration.
+
+## Structured data
+
+- JSON-LD only via [`serializeJsonLd`](src/lib/util/seo.util.ts) inside `SeoHead` (escapes `</script>`).
+- Use valid, non-spammy types: `Organization`, `WebSite`, `WebPage`, `CollectionPage`, `BreadcrumbList` on docs where appropriate.
+
+## Content and URLs
+
+- Descriptive internal link text (not "click here").
+- Clean URLs; 301 for permanent canonical moves.
+- Cookie-only locale: do not spawn thin duplicate locale URLs for crawlers.
+- Paginated/faceted lists: canonicalize; avoid infinite indexable filter spam.
+
+## Automated checks
+
+- `npm run check:public-seo` — every public `+page.svelte` uses `SeoHead` or inherits `noindex` from layouts.
+- E2E [`e2e/public-seo.test.ts`](e2e/public-seo.test.ts) — title, description, canonical, OG/Twitter, `html[lang]` on key URLs.
+
+## Finish checklist (public route changes)
+
+- [ ] Indexable page uses `SeoHead` with origin-safe canonical and OG image
+- [ ] Non-indexable shell has layout or page `noindex`
+- [ ] Sitemap/manifest updated if URL is new and indexable
+- [ ] One `h1`, heading order, alt text on meaningful images
+- [ ] Prerender + API mirror pattern respected (`check:kit-prerender`, `npm run build`)
+- [ ] No duplicate title/description vs other indexable URLs
+
+## Do not
+
+- Ship indexable public pages with only a bare `<title>`
+- Reference missing OG images or broken canonicals
+- Index auth, EMR, or API responses
+- Cloaking, doorway pages, keyword stuffing, or client-only critical meta on public first paint

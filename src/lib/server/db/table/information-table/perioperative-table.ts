@@ -1,5 +1,6 @@
 import {
 	boolean,
+	date,
 	decimal,
 	integer,
 	jsonb,
@@ -23,6 +24,7 @@ import {
 	patientTable,
 	patientVisitTable,
 	serviceOrderDetailTable,
+	serviceItemTable,
 	staffTable,
 	statusTaggingTable
 } from './information-table';
@@ -53,9 +55,12 @@ export const clinicalFormTemplateTable = pgTable(
 	'clinical_form_template',
 	{
 		id: serial('id').primaryKey(),
-		hospitalId: uuid('hospital_id').references(() => hospitalTable.id, {
-			onDelete: 'cascade'
-		}),
+		hospitalId: uuid('hospital_id').references(
+			() => hospitalTable.id,
+			{
+				onDelete: 'cascade'
+			}
+		),
 		code: varchar('code', { length: 128 }).notNull(),
 		version: integer('version').notNull().default(1),
 		title: varchar('title', { length: 512 }).notNull(),
@@ -89,7 +94,9 @@ export const clinicalFormInstanceTable = pgTable(
 			.references(() => patientTable.id),
 		visitId: uuid('visit_id')
 			.notNull()
-			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
 		surgicalCaseId: integer('surgical_case_id'),
 		templateId: integer('template_id')
 			.notNull()
@@ -128,13 +135,21 @@ export const otRoomTable = pgTable(
 			.references(() => hospitalBranchTable.id),
 		name: varchar('name', { length: 256 }).notNull(),
 		sequenceNo: integer('sequence_no').notNull().default(0),
+		/** Buffer minutes kept free after a case before the theatre can be booked again. */
+		freezeMinutes: integer('freeze_minutes').notNull().default(0),
+		/** When true, booking requires an IP advance deposit for the visit. */
+		otAdvanceMandatory: boolean('ot_advance_mandatory')
+			.notNull()
+			.default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
 			.default(StatusEnum.ACTIVE),
 		...perioperativeTimestamps
 	},
-	(t) => [index('ot_room_hospital_branch_idx').on(t.hospitalId, t.branchId)]
+	(t) => [
+		index('ot_room_hospital_branch_idx').on(t.hospitalId, t.branchId)
+	]
 );
 
 export const surgicalCaseTable = pgTable(
@@ -152,18 +167,94 @@ export const surgicalCaseTable = pgTable(
 			.references(() => patientTable.id),
 		visitId: uuid('visit_id')
 			.notNull()
-			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
 		admissionId: integer('admission_id').references(
 			() => ipdAdmissionTable.id,
 			{ onDelete: 'set null' }
 		),
-		serviceOrderDetailId: integer('service_order_detail_id').references(
-			() => serviceOrderDetailTable.id,
-			{ onDelete: 'set null' }
-		),
+		serviceOrderDetailId: integer(
+			'service_order_detail_id'
+		).references(() => serviceOrderDetailTable.id, {
+			onDelete: 'set null'
+		}),
 		otRoomId: integer('ot_room_id').references(() => otRoomTable.id, {
 			onDelete: 'set null'
 		}),
+		/** Human-readable OT booking number generated when the request is booked. */
+		bookingNo: varchar('booking_no', { length: 64 }),
+		otRequestDate: date('ot_request_date'),
+		surgeonId: uuid('surgeon_id').references(() => staffTable.id, {
+			onDelete: 'set null'
+		}),
+		paediatricianId: uuid('paediatrician_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		providerId: uuid('provider_id').references(() => staffTable.id, {
+			onDelete: 'set null'
+		}),
+		serviceId: integer('service_id').references(
+			() => serviceItemTable.id,
+			{ onDelete: 'set null' }
+		),
+		provisionalDiagnosis: text('provisional_diagnosis'),
+		durationMinutes: integer('duration_minutes'),
+		otRequestedBy: uuid('ot_requested_by').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		clinicalNotes: text('clinical_notes'),
+		wardRemarks: text('ward_remarks'),
+		taggedAt: timestamp('tagged_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		taggedBy: uuid('tagged_by').references(() => staffTable.id, {
+			onDelete: 'set null'
+		}),
+		wardToOtAt: timestamp('ward_to_ot_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		wardToOtBy: uuid('ward_to_ot_by').references(
+			() => staffTable.id,
+			{
+				onDelete: 'set null'
+			}
+		),
+		preOpAcknowledgedAt: timestamp('pre_op_acknowledged_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		preOpAcknowledgedBy: uuid('pre_op_acknowledged_by').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		inOtAt: timestamp('in_ot_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		inOtBy: uuid('in_ot_by').references(() => staffTable.id, {
+			onDelete: 'set null'
+		}),
+		postOpAt: timestamp('post_op_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		postOpBy: uuid('post_op_by').references(() => staffTable.id, {
+			onDelete: 'set null'
+		}),
+		returnedToWardAt: timestamp('returned_to_ward_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		returnedToWardBy: uuid('returned_to_ward_by').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		abortReason: text('abort_reason'),
 		procedureName: varchar('procedure_name', { length: 512 })
 			.notNull()
 			.default(''),
@@ -206,6 +297,9 @@ export const surgicalCaseTable = pgTable(
 	(t) => [
 		index('surgical_case_hospital_idx').on(t.hospitalId),
 		index('surgical_case_visit_idx').on(t.visitId),
+		index('surgical_case_booking_no_idx').on(t.bookingNo),
+		index('surgical_case_request_date_idx').on(t.otRequestDate),
+		index('surgical_case_surgeon_idx').on(t.surgeonId),
 		index('surgical_case_room_schedule_idx').on(
 			t.otRoomId,
 			t.scheduledStart
@@ -218,7 +312,9 @@ export const surgicalCaseStaffTable = pgTable(
 	{
 		surgicalCaseId: integer('surgical_case_id')
 			.notNull()
-			.references(() => surgicalCaseTable.id, { onDelete: 'cascade' }),
+			.references(() => surgicalCaseTable.id, {
+				onDelete: 'cascade'
+			}),
 		staffId: uuid('staff_id')
 			.notNull()
 			.references(() => staffTable.id),
@@ -237,7 +333,9 @@ export const surgicalCaseAuditTable = pgTable(
 		id: serial('id').primaryKey(),
 		surgicalCaseId: integer('surgical_case_id')
 			.notNull()
-			.references(() => surgicalCaseTable.id, { onDelete: 'cascade' }),
+			.references(() => surgicalCaseTable.id, {
+				onDelete: 'cascade'
+			}),
 		action: varchar('action', { length: 64 }).notNull(),
 		detailJson: jsonb('detail_json'),
 		staffId: uuid('staff_id').references(() => staffTable.id),
@@ -260,7 +358,9 @@ export const edEncounterTable = pgTable(
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
 		visitId: uuid('visit_id')
 			.notNull()
-			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
 		boardColumn: varchar('board_column', { length: 64 })
 			.notNull()
 			.default('waiting_triage'),
@@ -300,7 +400,9 @@ export const edEncounterTable = pgTable(
 			withTimezone: true,
 			mode: 'string'
 		}),
-		retainErBedAfterDischarge: boolean('retain_er_bed_after_discharge')
+		retainErBedAfterDischarge: boolean(
+			'retain_er_bed_after_discharge'
+		)
 			.notNull()
 			.default(false),
 		dischargeRemarks: text('discharge_remarks'),
@@ -325,7 +427,9 @@ export const traumaActivationTable = pgTable(
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
 		visitId: uuid('visit_id')
 			.notNull()
-			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
 		levelCode: varchar('level_code', { length: 16 }).notNull(),
 		activatedAt: timestamp('activated_at', {
 			withTimezone: true,
@@ -354,7 +458,9 @@ export const surgicalCaseImplantTable = pgTable(
 		id: serial('id').primaryKey(),
 		surgicalCaseId: integer('surgical_case_id')
 			.notNull()
-			.references(() => surgicalCaseTable.id, { onDelete: 'cascade' }),
+			.references(() => surgicalCaseTable.id, {
+				onDelete: 'cascade'
+			}),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
@@ -373,7 +479,188 @@ export const surgicalCaseImplantTable = pgTable(
 			.default(StatusEnum.ACTIVE),
 		...perioperativeTimestamps
 	},
-	(t) => [index('surgical_case_implant_case_idx').on(t.surgicalCaseId)]
+	(t) => [
+		index('surgical_case_implant_case_idx').on(t.surgicalCaseId)
+	]
+);
+
+export const otBloodRequisitionTable = pgTable(
+	'ot_blood_requisition',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, {
+				onDelete: 'cascade'
+			}),
+		surgicalCaseId: integer('surgical_case_id')
+			.notNull()
+			.references(() => surgicalCaseTable.id, {
+				onDelete: 'cascade'
+			}),
+		bloodGroup: varchar('blood_group', { length: 16 }),
+		component: varchar('component', { length: 64 }).notNull(),
+		units: integer('units').notNull().default(1),
+		urgency: varchar('urgency', { length: 32 })
+			.notNull()
+			.default('routine'),
+		notes: text('notes'),
+		requestedBy: uuid('requested_by').references(
+			() => staffTable.id,
+			{
+				onDelete: 'set null'
+			}
+		),
+		requestedAt: timestamp('requested_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		statusTaggingId: integer('status_tagging_id').references(
+			() => statusTaggingTable.id
+		),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...perioperativeTimestamps
+	},
+	(t) => [
+		index('ot_blood_requisition_case_idx').on(t.surgicalCaseId),
+		index('ot_blood_requisition_hospital_idx').on(t.hospitalId)
+	]
+);
+
+export const otBillingTable = pgTable(
+	'ot_billing',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		visitId: uuid('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
+		admissionId: integer('admission_id').references(
+			() => ipdAdmissionTable.id,
+			{ onDelete: 'set null' }
+		),
+		billNo: varchar('bill_no', { length: 128 }),
+		linesSubtotal: decimal('lines_subtotal', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		discountTypeId: integer('discount_type_id').notNull().default(1),
+		discountPercent: decimal('discount_percent', {
+			precision: 5,
+			scale: 2
+		}),
+		discountAmount: decimal('discount_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		totalAmount: decimal('total_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		transferredAt: timestamp('transferred_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		transferredBy: uuid('transferred_by').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		closedAt: timestamp('closed_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		closedBy: uuid('closed_by').references(() => staffTable.id, {
+			onDelete: 'set null'
+		}),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id)
+			.default(56),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...perioperativeTimestamps
+	},
+	(t) => [
+		index('ot_billing_visit_idx').on(t.visitId),
+		index('ot_billing_hospital_idx').on(t.hospitalId),
+		uniqueIndex('ot_billing_visit_uidx').on(t.visitId)
+	]
+);
+
+export const otBillingLineTable = pgTable(
+	'ot_billing_line',
+	{
+		id: serial('id').primaryKey(),
+		otBillingId: integer('ot_billing_id')
+			.notNull()
+			.references(() => otBillingTable.id, { onDelete: 'cascade' }),
+		surgicalCaseId: integer('surgical_case_id').references(
+			() => surgicalCaseTable.id,
+			{ onDelete: 'set null' }
+		),
+		serviceId: integer('service_id').references(
+			() => serviceItemTable.id,
+			{ onDelete: 'set null' }
+		),
+		serviceNameSnapshot: varchar('service_name_snapshot', {
+			length: 512
+		}),
+		serviceAmount: decimal('service_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		serviceTaxAmount: decimal('service_tax_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		quantity: integer('quantity').notNull().default(1),
+		lineTotal: decimal('line_total', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...perioperativeTimestamps
+	},
+	(t) => [
+		index('ot_billing_line_bill_idx').on(t.otBillingId),
+		index('ot_billing_line_case_idx').on(t.surgicalCaseId),
+		uniqueIndex('ot_billing_line_bill_case_uidx').on(
+			t.otBillingId,
+			t.surgicalCaseId
+		)
+	]
 );
 
 export const hospitalPerioperativeSettingTable = pgTable(
@@ -387,7 +674,9 @@ export const hospitalPerioperativeSettingTable = pgTable(
 		})
 			.notNull()
 			.default('esi'),
-		preOpMandatory: boolean('pre_op_mandatory').notNull().default(true),
+		preOpMandatory: boolean('pre_op_mandatory')
+			.notNull()
+			.default(true),
 		whoBlockWithoutTimeout: boolean('who_block_without_timeout')
 			.notNull()
 			.default(false),
@@ -409,7 +698,9 @@ export const ldEncounterTable = pgTable(
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
 		visitId: uuid('visit_id')
 			.notNull()
-			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
 		boardColumn: varchar('board_column', { length: 64 })
 			.notNull()
 			.default('active_labor'),

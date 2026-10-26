@@ -102,8 +102,10 @@
 			}
 			toastService.addToast(
 				isEdit
-					? (msg.ed_triage_level_updated?.() ?? 'Triage level updated')
-					: (msg.ed_triage_level_created?.() ?? 'Triage level created'),
+					? (msg.ed_triage_level_updated?.() ??
+							'Triage level updated')
+					: (msg.ed_triage_level_created?.() ??
+							'Triage level created'),
 				StatusColorEnum.SUCCESS
 			);
 			confirm();
@@ -126,7 +128,7 @@
 			>
 				<label for="triage-level" class="shrink-0 sm:w-36">
 					{msg.ed_triage_level_col_level?.() ?? 'Level'}<span
-						class="text-error align-top text-sm leading-none"
+						class="align-top text-sm leading-none text-error"
 						aria-hidden="true">*</span
 					>
 				</label>
@@ -145,7 +147,7 @@
 			>
 				<label for="triage-name" class="shrink-0 sm:w-36">
 					{m.name()}<span
-						class="text-error align-top text-sm leading-none"
+						class="align-top text-sm leading-none text-error"
 						aria-hidden="true">*</span
 					>
 				</label>
@@ -196,9 +198,8 @@
 		</WashButton>
 		<WashButton
 			type="submit"
-			className="btn-primary cursor-pointer"
-			class:cursor-not-allowed={isSubmitting}
-			class:loading={isSubmitting}
+			className={`btn-primary cursor-pointer${isSubmitting ? ' cursor-not-allowed' : ''}`}
+			loading={isSubmitting}
 			disabled={isSubmitting}
 			aria-busy={isSubmitting}
 		>

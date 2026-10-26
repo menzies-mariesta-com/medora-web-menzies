@@ -1,0 +1,101 @@
+---
+description: Medora peak cybersecurity — authz, PHI, XSS, headers, healthcare EMR
+alwaysApply: true
+---
+
+# Maximum cybersecurity (Medora)
+
+**Priority:** Security to the max is a product requirement for a healthcare EMR. This is **defense in depth** and PHI-aware engineering; it is not a compliance certification checklist.
+
+## Architecture boundary
+
+- UI → mirrored API → `$lib/server/**` only ([`remote-api-pages-flow.mdc`](remote-api-pages-flow.mdc)).
+- **Never** import `$lib/server/**` in `.svelte` or client modules; enforced by [`check-ui-boundary.mjs`](scripts/check-ui-boundary.mjs).
+- **Never** ship secrets in client bundles; no `$env/static/private` or `$app/env/private` in UI ([`check-security-markup.mjs`](scripts/check-security-markup.mjs)).
+
+## Authentication and session
+
+- Better Auth via [`hooks.server.ts`](src/hooks.server.ts); session on `event.locals`; fail closed on auth errors.
+- Mutating Medora APIs: [`rejectMutatingMedoraApiWithoutTwoFactor`](src/lib/server/medora/auth/require-two-factor-for-mutation.server.ts) for enrolled staff roles.
+- Session cookies: HttpOnly, Secure in production, SameSite appropriate (Better Auth config).
+
+## Authorization (every API and sensitive load)
+
+Order of checks:
+
+1. Authenticate (`401` if no user).
+2. Resolve role (`event.locals.userRoleId`, admin permissions when applicable).
+3. **Hospital scope:** validate `hospital_id` route param against `event.locals.allowedHospitalIds` / staff hospitals; never trust client id alone ([`hospital.server.ts`](src/lib/server/medora/hospital.server.ts) patterns).
+4. Page/feature permission for admin-team actions.
+
+Use generic **403/404** messages; avoid user/hospital enumeration via error text.
+
+## Input and output
+
+- Validate request bodies and query params at API boundary (Zod or project schema).
+- Database access via Drizzle only (parameterized); no string-concatenated SQL.
+- API list DTOs: **minimum necessary** PHI; no fat audit blobs in every row.
+- User-visible errors: [`sanitizeUserFacingErrorText`](src/lib/util/user-facing-error.util.ts) / toast sanitizers (no stacks, SQL, HTML dumps).
+
+## XSS and `{@html}`
+
+Allowed without extra review (allowlist in `check-security-markup`):
+
+- [`SeoHead.svelte`](src/lib/component/own/snippet/seo/SeoHead.svelte) JSON-LD via [`serializeJsonLd`](src/lib/util/seo.util.ts).
+- [`DocsArticle.svelte`](src/lib/component/own/global/public/docs/DocsArticle.svelte) trusted docs pipeline HTML.
+- [`MariRichEditorPreview.svelte`](src/lib/component/own/library/mari/text-editor/rich-editor/MariRichEditorPreview.svelte) for sanitized stored content only.
+
+**Ban** new `{@html}` for raw user/API/DB strings without security review and server-side sanitization on persist (TinyMCE skill).
+
+## Open redirects
+
+- Use [`sanitizeRedirectTo`](src/lib/util/two-factor-gate.util.ts): relative paths only, no `//`, no `http:`/`https:` off-site.
+- Do not duplicate weaker redirect parsers in auth UI; import shared helper when touching those files.
+
+## HTTP security headers
+
+Applied centrally via [`security-headers.server.ts`](src/lib/server/http/security-headers.server.ts) in [`hooks.server.ts`](src/hooks.server.ts):
+
+- `Content-Security-Policy` (pragmatic for SvelteKit inline boot scripts in [`app.html`](src/app.html))
+- `Strict-Transport-Security` (HTTPS production)
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options` / `frame-ancestors`
+- `Referrer-Policy`, `Permissions-Policy`
+- `Cache-Control: no-store` on `/medora/**` and `/api/**` responses
+
+Tune CSP forward when adding CDNs or third-party scripts; do not remove CSP to "fix" warnings.
+
+## Logging and errors
+
+- [`handleError`](src/hooks.server.ts): log URL, status, message; **no** passwords, tokens, session ids, or PHI payloads.
+- Client console: do not log full API error bodies containing PHI.
+
+## Secrets and dependencies
+
+- Real credentials only in local `.env`; [`.env.example`](.env.example) placeholders only.
+- Review high/critical `npm audit` findings before release; prefer patch upgrades for auth/crypto deps.
+
+## Clinical and PHI handling
+
+- Avoid PHI in query strings and analytics events where possible.
+- Use domain audit hooks where they exist (e.g. lab audit) for sensitive workflow changes.
+- **File uploads:** validate type/size; store outside public web root; authorize every download URL.
+- Document templates and generated PDFs: hospital policy and consent flows apply.
+
+## Finish checklist (new endpoint or form)
+
+- [ ] Mirrored API with auth + hospital scope + permission checks
+- [ ] Zod (or equivalent) validation on input
+- [ ] Lean response DTO in `$lib/model/type/**`
+- [ ] Sanitized user-facing errors
+- [ ] No new `{@html}` without allowlist update and sanitization story
+- [ ] 2FA gate respected for mutating Medora APIs when role requires it
+- [ ] Security headers present on responses (hooks wrapper)
+
+## Do not
+
+- Trust `hospital_id` from the client without server-side membership check
+- Return stack traces or SQL to the browser
+- Log session tokens or patient identifiers in plain text
+- Add `{@html}` for convenience on table cell or API string fields
+- Disable security headers or CSP globally instead of narrowing directives

@@ -41,6 +41,7 @@ import {
 } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { assertDischargeSummarySigned } from '$lib/server/medora/clinical/discharge-summary.server';
+import { assertOtBillingReadyForDischarge } from '$lib/server/medora/operation-theatre/ot-billing.server';
 
 const sourceOpdVisit = alias(table.patientVisitTable, 'source_opd');
 
@@ -574,6 +575,10 @@ export async function dischargeAdmission(
 	if (!admission) throw error(404, 'Active admission not found');
 
 	await assertDischargeSummarySigned({
+		hospitalId: payload.hospitalId,
+		visitId: admission.visitId
+	});
+	await assertOtBillingReadyForDischarge({
 		hospitalId: payload.hospitalId,
 		visitId: admission.visitId
 	});

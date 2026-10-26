@@ -240,11 +240,21 @@ export enum SurgicalCaseStatusTaggingEnum {
 	PENDING_RESCHEDULE = 78
 }
 
-/** `status_tagging.id` for structured clinical form instances. */
+/** `status_tagging.id` for clinical form instances. */
 export enum ClinicalFormInstanceStatusTaggingEnum {
 	DRAFT = 79,
 	COMPLETE = 80,
 	AMENDED = 81
+}
+
+/** `status_tagging.id` for OT bookings (Operation Theatre module). */
+export enum OtBookingStatusTaggingEnum {
+	UNCONFIRMED = 90,
+	CONFIRMED = 91,
+	OT_PAC = 92,
+	CHECKED_IN_PRE_OP = 93,
+	POST_OP = 94,
+	ABORTED = 95
 }
 
 /** Care level requested on an IPD admission order (not status_tagging). */

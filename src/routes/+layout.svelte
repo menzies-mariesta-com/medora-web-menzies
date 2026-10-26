@@ -29,7 +29,7 @@
 	const fontTool = new FontTool();
 
 	const isEmbed = $derived(
-		page.url.searchParams.get('embed') === '1'
+		new URL(page.url.href).searchParams.get('embed') === '1'
 	);
 
 	/** Quick tools on every shell; hidden only for embedded views. */
@@ -55,7 +55,9 @@
 	});
 
 	/** Short subtitle only — confirm/alert copy uses `message` in the body. */
-	const dialogDescription = $derived(DialogState.current?.description);
+	const dialogDescription = $derived(
+		DialogState.current?.description
+	);
 
 	const dialogOwnsActions = $derived(
 		Boolean(
@@ -116,7 +118,8 @@
 		boxClassName={DialogState.current.modalClassName}
 		showActions={!dialogOwnsActions}
 		showDefaultClose={false}
-		closeOnOutsideClick={DialogState.current.closeOnOutsideClick !== false}
+		closeOnOutsideClick={DialogState.current.closeOnOutsideClick !==
+			false}
 	>
 		{#snippet layer()}
 			{#if ToastState.length > 0}
@@ -152,7 +155,7 @@
 				cancel: () => dialogService.cancel()
 			})}
 		{:else if DialogState.current.message}
-			<p class="text-base-content text-sm leading-relaxed">
+			<p class="text-sm leading-relaxed text-base-content">
 				{DialogState.current.message}
 			</p>
 		{/if}
