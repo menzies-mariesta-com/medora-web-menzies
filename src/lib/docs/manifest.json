@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-18T09:14:19.228Z",
+  "generatedAt": "2026-10-20T17:00:57.538Z",
   "version": "1.5.0",
   "stats": {
-    "modules": 15,
-    "workflows": 171,
-    "apis": 169,
+    "modules": 16,
+    "workflows": 181,
+    "apis": 179,
     "templates": 381,
     "journalSections": 13
   },
@@ -190,7 +190,8 @@
         "billing-ip-billing",
         "billing-ip-billing-bill",
         "billing-ip-billing-advance-deposit",
-        "billing-er-billing"
+        "billing-er-billing",
+        "billing-ot-billing"
       ]
     },
     {
@@ -297,6 +298,23 @@
         "diagnostics-lab-critical-callback",
         "diagnostics-lab-catalog",
         "diagnostics-lab-integration"
+      ]
+    },
+    {
+      "slug": "operation-theatre",
+      "name": "Operation Theatre",
+      "moduleId": 16,
+      "moduleUrl": "/medora/home/operation-theatre",
+      "workflows": [
+        "operation-theatre-ot-scheduler",
+        "operation-theatre-registration",
+        "operation-theatre-registration-ot-patient",
+        "operation-theatre-registration-new-patient",
+        "operation-theatre-registration-list",
+        "operation-theatre-booking-details",
+        "operation-theatre-ward-to-ot",
+        "operation-theatre-reports",
+        "operation-theatre-ot-master"
       ]
     }
   ],
@@ -1397,6 +1415,141 @@
       "contentFile": "workflows/perioperative-procedure-log.md"
     },
     {
+      "slug": "operation-theatre-ot-scheduler",
+      "path": "/docs/workflows/operation-theatre-ot-scheduler",
+      "title": "OT Scheduler",
+      "pageId": 160,
+      "moduleId": 16,
+      "moduleName": "Operation Theatre",
+      "moduleSlug": "operation-theatre",
+      "pageUrl": "/medora/home/operation-theatre/ot-scheduler",
+      "capturePageUrl": "/medora/home/operation-theatre/ot-scheduler",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": null,
+      "contentFile": "workflows/operation-theatre-ot-scheduler.md"
+    },
+    {
+      "slug": "operation-theatre-registration",
+      "path": "/docs/workflows/operation-theatre-registration",
+      "title": "Registration",
+      "pageId": 161,
+      "moduleId": 16,
+      "moduleName": "Operation Theatre",
+      "moduleSlug": "operation-theatre",
+      "pageUrl": "/medora/home/operation-theatre/registration",
+      "capturePageUrl": "/medora/home/operation-theatre/registration/ot-patient",
+      "sectionTitle": "Registration",
+      "subTabTitle": "OT Patient Registration",
+      "parentPageTitle": null,
+      "contentFile": "workflows/operation-theatre-registration.md"
+    },
+    {
+      "slug": "operation-theatre-registration-ot-patient",
+      "path": "/docs/workflows/operation-theatre-registration-ot-patient",
+      "title": "OT Patient Registration",
+      "pageId": 161001,
+      "moduleId": 16,
+      "moduleName": "Operation Theatre",
+      "moduleSlug": "operation-theatre",
+      "pageUrl": "/medora/home/operation-theatre/registration/ot-patient",
+      "capturePageUrl": "/medora/home/operation-theatre/registration/ot-patient",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": "Registration",
+      "contentFile": "workflows/operation-theatre-registration-ot-patient.md"
+    },
+    {
+      "slug": "operation-theatre-registration-new-patient",
+      "path": "/docs/workflows/operation-theatre-registration-new-patient",
+      "title": "New Patient",
+      "pageId": 161002,
+      "moduleId": 16,
+      "moduleName": "Operation Theatre",
+      "moduleSlug": "operation-theatre",
+      "pageUrl": "/medora/home/operation-theatre/registration/new-patient",
+      "capturePageUrl": "/medora/home/operation-theatre/registration/new-patient",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": "Registration",
+      "contentFile": "workflows/operation-theatre-registration-new-patient.md"
+    },
+    {
+      "slug": "operation-theatre-registration-list",
+      "path": "/docs/workflows/operation-theatre-registration-list",
+      "title": "Registration List",
+      "pageId": 161003,
+      "moduleId": 16,
+      "moduleName": "Operation Theatre",
+      "moduleSlug": "operation-theatre",
+      "pageUrl": "/medora/home/operation-theatre/registration/list",
+      "capturePageUrl": "/medora/home/operation-theatre/registration/list",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": "Registration",
+      "contentFile": "workflows/operation-theatre-registration-list.md"
+    },
+    {
+      "slug": "operation-theatre-booking-details",
+      "path": "/docs/workflows/operation-theatre-booking-details",
+      "title": "Booking Details",
+      "pageId": 162,
+      "moduleId": 16,
+      "moduleName": "Operation Theatre",
+      "moduleSlug": "operation-theatre",
+      "pageUrl": "/medora/home/operation-theatre/booking-details",
+      "capturePageUrl": "/medora/home/operation-theatre/booking-details",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": null,
+      "contentFile": "workflows/operation-theatre-booking-details.md"
+    },
+    {
+      "slug": "operation-theatre-ward-to-ot",
+      "path": "/docs/workflows/operation-theatre-ward-to-ot",
+      "title": "Ward to OT Acknowledgement",
+      "pageId": 163,
+      "moduleId": 16,
+      "moduleName": "Operation Theatre",
+      "moduleSlug": "operation-theatre",
+      "pageUrl": "/medora/home/operation-theatre/ward-to-ot",
+      "capturePageUrl": "/medora/home/operation-theatre/ward-to-ot",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": null,
+      "contentFile": "workflows/operation-theatre-ward-to-ot.md"
+    },
+    {
+      "slug": "operation-theatre-reports",
+      "path": "/docs/workflows/operation-theatre-reports",
+      "title": "Reports",
+      "pageId": 164,
+      "moduleId": 16,
+      "moduleName": "Operation Theatre",
+      "moduleSlug": "operation-theatre",
+      "pageUrl": "/medora/home/operation-theatre/reports",
+      "capturePageUrl": "/medora/home/operation-theatre/reports",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": null,
+      "contentFile": "workflows/operation-theatre-reports.md"
+    },
+    {
+      "slug": "operation-theatre-ot-master",
+      "path": "/docs/workflows/operation-theatre-ot-master",
+      "title": "OT Master",
+      "pageId": 165,
+      "moduleId": 16,
+      "moduleName": "Operation Theatre",
+      "moduleSlug": "operation-theatre",
+      "pageUrl": "/medora/home/operation-theatre/ot-master",
+      "capturePageUrl": "/medora/home/operation-theatre/ot-master",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": null,
+      "contentFile": "workflows/operation-theatre-ot-master.md"
+    },
+    {
       "slug": "obstetrics-labor-board",
       "path": "/docs/workflows/obstetrics-labor-board",
       "title": "Labor Board",
@@ -1815,6 +1968,21 @@
       "subTabTitle": null,
       "parentPageTitle": null,
       "contentFile": "workflows/billing-er-billing.md"
+    },
+    {
+      "slug": "billing-ot-billing",
+      "path": "/docs/workflows/billing-ot-billing",
+      "title": "OT Billing",
+      "pageId": 150005,
+      "moduleId": 8,
+      "moduleName": "Billing",
+      "moduleSlug": "billing",
+      "pageUrl": "/medora/home/billing/ot-billing",
+      "capturePageUrl": "/medora/home/billing/ot-billing",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": null,
+      "contentFile": "workflows/billing-ot-billing.md"
     },
     {
       "slug": "administration-prefix-configuration",
@@ -3115,6 +3283,7 @@
     "/api/(private)/medora/hospital/[hospital_id]/home/billing/ip-billing/visit-lines",
     "/api/(private)/medora/hospital/[hospital_id]/home/billing/op-billing/bills",
     "/api/(private)/medora/hospital/[hospital_id]/home/billing/op-billing/visit-lines",
+    "/api/(private)/medora/hospital/[hospital_id]/home/billing/ot-billing",
     "/api/(private)/medora/hospital/[hospital_id]/home/clinical-form",
     "/api/(private)/medora/hospital/[hospital_id]/home/clinical-tasks",
     "/api/(private)/medora/hospital/[hospital_id]/home/consultation",
@@ -3200,6 +3369,15 @@
     "/api/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/emr/vital",
     "/api/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/ipd/census",
     "/api/(private)/medora/hospital/[hospital_id]/home/obstetrics",
+    "/api/(private)/medora/hospital/[hospital_id]/home/operation-theatre/blood-requisition",
+    "/api/(private)/medora/hospital/[hospital_id]/home/operation-theatre/bookings",
+    "/api/(private)/medora/hospital/[hospital_id]/home/operation-theatre/handoff",
+    "/api/(private)/medora/hospital/[hospital_id]/home/operation-theatre/options",
+    "/api/(private)/medora/hospital/[hospital_id]/home/operation-theatre/ot-master",
+    "/api/(private)/medora/hospital/[hospital_id]/home/operation-theatre/registration",
+    "/api/(private)/medora/hospital/[hospital_id]/home/operation-theatre/reports",
+    "/api/(private)/medora/hospital/[hospital_id]/home/operation-theatre/requests",
+    "/api/(private)/medora/hospital/[hospital_id]/home/operation-theatre/scheduler",
     "/api/(private)/medora/hospital/[hospital_id]/home/perioperative/events",
     "/api/(private)/medora/hospital/[hospital_id]/home/perioperative/ot-room",
     "/api/(private)/medora/hospital/[hospital_id]/home/perioperative/surgical-case",
@@ -3663,6 +3841,60 @@
       "keywords": "Perioperative /medora/home/perioperative/procedure-log"
     },
     {
+      "title": "OT Scheduler",
+      "href": "/docs/workflows/operation-theatre-ot-scheduler",
+      "category": "Workflow",
+      "keywords": "Operation Theatre /medora/home/operation-theatre/ot-scheduler"
+    },
+    {
+      "title": "Registration",
+      "href": "/docs/workflows/operation-theatre-registration",
+      "category": "Workflow",
+      "keywords": "Operation Theatre /medora/home/operation-theatre/registration"
+    },
+    {
+      "title": "OT Patient Registration",
+      "href": "/docs/workflows/operation-theatre-registration-ot-patient",
+      "category": "Workflow",
+      "keywords": "Operation Theatre /medora/home/operation-theatre/registration/ot-patient"
+    },
+    {
+      "title": "New Patient",
+      "href": "/docs/workflows/operation-theatre-registration-new-patient",
+      "category": "Workflow",
+      "keywords": "Operation Theatre /medora/home/operation-theatre/registration/new-patient"
+    },
+    {
+      "title": "Registration List",
+      "href": "/docs/workflows/operation-theatre-registration-list",
+      "category": "Workflow",
+      "keywords": "Operation Theatre /medora/home/operation-theatre/registration/list"
+    },
+    {
+      "title": "Booking Details",
+      "href": "/docs/workflows/operation-theatre-booking-details",
+      "category": "Workflow",
+      "keywords": "Operation Theatre /medora/home/operation-theatre/booking-details"
+    },
+    {
+      "title": "Ward to OT Acknowledgement",
+      "href": "/docs/workflows/operation-theatre-ward-to-ot",
+      "category": "Workflow",
+      "keywords": "Operation Theatre /medora/home/operation-theatre/ward-to-ot"
+    },
+    {
+      "title": "Reports",
+      "href": "/docs/workflows/operation-theatre-reports",
+      "category": "Workflow",
+      "keywords": "Operation Theatre /medora/home/operation-theatre/reports"
+    },
+    {
+      "title": "OT Master",
+      "href": "/docs/workflows/operation-theatre-ot-master",
+      "category": "Workflow",
+      "keywords": "Operation Theatre /medora/home/operation-theatre/ot-master"
+    },
+    {
       "title": "Labor Board",
       "href": "/docs/workflows/obstetrics-labor-board",
       "category": "Workflow",
@@ -3829,6 +4061,12 @@
       "href": "/docs/workflows/billing-er-billing",
       "category": "Workflow",
       "keywords": "Billing /medora/home/billing/er-billing"
+    },
+    {
+      "title": "OT Billing",
+      "href": "/docs/workflows/billing-ot-billing",
+      "category": "Workflow",
+      "keywords": "Billing /medora/home/billing/ot-billing"
     },
     {
       "title": "Prefix Configuration",
@@ -4500,6 +4738,15 @@
     "/docs/workflows/perioperative-pre-op",
     "/docs/workflows/perioperative-room-setup",
     "/docs/workflows/perioperative-procedure-log",
+    "/docs/workflows/operation-theatre-ot-scheduler",
+    "/docs/workflows/operation-theatre-registration",
+    "/docs/workflows/operation-theatre-registration-ot-patient",
+    "/docs/workflows/operation-theatre-registration-new-patient",
+    "/docs/workflows/operation-theatre-registration-list",
+    "/docs/workflows/operation-theatre-booking-details",
+    "/docs/workflows/operation-theatre-ward-to-ot",
+    "/docs/workflows/operation-theatre-reports",
+    "/docs/workflows/operation-theatre-ot-master",
     "/docs/workflows/obstetrics-labor-board",
     "/docs/workflows/obstetrics-partogram",
     "/docs/workflows/diagnostics-lab-dashboard",
@@ -4528,6 +4775,7 @@
     "/docs/workflows/billing-ip-billing-bill",
     "/docs/workflows/billing-ip-billing-advance-deposit",
     "/docs/workflows/billing-er-billing",
+    "/docs/workflows/billing-ot-billing",
     "/docs/workflows/administration-prefix-configuration",
     "/docs/workflows/administration-financial-year",
     "/docs/workflows/administration-departments",
@@ -4641,6 +4889,7 @@
     "/docs/modules/emergency",
     "/docs/modules/perioperative",
     "/docs/modules/obstetrics",
-    "/docs/modules/diagnostics"
+    "/docs/modules/diagnostics",
+    "/docs/modules/operation-theatre"
   ]
 }

@@ -1,0 +1,144 @@
+---
+description: Medora peak performance — intent prefetch, Kit navigation, JSON APIs, Svelte updates, measure
+alwaysApply: true
+---
+
+# Maximum performance (Medora)
+
+**Priority:** Performance is a product requirement, not optional polish. Optimize for mobile LCP, TTFB, INP, and main-thread cost from day one. This rule **extends** user-level peak-performance guidance and **specializes** it for SvelteKit and Medora’s Pages → API → server stack (see `.cursor/rules/remote-api-pages-flow.mdc`).
+
+## TTFB and server
+
+- Prerender static public pages (docs, legal, marketing shells) when data allows
+- Skip auth/session lookups on anonymous public HTML; load session only when cookie/path requires it
+- Short TTL cache for hot public reads (footer lists, published catalogs)
+- Prefer CDN/edge HTML for prerendered routes over cold serverless on every hit
+
+## Caching and assets
+
+- Long-cache immutable hashed bundles (`/_app/immutable/*`, fingerprinted CSS/JS)
+- Long-cache fonts; media with `max-age` + `stale-while-revalidate` when keys are stable
+- Fonts: ship **woff2 only**, `font-display: swap`, preload the critical face once; no unused ttf/woff/eot
+
+## JavaScript (first load)
+
+- Dynamic-import heavy libs (animation, charts, editors, TinyMCE, mermaid); keep first paint lean
+- Prefer CSS + `IntersectionObserver` for scroll/entrance reveals over ScrollTrigger sitewide
+- Code-split below-the-fold sections; defer non-critical chrome (cookie banner after idle when consent exists, back-to-top)
+- Do not sync-import animation stacks on every marketing page for decorative fades
+- **Do not** ship multi-megabyte monolithic bundles “for routing” or “for prefetch.” SvelteKit already client-navigates; split by route and feature.
+
+```js
+// ❌ BAD: GSAP + ScrollTrigger on every page for simple fade-ups
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+// ✅ GOOD: CSS/IO reveals; dynamic-import GSAP only for hero motion
+void import('gsap').then(({ default: gsap }) => { /* hero only */ });
+```
+
+## Images and media
+
+- Width/height (or aspect-ratio) to avoid CLS; `loading="lazy"` except true LCP
+- Compress social/OG images (tens of KB to low hundreds, not multi-MB)
+- Prefer modern formats where the pipeline supports them; do not proxy huge originals without cache
+
+## Motion
+
+- Honor `prefers-reduced-motion: reduce`
+- Pause or kill infinite loops (yoyo/repeat) when the hero is off-screen
+
+## Intent-driven prefetch (hover-to-fetch)
+
+**Goal:** By the time the user commits a click, route data (and optional API JSON) is already in flight or cached so navigation feels instant.
+
+### SvelteKit route preload (default)
+
+- Global default is already set in `src/app.html`: `data-sveltekit-preload-data="hover"` on `<body>`
+- Use normal Kit links (`<a href>`) or `goto()` so the client router runs; do not use `window.location` for in-app navigation unless a full reload is intentional
+- Override per link when a `load` function is heavy or wasteful: `data-sveltekit-preload-data="tap"` or `"off"`
+- Respect **Save-Data** / slow connections: skip optional prefetch when `navigator.connection?.saveData` is true
+
+### Optional API JSON prefetch (hot `fetch()` targets)
+
+For screens that load primary data via `fetch()` to mirrored APIs (not only `+page.server.ts` / `load`), you may prefetch on **intent** (hover/focus), not on every mouse move:
+
+1. Debounce intent ~50–100ms (`mouseenter` / `focusin`)
+2. `fetch` the same mirrored API URL the page will use (cookies/auth unchanged)
+3. Cache in a module-level `Map` keyed by stable URL (include query if it affects the response)
+4. On mount, read cache first; if hit, render immediately and optionally revalidate in background
+5. **Abort** the `fetch` on `mouseleave` / `focusout` if the request is still in flight and the user did not navigate
+6. Coordinate with mount: do not double-fetch without a shared cache or dedupe key
+
+```ts
+// Pattern sketch (implement in $lib/tool/ or colocated util; no $lib/server in UI)
+let inflight = new Map<string, AbortController>();
+const cache = new Map<string, unknown>();
+
+function prefetchJson(url: string, debounceMs = 80) {
+  if (navigator.connection?.saveData) return;
+  // debounce, abort prior controller for url, fetch, cache on success
+}
+```
+
+### Do not prefetch
+
+- Logout, destructive actions, or one-time tokens
+- Unbounded list endpoints (entire tables without pagination filters)
+- Routes the user cannot access (expected 403/401 waste)
+- Sensitive exports or large binary downloads
+
+## Client navigation and partial UI (no custom mega-router)
+
+- **Use SvelteKit’s client router**, not a hand-rolled SPA router or full-document HTML replacement
+- Keep hospital shell, module bar, and shared chrome in parent `+layout.svelte` files so they **do not remount** on every child route change; only the route outlet updates
+- Heavy widgets: `import()` when a dialog opens, tab becomes active, or `IntersectionObserver` reports visibility
+- **Forbidden:** replacing `document.body` or app shell via `innerHTML` for in-app nav; duplicating Kit’s link interception in a parallel router
+
+## JSON-first in-app payloads
+
+Align with `.cursor/rules/remote-api-pages-flow.mdc` and `.cursor/rules/app-development.mdc` (UI / JSON vs Drizzle):
+
+| Layer | Payload |
+|-------|---------|
+| First paint / public SEO | SSR or prerendered HTML where appropriate |
+| In-app navigation and CRUD | **`fetch()` → `src/routes/api/**` → `json(...)`** |
+| UI contracts | **`$lib/model/type/**`** (never `$lib/server/db/schema-type` in `.svelte` or client modules) |
+
+- Prefer **lean list DTOs**: pagination metadata, columns the table needs, no fat audit JSON in every row
+- Add `+page.server.ts` only when SSR, auth redirect, or bootstrap truly requires server-only data on first paint
+- APIs return data; components render. Avoid shipping large HTML fragments for in-app transitions when JSON + Svelte is smaller and cache-friendly
+
+## Low-overhead rendering (Svelte)
+
+Svelte compiles components to **direct DOM updates** at build time; there is no runtime virtual DOM diff tree like React. Use that model deliberately:
+
+- Keep `$state` / `$derived` **narrow**: local to the component or small subtree, not hospital-wide layout props unless necessary
+- Avoid one giant `.svelte` file where a list and a heavy editor share a single reactive graph; split and lazy-load the editor
+- Use stable keys on `{#each}` lists; paginate or virtualize large tables server-side before rendering thousands of DOM nodes
+- Prefer targeted UI updates over manual DOM stitching; let the compiler update bindings unless integrating a non-Svelte island (then isolate the island)
+
+## Measure in production and CI
+
+- **Boot:** `performance.mark('app-start')` as early as practical (client entry or root layout `onMount` once per session)
+- **Navigation:** `performance.mark` / `performance.measure` around critical `goto` paths or in `afterNavigate` for hot modules (EMR, inventory, nursing workbench)
+- Optional **Web Vitals** (LCP, INP, CLS) reporting behind an env flag; never block UI on telemetry
+- After large public docs or marketing changes: Lighthouse mobile on key URLs; confirm immutable asset `Cache-Control` in deployment
+
+## Feature finish checklist (Medora)
+
+- [ ] In-app links use Kit navigation with appropriate `data-sveltekit-preload-data` (default hover from `app.html`, or `tap`/`off` when needed)
+- [ ] Data path is UI → mirrored API → `$lib/server/**` (no `$lib/server` in UI)
+- [ ] API types live in `$lib/model/type/**`; list endpoints are paginated and payloads are lean
+- [ ] Heavy deps are dynamically imported; layouts keep chrome mounted
+- [ ] Prefetch + mount do not duplicate `fetch` without a shared cache or abort/dedupe
+- [ ] Async actions use submit loading/disable per project submit-loading rules
+
+## Do not
+
+- Flat “optimize later” on public shells or core clinical paths
+- Monolithic multi-MB first-load JS bundles for custom routing
+- Unbounded hover prefetch on every link or constant cursor tracking without debounce and abort
+- Full-document `innerHTML` replacement for in-app navigation
+- Shipping duplicate font formats or leaving consent/back-to-top on the critical path for returning users
+- Importing `$lib/server/**` or Drizzle schema types into UI for “performance” shortcuts

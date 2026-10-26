@@ -1,0 +1,87 @@
+---
+description: Medora peak accessibility — WCAG 2.2 AA, keyboard, forms, clinical UI
+alwaysApply: true
+---
+
+# Maximum accessibility (Medora)
+
+**Priority:** Accessibility to the max is a product requirement for public marketing and the clinical app. Target **WCAG 2.2 Level AA** unless a documented exception is approved.
+
+Enforcement in CI: Playwright **axe** smoke on public routes (`e2e/a11y-public.test.ts`). Fix **critical** and **serious** violations before merge. **Moderate** only with a short code comment and issue link if truly unavoidable.
+
+## Perceivable
+
+- **Language:** [`app.html`](src/app.html) sets `lang` via Paraglide (`%paraglide.lang%` in [`hooks.server.ts`](src/hooks.server.ts)); do not strip on public pages.
+- **Text alternatives:** Meaningful images need `alt`; decorative images `alt=""` and `aria-hidden="true"` on redundant icons.
+- **Color:** Do not convey status, errors, or required fields by color alone; pair with text, icon, or visible label (required `*` per form-crud-ui).
+- **Contrast:** Use daisyUI semantic tokens; avoid low-contrast placeholder-only hints for required actions.
+- **Motion:** Honor `prefers-reduced-motion: reduce` (see [`max-performance.mdc`](max-performance.mdc)).
+
+## Operable
+
+- **Keyboard:** Every action available without a mouse; logical tab order; visible focus (`:focus-visible`, not removed globally).
+- **Skip link:** Public shells and hospital chrome should offer skip to main content (`href="#main"`, id on `<main>`) where layout allows.
+- **Dropdowns/menus:** Close on outside click and Escape ([`daisyui-dropdown-close`](file:///home/zarnihlawn/.cursor/rules/daisyui-dropdown-close.mdc)).
+- **Target size (WCAG 2.2):** Interactive controls at least **24×24 CSS px** hit area (padding on icon buttons counts).
+- **No traps:** Modals/dialogs must not trap focus permanently; Escape closes when appropriate.
+
+## Understandable
+
+- **Copy:** User-visible strings from Paraglide [`m.*()`](messages/en.json), not hard-coded English in UI.
+- **Forms:** Label + `for`/`id`; required fields: error-colored `*` beside label + HTML `required` (form-crud-ui).
+- **Errors:** Associate field errors with `aria-invalid` and `aria-describedby` when inline validation is shown.
+- **Groups:** Radio/checkbox/tab groups use `fieldset`/`legend` or `role="tablist"` + `aria-selected` (see existing ICD tabs pattern).
+
+## Robust
+
+- **Landmarks:** `main`, `nav`, `header`, `footer` on page shells; one primary `main` per view.
+- **Headings:** One `h1` per page/route view; do not skip levels for styling.
+- **Name, role, value:** Custom controls expose correct role and accessible name.
+
+## Icon-only controls (mandatory)
+
+Follow [`icon-button-tooltips`](file:///home/zarnihlawn/.cursor/rules/icon-button-tooltips.mdc):
+
+- daisyUI `tooltip` color matches `btn-*` color.
+- Same string for `data-tip` and `aria-label`.
+- Tables in `overflow-auto`: `tooltip-right` on row actions (crud-table).
+
+## Dynamic UI
+
+- **Submit/async:** `aria-busy` + disabled while loading ([submit-loading-disable](file:///home/zarnihlawn/.cursor/rules/submit-loading-disable.mdc)).
+- **Toasts:** Bottom-right alerts; consider `role="status"` or live region for critical async feedback.
+- **Loading states:** Do not rely on spinner alone; preserve context (heading or `aria-live="polite"` for table refresh).
+
+## Tables and dialogs (CRUD)
+
+Per [crud-table](file:///home/zarnihlawn/.cursor/rules/crud-table.mdc):
+
+- Actions column keyboard reachable; filters named (visible label or `aria-label`).
+- Dialogs: visible **`card-title`** heading or `aria-labelledby`; return focus to trigger on close when using custom modal logic.
+
+## Rich content
+
+- **Docs HTML** ([`DocsArticle.svelte`](src/lib/component/own/global/public/docs/DocsArticle.svelte)): preserve heading hierarchy in markdown source; workflow screenshots need meaningful alt in content when not decorative.
+- **Rich editor preview** ([`MariRichEditorPreview.svelte`](src/lib/component/own/library/mari/text-editor/rich-editor/MariRichEditorPreview.svelte)): treat stored HTML as trusted only after server-side sanitization on save.
+
+## Testing
+
+- Run `npm run test:e2e` (includes axe on `/`, `/pricing`, `/docs`, sample workflow doc).
+- Prefer Playwright `getByRole`, `getByLabel` in E2E over brittle CSS selectors.
+- ESLint jsx-a11y is not the primary gate for Svelte; axe E2E + this checklist are.
+
+## Finish checklist (UI changes)
+
+- [ ] Keyboard path for new actions; focus visible
+- [ ] Icon-only buttons: tooltip + `aria-label`
+- [ ] Forms: labels, required `*`, errors linked when shown
+- [ ] Status not color-only; touch targets ≥ 24px
+- [ ] `prefers-reduced-motion` respected for new animation
+- [ ] axe critical/serious clean on affected public URLs (or documented exception)
+
+## Do not
+
+- `outline-none` on interactive elements without a visible focus replacement
+- Hover-only critical actions with no keyboard/touch alternative
+- `title=` as the only accessible name for icon buttons (use tooltip + `aria-label`)
+- Placeholder-only labels instead of visible `<label>`

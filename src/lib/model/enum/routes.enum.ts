@@ -98,6 +98,7 @@ export enum WebRoutesEnum {
 	MEDORA_HOME_BILLING_IP_BILLING = '/medora/home/billing/ip-billing',
 	MEDORA_HOME_BILLING_IP_BILLING_BILL = '/medora/home/billing/ip-billing/bill',
 	MEDORA_HOME_BILLING_IP_ADVANCE_DEPOSIT = '/medora/home/billing/ip-billing/advance-deposit',
+	MEDORA_HOME_BILLING_OT_BILLING = '/medora/home/billing/ot-billing',
 
 	// Medication Order module (navbar auto-hides like nursing EMR)
 	MEDORA_HOME_MEDICATION_ORDER = '/medora/home/medication-order',
@@ -109,6 +110,18 @@ export enum WebRoutesEnum {
 	MEDORA_HOME_SERVICE_ITEM_SERVICE = '/medora/home/service-item/service',
 	MEDORA_HOME_SERVICE_ITEM_CREATE = '/medora/home/service-item/service/create',
 	MEDORA_HOME_SERVICE_ITEM_TAGGING = '/medora/home/service-item/service/tagging',
+
+	// Operation Theatre module
+	MEDORA_HOME_OPERATION_THEATRE = '/medora/home/operation-theatre',
+	MEDORA_HOME_OPERATION_THEATRE_SCHEDULER = '/medora/home/operation-theatre/ot-scheduler',
+	MEDORA_HOME_OPERATION_THEATRE_REGISTRATION = '/medora/home/operation-theatre/registration',
+	MEDORA_HOME_OPERATION_THEATRE_REGISTRATION_OT_PATIENT = '/medora/home/operation-theatre/registration/ot-patient',
+	MEDORA_HOME_OPERATION_THEATRE_REGISTRATION_NEW_PATIENT = '/medora/home/operation-theatre/registration/new-patient',
+	MEDORA_HOME_OPERATION_THEATRE_REGISTRATION_LIST = '/medora/home/operation-theatre/registration/list',
+	MEDORA_HOME_OPERATION_THEATRE_BOOKING_DETAILS = '/medora/home/operation-theatre/booking-details',
+	MEDORA_HOME_OPERATION_THEATRE_WARD_TO_OT = '/medora/home/operation-theatre/ward-to-ot',
+	MEDORA_HOME_OPERATION_THEATRE_REPORTS = '/medora/home/operation-theatre/reports',
+	MEDORA_HOME_OPERATION_THEATRE_MASTER = '/medora/home/operation-theatre/ot-master',
 
 	// Emergency module
 	MEDORA_HOME_EMERGENCY = '/medora/home/emergency',
