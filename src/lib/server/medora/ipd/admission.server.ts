@@ -41,8 +41,13 @@ import {
 } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { assertDischargeSummarySigned } from '$lib/server/medora/clinical/discharge-summary.server';
+import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 
 const sourceOpdVisit = alias(table.patientVisitTable, 'source_opd');
+
+type Tx = Parameters<
+	Parameters<ReturnType<typeof ensureDb>['transaction']>[0]
+>[0];
 
 async function nextAdmissionNo(params: {
 	hospitalId: string;
@@ -101,8 +106,7 @@ export async function getActiveAdmissionByVisit(input: {
 }
 
 async function openStaySegment(
-	 
-	tx: any,
+	tx: Tx,
 	input: {
 		admissionId: number;
 		hospitalId: string;
@@ -128,8 +132,7 @@ async function openStaySegment(
 }
 
 async function closeOpenStaySegment(
-	 
-	tx: any,
+	tx: Tx,
 	admissionId: number,
 	endedAt: string
 ): Promise<void> {
@@ -205,6 +208,8 @@ export async function admitVisitToIpd(
 	}
 ): Promise<IpdAdmissionSchema> {
 	const db = ensureDb();
+	await ensureCanAccessHospital(event, payload.hospitalId);
+
 	const patientId = String(payload.patientId ?? '').trim();
 	if (!patientId) throw error(400, 'patientId is required');
 
@@ -234,15 +239,6 @@ export async function admitVisitToIpd(
 		throw error(400, 'Bed does not belong to the selected ward');
 	}
 
-	const [bed] = await db
-		.select({ bedStatus: table.bedTable.bedStatus })
-		.from(table.bedTable)
-		.where(eq(table.bedTable.id, payload.bedId))
-		.limit(1);
-	if (!bed || bed.bedStatus !== IpdBedStatusEnum.FREE) {
-		throw error(400, 'Bed is not free');
-	}
-
 	const sourceOpdVisitIdRaw = payload.sourceOpdVisitId;
 	const sourceOpdVisitId =
 		typeof sourceOpdVisitIdRaw === 'string' &&
@@ -257,6 +253,32 @@ export async function admitVisitToIpd(
 		orderIdRaw > 0
 			? orderIdRaw
 			: null;
+
+	if (sourceOpdVisitId != null) {
+		const [alreadyLinked] = await db
+			.select({ id: table.ipdAdmissionTable.id })
+			.from(table.ipdAdmissionTable)
+			.where(
+				and(
+					eq(
+						table.ipdAdmissionTable.sourceOpdVisitId,
+						sourceOpdVisitId
+					),
+					eq(
+						table.ipdAdmissionTable.admissionStatus,
+						IpdAdmissionStatusEnum.ADMITTED
+					),
+					ne(table.ipdAdmissionTable.statusId, StatusEnum.DELETED)
+				)
+			)
+			.limit(1);
+		if (alreadyLinked) {
+			throw error(
+				400,
+				'This OPD visit is already linked to an active admission'
+			);
+		}
+	}
 
 	// Prefer explicit admitting doctor; else order’s ordering doctor; else source OPD visit doctor.
 	// Doctor EMR visit list scopes by patient_visit.doctor_id — leaving this null hides the IPD visit.
@@ -298,29 +320,93 @@ export async function admitVisitToIpd(
 		admittingDoctorId = srcDoc?.doctorId ?? null;
 	}
 
-	// Creates a new IPD visit; soft gate when converting from a linked OPD visit.
-	const { createPatientVisitInHospital } = await import(
-		'$lib/server/medora/patient-visit/patient-visit.server'
-	);
-	const visit = await createPatientVisitInHospital(event, {
-		hospitalId: payload.hospitalId,
-		branchId: payload.branchId,
-		patientId,
-		visitTypeId: VisitTypeEnum.IPD,
-		doctorId: admittingDoctorId,
-		...(sourceOpdVisitId != null
-			? { convertFromOpdVisitId: sourceOpdVisitId }
-			: {})
-	});
-
 	const admissionNo = await nextAdmissionNo({
 		hospitalId: payload.hospitalId,
 		branchId: payload.branchId
 	});
 
 	const admittedAt = new Date().toISOString();
+	const { createPatientVisitRecord } = await import(
+		'$lib/server/medora/patient-visit/patient-visit.server'
+	);
 
-	const result = await db.transaction(async (tx) => {
+	return db.transaction(async (tx) => {
+		// Atomic claim: only one concurrent admission can take a free bed.
+		const [claimedBed] = await tx
+			.update(table.bedTable)
+			.set({ bedStatus: IpdBedStatusEnum.OCCUPIED })
+			.where(
+				and(
+					eq(table.bedTable.id, payload.bedId),
+					eq(table.bedTable.bedStatus, IpdBedStatusEnum.FREE)
+				)
+			)
+			.returning({ id: table.bedTable.id });
+		if (!claimedBed) {
+			throw error(400, 'Bed is not free');
+		}
+
+		// Re-read and validate the order inside the transaction so a stale order
+		// cannot leave an orphan visit behind.
+		if (admissionOrderId != null) {
+			const [order] = await tx
+				.select({
+					id: table.ipdAdmissionOrderTable.id,
+					statusTaggingId:
+						table.ipdAdmissionOrderTable.statusTaggingId,
+					sourceOpdVisitId:
+						table.ipdAdmissionOrderTable.sourceOpdVisitId,
+					patientId: table.ipdAdmissionOrderTable.patientId
+				})
+				.from(table.ipdAdmissionOrderTable)
+				.where(
+					and(
+						eq(table.ipdAdmissionOrderTable.id, admissionOrderId),
+						eq(
+							table.ipdAdmissionOrderTable.hospitalId,
+							payload.hospitalId
+						),
+						ne(
+							table.ipdAdmissionOrderTable.statusId,
+							StatusEnum.DELETED
+						)
+					)
+				)
+				.limit(1);
+			if (!order) throw error(404, 'Admission order not found');
+			if (
+				order.statusTaggingId !==
+				IpdAdmissionOrderStatusTaggingEnum.PENDING
+			) {
+				throw error(400, 'Admission order is not pending');
+			}
+			if (order.patientId !== patientId) {
+				throw error(400, 'Admission order patient mismatch');
+			}
+			if (
+				sourceOpdVisitId != null &&
+				order.sourceOpdVisitId !== sourceOpdVisitId
+			) {
+				throw error(400, 'Admission order source OPD mismatch');
+			}
+		}
+
+		// The visit row is created in the same transaction as the admission, so
+		// any later failure rolls the visit back instead of leaving it dangling.
+		const visit = await createPatientVisitRecord(
+			{
+				hospitalId: payload.hospitalId,
+				branchId: payload.branchId,
+				patientId,
+				visitTypeId: VisitTypeEnum.IPD,
+				doctorId: admittingDoctorId,
+				...(sourceOpdVisitId != null
+					? { convertFromOpdVisitId: sourceOpdVisitId }
+					: {})
+			},
+			tx as unknown as ReturnType<typeof ensureDb>
+		);
+
 		const [admission] = await tx
 			.insert(table.ipdAdmissionTable)
 			.values({
@@ -339,11 +425,6 @@ export async function admitVisitToIpd(
 			})
 			.returning();
 		if (!admission) throw new Error('Admission insert failed');
-
-		await tx
-			.update(table.bedTable)
-			.set({ bedStatus: IpdBedStatusEnum.OCCUPIED })
-			.where(eq(table.bedTable.id, payload.bedId));
 
 		await tx.insert(table.ipdBedHistoryTable).values({
 			admissionId: admission.id,
@@ -366,54 +447,58 @@ export async function admitVisitToIpd(
 		});
 
 		if (admissionOrderId != null) {
-			const [order] = await tx
-				.select({
-					id: table.ipdAdmissionOrderTable.id,
-					statusTaggingId: table.ipdAdmissionOrderTable.statusTaggingId,
-					sourceOpdVisitId: table.ipdAdmissionOrderTable.sourceOpdVisitId,
-					patientId: table.ipdAdmissionOrderTable.patientId
-				})
-				.from(table.ipdAdmissionOrderTable)
-				.where(
-					and(
-						eq(table.ipdAdmissionOrderTable.id, admissionOrderId),
-						eq(
-							table.ipdAdmissionOrderTable.hospitalId,
-							payload.hospitalId
-						),
-						ne(table.ipdAdmissionOrderTable.statusId, StatusEnum.DELETED)
-					)
-				)
-				.limit(1);
-			if (!order) throw error(404, 'Admission order not found');
-			if (
-				order.statusTaggingId !==
-				IpdAdmissionOrderStatusTaggingEnum.PENDING
-			) {
-				throw error(400, 'Admission order is not pending');
-			}
-			if (order.patientId !== patientId) {
-				throw error(400, 'Admission order patient mismatch');
-			}
-			if (
-				sourceOpdVisitId != null &&
-				order.sourceOpdVisitId !== sourceOpdVisitId
-			) {
-				throw error(400, 'Admission order source OPD mismatch');
-			}
 			await tx
 				.update(table.ipdAdmissionOrderTable)
 				.set({
-					statusTaggingId: IpdAdmissionOrderStatusTaggingEnum.ADMITTED,
+					statusTaggingId:
+						IpdAdmissionOrderStatusTaggingEnum.ADMITTED,
 					admissionId: admission.id
 				})
 				.where(eq(table.ipdAdmissionOrderTable.id, admissionOrderId));
 		}
 
+		if (sourceOpdVisitId != null) {
+			// Finish the source OPD encounter when nothing is left to settle.
+			// If an OP bill is still open, keep the visit open so billing can find
+			// it; the new-visit guard ignores converted OPD visits either way.
+			const [openOpBill] = await tx
+				.select({ id: table.opBillingTable.id })
+				.from(table.opBillingTable)
+				.where(
+					and(
+						eq(table.opBillingTable.visitId, sourceOpdVisitId),
+						eq(
+							table.opBillingTable.statusTaggingId,
+							BillingStatusTaggingEnum.OPEN
+						),
+						ne(table.opBillingTable.statusId, StatusEnum.DELETED)
+					)
+				)
+				.limit(1);
+			if (!openOpBill) {
+				await tx
+					.update(table.patientVisitTable)
+					.set({
+						statusTaggingId:
+							VisitStatusTaggingEnum.CLOSED_DISCHARGED
+					})
+					.where(
+						and(
+							eq(
+								table.patientVisitTable.id,
+								sourceOpdVisitId
+							),
+							ne(
+								table.patientVisitTable.statusTaggingId,
+								VisitStatusTaggingEnum.CLOSED_DISCHARGED
+							)
+						)
+					);
+			}
+		}
+
 		return admission;
 	});
-
-	return result;
 }
 
 export async function transferBed(

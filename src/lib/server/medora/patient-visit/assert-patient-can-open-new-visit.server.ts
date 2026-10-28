@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { and, eq, inArray, ne } from 'drizzle-orm';
+import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import {
 	BillingStatusTaggingEnum,
 	StatusEnum,
@@ -17,13 +17,15 @@ import * as table from '$lib/server/db/schema';
  * (and an open OP bill on it only) while still blocking other unfinished visits,
  * open IP bills, and open OP bills on other visits.
  */
-export async function assertPatientCanOpenNewVisit(input: {
-	hospitalId: string;
-	patientId: string;
-	/** Unfinished OPD visit being converted to IPD via ADT Admission */
-	convertFromOpdVisitId?: string;
-}): Promise<void> {
-	const db = ensureDb();
+export async function assertPatientCanOpenNewVisit(
+	input: {
+		hospitalId: string;
+		patientId: string;
+		/** Unfinished OPD visit being converted to IPD via ADT Admission */
+		convertFromOpdVisitId?: string;
+	},
+	db: ReturnType<typeof ensureDb> = ensureDb()
+): Promise<void> {
 	const convertId =
 		typeof input.convertFromOpdVisitId === 'string' &&
 		input.convertFromOpdVisitId.trim() !== ''
@@ -70,7 +72,15 @@ export async function assertPatientCanOpenNewVisit(input: {
 		ne(
 			table.patientVisitTable.statusTaggingId,
 			VisitStatusTaggingEnum.CLOSED_DISCHARGED
-		)
+		),
+		// An OPD visit converted into an IPD admission is finished for visit-open
+		// purposes even when its OP bill is still open. The open-bill check below
+		// still prevents a new visit until that bill is settled.
+		sql`NOT EXISTS (
+			SELECT 1 FROM ipd_admission a
+			WHERE a.source_opd_visit_id = ${table.patientVisitTable.id}
+			AND a.status_id <> ${StatusEnum.DELETED}
+		)`
 	];
 	if (convertId != null) {
 		unfinishedWhere.push(ne(table.patientVisitTable.id, convertId));
