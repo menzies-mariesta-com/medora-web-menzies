@@ -567,7 +567,8 @@ export async function seedInformationTables() {
 			(1, 'System Admin', 1),
 			(2, 'Owner', 1),
 			(3, 'Staff', 1),
-			(4, 'Admin Team', 1)
+			(4, 'Admin Team', 1),
+			(5, 'Patient', 1)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			status_id = EXCLUDED.status_id;

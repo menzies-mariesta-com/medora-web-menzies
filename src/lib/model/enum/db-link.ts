@@ -11,7 +11,9 @@ export enum RoleEnum {
 	OWNER = 2,
 	STAFF = 3,
 	/** Invited admin helpers with per-page CRUD grants (not full SYSTEM_ADMIN). */
-	ADMIN_TEAM = 4
+	ADMIN_TEAM = 4,
+	/** Hospital patient portal / mobile app users (linked via patient.user_id). */
+	PATIENT = 5
 }
 
 /** Admin dashboard page keys for `admin_page_permission.page_key`. */

@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { TigrisUtil } from '$lib/util/tigris.util.svelte';
 import { uuidV7 } from '$lib/util/id.util';
+import { RoleEnum } from '$lib/model/enum/db-link';
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = [
@@ -38,7 +39,19 @@ function getExt(blob: Blob & { name?: string }): string {
 	return 'bin';
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
+	if (!locals.user) {
+		return json(
+			{ error: 'Authentication required' },
+			{ status: 401 }
+		);
+	}
+	if (locals.userRoleId === RoleEnum.PATIENT) {
+		return json(
+			{ error: 'Patient accounts cannot upload files' },
+			{ status: 403 }
+		);
+	}
 	try {
 		const formData = await request.formData();
 		const file = formData.get('file');
@@ -67,7 +80,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const path = `patient-attachments/${Date.now()}-${uuidV7().slice(0, 8)}.${ext}`;
 		await TigrisUtil.upload(path, file, {
 			contentType: type,
-			access: 'public'
+			access: 'private'
 		});
 		return json({ url: `/api/patient-attachment/${path}` });
 	} catch (err) {

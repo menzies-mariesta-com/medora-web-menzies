@@ -7,7 +7,8 @@
 
 	const GUIDES = [
 		{ slug: 'getting-started', label: () => msg.docs_nav_getting_started() },
-		{ slug: 'security', label: () => msg.docs_nav_security() }
+		{ slug: 'security', label: () => msg.docs_nav_security() },
+		{ slug: 'coding-standards', label: () => msg.docs_nav_coding_standards() }
 	] as const;
 
 	const EMPLOYEE_ROLES = [

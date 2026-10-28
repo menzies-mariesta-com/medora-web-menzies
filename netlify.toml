@@ -4,7 +4,9 @@
 [build]
 	# Netlify still auto-detects pnpm from pnpm-lock.yaml before this runs.
 	# We no-op that install (PNPM_FLAGS) and install with npm ourselves.
-	command = "npm ci && npm run build"
+	# build:netlify → paraglide:ci + vite:build:ci (lower heap; do not use npm run paraglide — it forces 8192).
+	# If exit 137 persists, use .github/workflows/netlify-build.yml (GitHub runner RAM) or Netlify enhanced builds.
+	command = "npm ci && npm run build:netlify"
 	publish = "build"
 
 [build.environment]
@@ -38,5 +40,10 @@
 
 [[headers]]
 	for = "/medora-logo.svg"
+	[headers.values]
+	Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+	for = "/favicon.ico"
 	[headers.values]
 	Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
