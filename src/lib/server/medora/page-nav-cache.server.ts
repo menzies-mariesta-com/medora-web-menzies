@@ -5,6 +5,9 @@ const TTL_MS = 120_000;
 
 /** ED registration "New patient" tab; detect stale nav cache after seed. */
 const ED_ADMISSION_NEW_PATIENT_PAGE_ID = 123003;
+/** Nursing root page; detect stale nav after OPD/IPD/ED pages are re-parented. */
+const NURSING_ROOT_PAGE_ID = 910000;
+const NURSING_OPD_PAGE_ID = 8;
 /** Nursing ED parent; detect stale nav after page moves from Emergency module. */
 const NURSING_ED_PARENT_PAGE_ID = 481;
 const ER_BILLING_PAGE_ID = 150004;
@@ -13,7 +16,17 @@ let cached: PageWithRelations[] | null = null;
 let cachedAt = 0;
 
 function navCacheLooksCurrent(pages: PageWithRelations[]): boolean {
-	const nursingEd = pages.find((p) => p.id === NURSING_ED_PARENT_PAGE_ID);
+	const nursingRoot = pages.find(
+		(p) => p.id === NURSING_ROOT_PAGE_ID
+	);
+	if (!nursingRoot || nursingRoot.moduleId !== 4) return false;
+	const nursingOpd = pages.find((p) => p.id === NURSING_OPD_PAGE_ID);
+	if (nursingOpd && nursingOpd.parentId !== NURSING_ROOT_PAGE_ID) {
+		return false;
+	}
+	const nursingEd = pages.find(
+		(p) => p.id === NURSING_ED_PARENT_PAGE_ID
+	);
 	if (!nursingEd || nursingEd.moduleId !== 4) return false;
 	const trackBoard = pages.find((p) => p.id === 120);
 	if (
