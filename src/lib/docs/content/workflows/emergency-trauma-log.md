@@ -5,7 +5,7 @@ docType: workflow
 slug: workflows/emergency-trauma-log
 pageId: 122
 moduleId: 4
-pageUrl: "/medora/home/nursing-workbench/ed/trauma-log"
+pageUrl: "/medora/home/nursing-workbench/trauma-log"
 generated: false
 captureStatus: failed
 capturedAt: "2026-10-18T03:01:59.696Z"

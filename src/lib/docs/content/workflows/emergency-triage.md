@@ -5,7 +5,7 @@ docType: workflow
 slug: workflows/emergency-triage
 pageId: 121
 moduleId: 4
-pageUrl: "/medora/home/nursing-workbench/ed/triage"
+pageUrl: "/medora/home/nursing-workbench/triage"
 generated: false
 captureStatus: complete
 capturedAt: "2026-10-18T03:00:36.751Z"

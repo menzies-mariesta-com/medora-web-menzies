@@ -5,6 +5,7 @@
 	import GPrivateMedoraNavbar from '$lib/component/own/global/private/medora/GPrivateMedoraNavbar.svelte';
 	import AnimatedPageContent from '$lib/component/own/library/gsap/AnimatedPageContent.svelte';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import { isNursingChartPath } from '$lib/tool/nursing/nursing-worklist.util';
 	import {
 		setPageData,
 		getUniqueModuleData,
@@ -29,23 +30,16 @@
 	const isEmbed = $derived(
 		page.url.searchParams.get('embed') === '1'
 	);
-	const isInEmrCloneEmr = $derived(
-		pathnameForPageMatch().startsWith(
-			WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_EMR
-		) ||
-			pathnameForPageMatch().startsWith(
-				WebRoutesEnum.MEDORA_HOME_CONSULTATION_EMR
-			) ||
-			pathnameForPageMatch().startsWith(
-				WebRoutesEnum.MEDORA_HOME_CONSULTATION_CPOE
-			) ||
-			pathnameForPageMatch().startsWith(
-				WebRoutesEnum.MEDORA_HOME_MEDICATION_ORDER
-			) ||
-			pathnameForPageMatch().startsWith(
-				WebRoutesEnum.MEDORA_HOME_BILLING
-			)
-	);
+	const isInEmrCloneEmr = $derived.by(() => {
+		const logicalPath = pathnameForPageMatch();
+		return (
+			isNursingChartPath(logicalPath) ||
+			logicalPath.startsWith(WebRoutesEnum.MEDORA_HOME_CONSULTATION_EMR) ||
+			logicalPath.startsWith(WebRoutesEnum.MEDORA_HOME_CONSULTATION_CPOE) ||
+			logicalPath.startsWith(WebRoutesEnum.MEDORA_HOME_MEDICATION_ORDER) ||
+			logicalPath.startsWith(WebRoutesEnum.MEDORA_HOME_BILLING)
+		);
+	});
 	// Appointment module UX: hide the module bar navbar automatically.
 	const isInAppointmentModule = $derived(
 		pathnameForPageMatch().startsWith('/medora/home/appointment')

@@ -347,7 +347,7 @@
 		if (!hospitalId) return;
 		const baseUrl = medoraHospitalPageUrl(
 			hospitalId,
-			WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_EMR_VITAL
+			WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_VITAL
 		);
 		const url = `${baseUrl}?patientId=${encodeURIComponent(patient.id)}`;
 		routerUtil.replaceRoute(url);

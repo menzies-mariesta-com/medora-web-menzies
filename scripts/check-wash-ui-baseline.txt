@@ -127,9 +127,9 @@ src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/stock-al
 src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/stores/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/supplier-setup/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/unit-master/+page.svelte: own/library/menzies clone path
-src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/emr/allergy/+page.svelte: own/library/menzies clone path
-src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/emr/nursing-complete/+page.svelte: own/library/menzies clone path
-src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/emr/order/+page.svelte: own/library/menzies clone path
-src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/emr/vital/+page.svelte: own/library/menzies clone path
-src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/ipd/census/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/(chart)/allergy/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/(chart)/nursing-complete/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/(chart)/order/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/(chart)/vital/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/(chart)/census/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/registration/patient/list/+page.svelte: own/library/menzies clone path

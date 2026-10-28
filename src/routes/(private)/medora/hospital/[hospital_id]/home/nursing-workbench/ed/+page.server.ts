@@ -1,11 +1,13 @@
-import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import {
+	nursingLegacyRootTargets,
+	redirectToNursingChart
+} from '$lib/tool/nursing/nursing-legacy-redirect.server';
 
-export const load: PageServerLoad = ({ params }) => {
-	const hid = params.hospital_id;
-	if (!hid) return {};
-	throw redirect(
-		302,
-		`/medora/hospital/${hid}/home/nursing-workbench/ed/track-board`
-	);
+export const load: PageServerLoad = ({ params, url }) => {
+	redirectToNursingChart({
+		hospitalId: params.hospital_id,
+		targetPageUrl: nursingLegacyRootTargets.ed,
+		searchParams: url.searchParams
+	});
 };

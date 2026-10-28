@@ -830,7 +830,7 @@ export async function seedVisitHistoryDemo(): Promise<void> {
 	);
 
 	for (const ep of entryPoints) {
-		const path = `/medora/hospital/${hospitalId}/home/nursing-workbench/emr/patient-visit-history-dashboard?visitId=${ep.visitId}`;
+		const path = `/medora/hospital/${hospitalId}/home/nursing-workbench/patient-visit-history-dashboard?visitId=${ep.visitId}`;
 		seedLogger.info(
 			`Demo entry: ${ep.patientCode} visit ${ep.visitNo} (id=${ep.visitId}) → ${path}`
 		);

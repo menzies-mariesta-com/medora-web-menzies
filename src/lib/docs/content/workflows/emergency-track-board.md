@@ -5,7 +5,7 @@ docType: workflow
 slug: workflows/emergency-track-board
 pageId: 120
 moduleId: 4
-pageUrl: "/medora/home/nursing-workbench/ed/track-board"
+pageUrl: "/medora/home/nursing-workbench/track-board"
 generated: false
 captureStatus: failed
 capturedAt: "2026-10-18T02:59:11.830Z"
