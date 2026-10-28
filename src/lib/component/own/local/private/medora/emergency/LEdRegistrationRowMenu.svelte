@@ -134,7 +134,7 @@
 		routerUtil.goToRoute(
 			`${medoraHospitalPageUrl(
 				hospitalId,
-				WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_ED_TRIAGE
+				WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_TRIAGE
 			)}?visitId=${encodeURIComponent(row.visitId)}`
 		);
 	}

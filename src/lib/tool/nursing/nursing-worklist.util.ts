@@ -1,39 +1,43 @@
-import { VisitTypeEnum } from '$lib/model/enum/db-link';
+import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 
-/** Nursing chart family; each maps to its own route prefix + tab set. */
-export type NursingChartType = 'opd' | 'ipd' | 'ed';
-
-const CHART_ROUTE_SEGMENT: Record<NursingChartType, string> = {
-	opd: 'emr',
-	ipd: 'ipd',
-	ed: 'ed'
-};
-
-/**
- * Resolve the nursing chart family for a visit type.
- * Day-care and package visits use the OPD chart.
- */
-export function nursingChartTypeForVisitType(
-	visitTypeId: number | null | undefined
-): NursingChartType {
-	if (visitTypeId === VisitTypeEnum.IPD) return 'ipd';
-	if (visitTypeId === VisitTypeEnum.ED) return 'ed';
-	return 'opd';
-}
+/** Sub-pages that share the single nursing page layout. */
+const NURSING_CHART_SEGMENTS = new Set([
+	'vital',
+	'allergy',
+	'patient-attachment',
+	'clinical-document',
+	'case-sheet',
+	'order',
+	'nursing-complete',
+	'patient-visit-history-dashboard',
+	'census',
+	'track-board',
+	'triage',
+	'trauma-log',
+	'emar',
+	'care-plan'
+]);
 
 /**
- * Build a nursing chart URL for a patient visit. The route prefix is chosen
- * from the visit type so the chart tabs match the patient's workflow.
+ * Build a nursing chart URL. Every visit type uses the same chart page; the
+ * visit type only changes which board tabs are relevant.
  */
 export function buildNursingChartUrl(input: {
 	hospitalId: string;
-	visitTypeId: number | null | undefined;
 	visitId: string;
 	/** Chart tab slug; defaults to the shared Vital tab. */
 	child?: string;
 }): string {
-	const type = nursingChartTypeForVisitType(input.visitTypeId);
 	const child = input.child ?? 'vital';
 	const search = new URLSearchParams({ visitId: input.visitId });
-	return `/medora/hospital/${input.hospitalId}/home/nursing-workbench/${CHART_ROUTE_SEGMENT[type]}/${child}?${search.toString()}`;
+	return `/medora/hospital/${input.hospitalId}/home/nursing-workbench/${child}?${search.toString()}`;
+}
+
+/** True when the logical page path is one of the shared nursing chart tabs. */
+export function isNursingChartPath(path: string): boolean {
+	const normalized = path.replace(/\/+$/, '');
+	const prefix = `${WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH}/`;
+	if (!normalized.startsWith(prefix)) return false;
+	const segment = normalized.slice(prefix.length).split('/')[0] ?? '';
+	return NURSING_CHART_SEGMENTS.has(segment);
 }

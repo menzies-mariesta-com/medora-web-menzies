@@ -2,11 +2,11 @@
 title: "Clinical documents"
 docType: journal
 slug: patient-journal/documents
-workflowSlugs: ["nursing-workbench-emr-clinical-document"]
+workflowSlugs: ["nursing-workbench-clinical-document"]
 ---
 
 ## Patient journal: Clinical documents
 
 Longitudinal chart section. Related workflows:
 
-- [nursing-workbench-emr-clinical-document](/docs/workflows/nursing-workbench-emr-clinical-document)
+- [nursing-workbench-clinical-document](/docs/workflows/nursing-workbench-clinical-document)

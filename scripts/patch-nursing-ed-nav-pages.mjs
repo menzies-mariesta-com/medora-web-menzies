@@ -1,5 +1,10 @@
 /**
- * Idempotent page + grant patch for Nursing ED, ER Billing, Emergency nav cleanup.
+ * Idempotent page + grant patch for ER Billing, Emergency nav, and ER masters.
+ *
+ * Nursing ED is no longer a separate nav group. The nursing tree is
+ * consolidated by `scripts/patch-nursing-module-nav.mjs`; this script must not
+ * recreate the retired Nursing ED pages.
+ *
  * Run: node --env-file=.env scripts/patch-nursing-ed-nav-pages.mjs
  */
 import { neon } from '@neondatabase/serverless';
@@ -13,32 +18,20 @@ if (!url) {
 const sql = neon(url);
 
 const statements = [
-	// Nursing ED tree (module 4)
 	`INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 	VALUES
-		(481, 'Nursing ED', 4, 1, null, '/medora/home/nursing-workbench/ed', 3),
-		(120, 'Track Board', 4, 1, 481, '/medora/home/nursing-workbench/ed/track-board', 1),
-		(481002, 'Vital', 4, 1, 481, '/medora/home/nursing-workbench/ed/vital', 2),
-		(481003, 'Allergy', 4, 1, 481, '/medora/home/nursing-workbench/ed/allergy', 3),
-		(481004, 'Patient Attachment', 4, 1, 481, '/medora/home/nursing-workbench/ed/patient-attachment', 4),
-		(481005, 'Clinical Document', 4, 1, 481, '/medora/home/nursing-workbench/ed/clinical-document', 5),
-		(481006, 'Case Sheet', 4, 1, 481, '/medora/home/nursing-workbench/ed/case-sheet', 6),
-		(481007, 'Order', 4, 1, 481, '/medora/home/nursing-workbench/ed/order', 7),
-		(481008, 'Nursing Complete', 4, 1, 481, '/medora/home/nursing-workbench/ed/nursing-complete', 8),
-		(121, 'Triage', 4, 1, 481, '/medora/home/nursing-workbench/ed/triage', 9),
-		(122, 'Trauma Log', 4, 1, 481, '/medora/home/nursing-workbench/ed/trauma-log', 10)
-	ON CONFLICT (id) DO UPDATE SET
-		name = EXCLUDED.name,
-		module_id = EXCLUDED.module_id,
-		status_id = EXCLUDED.status_id,
-		parent_id = EXCLUDED.parent_id,
-		page_url = EXCLUDED.page_url,
-		sequence_no = EXCLUDED.sequence_no`,
-	// Emergency: purchase item + bed status order; remove stray emergency URLs on moved ids
-	`INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
-	VALUES
+		(451, 'ER Ward Master', 1, 1, null, '/medora/home/administration/er-ward-master', 16),
+		(451001, 'ER Ward Category', 1, 1, 451, '/medora/home/administration/er-ward-master/ward-category', 1),
+		(451002, 'ER Ward', 1, 1, 451, '/medora/home/administration/er-ward-master/ward', 2),
+		(452, 'ER Room Master', 1, 1, null, '/medora/home/administration/er-room-master', 17),
+		(452001, 'ER Room Category', 1, 1, 452, '/medora/home/administration/er-room-master/room-category', 1),
+		(452002, 'ER Room', 1, 1, 452, '/medora/home/administration/er-room-master/room', 2),
+		(453, 'ER Bed Master', 1, 1, null, '/medora/home/administration/er-bed-master', 18),
+		(124, 'ER Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 5),
+		(454, 'ER Triage Levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
+		(455, 'ER Billing Setup', 1, 1, null, '/medora/home/administration/er-billing-setup', 20),
 		(125, 'Purchase item', 12, 1, null, '/medora/home/emergency/purchase-item', 2),
-		(124, 'ER Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 5)
+		(150004, 'ER Billing', 8, 1, null, '/medora/home/billing/er-billing', 3)
 	ON CONFLICT (id) DO UPDATE SET
 		name = EXCLUDED.name,
 		module_id = EXCLUDED.module_id,
@@ -46,30 +39,20 @@ const statements = [
 		parent_id = EXCLUDED.parent_id,
 		page_url = EXCLUDED.page_url,
 		sequence_no = EXCLUDED.sequence_no`,
-	// Billing: ER Billing
-	`INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
-	VALUES (150004, 'ER Billing', 8, 1, null, '/medora/home/billing/er-billing', 3)
-	ON CONFLICT (id) DO UPDATE SET
-		name = EXCLUDED.name,
-		module_id = EXCLUDED.module_id,
-		status_id = EXCLUDED.status_id,
-		parent_id = EXCLUDED.parent_id,
-		page_url = EXCLUDED.page_url,
-		sequence_no = EXCLUDED.sequence_no`,
-	// Grants: Nursing ED pages for groups with OPD (8), IPD (44), or legacy ED pages
+	`UPDATE page SET sequence_no = 2 WHERE id = 124`,
 	`INSERT INTO user_group_page (user_group_id, page_id)
 	SELECT ugp.user_group_id, child.page_id
 	FROM user_group_page ugp
 	CROSS JOIN (
-		VALUES
-			(481), (120), (481002), (481003), (481004), (481005), (481006), (481007), (481008), (121), (122)
+		VALUES (451), (451001), (451002), (452), (452001), (452002), (453), (124), (454)
 	) AS child(page_id)
-	WHERE ugp.page_id IN (8, 44, 481, 120, 121, 122)
+	WHERE ugp.page_id IN (45, 46, 47, 120, 121, 122)
 		AND NOT EXISTS (
-			SELECT 1 FROM user_group_page x
-			WHERE x.user_group_id = ugp.user_group_id AND x.page_id = child.page_id
+			SELECT 1
+			FROM user_group_page x
+			WHERE x.user_group_id = ugp.user_group_id
+				AND x.page_id = child.page_id
 		)`,
-	// Grants: ER Billing for OP billing (15) or IP billing parent (150001)
 	`INSERT INTO user_group_page (user_group_id, page_id)
 	SELECT ugp.user_group_id, 150004
 	FROM user_group_page ugp
@@ -78,7 +61,6 @@ const statements = [
 			SELECT 1 FROM user_group_page x
 			WHERE x.user_group_id = ugp.user_group_id AND x.page_id = 150004
 		)`,
-	// Grants: Purchase item for emergency registration (123) or legacy track/triage
 	`INSERT INTO user_group_page (user_group_id, page_id)
 	SELECT ugp.user_group_id, 125
 	FROM user_group_page ugp
@@ -96,7 +78,7 @@ for (const q of statements) {
 const verify = await sql`
 	SELECT id, name, module_id, parent_id, page_url
 	FROM page
-	WHERE id IN (481, 120, 121, 122, 150004, 125) OR parent_id = 481
+	WHERE id IN (120, 121, 122, 150004, 125) OR parent_id = 910000
 	ORDER BY id
 `;
 console.log('patch-nursing-ed-nav-pages: ok');

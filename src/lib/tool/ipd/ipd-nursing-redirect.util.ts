@@ -10,7 +10,8 @@ const IPD_CHILD_TO_EMR: Record<string, string> = {
 };
 
 /**
- * Build a Nursing IPD chart URL (stays under `/nursing-workbench/ipd/…`).
+ * Build a nursing chart URL for an IPD census row. All visit types share the
+ * same `/nursing-workbench/…` chart routes.
  */
 export function buildIpdNursingChartUrl(input: {
 	hospitalId: string;
@@ -28,7 +29,7 @@ export function buildIpdNursingChartUrl(input: {
 	qs.delete('visitStatus');
 	qs.delete('ipdContext');
 	const q = qs.toString();
-	return `/medora/hospital/${input.hospitalId}/home/nursing-workbench/ipd/${child}${q ? `?${q}` : ''}`;
+	return `/medora/hospital/${input.hospitalId}/home/nursing-workbench/${child}${q ? `?${q}` : ''}`;
 }
 
 /** @deprecated Use {@link buildIpdNursingChartUrl}. */

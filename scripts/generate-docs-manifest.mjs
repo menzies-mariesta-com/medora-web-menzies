@@ -159,7 +159,7 @@ const guides = [
 ];
 
 const employeeRoles = [
-	{ slug: 'nurse', title: 'Nurse', workflows: ['nursing-workbench-emr-vital', 'nursing-workbench-emar'] },
+	{ slug: 'nurse', title: 'Nurse', workflows: ['nursing-workbench-vital', 'nursing-workbench-emar'] },
 	{ slug: 'physician', title: 'Physician', workflows: ['consultation-emr', 'consultation-cpoe-prescription'] },
 	{ slug: 'billing-clerk', title: 'Billing clerk', workflows: ['billing-op-billing', 'billing-ip-billing-bill'] },
 	{ slug: 'lab-technologist', title: 'Lab technologist', workflows: ['diagnostics-lab-dashboard', 'diagnostics-lab-results'] },
@@ -176,18 +176,18 @@ const machineActors = [
 
 const journalSections = [
 	{ slug: 'registration', title: 'Registration and demographics', workflows: ['registration-patient-registration'] },
-	{ slug: 'encounters', title: 'Encounters and visits', workflows: ['nursing-workbench-emr-order'] },
-	{ slug: 'vitals', title: 'Vitals', workflows: ['nursing-workbench-emr-vital'] },
-	{ slug: 'allergies', title: 'Allergies', workflows: ['nursing-workbench-emr-allergy'] },
+	{ slug: 'encounters', title: 'Encounters and visits', workflows: ['nursing-workbench-order'] },
+	{ slug: 'vitals', title: 'Vitals', workflows: ['nursing-workbench-vital'] },
+	{ slug: 'allergies', title: 'Allergies', workflows: ['nursing-workbench-allergy'] },
 	{ slug: 'orders', title: 'Orders and CPOE', workflows: ['consultation-cpoe-order'] },
 	{ slug: 'results', title: 'Results', workflows: ['consultation-results', 'diagnostics-lab-results'] },
-	{ slug: 'documents', title: 'Clinical documents', workflows: ['nursing-workbench-emr-clinical-document'] },
+	{ slug: 'documents', title: 'Clinical documents', workflows: ['nursing-workbench-clinical-document'] },
 	{ slug: 'medications', title: 'Medications', workflows: ['consultation-cpoe-prescription', 'medication-order-internal-sales'] },
 	{ slug: 'billing', title: 'Billing', workflows: ['billing-op-billing'] },
 	{ slug: 'adt', title: 'ADT', workflows: ['adt-admission-list'] },
 	{ slug: 'perioperative', title: 'Perioperative', workflows: ['perioperative-ot-board'] },
 	{ slug: 'obstetrics', title: 'Obstetrics', workflows: ['obstetrics-labor-board'] },
-	{ slug: 'emergency', title: 'Emergency', workflows: ['emergency-triage'] }
+	{ slug: 'emergency', title: 'Emergency', workflows: ['nursing-workbench-triage'] }
 ];
 
 function writeMd(relPath, body, { force = false } = {}) {

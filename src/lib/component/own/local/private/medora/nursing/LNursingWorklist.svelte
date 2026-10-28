@@ -308,7 +308,6 @@
 		navigate(
 			buildNursingChartUrl({
 				hospitalId,
-				visitTypeId: row.visitType?.id ?? null,
 				visitId: String(row.id)
 			})
 		);
@@ -348,7 +347,7 @@
 			<p class="text-sm opacity-70">
 				{tr(
 					'nursing_worklist_intro',
-					'Active OPD, IPD and ED patients. Open a patient to chart in the tab set for their visit type.'
+					'Active OPD, IPD and ED patients. Open a patient to chart in the shared nursing chart.'
 				)}
 			</p>
 		</div>
@@ -357,22 +356,22 @@
 				className="btn-sm btn-outline cursor-pointer"
 				onClick={() =>
 					openPath(
-						'nursing-workbench/emr/patient-visit-history-dashboard'
+						'nursing-workbench/patient-visit-history-dashboard'
 					)}
 			>
-				{tr('nursing_worklist_open_opd', 'OPD dashboard')}
+				{tr('nursing_worklist_open_opd', 'Visit history')}
 			</WashButton>
 			<WashButton
 				className="btn-sm btn-outline cursor-pointer"
-				onClick={() => openPath('nursing-workbench/ipd/census')}
+				onClick={() => openPath('nursing-workbench/census')}
 			>
-				{tr('nursing_worklist_open_ipd', 'IPD census')}
+				{tr('nursing_worklist_open_ipd', 'Census')}
 			</WashButton>
 			<WashButton
 				className="btn-sm btn-outline cursor-pointer"
-				onClick={() => openPath('nursing-workbench/ed/track-board')}
+				onClick={() => openPath('nursing-workbench/track-board')}
 			>
-				{tr('nursing_worklist_open_ed', 'ED track board')}
+				{tr('nursing_worklist_open_ed', 'Track board')}
 			</WashButton>
 			<WashButton
 				className="btn-sm btn-ghost cursor-pointer"
