@@ -1,5 +1,5 @@
 import { type RequestEvent } from '@sveltejs/kit';
-import { requirePatientContext } from '$lib/server/medora/patient-portal/require-patient-context.server';
+import { requirePatientReadContext } from '$lib/server/medora/patient-portal/require-patient-context.server';
 import { listPatientDocuments } from '$lib/server/medora/patient-portal/documents.server';
 import {
 	handlePatientOptions,
@@ -13,10 +13,7 @@ export async function OPTIONS(event: RequestEvent) {
 export async function GET(event: RequestEvent) {
 	const preflight = handlePatientOptions(event);
 	if (preflight) return preflight;
-	const ctx = requirePatientContext(event);
-	const documents = await listPatientDocuments(
-		ctx,
-		event.url.pathname
-	);
+	const ctx = await requirePatientReadContext(event);
+	const documents = await listPatientDocuments(ctx);
 	return patientJson(event, { documents });
 }

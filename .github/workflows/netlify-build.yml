@@ -18,7 +18,7 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -26,7 +26,7 @@ jobs:
       - name: Add swap for production build
         run: |
           sudo swapoff -a || true
-          sudo fallocate -l 8G /swapfile
+          sudo fallocate -l 24G /swapfile
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
@@ -43,16 +43,46 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
       - name: Build
-        run: npm run build:github
+        run: |
+          free -h
+          npm run build:github
+        env:
+          # Satisfy hooks/auth during prerender (values are not used for deploy secrets).
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?sslmode=disable
+          BETTER_AUTH_SECRET: github-actions-ci-build-placeholder-min-32-chars
+          BETTER_AUTH_URL: https://medora-menzies.netlify.app
+          BETTER_AUTH_BASE_URL: https://medora-menzies.netlify.app
+          PUBLIC_APP_URL: https://medora-menzies.netlify.app
 
-      - name: Deploy to Netlify
-        uses: nwtgck/actions-netlify@v3.0
-        with:
-          publish-dir: ./build
-          production-deploy: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: 'Deploy from GitHub Actions'
+      - name: Verify Netlify secrets
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::error::Repository secret NETLIFY_AUTH_TOKEN is missing. Netlify → User settings → Personal access tokens, then add the token under GitHub repo Settings → Secrets → Actions."
+            exit 1
+          fi
+          if [ -z "$NETLIFY_SITE_ID" ]; then
+            echo "::error::Repository secret NETLIFY_SITE_ID is missing. Netlify → Site configuration → Site details → Site ID."
+            exit 1
+          fi
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        timeout-minutes: 10
+
+      - name: Verify Netlify build artifacts
+        run: |
+          test -d build || (echo "::error::Missing build/ — vite build failed?" && exit 1)
+          test -f .netlify/functions-internal/sveltekit-render.mjs || (echo "::error::Missing .netlify/functions-internal — adapter-netlify output?" && exit 1)
+          test -d .netlify/server || (echo "::error::Missing .netlify/server" && exit 1)
+
+      # Use Netlify CLI (not a separate functions-dir upload). Internal functions live under
+      # .netlify/functions-internal; CLI + netlify.toml deploy them with the static build/.
+      - name: Deploy to Netlify
+        run: |
+          npx --yes netlify-cli@23 deploy --prod \
+            --dir=build \
+            --site="$NETLIFY_SITE_ID" \
+            --message "Deploy from GitHub Actions"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        timeout-minutes: 20

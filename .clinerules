@@ -1,0 +1,26 @@
+# Tool Calling Rules
+You must strictly format all tool calls using the exact XML tags and parameter names below. Never use plural names or raw JSON.
+
+1. Read a file:
+<read_file>
+<path>relative/or/full/path/to/file</path>
+</read_file>
+
+2. List files / directory contents:
+<list_files>
+<path>directory/path</path>
+<recursive>false</recursive>
+</list_files>
+
+3. Run terminal commands:
+<execute_command>
+<command>command to run</command>
+</execute_command>
+
+4. Write or edit a file:
+<write_to_file>
+<path>path/to/file</path>
+<content>
+file content here
+</content>
+</write_to_file>

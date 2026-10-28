@@ -1,6 +1,9 @@
 import { mdsvex } from 'mdsvex';
 import adapter from '@sveltejs/adapter-netlify';
 
+const isCiBuild =
+	process.env.NETLIFY === 'true' || process.env.GITHUB_ACTIONS === 'true';
+
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
@@ -10,7 +13,8 @@ const config = {
 			split: false
 		}),
 		experimental: {
-			remoteFunctions: true
+			// Not used in repo; adds build graph work and RSS during CI.
+			remoteFunctions: !isCiBuild
 		}
 	},
 	compilerOptions: {

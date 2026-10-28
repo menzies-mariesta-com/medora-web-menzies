@@ -27,6 +27,7 @@
 	});
 </script>
 
+
 <table class={classes}>
 	{@render children()}
 </table>

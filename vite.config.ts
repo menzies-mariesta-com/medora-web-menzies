@@ -94,6 +94,11 @@ export default defineConfig({
 		? {
 				build: {
 					sourcemap: false,
+					reportCompressedSize: false,
+					modulePreload: false,
+					// Minification holds extra AST/CSS in memory; skip on CI (Netlify gzip still applies).
+					minify: false,
+					cssMinify: false,
 					rollupOptions: {
 						// Reduce peak RSS during "rendering chunks" on memory-limited CI (~8GB).
 						maxParallelFileOps: 1
