@@ -5,7 +5,8 @@
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type {
 		PatientVisitForEmrList,
-		VisitStatusCode
+		VisitStatusCode,
+		VisitStatusFilterCode
 	} from '$lib/model/type/medora/emr/visit-list.type';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { page } from '$app/state';
@@ -51,7 +52,7 @@
 	let tableFilters = $state<Record<string, string>>(initialFilters);
 	let isConfirming = $state(false);
 	let activeAllergyPatientIds = $state<Set<string>>(new Set());
-	let abnormalVitalVisitIds = $state<Set<number>>(new Set());
+	let abnormalVitalVisitIds = $state<Set<string>>(new Set());
 
 	const visits = $derived(result?.data ?? []);
 	const total = $derived(result?.total ?? 0);
@@ -63,9 +64,10 @@
 	);
 
 	const visitStatusOptions: {
-		value: VisitStatusCode;
+		value: VisitStatusFilterCode;
 		label: string;
 	}[] = [
+		{ value: 'active', label: 'Active' },
 		{ value: 'open', label: 'Open' },
 		{ value: 'vital', label: 'Vital' },
 		{ value: 'seen', label: 'Seen' },
@@ -299,7 +301,7 @@
 				(data.activeAllergyPatientIds ?? []).map(String)
 			);
 			abnormalVitalVisitIds = new Set(
-				(data.abnormalVitalVisitIds ?? []).map(Number)
+				(data.abnormalVitalVisitIds ?? []).map(String)
 			);
 		} finally {
 			isLoading = false;

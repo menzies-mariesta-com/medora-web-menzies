@@ -4,8 +4,18 @@ export type VisitStatusCode =
 	| 'seen'
 	| 'closed_discharged';
 
+/**
+ * Filter-only status codes accepted by `visit.list`.
+ * `active` matches every visit that is not Closed / Discharged.
+ */
+export type VisitStatusFilterCode =
+	| VisitStatusCode
+	| 'active'
+	| 'closed'
+	| 'discharged';
+
 export type PatientVisitForEmrList = {
-	id: number;
+	id: string;
 	visitNo: string | null;
 	createdAt?: string | Date | null;
 	visitStatus: VisitStatusCode;
@@ -26,8 +36,9 @@ export type PatientVisitForEmrList = {
 		middleName: string | null;
 		lastName: string | null;
 		dateOfBirth?: string | null;
-		title?: { name: string | null } | null;
-		gender?: { name: string | null } | null;
+		nameMasking?: number | null;
+		title?: { id: number; name: string | null } | null;
+		gender?: { id: number; name: string | null } | null;
 	} | null;
 };
 
