@@ -1,6 +1,6 @@
 ---
-title: "ER patient registration"
-description: "How to use ER patient registration in Emergency."
+title: "ED Patient Registration"
+description: "How to use ED Patient Registration in Emergency."
 docType: workflow
 slug: workflows/emergency-admission-new
 pageId: 123001
@@ -13,7 +13,7 @@ lastReviewed: "2026-03-21"
 
 ## What you will do
 
-Use **ER patient registration** in **Emergency** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
+Use **ED Patient Registration** in **Emergency** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
 
 ## Before you start
 
@@ -24,7 +24,7 @@ Use **ER patient registration** in **Emergency** for everyday hospital tasks. A 
 ## Steps
 
 1. Open **Emergency** from the home menu.
-2. Open **ER patient registration**.
+2. Open **ED Patient Registration**.
 3. Follow the on-screen forms and save when you are done.
 
 ## Quick map
@@ -32,7 +32,7 @@ Use **ER patient registration** in **Emergency** for everyday hospital tasks. A 
 ```mermaid
 flowchart LR
   signIn[Sign in] --> module[Open Emergency]
-  module --> screen[Open ER patient registration]
+  module --> screen[Open ED Patient Registration]
   screen --> done[Finish task]
 ```
 
