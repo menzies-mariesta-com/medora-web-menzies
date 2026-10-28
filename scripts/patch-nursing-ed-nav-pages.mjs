@@ -20,7 +20,7 @@ const sql = neon(url);
 const statements = [
 	`INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 	VALUES
-		(124, 'ED bed status', 12, 1, null, '/medora/home/emergency/bed-status', 5),
+		(124, 'ED Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 5),
 		(454, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
 		(455, 'ED billing setup', 1, 1, null, '/medora/home/administration/er-billing-setup', 20),
 		(125, 'Purchase item', 12, 1, null, '/medora/home/emergency/purchase-item', 2)
@@ -31,6 +31,7 @@ const statements = [
 		parent_id = EXCLUDED.parent_id,
 		page_url = EXCLUDED.page_url,
 		sequence_no = EXCLUDED.sequence_no`,
+	`UPDATE page SET name = 'ED Patient Registration', sequence_no = 1 WHERE id = 123001`,
 	`UPDATE page SET sequence_no = 2 WHERE id = 124`,
 	`INSERT INTO user_group_page (user_group_id, page_id)
 	SELECT ugp.user_group_id, child.page_id

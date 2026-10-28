@@ -190,7 +190,7 @@ export async function seedInformationTables() {
 
 			-- Emergency module (12)
 			(123, 'Registration', 12, 1, null, '/medora/home/emergency/admission', 1),
-			(123001, 'ED patient registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
+			(123001, 'ED Patient Registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
 			(123003, 'New patient', 12, 1, 123, '/medora/home/emergency/admission/new-patient', 2),
 			(123002, 'Registration list', 12, 1, 123, '/medora/home/emergency/admission/list', 3),
 			(125, 'Purchase item', 12, 1, null, '/medora/home/emergency/purchase-item', 2),
@@ -326,7 +326,7 @@ export async function seedInformationTables() {
 		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 		VALUES
 			(123, 'Registration', 12, 1, null, '/medora/home/emergency/admission', 1),
-			(123001, 'ED patient registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
+			(123001, 'ED Patient Registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
 			(123003, 'New patient', 12, 1, 123, '/medora/home/emergency/admission/new-patient', 2),
 			(123002, 'Registration list', 12, 1, 123, '/medora/home/emergency/admission/list', 3)
 		ON CONFLICT (id) DO UPDATE SET
@@ -374,12 +374,12 @@ export async function seedInformationTables() {
 			page_url = EXCLUDED.page_url,
 			sequence_no = EXCLUDED.sequence_no;
 		`);
-	await db.execute(sql`UPDATE page SET name = 'ED patient registration', sequence_no = 1 WHERE id = 123001`);
+	await db.execute(sql`UPDATE page SET name = 'ED Patient Registration', sequence_no = 1 WHERE id = 123001`);
 	await db.execute(sql`UPDATE page SET sequence_no = 3 WHERE id = 123002`);
 	await db.execute(sql`
 		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 		VALUES
-			(124, 'ED bed status', 12, 1, null, '/medora/home/emergency/bed-status', 5),
+			(124, 'ED Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 5),
 			(454, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
 			(455, 'ED billing setup', 1, 1, null, '/medora/home/administration/er-billing-setup', 20),
 			(125, 'Purchase item', 12, 1, null, '/medora/home/emergency/purchase-item', 2)

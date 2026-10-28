@@ -1,6 +1,6 @@
 ---
-title: "ER Triage Levels"
-description: "How to use ER Triage Levels in Administration."
+title: "ED triage levels"
+description: "How to use ED triage levels in Administration."
 docType: workflow
 slug: workflows/administration-er-triage-level
 pageId: 454
@@ -13,7 +13,7 @@ lastReviewed: "2026-03-21"
 
 ## What you will do
 
-Use **ER Triage Levels** in **Administration** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
+Use **ED triage levels** in **Administration** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
 
 ## Before you start
 
@@ -24,7 +24,7 @@ Use **ER Triage Levels** in **Administration** for everyday hospital tasks. A fu
 ## Steps
 
 1. Open **Administration** from the home menu.
-2. Open **ER Triage Levels**.
+2. Open **ED triage levels**.
 3. Follow the on-screen forms and save when you are done.
 
 ## Quick map
@@ -32,7 +32,7 @@ Use **ER Triage Levels** in **Administration** for everyday hospital tasks. A fu
 ```mermaid
 flowchart LR
   signIn[Sign in] --> module[Open Administration]
-  module --> screen[Open ER Triage Levels]
+  module --> screen[Open ED triage levels]
   screen --> done[Finish task]
 ```
 

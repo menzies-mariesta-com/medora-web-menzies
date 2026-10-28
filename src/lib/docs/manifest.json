@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-28T11:51:03.958Z",
+  "generatedAt": "2026-10-28T16:39:48.892Z",
   "version": "1.5.0",
   "stats": {
     "modules": 15,
@@ -1021,14 +1021,14 @@
       "pageUrl": "/medora/home/emergency/admission",
       "capturePageUrl": "/medora/home/emergency/admission/new",
       "sectionTitle": "Registration",
-      "subTabTitle": "ER patient registration",
+      "subTabTitle": "ED Patient Registration",
       "parentPageTitle": null,
       "contentFile": "workflows/emergency-admission.md"
     },
     {
       "slug": "emergency-admission-new",
       "path": "/docs/workflows/emergency-admission-new",
-      "title": "ER patient registration",
+      "title": "ED Patient Registration",
       "pageId": 123001,
       "moduleId": 12,
       "moduleName": "Emergency",
@@ -2408,7 +2408,7 @@
     {
       "slug": "emergency-bed-status",
       "path": "/docs/workflows/emergency-bed-status",
-      "title": "ER Bed Status",
+      "title": "ED Bed Status",
       "pageId": 124,
       "moduleId": 12,
       "moduleName": "Emergency",
@@ -2423,7 +2423,7 @@
     {
       "slug": "administration-er-triage-level",
       "path": "/docs/workflows/administration-er-triage-level",
-      "title": "ER Triage Levels",
+      "title": "ED triage levels",
       "pageId": 454,
       "moduleId": 1,
       "moduleName": "Administration",
@@ -2438,7 +2438,7 @@
     {
       "slug": "administration-er-billing-setup",
       "path": "/docs/workflows/administration-er-billing-setup",
-      "title": "ER Billing Setup",
+      "title": "ED billing setup",
       "pageId": 455,
       "moduleId": 1,
       "moduleName": "Administration",
@@ -3139,7 +3139,7 @@
       "keywords": "Emergency /medora/home/emergency/admission"
     },
     {
-      "title": "ER patient registration",
+      "title": "ED Patient Registration",
       "href": "/docs/workflows/emergency-admission-new",
       "category": "Workflow",
       "keywords": "Emergency /medora/home/emergency/admission/new"
@@ -3691,19 +3691,19 @@
       "keywords": "Inventory /medora/home/inventory/reports/movement"
     },
     {
-      "title": "ER Bed Status",
+      "title": "ED Bed Status",
       "href": "/docs/workflows/emergency-bed-status",
       "category": "Workflow",
       "keywords": "Emergency /medora/home/emergency/bed-status"
     },
     {
-      "title": "ER Triage Levels",
+      "title": "ED triage levels",
       "href": "/docs/workflows/administration-er-triage-level",
       "category": "Workflow",
       "keywords": "Administration /medora/home/administration/er-triage-level"
     },
     {
-      "title": "ER Billing Setup",
+      "title": "ED billing setup",
       "href": "/docs/workflows/administration-er-billing-setup",
       "category": "Workflow",
       "keywords": "Administration /medora/home/administration/er-billing-setup"
