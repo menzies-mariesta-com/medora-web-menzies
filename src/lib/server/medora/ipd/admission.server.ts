@@ -508,67 +508,71 @@ export async function transferBed(
 	}
 ): Promise<IpdAdmissionSchema> {
 	const db = ensureDb();
-	const [admission] = await db
-		.select()
-		.from(table.ipdAdmissionTable)
-		.where(
-			and(
-				eq(table.ipdAdmissionTable.id, payload.admissionId),
-				eq(table.ipdAdmissionTable.hospitalId, payload.hospitalId),
-				eq(
-					table.ipdAdmissionTable.admissionStatus,
-					IpdAdmissionStatusEnum.ADMITTED
-				)
-			)
-		)
-		.limit(1);
-	if (!admission) throw error(404, 'Active admission not found');
-	if (admission.otHoldLocation) {
-		throw error(
-			400,
-			'Clear OT/Recovery hold before transferring beds'
-		);
-	}
-
 	const toCtx = await resolveBedTariffContext({
 		hospitalId: payload.hospitalId,
 		bedId: payload.toBedId
 	});
-	if (toCtx.branchId !== admission.branchId) {
-		throw error(400, 'Target bed is not in the admission branch');
-	}
-	if (
-		typeof payload.toWardId === 'number' &&
-		payload.toWardId !== toCtx.wardId
-	) {
-		throw error(400, 'Target bed does not belong to selected ward');
-	}
-	if (admission.bedId === payload.toBedId) {
-		throw error(400, 'Already on this bed');
-	}
-
-	const [toBed] = await db
-		.select({ bedStatus: table.bedTable.bedStatus })
-		.from(table.bedTable)
-		.where(eq(table.bedTable.id, payload.toBedId))
-		.limit(1);
-	if (!toBed || toBed.bedStatus !== IpdBedStatusEnum.FREE) {
-		throw error(400, 'Target bed is not free');
-	}
 
 	const movedAt = new Date().toISOString();
 
 	return db.transaction(async (tx) => {
+		// Lock the admission so a concurrent discharge/transfer cannot interleave.
+		const [admission] = await tx
+			.select()
+			.from(table.ipdAdmissionTable)
+			.where(
+				and(
+					eq(table.ipdAdmissionTable.id, payload.admissionId),
+					eq(table.ipdAdmissionTable.hospitalId, payload.hospitalId),
+					eq(
+						table.ipdAdmissionTable.admissionStatus,
+						IpdAdmissionStatusEnum.ADMITTED
+					)
+				)
+			)
+			.for('update')
+			.limit(1);
+		if (!admission) throw error(404, 'Active admission not found');
+		if (admission.otHoldLocation) {
+			throw error(
+				400,
+				'Clear OT/Recovery hold before transferring beds'
+			);
+		}
+		if (toCtx.branchId !== admission.branchId) {
+			throw error(400, 'Target bed is not in the admission branch');
+		}
+		if (
+			typeof payload.toWardId === 'number' &&
+			payload.toWardId !== toCtx.wardId
+		) {
+			throw error(400, 'Target bed does not belong to selected ward');
+		}
+		if (admission.bedId === payload.toBedId) {
+			throw error(400, 'Already on this bed');
+		}
+
+		// Atomic claim: fail if another transfer/admission took the bed first.
+		const [claimedBed] = await tx
+			.update(table.bedTable)
+			.set({ bedStatus: IpdBedStatusEnum.OCCUPIED })
+			.where(
+				and(
+					eq(table.bedTable.id, payload.toBedId),
+					eq(table.bedTable.bedStatus, IpdBedStatusEnum.FREE)
+				)
+			)
+			.returning({ id: table.bedTable.id });
+		if (!claimedBed) {
+			throw error(400, 'Target bed is not free');
+		}
+
 		await closeOpenStaySegment(tx, admission.id, movedAt);
 
 		await tx
 			.update(table.bedTable)
 			.set({ bedStatus: IpdBedStatusEnum.CLEANING })
 			.where(eq(table.bedTable.id, admission.bedId));
-		await tx
-			.update(table.bedTable)
-			.set({ bedStatus: IpdBedStatusEnum.OCCUPIED })
-			.where(eq(table.bedTable.id, payload.toBedId));
 
 		await tx.insert(table.ipdBedHistoryTable).values({
 			admissionId: admission.id,
@@ -642,6 +646,7 @@ export async function dischargeAdmission(
 	payload: DischargePayload & { hospitalId: string }
 ): Promise<IpdAdmissionSchema> {
 	const db = ensureDb();
+
 	const [admission] = await db
 		.select()
 		.from(table.ipdAdmissionTable)
@@ -666,12 +671,29 @@ export async function dischargeAdmission(
 	const dischargedAt = new Date().toISOString();
 
 	return db.transaction(async (tx) => {
-		await closeOpenStaySegment(tx, admission.id, dischargedAt);
+		// Re-check under lock so two concurrent discharges cannot both run.
+		const [locked] = await tx
+			.select()
+			.from(table.ipdAdmissionTable)
+			.where(
+				and(
+					eq(table.ipdAdmissionTable.id, admission.id),
+					eq(
+						table.ipdAdmissionTable.admissionStatus,
+						IpdAdmissionStatusEnum.ADMITTED
+					)
+				)
+			)
+			.for('update')
+			.limit(1);
+		if (!locked) throw error(404, 'Active admission not found');
+
+		await closeOpenStaySegment(tx, locked.id, dischargedAt);
 
 		await tx
 			.update(table.bedTable)
 			.set({ bedStatus: IpdBedStatusEnum.CLEANING })
-			.where(eq(table.bedTable.id, admission.bedId));
+			.where(eq(table.bedTable.id, locked.bedId));
 
 		const [updated] = await tx
 			.update(table.ipdAdmissionTable)
@@ -681,7 +703,7 @@ export async function dischargeAdmission(
 				otHoldLocation: null,
 				otHoldAt: null
 			})
-			.where(eq(table.ipdAdmissionTable.id, admission.id))
+			.where(eq(table.ipdAdmissionTable.id, locked.id))
 			.returning();
 		if (!updated) throw new Error('Discharge update failed');
 
@@ -690,7 +712,7 @@ export async function dischargeAdmission(
 			.set({
 				statusTaggingId: VisitStatusTaggingEnum.CLOSED_DISCHARGED
 			})
-			.where(eq(table.patientVisitTable.id, admission.visitId));
+			.where(eq(table.patientVisitTable.id, locked.visitId));
 
 		return updated;
 	});
@@ -717,6 +739,26 @@ export async function closeIpdVisit(input: {
 		visit.statusTaggingId === VisitStatusTaggingEnum.CLOSED_DISCHARGED
 	) {
 		return;
+	}
+	const [admission] = await db
+		.select({ admissionStatus: table.ipdAdmissionTable.admissionStatus })
+		.from(table.ipdAdmissionTable)
+		.where(
+			and(
+				eq(table.ipdAdmissionTable.visitId, input.visitId),
+				ne(table.ipdAdmissionTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.orderBy(desc(table.ipdAdmissionTable.admittedAt))
+		.limit(1);
+	if (
+		admission &&
+		admission.admissionStatus !== IpdAdmissionStatusEnum.DISCHARGED
+	) {
+		throw error(
+			409,
+			'IPD visit can only be closed after the admission is discharged'
+		);
 	}
 	await db
 		.update(table.patientVisitTable)
