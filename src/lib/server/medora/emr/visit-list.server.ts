@@ -31,6 +31,7 @@ import {
 import type {
 	PatientVisitForEmrList,
 	VisitStatusCode,
+	VisitStatusFilterCode,
 	VisitTypeOption
 } from '$lib/model/type/medora/emr/visit-list.type';
 
@@ -214,11 +215,11 @@ function buildAbnormalVitalWhere(
 }
 
 export async function getAbnormalVitalVisitIdsByVisitIds(params: {
-	visitIds: number[];
-}): Promise<number[]> {
-	const ids = params.visitIds.filter(
-		(id) => Number.isInteger(id) && id > 0
-	);
+	visitIds: string[];
+}): Promise<string[]> {
+	const ids = params.visitIds
+		.map((id) => String(id ?? '').trim())
+		.filter((id) => id !== '');
 	if (ids.length === 0) return [];
 
 	const pd = table.patientDiagnosisTable;
@@ -315,7 +316,7 @@ export async function getPatientVisitPaginatedForEmr(
 		branchName?: string;
 		doctorName?: string;
 		visitTypeId?: number | null;
-		visitStatus?: VisitStatusCode | 'closed' | 'discharged';
+		visitStatus?: VisitStatusFilterCode;
 		/** When true, only visits with an active IPD admission row. */
 		hasActiveAdmission?: boolean;
 	}
@@ -491,6 +492,14 @@ export async function getPatientVisitPaginatedForEmr(
 							)
 						)
 					: and(whereExpr, sql`1=0` as any);
+		} else if (visitStatus === 'active') {
+			whereExpr =
+				tagging.closedDischargedId != null
+					? and(
+							whereExpr,
+							sql`${table.patientVisitTable.statusTaggingId} IS DISTINCT FROM ${tagging.closedDischargedId}` as any
+						)
+					: whereExpr;
 		}
 	}
 

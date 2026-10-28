@@ -17,9 +17,11 @@ import {
 import {
 	BillingStatusTaggingEnum,
 	InvDepartmentConsumptionStatusTaggingEnum,
+	IpdAdmissionStatusEnum,
 	StaffTypeEnum,
 	StatusEnum,
-	VisitStatusTaggingEnum
+	VisitStatusTaggingEnum,
+	VisitTypeEnum
 } from '$lib/model/enum/db-link';
 import {
 	normalizePagination,
@@ -922,17 +924,44 @@ export async function signPatientVisitClinical(input: {
 	// Delegate to existing logic by reproducing minimal checks.
 	const [cur] = await ensureDb()
 		.select({
-			clinicalSignedAt: table.patientVisitTable.clinicalSignedAt
+			clinicalSignedAt: table.patientVisitTable.clinicalSignedAt,
+			visitTypeId: table.patientVisitTable.visitTypeId
 		})
 		.from(table.patientVisitTable)
 		.where(eq(table.patientVisitTable.id, input.visitId))
 		.limit(1);
 	if (!cur) throw new Error('Visit not found');
+	if (cur.visitTypeId === VisitTypeEnum.IPD) {
+		throw error(
+			409,
+			'IPD visits are closed by discharge, not by clinical sign-off. Complete the discharge workflow instead.'
+		);
+	}
 	if (
 		cur.clinicalSignedAt != null &&
 		String(cur.clinicalSignedAt).trim() !== ''
 	) {
 		throw new Error('This visit is already saved as signed.');
+	}
+	const [activeAdmission] = await ensureDb()
+		.select({ id: table.ipdAdmissionTable.id })
+		.from(table.ipdAdmissionTable)
+		.where(
+			and(
+				eq(table.ipdAdmissionTable.visitId, input.visitId),
+				eq(
+					table.ipdAdmissionTable.admissionStatus,
+					IpdAdmissionStatusEnum.ADMITTED
+				),
+				ne(table.ipdAdmissionTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.limit(1);
+	if (activeAdmission) {
+		throw error(
+			409,
+			'This visit has an active IPD admission. Use the discharge workflow to close it.'
+		);
 	}
 	const [row] = await ensureDb()
 		.update(table.patientVisitTable)

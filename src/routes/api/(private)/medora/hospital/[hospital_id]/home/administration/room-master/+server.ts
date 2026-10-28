@@ -1,6 +1,7 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as room from '$lib/server/medora/ipd/room.server';
+import { isErForMasterPicker, isErFromScopeQuery } from '$lib/server/medora/ipd/master-is-er.util';
 import { StatusEnum } from '$lib/model/enum/db-link';
 
 function hospitalIdFrom(event: RequestEvent): string {
@@ -25,14 +26,19 @@ export async function GET(event: RequestEvent) {
 			wardIdRaw != null && wardIdRaw !== ''
 				? Number(wardIdRaw)
 				: undefined;
+		const isEr = isErForMasterPicker(
+			event.url.searchParams.get('scope')
+		);
 		return json(
 			await room.listActiveRooms({
 				hospitalId,
-				wardId: Number.isFinite(wardId as number) ? wardId : undefined
+				wardId: Number.isFinite(wardId as number) ? wardId : undefined,
+				isEr
 			})
 		);
 	}
 
+	const isEr = isErFromScopeQuery(event.url.searchParams.get('scope'));
 	const page = Number(event.url.searchParams.get('page') ?? '1');
 	const pageSize = Number(
 		event.url.searchParams.get('pageSize') ?? '10'
@@ -69,7 +75,8 @@ export async function GET(event: RequestEvent) {
 				: undefined,
 			statusId: Number.isFinite(statusId as number)
 				? statusId
-				: undefined
+				: undefined,
+			isEr
 		})
 	);
 }
@@ -97,6 +104,7 @@ export async function POST(event: RequestEvent) {
 			amenities: body.amenities
 				? String(body.amenities).trim()
 				: null,
+			isEr: body.isEr === undefined ? undefined : Boolean(body.isEr),
 			statusId:
 				body.statusId === StatusEnum.INACTIVE
 					? StatusEnum.INACTIVE

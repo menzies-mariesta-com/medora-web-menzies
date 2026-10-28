@@ -11,13 +11,18 @@ import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-ho
 import { assertPatientCanOpenNewVisit } from '$lib/server/medora/patient-visit/assert-patient-can-open-new-visit.server';
 import { and, eq, sql } from 'drizzle-orm';
 
-async function getVisitStatusTaggingIds(): Promise<{
+/** Database or transaction executor (tx is cast to this shape by callers). */
+type VisitDb = ReturnType<typeof ensureDb>;
+
+async function getVisitStatusTaggingIds(
+	db: VisitDb = ensureDb()
+): Promise<{
 	openId: number | null;
 	vitalId: number | null;
 	seenId: number | null;
 	closedDischargedId: number | null;
 }> {
-	const rows = await ensureDb()
+	const rows = await db
 		.select({
 			id: table.statusTaggingTable.id,
 			code: table.statusTaggingTable.code
@@ -48,20 +53,23 @@ async function getVisitStatusTaggingIds(): Promise<{
 	};
 }
 
-async function getNextVisitNo(params: {
-	hospitalId: string;
-	branchId: string;
-	visitTypeId: number;
-}): Promise<string> {
+async function getNextVisitNo(
+	params: {
+		hospitalId: string;
+		branchId: string;
+		visitTypeId: number;
+	},
+	db: VisitDb = ensureDb()
+): Promise<string> {
 	const { hospitalId, branchId, visitTypeId } = params;
 	const [hospital, branch, visitType] = await Promise.all([
-		ensureDb().query.hospitalTable.findFirst({
+		db.query.hospitalTable.findFirst({
 			where: (t, { eq }) => eq(t.id, hospitalId)
 		}),
-		ensureDb().query.hospitalBranchTable.findFirst({
+		db.query.hospitalBranchTable.findFirst({
 			where: (t, { eq }) => eq(t.id, branchId)
 		}),
-		ensureDb().query.visitTypeTable.findFirst({
+		db.query.visitTypeTable.findFirst({
 			where: (t, { eq }) => eq(t.id, visitTypeId)
 		})
 	]);
@@ -79,7 +87,6 @@ async function getNextVisitNo(params: {
 			'Visit type is required to generate visit number.'
 		);
 
-	const db = ensureDb();
 	const today = new Date();
 
 	const [financialYear] = await db
@@ -114,14 +121,23 @@ async function getNextVisitNo(params: {
 	});
 }
 
-export async function createPatientVisitInHospital(
-	event: RequestEvent,
-	payload: Omit<PatientVisitSchemaInsert, 'branchId' | 'visitNo'> & {
-		branchId?: string | null;
-		hospitalId: string;
-		/** ADT OPD→IPD: allow this unfinished OPD visit + its open OP bill */
-		convertFromOpdVisitId?: string;
-	}
+type PatientVisitCreatePayload = Omit<
+	PatientVisitSchemaInsert,
+	'branchId' | 'visitNo'
+> & {
+	branchId?: string | null;
+	hospitalId: string;
+	/** ADT OPD→IPD: allow this unfinished OPD visit + its open OP bill */
+	convertFromOpdVisitId?: string;
+};
+
+/**
+ * Inserts a patient visit. Pass `db` to run inside a caller's transaction so
+ * admission/bed changes and the visit commit (or roll back) together.
+ */
+export async function createPatientVisitRecord(
+	payload: PatientVisitCreatePayload,
+	db: VisitDb = ensureDb()
 ): Promise<PatientVisitSchema> {
 	const branchId = payload.branchId ?? null;
 	if (!branchId) {
@@ -136,28 +152,31 @@ export async function createPatientVisitInHospital(
 			'Visit type is required to create patient visit'
 		);
 	}
-
-	await ensureCanAccessHospital(event, payload.hospitalId);
-
 	if (!payload.patientId) {
 		throw error(400, 'Patient is required to create patient visit');
 	}
 
 	const { convertFromOpdVisitId, ...insertPayload } = payload;
 
-	await assertPatientCanOpenNewVisit({
-		hospitalId: payload.hospitalId,
-		patientId: payload.patientId,
-		convertFromOpdVisitId
-	});
+	await assertPatientCanOpenNewVisit(
+		{
+			hospitalId: payload.hospitalId,
+			patientId: payload.patientId,
+			convertFromOpdVisitId
+		},
+		db
+	);
 
-	const visitNo = await getNextVisitNo({
-		hospitalId: payload.hospitalId,
-		branchId,
-		visitTypeId: payload.visitTypeId
-	});
+	const visitNo = await getNextVisitNo(
+		{
+			hospitalId: payload.hospitalId,
+			branchId,
+			visitTypeId: payload.visitTypeId
+		},
+		db
+	);
 
-	const visitStatusTagging = await getVisitStatusTaggingIds();
+	const visitStatusTagging = await getVisitStatusTaggingIds(db);
 	const statusTaggingId =
 		payload.statusTaggingId ?? visitStatusTagging.openId;
 
@@ -168,11 +187,19 @@ export async function createPatientVisitInHospital(
 		statusTaggingId
 	};
 
-	const [row] = await ensureDb()
+	const [row] = await db
 		.insert(table.patientVisitTable)
 		.values(values)
 		.returning();
 
 	if (!row) throw error(400, 'Insert failed');
 	return row;
+}
+
+export async function createPatientVisitInHospital(
+	event: RequestEvent,
+	payload: PatientVisitCreatePayload
+): Promise<PatientVisitSchema> {
+	await ensureCanAccessHospital(event, payload.hospitalId);
+	return createPatientVisitRecord(payload);
 }

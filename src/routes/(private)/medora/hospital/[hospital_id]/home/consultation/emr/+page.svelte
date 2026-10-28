@@ -1734,15 +1734,17 @@
 							</WashButton>
 						</span>
 					{/if}
-					<WashButton
-						className="btn-primary btn-sm"
-						disabled={isSigningClinical || isLoadingVisit}
-						loading={isSigningClinical}
-						loadingText=""
-						onClick={handleSaveAsSigned}
-					>
-						{m.observation_save_as_signed()}
-					</WashButton>
+					{#if visitRow?.visitTypeId !== VisitTypeEnum.IPD}
+						<WashButton
+							className="btn-primary btn-sm"
+							disabled={isSigningClinical || isLoadingVisit}
+							loading={isSigningClinical}
+							loadingText=""
+							onClick={handleSaveAsSigned}
+						>
+							{m.observation_save_as_signed()}
+						</WashButton>
+					{/if}
 				</div>
 			{/if}
 		</header>

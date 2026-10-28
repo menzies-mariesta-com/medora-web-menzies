@@ -2,7 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as emrVisitList from '$lib/server/medora/emr/visit-list.server';
-import type { VisitStatusCode } from '$lib/model/type/medora/emr/visit-list.type';
+import type { VisitStatusFilterCode } from '$lib/model/type/medora/emr/visit-list.type';
 import { parseUuid } from '$lib/util/id.util';
 
 export const GET: RequestHandler = async (event) => {
@@ -73,7 +73,7 @@ export const GET: RequestHandler = async (event) => {
 				visitStatusRaw != null && visitStatusRaw.trim() !== ''
 					? visitStatusRaw
 					: undefined
-			) as VisitStatusCode | undefined;
+			) as VisitStatusFilterCode | undefined;
 			const hasActiveAdmission =
 				event.url.searchParams.get('hasActiveAdmission') === '1' ||
 				event.url.searchParams.get('hasActiveAdmission') === 'true';

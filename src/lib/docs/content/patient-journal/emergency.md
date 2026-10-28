@@ -2,11 +2,11 @@
 title: "Emergency"
 docType: journal
 slug: patient-journal/emergency
-workflowSlugs: ["emergency-triage"]
+workflowSlugs: ["nursing-workbench-triage"]
 ---
 
 ## Patient journal: Emergency
 
 Longitudinal chart section. Related workflows:
 
-- [emergency-triage](/docs/workflows/emergency-triage)
+- [nursing-workbench-triage](/docs/workflows/nursing-workbench-triage)

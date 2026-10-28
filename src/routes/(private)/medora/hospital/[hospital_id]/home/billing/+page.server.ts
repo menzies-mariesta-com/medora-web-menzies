@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		302,
 		medoraHospitalPageUrl(
 			hospitalId,
-			WebRoutesEnum.MEDORA_HOME_BILLING_OP_BILLING
+			WebRoutesEnum.MEDORA_HOME_BILLING_BILL
 		)
 	);
 };

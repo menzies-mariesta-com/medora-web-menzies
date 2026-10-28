@@ -12,6 +12,11 @@
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import type { RoomCategoryRow } from '$lib/model/type/medora/ipd/ipd.type';
+	import {
+		administrationRoomCategoryApi,
+		masterScopeDisplayLabel,
+		type UnifiedCategoryListRow
+	} from '$lib/tool/medora/administration-master-scope.util';
 	import { m } from '$lib/paraglide/messages';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -33,7 +38,8 @@
 			: ''
 	);
 
-	let rows = $state<RoomCategoryRow[]>([]);
+
+	let rows = $state<(RoomCategoryRow & UnifiedCategoryListRow)[]>([]);
 	let total = $state(0);
 	let totalPages = $state(1);
 	let currentPage = $state(1);
@@ -43,7 +49,16 @@
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 
-	const categoryColumns: MenziesTableColumn<RoomCategoryRow>[] = [
+	const categoryColumns: MenziesTableColumn<
+		RoomCategoryRow & UnifiedCategoryListRow
+	>[] = [
+		{
+			id: 'scope',
+			header: 'Scope',
+			widthClass: 'w-20 min-w-[4rem]',
+			filterable: false,
+			format: (_v, row) => masterScopeDisplayLabel(row.isEr)
+		},
 		{
 			id: 'id',
 			header: m.id(),
@@ -87,42 +102,63 @@
 		}
 	];
 
+	async function fetchScopePage(scope: 'ipd' | 'er') {
+		if (!categoryApi) {
+			return {
+				data: [] as (RoomCategoryRow & UnifiedCategoryListRow)[],
+				total: 0,
+				totalPages: 1
+			};
+		}
+		const query = new SvelteURLSearchParams({
+			page: String(currentPage),
+			pageSize: String(Number(pageSizeStr) || 10)
+		});
+		if (scope === 'er') query.set('scope', 'er');
+		else query.set('scope', 'ipd');
+		const name = tableFilters.name?.trim();
+		const code = tableFilters.code?.trim();
+		const statusId = Number(tableFilters.status);
+		if (name) query.set('name', name);
+		if (code) query.set('code', code);
+		if (Number.isFinite(statusId) && statusId > 0) {
+			query.set('statusId', String(statusId));
+		}
+		const response = await fetch(`${categoryApi}?${query.toString()}`, {
+			credentials: 'include',
+			cache: 'no-store'
+		});
+		if (!response.ok) {
+			const text = await response.text().catch(() => '');
+			throw new Error(text || `Load failed: ${response.status}`);
+		}
+		const result = (await response.json()) as {
+			data: RoomCategoryRow[];
+			total: number;
+			totalPages: number;
+		};
+		return {
+			...result,
+			data: result.data.map((r) => ({
+				...r,
+				isEr: scope === 'er'
+			}))
+		};
+	}
+
 	async function fetchRows() {
 		if (!categoryApi) return;
 		isLoading = true;
 		try {
-			const query = new SvelteURLSearchParams({
-				page: String(currentPage),
-				pageSize: String(Number(pageSizeStr) || 10)
-			});
-			const name = tableFilters.name?.trim();
-			const code = tableFilters.code?.trim();
-			const statusId = Number(tableFilters.status);
-			if (name) query.set('name', name);
-			if (code) query.set('code', code);
-			if (Number.isFinite(statusId) && statusId > 0) {
-				query.set('statusId', String(statusId));
-			}
-
-			const response = await fetch(
-				`${categoryApi}?${query.toString()}`,
-				{
-					credentials: 'include',
-					cache: 'no-store'
-				}
+			const [ipd, er] = await Promise.all([
+				fetchScopePage('ipd'),
+				fetchScopePage('er')
+			]);
+			rows = [...ipd.data, ...er.data].sort((a, b) =>
+				(a.name ?? '').localeCompare(b.name ?? '')
 			);
-			if (!response.ok) {
-				const text = await response.text().catch(() => '');
-				throw new Error(text || `Load failed: ${response.status}`);
-			}
-			const result = (await response.json()) as {
-				data: RoomCategoryRow[];
-				total: number;
-				totalPages: number;
-			};
-			rows = result.data;
-			total = result.total;
-			totalPages = result.totalPages;
+			total = ipd.total + er.total;
+			totalPages = Math.max(ipd.totalPages, er.totalPages, 1);
 		} catch (error) {
 			toastService.addToast(
 				error instanceof Error
@@ -145,6 +181,7 @@
 	async function openCreate() {
 		RoomCategoryModalState.mode = 'create';
 		RoomCategoryModalState.editCategory = null;
+		RoomCategoryModalState.isEr = false;
 		const result = await dialogService.open({
 			title: 'New Room Category',
 			component: RoomCategoryFormModal
@@ -152,9 +189,10 @@
 		if (result.confirmed) fetchRows();
 	}
 
-	async function openEdit(row: RoomCategoryRow) {
+	async function openEdit(row: RoomCategoryRow & UnifiedCategoryListRow) {
 		RoomCategoryModalState.mode = 'edit';
 		RoomCategoryModalState.editCategory = row;
+		RoomCategoryModalState.isEr = Boolean(row.isEr);
 		const result = await dialogService.open({
 			title: 'Edit Room Category',
 			component: RoomCategoryFormModal
@@ -162,17 +200,21 @@
 		if (result.confirmed) fetchRows();
 	}
 
-	async function handleDelete(row: RoomCategoryRow) {
+	async function handleDelete(row: RoomCategoryRow & UnifiedCategoryListRow) {
 		const result = await dialogService.open({
 			title: 'Delete Room Category',
 			message: `Delete "${row.name || row.code || `Category ${row.id}`}"?`,
 			variant: DialogVariantEnum.CONFIRM
 		});
-		if (!result.confirmed || !categoryApi) return;
+		if (!result.confirmed || !hospitalId) return;
+		const api = administrationRoomCategoryApi(
+			hospitalId,
+			row.isEr ? 'er' : 'ipd'
+		);
 
 		try {
 			const response = await fetch(
-				`${categoryApi}?id=${encodeURIComponent(String(row.id))}`,
+				`${api}?id=${encodeURIComponent(String(row.id))}`,
 				{ method: 'DELETE', credentials: 'include' }
 			);
 			if (!response.ok) {

@@ -20,6 +20,7 @@ import {
 } from '$lib/model/type/pagination.type';
 import { and, count, desc, eq, ilike, ne, sql } from 'drizzle-orm';
 import { syncRoomCapacityFromBeds } from '$lib/server/medora/ipd/room.server';
+import { isErScopeCondition } from '$lib/server/medora/ipd/master-is-er.util';
 
 async function assertRoomInHospital(input: {
 	hospitalId: string;
@@ -45,6 +46,7 @@ export async function getBedPaginated(
 		wardId?: number;
 		roomId?: number;
 		bedStatus?: number;
+		isEr?: boolean;
 	}
 ): Promise<PaginatedResult<BedRow>> {
 	const { page, pageSize, limit, offset } =
@@ -73,6 +75,8 @@ export async function getBedPaginated(
 	if (typeof params.bedStatus === 'number') {
 		conditions.push(eq(table.bedTable.bedStatus, params.bedStatus));
 	}
+	const isErCond = isErScopeCondition(table.bedTable, params.isEr);
+	if (isErCond) conditions.push(isErCond);
 	const whereClause = and(...conditions);
 	const [data, countResult] = await Promise.all([
 		ensureDb()
@@ -85,6 +89,7 @@ export async function getBedPaginated(
 				basePrice: table.bedTable.basePrice,
 				bedStatus: table.bedTable.bedStatus,
 				statusId: table.bedTable.statusId,
+				isEr: table.bedTable.isEr,
 				roomName: table.roomTable.name,
 				roomCode: table.roomTable.code,
 				wardId: table.wardTable.id,
@@ -146,6 +151,7 @@ export async function listFreeBeds(input: {
 	hospitalId: string;
 	wardId?: number;
 	roomId?: number;
+	isEr?: boolean;
 }): Promise<
 	Array<
 		BedSchema & {
@@ -171,6 +177,8 @@ export async function listFreeBeds(input: {
 	if (typeof input.wardId === 'number') {
 		conditions.push(eq(table.roomTable.wardId, input.wardId));
 	}
+	const isErCond = isErScopeCondition(table.bedTable, input.isEr);
+	if (isErCond) conditions.push(isErCond);
 	const rows = await ensureDb()
 		.select({
 			id: table.bedTable.id,
@@ -246,12 +254,19 @@ export async function createBed(
 		hospitalId: payload.hospitalId,
 		roomId: payload.roomId
 	});
+	const [roomRow] = await ensureDb()
+		.select({ isEr: table.roomTable.isEr })
+		.from(table.roomTable)
+		.where(eq(table.roomTable.id, payload.roomId))
+		.limit(1);
+	const isEr = payload.isEr ?? roomRow?.isEr ?? false;
 	const [row] = await ensureDb()
 		.insert(table.bedTable)
 		.values({
 			...payload,
 			basePrice: String(payload.basePrice ?? '0'),
-			bedStatus: payload.bedStatus ?? IpdBedStatusEnum.FREE
+			bedStatus: payload.bedStatus ?? IpdBedStatusEnum.FREE,
+			isEr
 		})
 		.returning();
 	if (!row) throw new Error('Insert failed');
@@ -345,8 +360,9 @@ export async function markBedAvailable(input: {
 		throw error(400, 'Cannot mark an occupied bed as available');
 	}
 
-	// Clearance gate: last admission on this bed must be discharged and IP bill closed.
-	const [lastAdmission] = await db
+	if (!bed.isEr) {
+		// Clearance gate: last admission on this bed must be discharged and IP bill closed.
+		const [lastAdmission] = await db
 		.select({
 			id: table.ipdAdmissionTable.id,
 			visitId: table.ipdAdmissionTable.visitId,
@@ -396,6 +412,7 @@ export async function markBedAvailable(input: {
 				'Bed cannot be freed until the IP bill is closed (finance clearance)'
 			);
 		}
+	}
 	}
 
 	const [row] = await db

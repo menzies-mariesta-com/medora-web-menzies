@@ -62,7 +62,7 @@
 			});
 			if (!res.ok) await throwUserFacingHttpError(res);
 			toastService.addToast(
-				msg.er_billing_setup_saved?.() ?? 'ER billing setup saved',
+				msg.er_billing_setup_saved?.() ?? 'ED billing setup saved',
 				StatusColorEnum.SUCCESS
 			);
 		} catch (e) {
@@ -82,18 +82,18 @@
 
 <div class="mx-auto max-w-lg space-y-4 p-6">
 	<h1 class="card-title text-primary font-bold">
-		{msg.er_billing_setup_title?.() ?? 'ER billing setup'}
+		{msg.er_billing_setup_title?.() ?? 'ED billing setup'}
 	</h1>
 	<p class="text-sm opacity-70">
 		{msg.er_billing_setup_blurb?.() ??
-			'Service item IDs used for auto ER bed charges and department consumption lines on ER bills.'}
+			'Service item IDs used for auto ED bed charges and department consumption lines on ED bills.'}
 	</p>
 	{#if loading}
 		<p class="text-sm">{m.loading?.() ?? 'Loading…'}</p>
 	{:else}
 		<label class="form-control w-full">
 			<span class="label-text">
-				{msg.er_billing_setup_bed_service?.() ?? 'ER bed service item ID'}
+				{msg.er_billing_setup_bed_service?.() ?? 'ED bed service item ID'}
 			</span>
 			<input
 				class="input input-bordered w-full cursor-text"

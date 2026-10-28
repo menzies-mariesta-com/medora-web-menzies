@@ -108,7 +108,7 @@
 		if (!hospitalId) return;
 		const base = medoraHospitalPageUrl(
 			hospitalId,
-			WebRoutesEnum.MEDORA_HOME_BILLING_ER_BILLING
+			WebRoutesEnum.MEDORA_HOME_BILLING_BILL
 		);
 		window.open(`${base}?visitId=${encodeURIComponent(visitId)}`, '_blank');
 	}
@@ -141,19 +141,19 @@
 		</dl>
 		{#if billClosed}
 			<p class="text-success text-sm">
-				{msg.ed_discharge_bill_closed?.() ?? 'ER bill is closed.'}
+				{msg.ed_discharge_bill_closed?.() ?? 'ED bill is closed.'}
 			</p>
 		{:else}
 			<p class="text-warning text-sm">
 				{msg.ed_discharge_bill_open?.() ??
-					'Close the ER bill before discharge.'}
+					'Close the ED bill before discharge.'}
 			</p>
 			<WashButton
 				type="button"
 				className="btn btn-sm btn-primary cursor-pointer"
 				onClick={() => openErBilling()}
 			>
-				{msg.ed_discharge_open_billing?.() ?? 'Open ER billing'}
+				{msg.ed_discharge_open_billing?.() ?? 'Open ED billing'}
 			</WashButton>
 		{/if}
 		<label class="form-control w-full">

@@ -136,12 +136,12 @@ const registrationSelect = {
 	patientLast: table.patientTable.lastName,
 	branchId: table.patientVisitTable.branchId,
 	erBedId: table.edEncounterTable.erBedId,
-	wardName: table.erWardTable.name,
-	wardCode: table.erWardTable.code,
-	roomName: table.erRoomTable.name,
-	roomCode: table.erRoomTable.code,
-	bedName: table.erBedTable.name,
-	bedCode: table.erBedTable.code,
+	wardName: table.wardTable.name,
+	wardCode: table.wardTable.code,
+	roomName: table.roomTable.name,
+	roomCode: table.roomTable.code,
+	bedName: table.bedTable.name,
+	bedCode: table.bedTable.code,
 	assignedDoctorId: table.edEncounterTable.assignedDoctorId,
 	registrationRemarks: table.edEncounterTable.registrationRemarks
 };
@@ -167,16 +167,16 @@ function registrationFromClause() {
 			)
 		)
 		.leftJoin(
-			table.erBedTable,
-			eq(table.edEncounterTable.erBedId, table.erBedTable.id)
+			table.bedTable,
+			eq(table.edEncounterTable.erBedId, table.bedTable.id)
 		)
 		.leftJoin(
-			table.erRoomTable,
-			eq(table.edEncounterTable.erRoomId, table.erRoomTable.id)
+			table.roomTable,
+			eq(table.edEncounterTable.erRoomId, table.roomTable.id)
 		)
 		.leftJoin(
-			table.erWardTable,
-			eq(table.edEncounterTable.erWardId, table.erWardTable.id)
+			table.wardTable,
+			eq(table.edEncounterTable.erWardId, table.wardTable.id)
 		);
 }
 

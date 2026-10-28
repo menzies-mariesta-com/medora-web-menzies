@@ -175,7 +175,7 @@
 
 <div class={TableEnum.HEIGHT}>
 	<MenziesTable
-		title={msg.ed_triage_level_title?.() ?? 'ER triage levels'}
+		title={msg.ed_triage_level_title?.() ?? 'ED triage levels'}
 		description={msg.ed_triage_level_desc?.() ??
 			'Hospital triage levels 1-5 used at ED registration.'}
 		{rows}

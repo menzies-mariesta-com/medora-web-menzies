@@ -115,7 +115,7 @@
 		},
 		{
 			id: 'erBedLabel',
-			header: msg.ed_admission_col_bed?.() ?? 'ER bed',
+			header: msg.ed_admission_col_bed?.() ?? 'ED bed',
 			widthClass: 'w-32 min-w-[7rem]',
 			filterable: false,
 			format: (_v, row) => row.erBedLabel ?? '—'

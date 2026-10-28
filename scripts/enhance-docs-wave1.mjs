@@ -14,22 +14,13 @@ const pages = {
 			'Link to visit or appointment when scheduling.'
 		]
 	},
-	'nursing-workbench-emr-clinical-document': {
-		title: 'Clinical document (OPD EMR)',
+	'nursing-workbench-clinical-document': {
+		title: 'Clinical document',
 		roles: 'Nurse, physician',
 		steps: [
-			'Open visit context in Nursing OPD EMR.',
-			'Choose enabled hospital template or custom document.',
-			'Print or save to patient chart with placeholders merged.'
-		]
-	},
-	'nursing-workbench-ipd-clinical-document': {
-		title: 'Clinical document (IPD)',
-		roles: 'Inpatient nurse, physician',
-		steps: [
-			'Select inpatient visit on the ward workbench.',
-			'Attach consents and nursing forms from enabled templates.',
-			'File completed documents to the legal health record.'
+			'Open visit context in the nursing chart.',
+			'Choose an enabled hospital template or custom document.',
+			'Print or save to the patient chart with placeholders merged.'
 		]
 	},
 	'consultation-cpoe-prescription': {
