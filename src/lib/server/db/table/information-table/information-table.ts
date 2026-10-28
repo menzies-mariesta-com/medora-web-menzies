@@ -1845,6 +1845,8 @@ export const wardCategoryTable = pgTable(
 		})
 			.notNull()
 			.default('0'),
+		/** When true, category is for Emergency (ED) master data only. */
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1880,6 +1882,7 @@ export const roomCategoryTable = pgTable(
 		})
 			.notNull()
 			.default('0'),
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1913,6 +1916,7 @@ export const wardTable = pgTable(
 			}),
 		name: varchar('name', { length: 512 }).notNull(),
 		code: varchar('code', { length: 64 }),
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1955,6 +1959,7 @@ export const roomTable = pgTable(
 		capacity: integer('capacity').notNull().default(0),
 		/** Optional amenity / privacy notes (e.g. Ensuite, Isolation). */
 		amenities: text('amenities'),
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1993,6 +1998,7 @@ export const bedTable = pgTable(
 		bedStatus: integer('bed_status')
 			.notNull()
 			.default(IpdBedStatusEnum.FREE),
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()

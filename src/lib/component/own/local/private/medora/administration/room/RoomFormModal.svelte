@@ -15,6 +15,11 @@
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { RoomModalState } from '$lib/state/room-modal.state.svelte';
+	import {
+		administrationRoomCategoryApi,
+		administrationRoomMasterApi,
+		type AdministrationMasterScope
+	} from '$lib/tool/medora/administration-master-scope.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
@@ -27,19 +32,21 @@
 			? page.params.hospital_id
 			: ''
 	);
-	const roomApi = $derived(
+	let formIsEr = $state(false);
+	const masterScope = $derived(
+		(formIsEr ? 'er' : 'ipd') satisfies AdministrationMasterScope
+	);
+	const administrationBase = $derived(
 		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/administration/room-master`
+			? `/api/medora/hospital/${hospitalId}/home/administration`
 			: ''
 	);
-	const wardApi = $derived(
-		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/administration/ward-master`
-			: ''
+	const roomApi = $derived(
+		hospitalId ? administrationRoomMasterApi(hospitalId, masterScope) : ''
 	);
 	const categoryApi = $derived(
 		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/administration/room-master/room-category`
+			? administrationRoomCategoryApi(hospitalId, masterScope)
 			: ''
 	);
 
@@ -73,25 +80,31 @@
 
 	lifeCycleUtil.onMount(async () => {
 		try {
-			const [wardRes, catRes] = await Promise.all([
-				wardApi
-					? fetch(`${wardApi}?active=1`, {
-							credentials: 'include',
-							cache: 'no-store'
-						})
-					: null,
-				categoryApi
-					? fetch(`${categoryApi}?active=1`, {
-							credentials: 'include',
-							cache: 'no-store'
-						})
-					: null
-			]);
-			if (wardRes?.ok) wards = (await wardRes.json()) as WardRow[];
-			if (catRes?.ok)
-				categories = (await catRes.json()) as RoomCategoryRow[];
-
 			const state = RoomModalState;
+			formIsEr =
+				state.mode === 'edit'
+					? Boolean(state.editRoom?.isEr)
+					: state.isEr;
+			const wardRes = administrationBase
+				? await fetch(
+						`${administrationBase}/ward-master?active=1${formIsEr ? '&scope=er' : ''}`,
+						{ credentials: 'include', cache: 'no-store' }
+					)
+				: null;
+			const catRes = categoryApi
+				? await fetch(
+						`${categoryApi}?active=1${formIsEr ? '&scope=er' : '&scope=ipd'}`,
+						{
+						credentials: 'include',
+						cache: 'no-store'
+					}
+					)
+				: null;
+			if (wardRes?.ok) wards = (await wardRes.json()) as WardRow[];
+			if (catRes?.ok) {
+				categories = (await catRes.json()) as RoomCategoryRow[];
+			}
+
 			if (state.mode === 'edit' && state.editRoom) {
 				formWardId = String(state.editRoom.wardId);
 				formRoomCategoryId = String(
@@ -164,7 +177,9 @@
 				body: JSON.stringify({
 					...(isEdit ? { id: modalState.editRoom?.id } : {}),
 					wardId,
-					roomCategoryId,
+					...(formIsEr
+						? { erRoomCategoryId: roomCategoryId }
+						: { roomCategoryId }),
 					name: formName.trim(),
 					code: formCode.trim() || null,
 					amenities: formAmenities.trim() || null,
@@ -196,11 +211,57 @@
 			isSubmitting = false;
 		}
 	}
+
+	async function reloadForErScope() {
+		if (modalState.mode === 'edit') return;
+		try {
+			if (!administrationBase || !categoryApi) return;
+			const [wardRes, catRes] = await Promise.all([
+				fetch(
+					`${administrationBase}/ward-master?active=1${formIsEr ? '&scope=er' : ''}`,
+					{ credentials: 'include', cache: 'no-store' }
+				),
+				fetch(`${categoryApi}?active=1`, {
+					credentials: 'include',
+					cache: 'no-store'
+				})
+			]);
+			if (wardRes.ok) wards = (await wardRes.json()) as WardRow[];
+			if (catRes.ok) {
+				categories = (await catRes.json()) as RoomCategoryRow[];
+			}
+			formWardId = wards[0] ? String(wards[0].id) : '';
+			formRoomCategoryId =
+				categories[0] != null ? String(categories[0].id) : '';
+		} catch (e) {
+			toastService.addToast(
+				e instanceof Error ? e.message : 'Unable to reload form data',
+				StatusColorEnum.ERROR
+			);
+		}
+	}
 </script>
 
 <form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
 	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 		<div class="flex flex-col gap-4">
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<span class="shrink-0 sm:w-36">Emergency (ED)</span>
+				<label
+					class="flex max-w-80 flex-1 cursor-pointer items-center gap-2"
+				>
+					<WashCheckbox
+						bind:checked={formIsEr}
+						disabled={isLoading || modalState.mode === 'edit'}
+						onCheckedChange={reloadForErScope}
+					/>
+					<span class="text-sm opacity-80">
+						ED room (ED bed status)
+					</span>
+				</label>
+			</div>
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>

@@ -10,6 +10,10 @@
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { RoomCategoryModalState } from '$lib/state/room-category-modal.state.svelte';
+	import {
+		administrationRoomCategoryApi,
+		type AdministrationMasterScope
+	} from '$lib/tool/medora/administration-master-scope.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
@@ -22,9 +26,13 @@
 			? page.params.hospital_id
 			: ''
 	);
+	let formIsEr = $state(false);
+	const masterScope = $derived(
+		(formIsEr ? 'er' : 'ipd') satisfies AdministrationMasterScope
+	);
 	const categoryApi = $derived(
 		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/administration/room-master/room-category`
+			? administrationRoomCategoryApi(hospitalId, masterScope)
 			: ''
 	);
 
@@ -38,6 +46,10 @@
 
 	lifeCycleUtil.onMount(() => {
 		const state = RoomCategoryModalState;
+		formIsEr =
+			state.mode === 'edit'
+				? Boolean(state.editCategory?.isEr)
+				: state.isEr;
 		if (state.mode === 'edit' && state.editCategory) {
 			formName = state.editCategory.name ?? '';
 			formCode = state.editCategory.code ?? '';
@@ -111,6 +123,20 @@
 <form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
 	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 		<div class="flex flex-col gap-4">
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<span class="shrink-0 sm:w-36">Emergency (ED)</span>
+				<label
+					class="flex max-w-80 flex-1 cursor-pointer items-center gap-2"
+				>
+					<WashCheckbox
+						bind:checked={formIsEr}
+						disabled={modalState.mode === 'edit'}
+					/>
+					<span class="text-sm opacity-80">ED room category</span>
+				</label>
+			</div>
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>

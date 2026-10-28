@@ -141,7 +141,7 @@
 
 	async function openAssignBed() {
 		await dialogService.open({
-			title: msg.ed_reg_menu_assign_bed?.() ?? 'Assign ER bed',
+			title: msg.ed_reg_menu_assign_bed?.() ?? 'Assign ED bed',
 			component: LEdAdmissionBedDialogContent,
 			props: {
 				visitId: row.visitId,
@@ -154,7 +154,7 @@
 
 	async function openTransferBed() {
 		await dialogService.open({
-			title: msg.ed_reg_menu_transfer_bed?.() ?? 'Transfer ER bed',
+			title: msg.ed_reg_menu_transfer_bed?.() ?? 'Transfer ED bed',
 			component: LEdAdmissionBedDialogContent,
 			props: {
 				visitId: row.visitId,

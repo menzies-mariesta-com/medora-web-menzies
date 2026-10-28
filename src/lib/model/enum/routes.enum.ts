@@ -93,6 +93,7 @@ export enum WebRoutesEnum {
 
 	// Billing module (navbar auto-hides like nursing EMR)
 	MEDORA_HOME_BILLING = '/medora/home/billing',
+	MEDORA_HOME_BILLING_BILL = '/medora/home/billing/bill',
 	MEDORA_HOME_BILLING_OP_BILLING = '/medora/home/billing/op-billing',
 	MEDORA_HOME_BILLING_IP_BILLING = '/medora/home/billing/ip-billing',
 	MEDORA_HOME_BILLING_IP_BILLING_BILL = '/medora/home/billing/ip-billing/bill',

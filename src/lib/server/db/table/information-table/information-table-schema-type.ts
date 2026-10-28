@@ -81,14 +81,7 @@ import type {
 	ipdAdmissionOrderTable,
 	ipAdvanceDepositTable
 } from './information-table';
-import {
-	erBedTable,
-	erRoomCategoryTable,
-	erRoomTable,
-	edTriageLevelTable,
-	erWardCategoryTable,
-	erWardTable
-} from './er-master-table';
+import { edTriageLevelTable } from './er-master-table';
 
 type OptionalAuditKeys =
 	| 'createdBy'
@@ -582,36 +575,6 @@ export type EdTriageLevelSchemaInsert = InferInsertModel<
 >;
 export type EdTriageLevelSchemaUpdate =
 	Partial<EdTriageLevelSchemaInsert>;
-
-export type ErWardCategorySchema = InferSelectModel<
-	typeof erWardCategoryTable
->;
-export type ErWardCategorySchemaInsert = InferInsertModel<
-	typeof erWardCategoryTable
->;
-export type ErWardCategorySchemaUpdate =
-	Partial<ErWardCategorySchemaInsert>;
-
-export type ErRoomCategorySchema = InferSelectModel<
-	typeof erRoomCategoryTable
->;
-export type ErRoomCategorySchemaInsert = InferInsertModel<
-	typeof erRoomCategoryTable
->;
-export type ErRoomCategorySchemaUpdate =
-	Partial<ErRoomCategorySchemaInsert>;
-
-export type ErWardSchema = InferSelectModel<typeof erWardTable>;
-export type ErWardSchemaInsert = InferInsertModel<typeof erWardTable>;
-export type ErWardSchemaUpdate = Partial<ErWardSchemaInsert>;
-
-export type ErRoomSchema = InferSelectModel<typeof erRoomTable>;
-export type ErRoomSchemaInsert = InferInsertModel<typeof erRoomTable>;
-export type ErRoomSchemaUpdate = Partial<ErRoomSchemaInsert>;
-
-export type ErBedSchema = InferSelectModel<typeof erBedTable>;
-export type ErBedSchemaInsert = InferInsertModel<typeof erBedTable>;
-export type ErBedSchemaUpdate = Partial<ErBedSchemaInsert>;
 
 export type IpdAdmissionSchema = InferSelectModel<
 	typeof ipdAdmissionTable

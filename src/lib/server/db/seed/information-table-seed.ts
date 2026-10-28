@@ -75,7 +75,7 @@ export async function seedInformationTables() {
 			(5, 'Service Item', 5, 1, '/medora/home/service-item', 'clipboard-list'),
 			(6, 'Consultation', 6, 1, '/medora/home/consultation', 'stethoscope'),
 			(7, 'ADT', 7, 1, '/medora/home/adt', 'bed-double'),
-			(8, 'Billing', 8, 1, '/medora/home/billing', 'receipt-text'),
+			(8, 'Billing', 8, 1, '/medora/home/billing/bill', 'receipt-text'),
 			(9, 'Inventory Setup', 9, 1, '/medora/home/inventory-setup', 'warehouse'),
 			(10, 'Inventory', 10, 1, '/medora/home/inventory', 'package'),
 			(11, 'Medication Order', 11, 1, '/medora/home/medication-order', 'pill'),
@@ -190,7 +190,7 @@ export async function seedInformationTables() {
 
 			-- Emergency module (12)
 			(123, 'Registration', 12, 1, null, '/medora/home/emergency/admission', 1),
-			(123001, 'ER patient registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
+			(123001, 'ED patient registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
 			(123003, 'New patient', 12, 1, 123, '/medora/home/emergency/admission/new-patient', 2),
 			(123002, 'Registration list', 12, 1, 123, '/medora/home/emergency/admission/list', 3),
 			(125, 'Purchase item', 12, 1, null, '/medora/home/emergency/purchase-item', 2),
@@ -231,12 +231,9 @@ export async function seedInformationTables() {
 			(550001, 'New Requisition', 7, 1, 55, '/medora/home/adt/bed-transfer-requisition/new', 1),
 			(550002, 'Requisition List', 7, 1, 55, '/medora/home/adt/bed-transfer-requisition/list', 2),
 
-			-- Billing Module (150001 parent; 150003/150002 children)
-			(15, 'OP Billing', 8, 1, null, '/medora/home/billing/op-billing', 1),
-			(150001, 'IP Billing', 8, 1, null, '/medora/home/billing/ip-billing', 2),
-			(150003, 'Bill', 8, 1, 150001, '/medora/home/billing/ip-billing/bill', 1),
-			(150002, 'Advance Deposit', 8, 1, 150001, '/medora/home/billing/ip-billing/advance-deposit', 2),
-			(150004, 'ER Billing', 8, 1, null, '/medora/home/billing/er-billing', 3),
+			-- Billing module (one Bill page for OP/ER/IP; advance deposit sub-page)
+			(150003, 'Bill', 8, 1, null, '/medora/home/billing/bill', 1),
+			(150002, 'Advance Deposit', 8, 1, 150003, '/medora/home/billing/ip-billing/advance-deposit', 2),
 
 			-- Administration: Financial Year & Prefix Configuration
 			(16, 'Prefix Configuration', 1, 1, null, '/medora/home/administration/prefix-configuration', 9),
@@ -329,7 +326,7 @@ export async function seedInformationTables() {
 		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 		VALUES
 			(123, 'Registration', 12, 1, null, '/medora/home/emergency/admission', 1),
-			(123001, 'ER patient registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
+			(123001, 'ED patient registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
 			(123003, 'New patient', 12, 1, 123, '/medora/home/emergency/admission/new-patient', 2),
 			(123002, 'Registration list', 12, 1, 123, '/medora/home/emergency/admission/list', 3)
 		ON CONFLICT (id) DO UPDATE SET
@@ -377,23 +374,15 @@ export async function seedInformationTables() {
 			page_url = EXCLUDED.page_url,
 			sequence_no = EXCLUDED.sequence_no;
 		`);
-	await db.execute(sql`UPDATE page SET name = 'ER patient registration', sequence_no = 1 WHERE id = 123001`);
+	await db.execute(sql`UPDATE page SET name = 'ED patient registration', sequence_no = 1 WHERE id = 123001`);
 	await db.execute(sql`UPDATE page SET sequence_no = 3 WHERE id = 123002`);
 	await db.execute(sql`
 		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 		VALUES
-			(451, 'ER Ward Master', 1, 1, null, '/medora/home/administration/er-ward-master', 16),
-			(451001, 'ER Ward Category', 1, 1, 451, '/medora/home/administration/er-ward-master/ward-category', 1),
-			(451002, 'ER Ward', 1, 1, 451, '/medora/home/administration/er-ward-master/ward', 2),
-			(452, 'ER Room Master', 1, 1, null, '/medora/home/administration/er-room-master', 17),
-			(452001, 'ER Room Category', 1, 1, 452, '/medora/home/administration/er-room-master/room-category', 1),
-			(452002, 'ER Room', 1, 1, 452, '/medora/home/administration/er-room-master/room', 2),
-			(453, 'ER Bed Master', 1, 1, null, '/medora/home/administration/er-bed-master', 18),
-			(124, 'ER Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 5),
-			(454, 'ER Triage Levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
-			(455, 'ER Billing Setup', 1, 1, null, '/medora/home/administration/er-billing-setup', 20),
-			(125, 'Purchase item', 12, 1, null, '/medora/home/emergency/purchase-item', 2),
-			(150004, 'ER Billing', 8, 1, null, '/medora/home/billing/er-billing', 3)
+			(124, 'ED bed status', 12, 1, null, '/medora/home/emergency/bed-status', 5),
+			(454, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
+			(455, 'ED billing setup', 1, 1, null, '/medora/home/administration/er-billing-setup', 20),
+			(125, 'Purchase item', 12, 1, null, '/medora/home/emergency/purchase-item', 2)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			module_id = EXCLUDED.module_id,
@@ -407,7 +396,7 @@ export async function seedInformationTables() {
 		SELECT ugp.user_group_id, child.page_id
 		FROM user_group_page ugp
 		CROSS JOIN (
-			VALUES (451), (451001), (451002), (452), (452001), (452002), (453), (124), (454)
+			VALUES (124), (454)
 		) AS child(page_id)
 		WHERE ugp.page_id IN (45, 46, 47, 120, 121, 122)
 			AND NOT EXISTS (
@@ -503,15 +492,45 @@ export async function seedInformationTables() {
 		);
 		`);
 	await db.execute(sql`UPDATE page SET sequence_no = 2 WHERE id = 124`);
+	// Billing consolidation: one Bill page (OP/ER/IP); retire separate OP/IP/ER nav pages.
+	await db.execute(sql`
+		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
+		VALUES
+			(150003, 'Bill', 8, 1, null, '/medora/home/billing/bill', 1),
+			(150002, 'Advance Deposit', 8, 1, 150003, '/medora/home/billing/ip-billing/advance-deposit', 2)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			module_id = EXCLUDED.module_id,
+			status_id = EXCLUDED.status_id,
+			parent_id = EXCLUDED.parent_id,
+			page_url = EXCLUDED.page_url,
+			sequence_no = EXCLUDED.sequence_no;
+		`);
+	await db.execute(sql`
+		UPDATE module
+		SET module_url = '/medora/home/billing/bill', updated_at = now()
+		WHERE id = 8;
+		`);
 	await db.execute(sql`
 		INSERT INTO user_group_page (user_group_id, page_id)
-		SELECT ugp.user_group_id, 150004
+		SELECT DISTINCT ugp.user_group_id, child.page_id
 		FROM user_group_page ugp
-		WHERE ugp.page_id IN (15, 150001, 150004)
+		CROSS JOIN (VALUES (150003), (150002)) AS child(page_id)
+		WHERE ugp.page_id IN (15, 150001, 150003, 150004, 150002)
 			AND NOT EXISTS (
-				SELECT 1 FROM user_group_page x
-				WHERE x.user_group_id = ugp.user_group_id AND x.page_id = 150004
+				SELECT 1
+				FROM user_group_page x
+				WHERE x.user_group_id = ugp.user_group_id
+					AND x.page_id = child.page_id
 			);
+		`);
+	await db.execute(sql`
+		DELETE FROM user_group_page
+		WHERE page_id IN (15, 150001, 150004);
+		`);
+	await db.execute(sql`
+		DELETE FROM page
+		WHERE id IN (15, 150001, 150004);
 		`);
 	await db.execute(sql`
 		INSERT INTO user_group_page (user_group_id, page_id)
@@ -523,31 +542,41 @@ export async function seedInformationTables() {
 				WHERE x.user_group_id = ugp.user_group_id AND x.page_id = 125
 			);
 		`);
-	await db.execute(sql`
-		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
-		VALUES
-			(150003, 'Bill', 8, 1, 150001, '/medora/home/billing/ip-billing/bill', 1),
-			(150002, 'Advance Deposit', 8, 1, 150001, '/medora/home/billing/ip-billing/advance-deposit', 2)
-		ON CONFLICT (id) DO UPDATE SET
-			name = EXCLUDED.name,
-			module_id = EXCLUDED.module_id,
-			status_id = EXCLUDED.status_id,
-			parent_id = EXCLUDED.parent_id,
-			page_url = EXCLUDED.page_url,
-			sequence_no = EXCLUDED.sequence_no;
-		`);
+	// Administration: Ward / Room / Bed Master cover ER (retire separate ER * Master nav).
+	const retiredErMasterPageIds = [
+		451, 451001, 451002, 452, 452001, 452002, 453
+	];
 	await db.execute(sql`
 		INSERT INTO user_group_page (user_group_id, page_id)
-		SELECT ugp.user_group_id, child.page_id
+		SELECT DISTINCT ugp.user_group_id, child.page_id
 		FROM user_group_page ugp
-		CROSS JOIN (VALUES (150002), (150003)) AS child(page_id)
-		WHERE ugp.page_id = 150001
+		CROSS JOIN (
+			VALUES (45), (450001), (450002), (47), (470001), (470002), (46)
+		) AS child(page_id)
+		WHERE ugp.page_id IN (${sql.join(
+			retiredErMasterPageIds.map((id) => sql`${id}`),
+			sql`, `
+		)})
 			AND NOT EXISTS (
 				SELECT 1
 				FROM user_group_page x
 				WHERE x.user_group_id = ugp.user_group_id
 					AND x.page_id = child.page_id
 			);
+		`);
+	await db.execute(sql`
+		DELETE FROM user_group_page
+		WHERE page_id IN (${sql.join(
+			retiredErMasterPageIds.map((id) => sql`${id}`),
+			sql`, `
+		)});
+		`);
+	await db.execute(sql`
+		DELETE FROM page
+		WHERE id IN (${sql.join(
+			retiredErMasterPageIds.map((id) => sql`${id}`),
+			sql`, `
+		)});
 		`);
 	seedLogger.info('Seeded: page');
 

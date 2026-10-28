@@ -13,9 +13,10 @@ import {
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
 import { and, count, eq, ilike, ne } from 'drizzle-orm';
+import { isErScopeCondition } from '$lib/server/medora/ipd/master-is-er.util';
 
 export async function getWardCategoryPaginated(
-	params: PaginationParams & { hospitalId: string }
+	params: PaginationParams & { hospitalId: string; isEr?: boolean }
 ): Promise<PaginatedResult<WardCategoryRow>> {
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
@@ -40,6 +41,11 @@ export async function getWardCategoryPaginated(
 			eq(table.wardCategoryTable.statusId, params.statusId)
 		);
 	}
+	const isErCond = isErScopeCondition(
+		table.wardCategoryTable,
+		params.isEr
+	);
+	if (isErCond) conditions.push(isErCond);
 	const whereClause = and(...conditions);
 	const [data, countResult] = await Promise.all([
 		ensureDb()
@@ -49,6 +55,7 @@ export async function getWardCategoryPaginated(
 				name: table.wardCategoryTable.name,
 				code: table.wardCategoryTable.code,
 				wardMarkup: table.wardCategoryTable.wardMarkup,
+				isEr: table.wardCategoryTable.isEr,
 				statusId: table.wardCategoryTable.statusId
 			})
 			.from(table.wardCategoryTable)
@@ -73,16 +80,21 @@ export async function getWardCategoryPaginated(
 
 export async function listActiveWardCategories(input: {
 	hospitalId: string;
+	isEr?: boolean;
 }): Promise<WardCategorySchema[]> {
+	const conditions = [
+		eq(table.wardCategoryTable.hospitalId, input.hospitalId),
+		eq(table.wardCategoryTable.statusId, StatusEnum.ACTIVE)
+	];
+	const isErCond = isErScopeCondition(
+		table.wardCategoryTable,
+		input.isEr
+	);
+	if (isErCond) conditions.push(isErCond);
 	return ensureDb()
 		.select()
 		.from(table.wardCategoryTable)
-		.where(
-			and(
-				eq(table.wardCategoryTable.hospitalId, input.hospitalId),
-				eq(table.wardCategoryTable.statusId, StatusEnum.ACTIVE)
-			)
-		)
+		.where(and(...conditions))
 		.orderBy(table.wardCategoryTable.name);
 }
 
@@ -108,7 +120,8 @@ export async function createWardCategory(
 		.insert(table.wardCategoryTable)
 		.values({
 			...payload,
-			wardMarkup: String(payload.wardMarkup ?? '0')
+			wardMarkup: String(payload.wardMarkup ?? '0'),
+			isEr: payload.isEr ?? false
 		})
 		.returning();
 	if (!row) throw new Error('Insert failed');

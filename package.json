@@ -58,6 +58,8 @@
 		"db:seed:information": "npx tsx --env-file=.env src/lib/server/db/seed/information-table-seed.ts",
 		"db:patch:nursing-ed-nav": "node --env-file=.env scripts/patch-nursing-ed-nav-pages.mjs",
 		"db:patch:nursing-module-nav": "node --env-file=.env scripts/patch-nursing-module-nav.mjs",
+		"db:patch:billing-module-nav": "node --env-file=.env scripts/patch-billing-module-nav.mjs",
+		"db:patch:administration-er-master-nav": "node --env-file=.env scripts/patch-administration-er-master-nav.mjs",
 		"db:seed:marketplace": "npx tsx --env-file=.env src/lib/server/db/seed/marketplace-table-seed.ts",
 		"db:backfill:patient-role": "npx tsx --env-file=.env scripts/backfill-patient-role.ts",
 		"db:backfill:patient-default-password": "npx tsx --env-file=.env scripts/backfill-patient-default-password.ts",

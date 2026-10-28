@@ -3,7 +3,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
-	import type { ErBedRow, ErWardRow } from '$lib/model/type/medora/er/er.type';
+	import type { BedRow, WardRow } from '$lib/model/type/medora/ipd/ipd.type';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -23,20 +23,20 @@
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 	const wardApi = $derived(
 		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/administration/er-ward-master?active=1`
+			? `/api/medora/hospital/${hospitalId}/home/administration/ward-master?active=1&scope=er`
 			: ''
 	);
 	const bedApi = $derived(
 		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/administration/er-bed-master?free=1`
+			? `/api/medora/hospital/${hospitalId}/home/administration/bed-master?free=1&scope=er`
 			: ''
 	);
 	const edApi = $derived(
 		hospitalId ? `/api/medora/hospital/${hospitalId}/home/emergency` : ''
 	);
 
-	let wards = $state<ErWardRow[]>([]);
-	let freeBeds = $state<ErBedRow[]>([]);
+	let wards = $state<WardRow[]>([]);
+	let freeBeds = $state<BedRow[]>([]);
 	let wardId = $state('');
 	let selectedBedId = $state<number | null>(null);
 	let loading = $state(false);
@@ -53,7 +53,7 @@
 		if (!wardApi) return;
 		const res = await fetch(wardApi, { credentials: 'include' });
 		if (!res.ok) return;
-		wards = (await res.json()) as ErWardRow[];
+		wards = (await res.json()) as WardRow[];
 	}
 
 	async function loadFreeBeds() {
@@ -67,7 +67,7 @@
 				{ credentials: 'include' }
 			);
 			if (!res.ok) return;
-			freeBeds = (await res.json()) as ErBedRow[];
+			freeBeds = (await res.json()) as BedRow[];
 		} finally {
 			loading = false;
 		}
@@ -98,7 +98,7 @@
 				throw new Error(text || `Assign failed (${res.status})`);
 			}
 			toastService.addToast(
-				msg.ed_er_bed_assigned_toast?.() ?? 'ER bed assigned',
+				msg.ed_er_bed_assigned_toast?.() ?? 'ED bed assigned',
 				StatusColorEnum.SUCCESS
 			);
 			await onAssigned?.();
@@ -125,18 +125,18 @@
 
 <div class="flex flex-col gap-3 px-4 py-3">
 	<h2 class="card-title text-primary font-bold">
-		{msg.ed_assign_er_bed_title?.() ?? 'Assign ER bed'}
+		{msg.ed_assign_er_bed_title?.() ?? 'Assign ED bed'}
 	</h2>
 	<label class="form-control" for="ed-assign-ward">
 		<span class="label-text">
-			{msg.ed_er_ward?.() ?? 'ER ward'}<span
+			{msg.ed_er_ward?.() ?? 'ED ward'}<span
 				class="text-error align-top text-sm leading-none"
 				aria-hidden="true">*</span
 			>
 		</span>
 		<WashSelect
 			id="ed-assign-ward"
-			placeholder={msg.ed_er_ward_placeholder?.() ?? 'Select ER ward'}
+			placeholder={msg.ed_er_ward_placeholder?.() ?? 'Select ED ward'}
 			options={wardOptions}
 			bind:value={wardId}
 			disabled={submitting}
@@ -169,7 +169,7 @@
 				{:else if freeBeds.length === 0}
 					<tr>
 						<td colspan="3" class="text-center opacity-70">
-							{msg.ed_no_free_er_beds?.() ?? 'No free ER beds'}
+							{msg.ed_no_free_er_beds?.() ?? 'No free ED beds'}
 						</td>
 					</tr>
 				{:else}

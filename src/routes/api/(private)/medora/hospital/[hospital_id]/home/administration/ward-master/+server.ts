@@ -1,6 +1,7 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as ward from '$lib/server/medora/ipd/ward.server';
+import { isErForMasterPicker, isErFromScopeQuery } from '$lib/server/medora/ipd/master-is-er.util';
 import { StatusEnum } from '$lib/model/enum/db-link';
 
 function hospitalIdFrom(event: RequestEvent): string {
@@ -22,11 +23,15 @@ export async function GET(event: RequestEvent) {
 	if (event.url.searchParams.get('active') === '1') {
 		const branchId =
 			event.url.searchParams.get('branchId') || undefined;
+		const isEr = isErForMasterPicker(
+			event.url.searchParams.get('scope')
+		);
 		return json(
-			await ward.listActiveWards({ hospitalId, branchId })
+			await ward.listActiveWards({ hospitalId, branchId, isEr })
 		);
 	}
 
+	const isEr = isErFromScopeQuery(event.url.searchParams.get('scope'));
 	const page = Number(event.url.searchParams.get('page') ?? '1');
 	const pageSize = Number(
 		event.url.searchParams.get('pageSize') ?? '10'
@@ -60,7 +65,8 @@ export async function GET(event: RequestEvent) {
 				: undefined,
 			statusId: Number.isFinite(statusId as number)
 				? statusId
-				: undefined
+				: undefined,
+			isEr
 		})
 	);
 }
@@ -77,6 +83,7 @@ export async function POST(event: RequestEvent) {
 	if (!Number.isFinite(wardCategoryId) || wardCategoryId <= 0) {
 		throw error(400, 'Ward category is required');
 	}
+	const isEr = Boolean(body.isEr);
 	return json(
 		await ward.createWard({
 			hospitalId,
@@ -84,6 +91,7 @@ export async function POST(event: RequestEvent) {
 			wardCategoryId,
 			name,
 			code: body.code ? String(body.code).trim() : null,
+			isEr,
 			statusId:
 				body.statusId === StatusEnum.INACTIVE
 					? StatusEnum.INACTIVE
