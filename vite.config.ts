@@ -83,10 +83,29 @@ function paraglideMessageRuntimeResolve(): Plugin {
 	};
 }
 
+const isCiBuild =
+	process.env.NETLIFY === 'true' || process.env.GITHUB_ACTIONS === 'true';
+
 export default defineConfig({
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version)
 	},
+	...(isCiBuild
+		? {
+				build: {
+					sourcemap: false,
+					reportCompressedSize: false,
+					modulePreload: false,
+					// Minification holds extra AST/CSS in memory; skip on CI (Netlify gzip still applies).
+					minify: false,
+					cssMinify: false,
+					rollupOptions: {
+						// Reduce peak RSS during "rendering chunks" on memory-limited CI (~8GB).
+						maxParallelFileOps: 1
+					}
+				}
+			}
+		: {}),
 	server: {
 		allowedHosts: ['host.docker.internal'],
 		watch: {
@@ -103,7 +122,7 @@ export default defineConfig({
 		paraglideMessageRuntimeResolve(),
 		tailwindcss(),
 		sveltekit(),
-		devtoolsJson()
+		...(isCiBuild ? [] : [devtoolsJson()])
 	],
 	test: {
 		expect: { requireAssertions: true },

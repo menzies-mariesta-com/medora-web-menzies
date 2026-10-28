@@ -9,7 +9,7 @@ import {
 } from '$lib/model/enum/db-link';
 import { EdBoardColumnEnum } from '$lib/model/enum/perioperative.enum';
 import { releaseErBedOnEdDischarge } from './er-bed-assignment.server';
-import { publishPerioperativeEvent } from '$lib/server/medora/perioperative/perioperative-sse.server';
+import { publishPerioperativeEvent } from '$lib/server/medora/perioperative/perioperative-event-bus.server';
 import { PerioperativeSseEventTypeEnum } from '$lib/model/enum/perioperative.enum';
 
 export async function dischargeEdEncounter(input: {

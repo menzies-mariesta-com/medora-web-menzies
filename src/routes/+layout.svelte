@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
@@ -28,9 +29,11 @@
 	const washThemeTool = new WashThemeTool();
 	const fontTool = new FontTool();
 
-	const isEmbed = $derived(
-		page.url.searchParams.get('embed') === '1'
-	);
+	/** searchParams is unavailable during prerender (e.g. `/` marketing page). */
+	const isEmbed = $derived.by(() => {
+		if (!browser) return false;
+		return page.url.searchParams.get('embed') === '1';
+	});
 
 	/** Quick tools on every shell; hidden only for embedded views. */
 	const showQuickTool = $derived(!isEmbed);
@@ -69,8 +72,6 @@
 	<title>
 		{m.menzies_medora()}
 	</title>
-	<link rel="icon" type="image/svg+xml" href="/medora-logo.svg" />
-	<link rel="apple-touch-icon" href="/medora-logo.svg" />
 </svelte:head>
 
 <!-- Pure Wash: single shell only — never nest washShell / washPanel / page-wash below. -->

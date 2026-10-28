@@ -50,6 +50,10 @@ export function resolveDocContentFile(slugParts: string[]): string | null {
 }
 
 export function loadDocBySlugParts(slugParts: string[]): LoadedDoc {
+	if (slugParts.length === 1 && slugParts[0] === 'workflows') {
+		return workflowsLandingDoc();
+	}
+
 	const rel = resolveDocContentFile(slugParts);
 	if (!rel) {
 		if (slugParts[0] === 'modules' && slugParts[1]) {
@@ -63,6 +67,28 @@ export function loadDocBySlugParts(slugParts: string[]): LoadedDoc {
 	const { frontmatter, body } = parseMarkdownDoc(raw);
 	return {
 		frontmatter,
+		html: markdownToHtml(body, docMarkdownOptions),
+		rawBody: body
+	};
+}
+
+function workflowsLandingDoc(): LoadedDoc {
+	const body = `## Workflows
+
+Step-by-step guides for hospital modules. Pick a module below, or use **Ctrl+K** on the docs site to search all workflows.
+
+### Modules
+
+${manifest.modules
+	.map((mod) => `- [${mod.name}](/docs/modules/${mod.slug})`)
+	.join('\n')}
+`;
+	return {
+		frontmatter: {
+			title: 'Workflows',
+			description: 'Browse Medora workflow documentation by module',
+			docType: 'workflows'
+		},
 		html: markdownToHtml(body, docMarkdownOptions),
 		rawBody: body
 	};

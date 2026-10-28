@@ -472,6 +472,7 @@ The catalog ships hundreds of HTML print templates across clinical, finance, HR,
 		searchIndex,
 		prerenderPaths: [
 			'/docs',
+			'/docs/workflows',
 			...workflows.map((w) => w.path),
 			...guides.map((g) => `/docs/guides/${g.slug}`),
 			...employeeRoles.map((r) => `/docs/roles/employee/${r.slug}`),

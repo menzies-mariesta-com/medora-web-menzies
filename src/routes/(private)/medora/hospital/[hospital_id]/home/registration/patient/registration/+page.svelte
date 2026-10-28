@@ -33,7 +33,6 @@
 		PatientRegTitleRow
 	} from '$lib/model/type/medora/patient-reg-master.type';
 
-	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
@@ -763,18 +762,10 @@
 				const previousName = previousUser.user?.name ?? '';
 				const trimmedNewName = fullName.trim();
 				const trimmedNewEmail = email.trim();
-				let shouldSendResetForEmailChange = false;
-				let resetEmailTarget: string | null = null;
 				const userNameUpdate =
 					trimmedNewName && trimmedNewName !== previousName
 						? trimmedNewName
 						: undefined;
-				if (trimmedNewEmail && trimmedNewEmail !== previousEmail) {
-					if (StringUtil.isNoEmail(previousEmail)) {
-						shouldSendResetForEmailChange = true;
-						resetEmailTarget = trimmedNewEmail;
-					}
-				}
 				const userEmailUpdate =
 					trimmedNewEmail && trimmedNewEmail !== previousEmail
 						? trimmedNewEmail
@@ -888,24 +879,6 @@
 					m.toast_action_updated()
 				);
 				removePhotoRequested = false;
-
-				if (shouldSendResetForEmailChange && resetEmailTarget) {
-					const { error } = await authClient.requestPasswordReset({
-						email: resetEmailTarget,
-						redirectTo: routerUtil.getResetRedirectUrl()
-					});
-					if (error) {
-						toastService.addToast(
-							error.message ?? 'Failed to send reset password email.',
-							StatusColorEnum.ERROR
-						);
-					} else {
-						toastService.addToast(
-							'Reset password email has been sent to the patient.',
-							StatusColorEnum.INFO
-						);
-					}
-				}
 			} else {
 				// Create: new patient (code is generated on backend from route hospital).
 				// Email is optional, but account creation still requires a unique email, so we
@@ -1069,38 +1042,10 @@
 					return;
 				}
 
-				if (emailValue) {
-					const remapped = result.emailRemapped === true;
-					const authEmail =
-						typeof result.authEmail === 'string'
-							? result.authEmail.trim()
-							: '';
-					const resetTarget = remapped
-						? authEmail
-						: emailValue;
-					if (remapped && StringUtil.isNoEmail(resetTarget)) {
-						toastService.addToast(
-							'Patient created. That email is already used at another hospital, so patient login email was not set.',
-							StatusColorEnum.WARNING
-						);
-					} else if (resetTarget && !StringUtil.isNoEmail(resetTarget)) {
-						const { error } = await authClient.requestPasswordReset({
-							email: resetTarget,
-							redirectTo: routerUtil.getResetRedirectUrl()
-						});
-						if (error) {
-							toastService.addToast(
-								error.message ?? 'Failed to send reset link.',
-								StatusColorEnum.ERROR
-							);
-						} else {
-							toastService.addToast(
-								'Reset password email has been sent to the patient.',
-								StatusColorEnum.INFO
-							);
-						}
-					}
-				}
+				toastService.addToast(
+					`Patient created. Mobile login: patient code or phone with default password = patient code (${patientCode}).`,
+					StatusColorEnum.INFO
+				);
 				disableCreateSave = true;
 			}
 		} catch (error: unknown) {

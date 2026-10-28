@@ -197,10 +197,8 @@
 		<WashButton
 			type="submit"
 			className="btn-primary cursor-pointer"
-			class:cursor-not-allowed={isSubmitting}
-			class:loading={isSubmitting}
+			loading={isSubmitting}
 			disabled={isSubmitting}
-			aria-busy={isSubmitting}
 		>
 			{m.ok()}
 		</WashButton>
