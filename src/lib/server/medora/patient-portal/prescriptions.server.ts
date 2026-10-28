@@ -1,20 +1,12 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, ne } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PatientPortalContext } from './require-patient-context.server';
-import { writePatientPortalAudit } from './audit.server';
 
 export async function listPatientPrescriptions(
-	ctx: PatientPortalContext,
-	endpoint: string
+	ctx: PatientPortalContext
 ) {
-	await writePatientPortalAudit({
-		userId: ctx.userId,
-		patientId: ctx.patientId,
-		hospitalId: ctx.hospitalId,
-		endpoint
-	});
-
 	const rows = await ensureDb()
 		.select({
 			lineId: table.medicationOrderLineTable.id,
@@ -65,7 +57,8 @@ export async function listPatientPrescriptions(
 		.where(
 			and(
 				eq(table.patientVisitTable.patientId, ctx.patientId),
-				eq(table.medicationOrderBatchTable.hospitalId, ctx.hospitalId)
+				eq(table.medicationOrderBatchTable.hospitalId, ctx.hospitalId),
+				ne(table.patientVisitTable.statusId, StatusEnum.DELETED)
 			)
 		)
 		.orderBy(desc(table.medicationOrderLineTable.startAt));

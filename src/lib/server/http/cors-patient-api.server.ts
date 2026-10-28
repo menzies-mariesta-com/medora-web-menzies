@@ -26,7 +26,7 @@ export function corsHeadersForRequest(request: Request): Headers {
 	}
 	headers.set(
 		'Access-Control-Allow-Methods',
-		'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+		'GET, HEAD, POST, DELETE, OPTIONS'
 	);
 	headers.set(
 		'Access-Control-Allow-Headers',

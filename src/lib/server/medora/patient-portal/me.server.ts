@@ -3,7 +3,11 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { PatientPortalContext } from './require-patient-context.server';
 
-function displayName(patient: PatientPortalContext['patient']): string {
+export const PATIENT_PHOTO_CONTENT_PATH = '/api/patient/v1/me/photo';
+
+function displayName(
+	patient: PatientPortalContext['patient']
+): string {
 	const parts = [
 		patient.firstName,
 		patient.middleName,
@@ -15,7 +19,9 @@ function displayName(patient: PatientPortalContext['patient']): string {
 export async function buildPatientMeDto(ctx: PatientPortalContext) {
 	const { patient } = ctx;
 	const [userRow] = await ensureDb()
-		.select({ mustChangePassword: table.userTable.mustChangePassword })
+		.select({
+			mustChangePassword: table.userTable.mustChangePassword
+		})
 		.from(table.userTable)
 		.where(eq(table.userTable.id, ctx.userId))
 		.limit(1);
@@ -34,54 +40,39 @@ export async function buildPatientMeDto(ctx: PatientPortalContext) {
 		dateOfBirth: patient.dateOfBirth,
 		phonePrimary: patient.phonePrimary,
 		address: patient.address,
-		photoPath: patient.photoPath,
+		// Storage paths stay server-side; the app fetches bytes from the
+		// authenticated endpoint below.
+		photoUrl: patient.photoPath ? PATIENT_PHOTO_CONTENT_PATH : null,
 		email: patient.user?.email ?? null,
 		gender: patient.gender?.name ?? null,
 		title: patient.title?.name ?? null
 	};
 }
 
-export async function patchPatientProfile(
-	ctx: PatientPortalContext,
-	patch: {
-		phonePrimary?: string;
-		address?: string;
-		photoPath?: string;
-	}
-) {
-	const updates: Record<string, unknown> = {};
-	if (patch.phonePrimary !== undefined) {
-		updates.phonePrimary = patch.phonePrimary;
-	}
-	if (patch.address !== undefined) {
-		updates.address = patch.address;
-	}
-	if (patch.photoPath !== undefined) {
-		updates.photoPath = patch.photoPath;
-	}
-	if (Object.keys(updates).length === 0) {
-		return await buildPatientMeDto(ctx);
-	}
-	await ensureDb()
-		.update(table.patientTable)
-		.set(updates)
-		.where(eq(table.patientTable.id, ctx.patientId));
-	const refreshed = await ensureDb().query.patientTable.findFirst({
-		where: eq(table.patientTable.id, ctx.patientId),
-		with: {
-			user: true,
-			title: true,
-			gender: true,
-			status: true,
-			hospital: true,
-			phonePrimaryCountry: true,
-			city: true,
-			state: true,
-			country: true
-		}
-	});
-	if (!refreshed) {
-		throw new Error('Patient not found after update');
-	}
-	return await buildPatientMeDto({ ...ctx, patient: refreshed });
+/** Extract the Tigris key from a stored `/api/patient-photo/...` URL. */
+export function patientPhotoStorageKey(
+	photoPath: string | null
+): string | null {
+	if (!photoPath) return null;
+	const marker = '/api/patient-photo/';
+	const index = photoPath.indexOf(marker);
+	if (index < 0) return null;
+	const key = photoPath.slice(index + marker.length);
+	if (!key || key.includes('..')) return null;
+	return key.startsWith('patient-photos/') ? key : null;
+}
+
+export async function getPatientPhoto(ctx: PatientPortalContext) {
+	const key = patientPhotoStorageKey(ctx.patient.photoPath ?? null);
+	if (!key) return null;
+	const ext = key.split('.').pop()?.toLowerCase() ?? '';
+	const contentType =
+		ext === 'png'
+			? 'image/png'
+			: ext === 'webp'
+				? 'image/webp'
+				: ext === 'gif'
+					? 'image/gif'
+					: 'image/jpeg';
+	return { storageKey: key, contentType };
 }

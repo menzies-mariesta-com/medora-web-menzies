@@ -17,13 +17,41 @@ import {
 	optionsPreflightResponse
 } from '$lib/server/http/cors-patient-api.server';
 import { getPatientByUserId } from '$lib/server/medora/patient-portal/patient-session.server';
+import {
+	isPatientApiReadOnlyViolation,
+	patientApiReadOnlyResponse
+} from '$lib/server/medora/patient-portal/patient-api-read-only.server';
+import {
+	doctorApiReadOnlyResponse,
+	isDoctorApiReadOnlyViolation
+} from '$lib/server/medora/doctor-portal/doctor-api-read-only.server';
+
+const NOISE_404_PATHS = new Set(['/favicon.ico', '/robots.txt']);
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const pathname = event.url.pathname;
 
+	// The patient app is information-only: reject any write outside the
+	// account/infrastructure allowlist before authentication runs.
+	if (isPatientApiReadOnlyViolation(event.request.method, pathname)) {
+		return applySecurityHeaders(
+			patientApiReadOnlyResponse(event),
+			event
+		);
+	}
+
+	// The doctor mobile app is read-only for clinical data in this release.
+	if (isDoctorApiReadOnlyViolation(event.request.method, pathname)) {
+		return applySecurityHeaders(
+			doctorApiReadOnlyResponse(event),
+			event
+		);
+	}
+
 	if (
 		event.request.method === 'OPTIONS' &&
 		(pathname.startsWith('/api/patient/') ||
+			pathname.startsWith('/api/doctor/') ||
 			pathname.startsWith('/api/auth'))
 	) {
 		return applySecurityHeaders(
@@ -32,12 +60,15 @@ export const handle: Handle = async ({ event, resolve }) => {
 		);
 	}
 	if (pathname === '/heka' || pathname.startsWith('/heka/')) {
-		const rest = pathname === '/heka' ? '' : pathname.slice('/heka'.length);
+		const rest =
+			pathname === '/heka' ? '' : pathname.slice('/heka'.length);
 		throw redirect(302, `/medora${rest}${event.url.search}`);
 	}
 	if (pathname === '/api/heka' || pathname.startsWith('/api/heka/')) {
 		const rest =
-			pathname === '/api/heka' ? '' : pathname.slice('/api/heka'.length);
+			pathname === '/api/heka'
+				? ''
+				: pathname.slice('/api/heka'.length);
 		throw redirect(302, `/api/medora${rest}${event.url.search}`);
 	}
 
@@ -114,7 +145,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 				event.locals.patient =
 					(await getPatientByUserId(session.user.id)) ?? null;
 			} catch (err) {
-				console.error('[patient] Failed to load patient by user id', err);
+				console.error(
+					'[patient] Failed to load patient by user id',
+					err
+				);
 				event.locals.patient = null;
 			}
 		} else {
@@ -122,8 +156,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	const twoFactorGate = rejectMutatingMedoraApiWithoutTwoFactor(event);
-	if (twoFactorGate) return applySecurityHeaders(twoFactorGate, event);
+	const twoFactorGate =
+		rejectMutatingMedoraApiWithoutTwoFactor(event);
+	if (twoFactorGate)
+		return applySecurityHeaders(twoFactorGate, event);
 
 	const basePath =
 		(auth as { options?: { basePath?: string } }).options?.basePath ??
@@ -141,7 +177,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return applySecurityHeaders(withCors, event);
 	}
 
-	return paraglideMiddleware(
+	const response = await paraglideMiddleware(
 		event.request,
 		({
 			request,
@@ -157,6 +193,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 			}).then((response) => applySecurityHeaders(response, event));
 		}
 	);
+	if (pathname.startsWith('/api/doctor/')) {
+		return applyCorsToResponse(response, event.request);
+	}
+	return response;
 };
 
 export const handleError: HandleServerError = ({
@@ -165,6 +205,9 @@ export const handleError: HandleServerError = ({
 	status,
 	message
 }) => {
+	if (status === 404 && NOISE_404_PATHS.has(event.url.pathname)) {
+		return { message: message || 'Not found' };
+	}
 	console.error('[handleError]', {
 		url: event.url.pathname,
 		status,

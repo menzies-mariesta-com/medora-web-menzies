@@ -22,7 +22,9 @@ export function normalizePatientLoginIdentifier(raw: string): string {
 	return raw.trim();
 }
 
-export async function resolvePatientUserByIdentifier(identifier: string) {
+export async function resolvePatientUserByIdentifier(
+	identifier: string
+) {
 	const id = normalizePatientLoginIdentifier(identifier);
 	if (!id) return null;
 
@@ -84,9 +86,14 @@ export async function verifyPatientCredentialPassword(
 	});
 }
 
-export async function createPatientPortalSession(userId: string): Promise<string> {
-	const token = uuidV7().replace(/-/g, '') + uuidV7().replace(/-/g, '');
-	const expiresAt = new Date(Date.now() + SESSION_SECONDS * 1000).toISOString();
+export async function createPatientPortalSession(
+	userId: string
+): Promise<string> {
+	const token =
+		uuidV7().replace(/-/g, '') + uuidV7().replace(/-/g, '');
+	const expiresAt = new Date(
+		Date.now() + SESSION_SECONDS * 1000
+	).toISOString();
 	await ensureDb().insert(sessionTable).values({
 		id: uuidV7(),
 		userId,
@@ -96,11 +103,28 @@ export async function createPatientPortalSession(userId: string): Promise<string
 	return token;
 }
 
+/**
+ * Sliding session for the read-only patient app. Called by the mobile client
+ * when it resumes or receives a 401. The token itself is unchanged.
+ */
+export async function refreshPatientPortalSession(sessionId: string) {
+	const expiresAt = new Date(
+		Date.now() + SESSION_SECONDS * 1000
+	).toISOString();
+	await ensureDb()
+		.update(sessionTable)
+		.set({ expiresAt, updatedAt: new Date().toISOString() })
+		.where(eq(sessionTable.id, sessionId));
+	return { expiresAt };
+}
+
 export async function patientPortalSignIn(input: {
 	identifier: string;
 	password: string;
 }) {
-	const resolved = await resolvePatientUserByIdentifier(input.identifier);
+	const resolved = await resolvePatientUserByIdentifier(
+		input.identifier
+	);
 	if (!resolved) {
 		throw error(401, 'Invalid patient ID or password');
 	}
