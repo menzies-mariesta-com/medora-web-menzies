@@ -76,7 +76,7 @@
 				throw new Error(text || `Failed (${res.status})`);
 			}
 			toastService.addToast(
-				msg.ed_er_bed_assigned_toast?.() ?? 'ER bed assigned',
+				msg.ed_er_bed_assigned_toast?.() ?? 'ED bed assigned',
 				StatusColorEnum.SUCCESS
 			);
 			await onDone?.();

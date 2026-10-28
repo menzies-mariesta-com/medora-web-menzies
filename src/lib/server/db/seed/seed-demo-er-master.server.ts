@@ -11,7 +11,7 @@ function rowsOf<T>(result: unknown): T[] {
 	return Array.isArray(r?.rows) ? r.rows : [];
 }
 
-/** Idempotent demo ER ward/room/beds for active hospitals (raw SQL; safe under tsx seed). */
+/** Idempotent demo ER ward/room/beds in unified master tables (is_er = true). */
 export async function seedDemoErMasterForHospitals(
 	db: NeonHttpDatabase
 ): Promise<void> {
@@ -37,8 +37,9 @@ export async function seedDemoErMasterForHospitals(
 
 		const existing = rowsOf<{ id: number }>(
 			await db.execute(sql`
-				SELECT id FROM er_ward
+				SELECT id FROM ward
 				WHERE hospital_id = ${hospitalId}::uuid
+					AND is_er = true
 					AND code = 'ER-DEMO'
 				LIMIT 1
 			`)
@@ -48,22 +49,22 @@ export async function seedDemoErMasterForHospitals(
 		try {
 			const wcRows = rowsOf<{ id: number }>(
 				await db.execute(sql`
-					INSERT INTO er_ward_category (hospital_id, name, code, ward_markup, status_id)
-					VALUES (${hospitalId}::uuid, 'Emergency', 'ER-DEMO-CAT', 0, ${StatusEnum.ACTIVE})
+					INSERT INTO ward_category (hospital_id, name, code, ward_markup, status_id, is_er)
+					VALUES (${hospitalId}::uuid, 'Emergency', 'ER-DEMO-CAT', 0, ${StatusEnum.ACTIVE}, true)
 					RETURNING id
 				`)
 			);
 			const rcRows = rowsOf<{ id: number }>(
 				await db.execute(sql`
-					INSERT INTO er_room_category (hospital_id, name, code, room_markup, status_id)
-					VALUES (${hospitalId}::uuid, 'Emergency bay', 'ER-DEMO-RC', 0, ${StatusEnum.ACTIVE})
+					INSERT INTO room_category (hospital_id, name, code, room_markup, status_id, is_er)
+					VALUES (${hospitalId}::uuid, 'Emergency bay', 'ER-DEMO-RC', 0, ${StatusEnum.ACTIVE}, true)
 					RETURNING id
 				`)
 			);
 			const wardRows = rowsOf<{ id: number }>(
 				await db.execute(sql`
-					INSERT INTO er_ward (
-						hospital_id, branch_id, er_ward_category_id, name, code, status_id
+					INSERT INTO ward (
+						hospital_id, branch_id, ward_category_id, name, code, status_id, is_er
 					)
 					VALUES (
 						${hospitalId}::uuid,
@@ -71,15 +72,16 @@ export async function seedDemoErMasterForHospitals(
 						${wcRows[0]!.id},
 						'Emergency Ward',
 						'ER-DEMO',
-						${StatusEnum.ACTIVE}
+						${StatusEnum.ACTIVE},
+						true
 					)
 					RETURNING id
 				`)
 			);
 			const roomRows = rowsOf<{ id: number }>(
 				await db.execute(sql`
-					INSERT INTO er_room (
-						hospital_id, er_ward_id, er_room_category_id, name, code, capacity, status_id
+					INSERT INTO room (
+						hospital_id, ward_id, room_category_id, name, code, capacity, status_id, is_er
 					)
 					VALUES (
 						${hospitalId}::uuid,
@@ -88,7 +90,8 @@ export async function seedDemoErMasterForHospitals(
 						'Bay 1',
 						'B1',
 						0,
-						${StatusEnum.ACTIVE}
+						${StatusEnum.ACTIVE},
+						true
 					)
 					RETURNING id
 				`)
@@ -96,8 +99,8 @@ export async function seedDemoErMasterForHospitals(
 			const roomId = roomRows[0]!.id;
 			for (let i = 1; i <= 6; i++) {
 				await db.execute(sql`
-					INSERT INTO er_bed (
-						er_room_id, hospital_id, name, code, base_price, bed_status, status_id
+					INSERT INTO bed (
+						room_id, hospital_id, name, code, base_price, bed_status, status_id, is_er
 					)
 					VALUES (
 						${roomId},
@@ -106,7 +109,8 @@ export async function seedDemoErMasterForHospitals(
 						${'B' + i},
 						0,
 						${IpdBedStatusEnum.FREE},
-						${StatusEnum.ACTIVE}
+						${StatusEnum.ACTIVE},
+						true
 					)
 				`);
 			}

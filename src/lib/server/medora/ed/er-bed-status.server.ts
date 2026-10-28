@@ -11,41 +11,42 @@ export async function listErBedsForStatus(input: {
 	bedStatus?: number;
 }): Promise<ErBedStatusBoardRow[]> {
 	const conditions = [
-		eq(table.erBedTable.hospitalId, input.hospitalId),
-		ne(table.erBedTable.statusId, StatusEnum.DELETED)
+		eq(table.bedTable.hospitalId, input.hospitalId),
+		eq(table.bedTable.isEr, true),
+		ne(table.bedTable.statusId, StatusEnum.DELETED)
 	];
 	if (typeof input.erWardId === 'number') {
-		conditions.push(eq(table.erWardTable.id, input.erWardId));
+		conditions.push(eq(table.wardTable.id, input.erWardId));
 	}
 	if (typeof input.bedStatus === 'number') {
-		conditions.push(eq(table.erBedTable.bedStatus, input.bedStatus));
+		conditions.push(eq(table.bedTable.bedStatus, input.bedStatus));
 	}
 
 	const beds = await ensureDb()
 		.select({
-			erBedId: table.erBedTable.id,
-			erRoomId: table.erBedTable.erRoomId,
-			erWardId: table.erRoomTable.erWardId,
-			bedName: table.erBedTable.name,
-			bedCode: table.erBedTable.code,
-			bedStatus: table.erBedTable.bedStatus,
-			roomName: table.erRoomTable.name,
-			wardName: table.erWardTable.name
+			erBedId: table.bedTable.id,
+			erRoomId: table.bedTable.roomId,
+			erWardId: table.roomTable.wardId,
+			bedName: table.bedTable.name,
+			bedCode: table.bedTable.code,
+			bedStatus: table.bedTable.bedStatus,
+			roomName: table.roomTable.name,
+			wardName: table.wardTable.name
 		})
-		.from(table.erBedTable)
+		.from(table.bedTable)
 		.innerJoin(
-			table.erRoomTable,
-			eq(table.erBedTable.erRoomId, table.erRoomTable.id)
+			table.roomTable,
+			eq(table.bedTable.roomId, table.roomTable.id)
 		)
 		.innerJoin(
-			table.erWardTable,
-			eq(table.erRoomTable.erWardId, table.erWardTable.id)
+			table.wardTable,
+			eq(table.roomTable.wardId, table.wardTable.id)
 		)
 		.where(and(...conditions))
 		.orderBy(
-			table.erWardTable.name,
-			table.erRoomTable.name,
-			table.erBedTable.name
+			table.wardTable.name,
+			table.roomTable.name,
+			table.bedTable.name
 		);
 
 	const occupied = await ensureDb()

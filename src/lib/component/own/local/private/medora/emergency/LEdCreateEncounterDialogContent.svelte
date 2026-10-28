@@ -341,7 +341,7 @@
 			disabled={submitting}
 			aria-busy={submitting}
 		>
-			{msg.ed_admission_submit?.() ?? 'Create ER Visit'}
+			{msg.ed_admission_submit?.() ?? 'Create ED visit'}
 		</WashButton>
 	</div>
 </form>

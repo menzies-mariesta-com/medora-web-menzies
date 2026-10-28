@@ -8,10 +8,16 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
-	import type { WardCategoryRow } from '$lib/model/type/medora/ipd/ipd.type';
+import type { WardCategoryRow } from '$lib/model/type/medora/ipd/ipd.type';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { WardModalState } from '$lib/state/ward-modal.state.svelte';
+	import {
+		administrationWardCategoryApi,
+		administrationWardMasterApi,
+		masterScopeQuery,
+		type AdministrationMasterScope
+	} from '$lib/tool/medora/administration-master-scope.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	type BranchOption = {
@@ -30,14 +36,18 @@
 			? page.params.hospital_id
 			: ''
 	);
+
+	let formIsEr = $state(false);
+
+	const masterScope = $derived(
+		(formIsEr ? 'er' : 'ipd') satisfies AdministrationMasterScope
+	);
 	const wardApi = $derived(
-		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/administration/ward-master`
-			: ''
+		hospitalId ? administrationWardMasterApi(hospitalId, masterScope) : ''
 	);
 	const categoryApi = $derived(
 		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/administration/ward-master/ward-category`
+			? administrationWardCategoryApi(hospitalId, masterScope)
 			: ''
 	);
 
@@ -80,10 +90,13 @@
 
 	async function fetchCategories(): Promise<WardCategoryRow[]> {
 		if (!categoryApi) return [];
-		const res = await fetch(`${categoryApi}?active=1`, {
-			credentials: 'include',
-			cache: 'no-store'
-		});
+		const res = await fetch(
+			`${categoryApi}?active=1&${masterScopeQuery(masterScope)}`,
+			{
+				credentials: 'include',
+				cache: 'no-store'
+			}
+		);
 		if (!res.ok)
 			throw new Error(
 				`Failed to load ward categories (${res.status})`
@@ -93,13 +106,15 @@
 
 	lifeCycleUtil.onMount(async () => {
 		try {
-			const [branchList, categoryList] = await Promise.all([
-				fetchBranches(),
-				fetchCategories()
-			]);
+			const branchList = await fetchBranches();
 			branches = branchList;
-			categories = categoryList;
 			const state = WardModalState;
+			formIsEr =
+				state.mode === 'edit'
+					? Boolean(state.editWard?.isEr)
+					: state.isEr;
+			const categoryList = await fetchCategories();
+			categories = categoryList;
 			if (state.mode === 'edit' && state.editWard) {
 				formName = state.editWard.name ?? '';
 				formCode = state.editWard.code ?? '';
@@ -166,6 +181,7 @@
 					code: formCode.trim() || null,
 					branchId: formBranchId,
 					wardCategoryId,
+					isEr: formIsEr,
 					statusId: formActive
 						? StatusEnum.ACTIVE
 						: StatusEnum.INACTIVE
@@ -194,11 +210,41 @@
 			isSubmitting = false;
 		}
 	}
+	async function reloadCategoriesForScope() {
+		if (modalState.mode === 'edit') return;
+		try {
+			categories = await fetchCategories();
+			formWardCategoryId =
+				categories[0] != null ? String(categories[0].id) : '';
+		} catch (e) {
+			toastService.addToast(
+				e instanceof Error ? e.message : 'Unable to load categories',
+				StatusColorEnum.ERROR
+			);
+		}
+	}
 </script>
 
 <form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
 	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 		<div class="flex flex-col gap-4">
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<span class="shrink-0 sm:w-36">Emergency (ED)</span>
+				<label
+					class="flex max-w-80 flex-1 cursor-pointer items-center gap-2"
+				>
+					<WashCheckbox
+						bind:checked={formIsEr}
+						disabled={isLoading || modalState.mode === 'edit'}
+						onCheckedChange={reloadCategoriesForScope}
+					/>
+					<span class="text-sm opacity-80">
+						ED ward (shown on ED bed status)
+					</span>
+				</label>
+			</div>
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>

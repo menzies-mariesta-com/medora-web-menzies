@@ -12,6 +12,7 @@ export async function listBedsForAdtStatus(input: {
 	const db = ensureDb();
 	const conditions = [
 		eq(table.bedTable.hospitalId, input.hospitalId),
+		eq(table.bedTable.isEr, false),
 		ne(table.bedTable.statusId, StatusEnum.DELETED)
 	];
 	if (typeof input.wardId === 'number') {

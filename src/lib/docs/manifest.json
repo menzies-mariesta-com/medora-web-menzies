@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-28T09:44:16.307Z",
+  "generatedAt": "2026-10-28T11:51:03.958Z",
   "version": "1.5.0",
   "stats": {
     "modules": 15,
-    "workflows": 155,
-    "apis": 204,
+    "workflows": 145,
+    "apis": 199,
     "templates": 381,
     "journalSections": 13
   },
@@ -65,13 +65,6 @@
         "ambulatory-immunization",
         "ambulatory-registry",
         "ambulatory-growth-charts",
-        "administration-er-ward-master",
-        "administration-er-ward-master-ward-category",
-        "administration-er-ward-master-ward",
-        "administration-er-room-master",
-        "administration-er-room-master-room-category",
-        "administration-er-room-master-room",
-        "administration-er-bed-master",
         "administration-er-triage-level",
         "administration-er-billing-setup"
       ]
@@ -165,16 +158,13 @@
       ]
     },
     {
-      "slug": "billing",
+      "slug": "billing-bill",
       "name": "Billing",
       "moduleId": 8,
-      "moduleUrl": "/medora/home/billing",
+      "moduleUrl": "/medora/home/billing/bill",
       "workflows": [
-        "billing-op-billing",
-        "billing-ip-billing",
-        "billing-ip-billing-bill",
-        "billing-ip-billing-advance-deposit",
-        "billing-er-billing"
+        "billing-bill",
+        "billing-ip-billing-advance-deposit"
       ]
     },
     {
@@ -1516,49 +1506,19 @@
       "contentFile": "workflows/adt-bed-transfer-requisition-list.md"
     },
     {
-      "slug": "billing-op-billing",
-      "path": "/docs/workflows/billing-op-billing",
-      "title": "OP Billing",
-      "pageId": 15,
-      "moduleId": 8,
-      "moduleName": "Billing",
-      "moduleSlug": "billing",
-      "pageUrl": "/medora/home/billing/op-billing",
-      "capturePageUrl": "/medora/home/billing/op-billing",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": null,
-      "contentFile": "workflows/billing-op-billing.md"
-    },
-    {
-      "slug": "billing-ip-billing",
-      "path": "/docs/workflows/billing-ip-billing",
-      "title": "IP Billing",
-      "pageId": 150001,
-      "moduleId": 8,
-      "moduleName": "Billing",
-      "moduleSlug": "billing",
-      "pageUrl": "/medora/home/billing/ip-billing",
-      "capturePageUrl": "/medora/home/billing/ip-billing/bill",
-      "sectionTitle": "IP Billing",
-      "subTabTitle": "Bill",
-      "parentPageTitle": null,
-      "contentFile": "workflows/billing-ip-billing.md"
-    },
-    {
-      "slug": "billing-ip-billing-bill",
-      "path": "/docs/workflows/billing-ip-billing-bill",
+      "slug": "billing-bill",
+      "path": "/docs/workflows/billing-bill",
       "title": "Bill",
       "pageId": 150003,
       "moduleId": 8,
       "moduleName": "Billing",
-      "moduleSlug": "billing",
-      "pageUrl": "/medora/home/billing/ip-billing/bill",
-      "capturePageUrl": "/medora/home/billing/ip-billing/bill",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": "IP Billing",
-      "contentFile": "workflows/billing-ip-billing-bill.md"
+      "moduleSlug": "billing-bill",
+      "pageUrl": "/medora/home/billing/bill",
+      "capturePageUrl": "/medora/home/billing/ip-billing/advance-deposit",
+      "sectionTitle": "Bill",
+      "subTabTitle": "Advance Deposit",
+      "parentPageTitle": null,
+      "contentFile": "workflows/billing-bill.md"
     },
     {
       "slug": "billing-ip-billing-advance-deposit",
@@ -1567,28 +1527,13 @@
       "pageId": 150002,
       "moduleId": 8,
       "moduleName": "Billing",
-      "moduleSlug": "billing",
+      "moduleSlug": "billing-bill",
       "pageUrl": "/medora/home/billing/ip-billing/advance-deposit",
       "capturePageUrl": "/medora/home/billing/ip-billing/advance-deposit",
       "sectionTitle": null,
       "subTabTitle": null,
-      "parentPageTitle": "IP Billing",
+      "parentPageTitle": "Bill",
       "contentFile": "workflows/billing-ip-billing-advance-deposit.md"
-    },
-    {
-      "slug": "billing-er-billing",
-      "path": "/docs/workflows/billing-er-billing",
-      "title": "ER Billing",
-      "pageId": 150004,
-      "moduleId": 8,
-      "moduleName": "Billing",
-      "moduleSlug": "billing",
-      "pageUrl": "/medora/home/billing/er-billing",
-      "capturePageUrl": "/medora/home/billing/er-billing",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": null,
-      "contentFile": "workflows/billing-er-billing.md"
     },
     {
       "slug": "administration-prefix-configuration",
@@ -2461,111 +2406,6 @@
       "contentFile": "workflows/inventory-reports-movement.md"
     },
     {
-      "slug": "administration-er-ward-master",
-      "path": "/docs/workflows/administration-er-ward-master",
-      "title": "ER Ward Master",
-      "pageId": 451,
-      "moduleId": 1,
-      "moduleName": "Administration",
-      "moduleSlug": "administration",
-      "pageUrl": "/medora/home/administration/er-ward-master",
-      "capturePageUrl": "/medora/home/administration/er-ward-master/ward-category",
-      "sectionTitle": "ER Ward Master",
-      "subTabTitle": "ER Ward Category",
-      "parentPageTitle": null,
-      "contentFile": "workflows/administration-er-ward-master.md"
-    },
-    {
-      "slug": "administration-er-ward-master-ward-category",
-      "path": "/docs/workflows/administration-er-ward-master-ward-category",
-      "title": "ER Ward Category",
-      "pageId": 451001,
-      "moduleId": 1,
-      "moduleName": "Administration",
-      "moduleSlug": "administration",
-      "pageUrl": "/medora/home/administration/er-ward-master/ward-category",
-      "capturePageUrl": "/medora/home/administration/er-ward-master/ward-category",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": "ER Ward Master",
-      "contentFile": "workflows/administration-er-ward-master-ward-category.md"
-    },
-    {
-      "slug": "administration-er-ward-master-ward",
-      "path": "/docs/workflows/administration-er-ward-master-ward",
-      "title": "ER Ward",
-      "pageId": 451002,
-      "moduleId": 1,
-      "moduleName": "Administration",
-      "moduleSlug": "administration",
-      "pageUrl": "/medora/home/administration/er-ward-master/ward",
-      "capturePageUrl": "/medora/home/administration/er-ward-master/ward",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": "ER Ward Master",
-      "contentFile": "workflows/administration-er-ward-master-ward.md"
-    },
-    {
-      "slug": "administration-er-room-master",
-      "path": "/docs/workflows/administration-er-room-master",
-      "title": "ER Room Master",
-      "pageId": 452,
-      "moduleId": 1,
-      "moduleName": "Administration",
-      "moduleSlug": "administration",
-      "pageUrl": "/medora/home/administration/er-room-master",
-      "capturePageUrl": "/medora/home/administration/er-room-master/room-category",
-      "sectionTitle": "ER Room Master",
-      "subTabTitle": "ER Room Category",
-      "parentPageTitle": null,
-      "contentFile": "workflows/administration-er-room-master.md"
-    },
-    {
-      "slug": "administration-er-room-master-room-category",
-      "path": "/docs/workflows/administration-er-room-master-room-category",
-      "title": "ER Room Category",
-      "pageId": 452001,
-      "moduleId": 1,
-      "moduleName": "Administration",
-      "moduleSlug": "administration",
-      "pageUrl": "/medora/home/administration/er-room-master/room-category",
-      "capturePageUrl": "/medora/home/administration/er-room-master/room-category",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": "ER Room Master",
-      "contentFile": "workflows/administration-er-room-master-room-category.md"
-    },
-    {
-      "slug": "administration-er-room-master-room",
-      "path": "/docs/workflows/administration-er-room-master-room",
-      "title": "ER Room",
-      "pageId": 452002,
-      "moduleId": 1,
-      "moduleName": "Administration",
-      "moduleSlug": "administration",
-      "pageUrl": "/medora/home/administration/er-room-master/room",
-      "capturePageUrl": "/medora/home/administration/er-room-master/room",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": "ER Room Master",
-      "contentFile": "workflows/administration-er-room-master-room.md"
-    },
-    {
-      "slug": "administration-er-bed-master",
-      "path": "/docs/workflows/administration-er-bed-master",
-      "title": "ER Bed Master",
-      "pageId": 453,
-      "moduleId": 1,
-      "moduleName": "Administration",
-      "moduleSlug": "administration",
-      "pageUrl": "/medora/home/administration/er-bed-master",
-      "capturePageUrl": "/medora/home/administration/er-bed-master",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": null,
-      "contentFile": "workflows/administration-er-bed-master.md"
-    },
-    {
       "slug": "emergency-bed-status",
       "path": "/docs/workflows/emergency-bed-status",
       "title": "ER Bed Status",
@@ -2837,13 +2677,8 @@
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/document-master/document-type",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/document-master/hospital-templates",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/document-master/template-library",
-    "/api/(private)/medora/hospital/[hospital_id]/home/administration/er-bed-master",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/er-billing-setup",
-    "/api/(private)/medora/hospital/[hospital_id]/home/administration/er-room-master",
-    "/api/(private)/medora/hospital/[hospital_id]/home/administration/er-room-master/room-category",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/er-triage-level",
-    "/api/(private)/medora/hospital/[hospital_id]/home/administration/er-ward-master",
-    "/api/(private)/medora/hospital/[hospital_id]/home/administration/er-ward-master/ward-category",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/external-refer-master",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/financial-year",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/medication-order-setup/[entity]",
@@ -3496,34 +3331,16 @@
       "keywords": "ADT /medora/home/adt/bed-transfer-requisition/list"
     },
     {
-      "title": "OP Billing",
-      "href": "/docs/workflows/billing-op-billing",
-      "category": "Workflow",
-      "keywords": "Billing /medora/home/billing/op-billing"
-    },
-    {
-      "title": "IP Billing",
-      "href": "/docs/workflows/billing-ip-billing",
-      "category": "Workflow",
-      "keywords": "Billing /medora/home/billing/ip-billing"
-    },
-    {
       "title": "Bill",
-      "href": "/docs/workflows/billing-ip-billing-bill",
+      "href": "/docs/workflows/billing-bill",
       "category": "Workflow",
-      "keywords": "Billing /medora/home/billing/ip-billing/bill"
+      "keywords": "Billing /medora/home/billing/bill"
     },
     {
       "title": "Advance Deposit",
       "href": "/docs/workflows/billing-ip-billing-advance-deposit",
       "category": "Workflow",
       "keywords": "Billing /medora/home/billing/ip-billing/advance-deposit"
-    },
-    {
-      "title": "ER Billing",
-      "href": "/docs/workflows/billing-er-billing",
-      "category": "Workflow",
-      "keywords": "Billing /medora/home/billing/er-billing"
     },
     {
       "title": "Prefix Configuration",
@@ -3874,48 +3691,6 @@
       "keywords": "Inventory /medora/home/inventory/reports/movement"
     },
     {
-      "title": "ER Ward Master",
-      "href": "/docs/workflows/administration-er-ward-master",
-      "category": "Workflow",
-      "keywords": "Administration /medora/home/administration/er-ward-master"
-    },
-    {
-      "title": "ER Ward Category",
-      "href": "/docs/workflows/administration-er-ward-master-ward-category",
-      "category": "Workflow",
-      "keywords": "Administration /medora/home/administration/er-ward-master/ward-category"
-    },
-    {
-      "title": "ER Ward",
-      "href": "/docs/workflows/administration-er-ward-master-ward",
-      "category": "Workflow",
-      "keywords": "Administration /medora/home/administration/er-ward-master/ward"
-    },
-    {
-      "title": "ER Room Master",
-      "href": "/docs/workflows/administration-er-room-master",
-      "category": "Workflow",
-      "keywords": "Administration /medora/home/administration/er-room-master"
-    },
-    {
-      "title": "ER Room Category",
-      "href": "/docs/workflows/administration-er-room-master-room-category",
-      "category": "Workflow",
-      "keywords": "Administration /medora/home/administration/er-room-master/room-category"
-    },
-    {
-      "title": "ER Room",
-      "href": "/docs/workflows/administration-er-room-master-room",
-      "category": "Workflow",
-      "keywords": "Administration /medora/home/administration/er-room-master/room"
-    },
-    {
-      "title": "ER Bed Master",
-      "href": "/docs/workflows/administration-er-bed-master",
-      "category": "Workflow",
-      "keywords": "Administration /medora/home/administration/er-bed-master"
-    },
-    {
       "title": "ER Bed Status",
       "href": "/docs/workflows/emergency-bed-status",
       "category": "Workflow",
@@ -4193,11 +3968,8 @@
     "/docs/workflows/adt-bed-transfer-requisition",
     "/docs/workflows/adt-bed-transfer-requisition-new",
     "/docs/workflows/adt-bed-transfer-requisition-list",
-    "/docs/workflows/billing-op-billing",
-    "/docs/workflows/billing-ip-billing",
-    "/docs/workflows/billing-ip-billing-bill",
+    "/docs/workflows/billing-bill",
     "/docs/workflows/billing-ip-billing-advance-deposit",
-    "/docs/workflows/billing-er-billing",
     "/docs/workflows/administration-prefix-configuration",
     "/docs/workflows/administration-financial-year",
     "/docs/workflows/administration-departments",
@@ -4256,13 +4028,6 @@
     "/docs/workflows/inventory-reports-low-stock",
     "/docs/workflows/inventory-reports-expired",
     "/docs/workflows/inventory-reports-movement",
-    "/docs/workflows/administration-er-ward-master",
-    "/docs/workflows/administration-er-ward-master-ward-category",
-    "/docs/workflows/administration-er-ward-master-ward",
-    "/docs/workflows/administration-er-room-master",
-    "/docs/workflows/administration-er-room-master-room-category",
-    "/docs/workflows/administration-er-room-master-room",
-    "/docs/workflows/administration-er-bed-master",
     "/docs/workflows/emergency-bed-status",
     "/docs/workflows/administration-er-triage-level",
     "/docs/workflows/administration-er-billing-setup",
@@ -4302,7 +4067,7 @@
     "/docs/modules/service-item",
     "/docs/modules/consultation",
     "/docs/modules/adt",
-    "/docs/modules/billing",
+    "/docs/modules/billing-bill",
     "/docs/modules/inventory-setup",
     "/docs/modules/inventory",
     "/docs/modules/medication-order",
