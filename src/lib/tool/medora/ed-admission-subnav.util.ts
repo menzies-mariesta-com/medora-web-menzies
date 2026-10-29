@@ -14,13 +14,10 @@ type AdmissionTabSeed = Pick<
 >;
 
 /** Canonical tabs when nav cache or user_group grants lag behind seed. */
-export function edAdmissionTabFallbacks(
-	labels: {
-		erRegistration: string;
-		newPatient: string;
-		list: string;
-	}
-): AdmissionTabSeed[] {
+export function edAdmissionTabFallbacks(labels: {
+	erRegistration: string;
+	newPatient: string;
+}): AdmissionTabSeed[] {
 	return [
 		{
 			id: 123001,
@@ -33,12 +30,6 @@ export function edAdmissionTabFallbacks(
 			pageUrl: `${ED_ADMISSION_SECTION_PAGE_URL}/new-patient`,
 			sequenceNo: 2,
 			name: labels.newPatient
-		},
-		{
-			id: 123002,
-			pageUrl: `${ED_ADMISSION_SECTION_PAGE_URL}/list`,
-			sequenceNo: 3,
-			name: labels.list
 		}
 	];
 }
@@ -47,21 +38,23 @@ function normUrl(url: string | null | undefined): string {
 	return (url ?? '').replace(/\/$/, '') || '/';
 }
 
+const RETIRED_ADMISSION_TAB_URLS = new Set([
+	normUrl(`${ED_ADMISSION_SECTION_PAGE_URL}/list`)
+]);
+
 /**
- * Sub-nav tabs for ED registration: DB-driven, merged with fallbacks so all
- * three routes stay visible even when server page nav cache is stale.
+ * Sub-nav tabs for ED registration: DB-driven, merged with fallbacks.
  */
-export function getEdAdmissionSubPages(
-	labels: {
-		erRegistration: string;
-		newPatient: string;
-		list: string;
-	}
-): MedoraPageRow[] {
+export function getEdAdmissionSubPages(labels: {
+	erRegistration: string;
+	newPatient: string;
+}): MedoraPageRow[] {
 	const fromDb = getSubPagesForPageUrl(ED_ADMISSION_SECTION_PAGE_URL);
 	const byUrl = new Map<string, MedoraPageRow>();
 	for (const p of fromDb) {
-		byUrl.set(normUrl(p.pageUrl), p);
+		const key = normUrl(p.pageUrl);
+		if (RETIRED_ADMISSION_TAB_URLS.has(key)) continue;
+		byUrl.set(key, p);
 	}
 	for (const fb of edAdmissionTabFallbacks(labels)) {
 		const key = normUrl(fb.pageUrl);

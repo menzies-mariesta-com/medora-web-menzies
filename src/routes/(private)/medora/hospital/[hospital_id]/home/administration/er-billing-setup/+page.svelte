@@ -20,7 +20,6 @@
 	let loading = $state(true);
 	let saving = $state(false);
 	let erBedServiceItemId = $state('');
-	let erConsumableServiceItemId = $state('');
 
 	async function load() {
 		if (!api) return;
@@ -30,14 +29,9 @@
 			if (!res.ok) await throwUserFacingHttpError(res);
 			const row = (await res.json()) as {
 				erBedServiceItemId?: number | null;
-				erConsumableServiceItemId?: number | null;
 			};
 			erBedServiceItemId =
 				row.erBedServiceItemId != null ? String(row.erBedServiceItemId) : '';
-			erConsumableServiceItemId =
-				row.erConsumableServiceItemId != null
-					? String(row.erConsumableServiceItemId)
-					: '';
 		} finally {
 			loading = false;
 		}
@@ -54,9 +48,6 @@
 				body: JSON.stringify({
 					erBedServiceItemId: erBedServiceItemId.trim()
 						? Number(erBedServiceItemId)
-						: null,
-					erConsumableServiceItemId: erConsumableServiceItemId.trim()
-						? Number(erConsumableServiceItemId)
 						: null
 				})
 			});
@@ -86,7 +77,7 @@
 	</h1>
 	<p class="text-sm opacity-70">
 		{msg.er_billing_setup_blurb?.() ??
-			'Service item IDs used for auto ED bed charges and department consumption lines on ED bills.'}
+			'Service item used for auto ED bed charges on ED bills.'}
 	</p>
 	{#if loading}
 		<p class="text-sm">{m.loading?.() ?? 'Loading…'}</p>
@@ -99,17 +90,6 @@
 				class="input input-bordered w-full cursor-text"
 				inputmode="numeric"
 				bind:value={erBedServiceItemId}
-			/>
-		</label>
-		<label class="form-control w-full">
-			<span class="label-text">
-				{msg.er_billing_setup_consumable_service?.() ??
-					'Consumable billing service item ID'}
-			</span>
-			<input
-				class="input input-bordered w-full cursor-text"
-				inputmode="numeric"
-				bind:value={erConsumableServiceItemId}
 			/>
 		</label>
 		<WashButton

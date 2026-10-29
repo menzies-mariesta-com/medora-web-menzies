@@ -22,8 +22,7 @@ const statements = [
 	VALUES
 		(124, 'ED Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 5),
 		(454, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
-		(455, 'ED billing setup', 1, 1, null, '/medora/home/administration/er-billing-setup', 20),
-		(125, 'Purchase item', 12, 1, null, '/medora/home/emergency/purchase-item', 2)
+		(455, 'ED billing setup', 1, 1, null, '/medora/home/administration/er-billing-setup', 20)
 	ON CONFLICT (id) DO UPDATE SET
 		name = EXCLUDED.name,
 		module_id = EXCLUDED.module_id,
@@ -46,14 +45,6 @@ const statements = [
 			WHERE x.user_group_id = ugp.user_group_id
 				AND x.page_id = child.page_id
 		)`,
-	`INSERT INTO user_group_page (user_group_id, page_id)
-	SELECT ugp.user_group_id, 125
-	FROM user_group_page ugp
-	WHERE ugp.page_id IN (123, 120, 121, 122, 124, 125)
-		AND NOT EXISTS (
-			SELECT 1 FROM user_group_page x
-			WHERE x.user_group_id = ugp.user_group_id AND x.page_id = 125
-		)`
 ];
 
 for (const q of statements) {

@@ -16,7 +16,6 @@ import {
 } from 'drizzle-orm';
 import {
 	BillingStatusTaggingEnum,
-	InvDepartmentConsumptionStatusTaggingEnum,
 	IpdAdmissionStatusEnum,
 	StaffTypeEnum,
 	StatusEnum,
@@ -1647,26 +1646,9 @@ export type OpBillingPendingMedicationLineRow = {
 	serviceUnit: number | null;
 };
 
-export type OpBillingPendingConsumptionLineRow = {
-	lineSource: 'department_consumption_line';
-	id: number;
-	medicationOrderLineId: null;
-	departmentConsumptionLineId: number;
-	serviceId: number;
-	serviceName: string | null;
-	subCategoryId: number | null;
-	subCategoryName: string | null;
-	orderNo: string | null;
-	discount: string | null;
-	serviceAmount: string | null;
-	serviceTaxAmount: string | null;
-	serviceUnit: number | null;
-};
-
 export type OpBillingPendingLineRow =
 	| OpBillingPendingServiceLineRow
-	| OpBillingPendingMedicationLineRow
-	| OpBillingPendingConsumptionLineRow;
+	| OpBillingPendingMedicationLineRow;
 
 async function getDefaultServiceItemForPharmacyOpBilling(input: {
 	hospitalId: string;
@@ -1889,142 +1871,6 @@ function isNursingCompleteTimeSet(
 	);
 }
 
-async function getDepartmentConsumptionLineIdsOnClosedOpBillsForVisit(
-	visitId: string
-): Promise<Set<number>> {
-	const rows = await ensureDb()
-		.select({
-			lineId: table.opBillingLineTable.departmentConsumptionLineId
-		})
-		.from(table.opBillingLineTable)
-		.innerJoin(
-			table.opBillingTable,
-			eq(table.opBillingLineTable.opBillingId, table.opBillingTable.id)
-		)
-		.where(
-			and(
-				eq(table.opBillingTable.visitId, visitId),
-				eq(
-					table.opBillingTable.statusTaggingId,
-					BillingStatusTaggingEnum.CLOSED
-				),
-				ne(table.opBillingTable.statusId, StatusEnum.DELETED),
-				isNotNull(table.opBillingLineTable.departmentConsumptionLineId)
-			)
-		);
-	const set = new Set<number>();
-	for (const r of rows) {
-		if (r.lineId != null) set.add(r.lineId);
-	}
-	return set;
-}
-
-async function getPendingDepartmentConsumptionRowsForOpBilling(input: {
-	visitId: string;
-	hospitalId: string;
-	branchId: string;
-}): Promise<OpBillingPendingConsumptionLineRow[]> {
-	const { getOrCreateHospitalEdBillingConfig } = await import(
-		'$lib/server/medora/ed/hospital-ed-billing-config.server'
-	);
-	const config = await getOrCreateHospitalEdBillingConfig(input.hospitalId);
-	const serviceItemId = config.erConsumableServiceItemId;
-	if (serviceItemId == null || serviceItemId <= 0) return [];
-
-	const [svc] = await ensureDb()
-		.select({
-			id: table.serviceItemTable.id,
-			subCategoryId: table.serviceItemTable.subCategoryId
-		})
-		.from(table.serviceItemTable)
-		.where(
-			and(
-				eq(table.serviceItemTable.id, serviceItemId),
-				eq(table.serviceItemTable.hospitalId, input.hospitalId),
-				eq(table.serviceItemTable.statusId, StatusEnum.ACTIVE)
-			)
-		)
-		.limit(1);
-	if (!svc) return [];
-
-	let subCategoryName: string | null = null;
-	if (svc.subCategoryId != null) {
-		const [sc] = await ensureDb()
-			.select({ name: table.subCategoryTable.subCategoryName })
-			.from(table.subCategoryTable)
-			.where(eq(table.subCategoryTable.id, svc.subCategoryId))
-			.limit(1);
-		subCategoryName = sc?.name ?? null;
-	}
-
-	const onClosed = await getDepartmentConsumptionLineIdsOnClosedOpBillsForVisit(
-		input.visitId
-	);
-
-	const raw = await ensureDb()
-		.select({
-			lineId: table.invDepartmentConsumptionLineTable.id,
-			itemName: table.itemMasterTable.itemName,
-			consumptionNo: table.invDepartmentConsumptionTable.consumptionNo,
-			empSalePrice: table.invDepartmentConsumptionLineTable.empSalePrice,
-			quantity: table.invDepartmentConsumptionLineTable.quantity
-		})
-		.from(table.invDepartmentConsumptionLineTable)
-		.innerJoin(
-			table.invDepartmentConsumptionTable,
-			eq(
-				table.invDepartmentConsumptionLineTable.consumptionId,
-				table.invDepartmentConsumptionTable.id
-			)
-		)
-		.innerJoin(
-			table.itemMasterTable,
-			eq(
-				table.invDepartmentConsumptionLineTable.itemId,
-				table.itemMasterTable.id
-			)
-		)
-		.where(
-			and(
-				eq(table.invDepartmentConsumptionTable.visitId, input.visitId),
-				eq(
-					table.invDepartmentConsumptionTable.hospitalId,
-					input.hospitalId
-				),
-				eq(
-					table.invDepartmentConsumptionTable.statusTaggingId,
-					InvDepartmentConsumptionStatusTaggingEnum.POSTED
-				),
-				isNull(table.invDepartmentConsumptionLineTable.deletedAt),
-				isNull(table.invDepartmentConsumptionTable.deletedAt)
-			)
-		)
-		.orderBy(asc(table.invDepartmentConsumptionLineTable.id));
-
-	const out: OpBillingPendingConsumptionLineRow[] = [];
-	for (const r of raw) {
-		if (onClosed.has(r.lineId)) continue;
-		const unitPrice = r.empSalePrice != null ? String(r.empSalePrice) : '0';
-		const qty = Number(r.quantity) > 0 ? Number(r.quantity) : 1;
-		out.push({
-			lineSource: 'department_consumption_line',
-			id: r.lineId,
-			medicationOrderLineId: null,
-			departmentConsumptionLineId: r.lineId,
-			serviceId: svc.id,
-			serviceName: r.itemName?.trim() || null,
-			subCategoryId: svc.subCategoryId,
-			subCategoryName,
-			orderNo: r.consumptionNo?.trim() || null,
-			discount: null,
-			serviceAmount: unitPrice,
-			serviceTaxAmount: '0',
-			serviceUnit: qty
-		});
-	}
-	return out;
-}
-
 /**
  * Nursing-complete service lines plus in-house medication order lines for the visit that
  * are not already on a **closed** OP bill. Medication lines never use nursing-complete; they
@@ -2056,8 +1902,7 @@ export async function getPendingOpBillingServiceDetailRowsForVisit(input: {
 		hospitalId: input.hospitalId,
 		branchId: input.branchId
 	});
-	const dcRows = await getPendingDepartmentConsumptionRowsForOpBilling(input);
-	return [...serviceRows, ...medRows, ...dcRows];
+	return [...serviceRows, ...medRows];
 }
 
 export async function assertServiceOrderDetailNotLockedByClosedOpBill(
