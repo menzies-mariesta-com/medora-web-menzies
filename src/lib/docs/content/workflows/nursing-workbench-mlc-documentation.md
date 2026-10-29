@@ -1,11 +1,11 @@
 ---
-title: "Registration list"
-description: "How to use Registration list in Emergency."
+title: "MLC documentation"
+description: "How to use MLC documentation in Nursing Workbench."
 docType: workflow
-slug: workflows/emergency-admission-list
-pageId: 123002
-moduleId: 12
-pageUrl: "/medora/home/emergency/admission/list"
+slug: workflows/nursing-workbench-mlc-documentation
+pageId: 800016
+moduleId: 4
+pageUrl: "/medora/home/nursing-workbench/mlc-documentation"
 generated: true
 sinceVersion: "1.5.0"
 lastReviewed: "2026-03-21"
@@ -13,7 +13,7 @@ lastReviewed: "2026-03-21"
 
 ## What you will do
 
-Use **Registration list** in **Emergency** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
+Use **MLC documentation** in **Nursing Workbench** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
 
 ## Before you start
 
@@ -23,16 +23,16 @@ Use **Registration list** in **Emergency** for everyday hospital tasks. A full w
 
 ## Steps
 
-1. Open **Emergency** from the home menu.
-2. Open **Registration list**.
+1. Open **Nursing Workbench** from the home menu.
+2. Open **MLC documentation**.
 3. Follow the on-screen forms and save when you are done.
 
 ## Quick map
 
 ```mermaid
 flowchart LR
-  signIn[Sign in] --> module[Open Emergency]
-  module --> screen[Open Registration list]
+  signIn[Sign in] --> module[Open Nursing Workbench]
+  module --> screen[Open MLC documentation]
   screen --> done[Finish task]
 ```
 

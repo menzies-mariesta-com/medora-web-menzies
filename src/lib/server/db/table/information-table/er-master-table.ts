@@ -54,7 +54,7 @@ export const edTriageLevelTable = pgTable(
 	]
 );
 
-/** Per-hospital ER billing defaults (bed charge service, consumable bill service). */
+/** Per-hospital ER billing defaults (bed charge service). */
 export const hospitalEdBillingConfigTable = pgTable(
 	'hospital_ed_billing_config',
 	{
@@ -65,9 +65,6 @@ export const hospitalEdBillingConfigTable = pgTable(
 			() => serviceItemTable.id,
 			{ onDelete: 'set null' }
 		),
-		erConsumableServiceItemId: integer(
-			'er_consumable_service_item_id'
-		).references(() => serviceItemTable.id, { onDelete: 'set null' }),
 		...timestamps
 	}
 );

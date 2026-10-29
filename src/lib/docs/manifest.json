@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-28T16:39:48.892Z",
+  "generatedAt": "2026-10-29T09:50:28.590Z",
   "version": "1.5.0",
   "stats": {
     "modules": 15,
-    "workflows": 145,
-    "apis": 199,
+    "workflows": 144,
+    "apis": 198,
     "templates": 381,
     "journalSections": 13
   },
@@ -109,7 +109,8 @@
         "nursing-workbench-triage",
         "nursing-workbench-trauma-log",
         "nursing-workbench-emar",
-        "nursing-workbench-care-plan"
+        "nursing-workbench-care-plan",
+        "nursing-workbench-mlc-documentation"
       ]
     },
     {
@@ -227,8 +228,6 @@
         "emergency-admission",
         "emergency-admission-new",
         "emergency-admission-new-patient",
-        "emergency-admission-list",
-        "emergency-purchase-item",
         "emergency-bed-status"
       ]
     },
@@ -846,6 +845,21 @@
       "contentFile": "workflows/nursing-workbench-care-plan.md"
     },
     {
+      "slug": "nursing-workbench-mlc-documentation",
+      "path": "/docs/workflows/nursing-workbench-mlc-documentation",
+      "title": "MLC documentation",
+      "pageId": 800016,
+      "moduleId": 4,
+      "moduleName": "Nursing Workbench",
+      "moduleSlug": "nursing-workbench",
+      "pageUrl": "/medora/home/nursing-workbench/mlc-documentation",
+      "capturePageUrl": "/medora/home/nursing-workbench/mlc-documentation",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": "Nursing Workbench",
+      "contentFile": "workflows/nursing-workbench-mlc-documentation.md"
+    },
+    {
       "slug": "consultation-emr",
       "path": "/docs/workflows/consultation-emr",
       "title": "EMR",
@@ -1054,36 +1068,6 @@
       "subTabTitle": null,
       "parentPageTitle": "Registration",
       "contentFile": "workflows/emergency-admission-new-patient.md"
-    },
-    {
-      "slug": "emergency-admission-list",
-      "path": "/docs/workflows/emergency-admission-list",
-      "title": "Registration list",
-      "pageId": 123002,
-      "moduleId": 12,
-      "moduleName": "Emergency",
-      "moduleSlug": "emergency",
-      "pageUrl": "/medora/home/emergency/admission/list",
-      "capturePageUrl": "/medora/home/emergency/admission/list",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": "Registration",
-      "contentFile": "workflows/emergency-admission-list.md"
-    },
-    {
-      "slug": "emergency-purchase-item",
-      "path": "/docs/workflows/emergency-purchase-item",
-      "title": "Purchase item",
-      "pageId": 125,
-      "moduleId": 12,
-      "moduleName": "Emergency",
-      "moduleSlug": "emergency",
-      "pageUrl": "/medora/home/emergency/purchase-item",
-      "capturePageUrl": "/medora/home/emergency/purchase-item",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": null,
-      "contentFile": "workflows/emergency-purchase-item.md"
     },
     {
       "slug": "perioperative-ot-board",
@@ -2740,7 +2724,6 @@
     "/api/(private)/medora/hospital/[hospital_id]/home/inventory/department-consumption",
     "/api/(private)/medora/hospital/[hospital_id]/home/inventory/department-consumption/approve",
     "/api/(private)/medora/hospital/[hospital_id]/home/inventory/department-consumption/cancel",
-    "/api/(private)/medora/hospital/[hospital_id]/home/inventory/department-consumption/return",
     "/api/(private)/medora/hospital/[hospital_id]/home/inventory/department-indent",
     "/api/(private)/medora/hospital/[hospital_id]/home/inventory/department-indent/approve",
     "/api/(private)/medora/hospital/[hospital_id]/home/inventory/department-indent/cancel",
@@ -3067,6 +3050,12 @@
       "keywords": "Nursing Workbench /medora/home/nursing-workbench/care-plan"
     },
     {
+      "title": "MLC documentation",
+      "href": "/docs/workflows/nursing-workbench-mlc-documentation",
+      "category": "Workflow",
+      "keywords": "Nursing Workbench /medora/home/nursing-workbench/mlc-documentation"
+    },
+    {
       "title": "EMR",
       "href": "/docs/workflows/consultation-emr",
       "category": "Workflow",
@@ -3149,18 +3138,6 @@
       "href": "/docs/workflows/emergency-admission-new-patient",
       "category": "Workflow",
       "keywords": "Emergency /medora/home/emergency/admission/new-patient"
-    },
-    {
-      "title": "Registration list",
-      "href": "/docs/workflows/emergency-admission-list",
-      "category": "Workflow",
-      "keywords": "Emergency /medora/home/emergency/admission/list"
-    },
-    {
-      "title": "Purchase item",
-      "href": "/docs/workflows/emergency-purchase-item",
-      "category": "Workflow",
-      "keywords": "Emergency /medora/home/emergency/purchase-item"
     },
     {
       "title": "OT Board",
@@ -3924,6 +3901,7 @@
     "/docs/workflows/nursing-workbench-trauma-log",
     "/docs/workflows/nursing-workbench-emar",
     "/docs/workflows/nursing-workbench-care-plan",
+    "/docs/workflows/nursing-workbench-mlc-documentation",
     "/docs/workflows/consultation-emr",
     "/docs/workflows/consultation-cpoe",
     "/docs/workflows/consultation-cpoe-order",
@@ -3938,8 +3916,6 @@
     "/docs/workflows/emergency-admission",
     "/docs/workflows/emergency-admission-new",
     "/docs/workflows/emergency-admission-new-patient",
-    "/docs/workflows/emergency-admission-list",
-    "/docs/workflows/emergency-purchase-item",
     "/docs/workflows/perioperative-ot-board",
     "/docs/workflows/perioperative-cases",
     "/docs/workflows/perioperative-pre-op",

@@ -16,27 +16,14 @@ export const PATCH: RequestHandler = async (event) => {
 	await ensureCanAccessHospital(event, hospitalId);
 	const body = (await event.request.json()) as Record<string, unknown>;
 	const erBed = body.erBedServiceItemId;
-	const erConsumable = body.erConsumableServiceItemId;
-	const patch: {
-		erBedServiceItemId?: number | null;
-		erConsumableServiceItemId?: number | null;
-	} = {};
+	const patch: { erBedServiceItemId?: number | null } = {};
 	if (erBed !== undefined) {
 		if (erBed == null || erBed === '') patch.erBedServiceItemId = null;
 		else {
 			const n = Number(erBed);
-			if (!Number.isFinite(n) || n <= 0) throw error(400, 'Invalid bed service item');
-			patch.erBedServiceItemId = n;
-		}
-	}
-	if (erConsumable !== undefined) {
-		if (erConsumable == null || erConsumable === '')
-			patch.erConsumableServiceItemId = null;
-		else {
-			const n = Number(erConsumable);
 			if (!Number.isFinite(n) || n <= 0)
-				throw error(400, 'Invalid consumable service item');
-			patch.erConsumableServiceItemId = n;
+				throw error(400, 'Invalid bed service item');
+			patch.erBedServiceItemId = n;
 		}
 	}
 	return json(

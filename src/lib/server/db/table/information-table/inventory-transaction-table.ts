@@ -1319,13 +1319,9 @@ export const invDepartmentConsumptionTable = pgTable(
 			mode: 'string'
 		}),
 		cancelReason: text('cancel_reason'),
-		visitId: uuid('visit_id').references(() => patientVisitTable.id, {
-			onDelete: 'set null'
-		}),
 		...invTimestamps
 	},
 	(t) => [
-		index('inv_department_consumption_visit_id_idx').on(t.visitId),
 		index('inv_department_consumption_hospital_store_idx').on(
 			t.hospitalId,
 			t.storeId

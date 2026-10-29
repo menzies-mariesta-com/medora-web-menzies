@@ -2,7 +2,6 @@
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import ClinicalFormRenderer from '$lib/component/own/local/private/medora/clinical-form/ClinicalFormRenderer.svelte';
-	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import type { ClinicalFormTemplateSchema } from '$lib/model/type/medora/clinical-form.type';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -11,20 +10,13 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
-
-	type Props = DialogSlotProps & {
-		visitId: string;
-	};
-
-	let { confirm, cancel, visitId }: Props = $props();
-
 	const lifeCycle = new LifeCycleUtil();
 	const toastService = new ToastService();
+
 	const hospitalId = $derived(page.params.hospital_id ?? '');
+	const visitId = $derived(page.url.searchParams.get('visitId') ?? '');
 	const formApi = $derived(
-		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/clinical-form`
-			: ''
+		hospitalId ? `/api/medora/hospital/${hospitalId}/home/clinical-form` : ''
 	);
 
 	const TEMPLATE_CODE = 'ed_mlc_documentation_v1';
@@ -33,7 +25,7 @@
 	let loading = $state(true);
 	let submitting = $state(false);
 
-	async function load() {
+	async function loadTemplate() {
 		if (!formApi) return;
 		loading = true;
 		try {
@@ -52,7 +44,7 @@
 	}
 
 	async function save() {
-		if (!formApi || submitting) return;
+		if (!formApi || !visitId || submitting) return;
 		submitting = true;
 		try {
 			const res = await fetch(formApi, {
@@ -72,7 +64,6 @@
 				msg.ed_reg_mlc_saved?.() ?? 'MLC documentation saved',
 				StatusColorEnum.SUCCESS
 			);
-			confirm();
 		} catch (e) {
 			toastService.addToast(
 				e instanceof Error ? e.message : 'Save failed',
@@ -84,42 +75,34 @@
 	}
 
 	lifeCycle.onMount(() => {
-		void load();
+		void loadTemplate();
 	});
 </script>
 
-<div class="flex max-h-[min(75vh,34rem)] flex-col gap-3">
-	<h2 class="card-title text-primary font-bold">
+<div class="flex flex-col gap-4 p-4">
+	<h1 class="text-lg font-bold">
 		{msg.ed_reg_mlc_dialog_title?.() ?? 'MLC documentation'}
-	</h2>
-	{#if loading}
-		<p class="text-sm">{m.loading?.() ?? 'Loading…'}</p>
-	{:else if schema}
-		<div class="min-h-0 flex-1 overflow-auto">
-			<ClinicalFormRenderer {schema} bind:values />
-		</div>
-	{:else}
+	</h1>
+	{#if !visitId}
 		<p class="text-sm opacity-70">
+			{msg.ed_visit_required?.() ??
+				'Select a visit from the bar above to document MLC.'}
+		</p>
+	{:else if loading}
+		<p class="text-sm">{m.loading?.() ?? 'Loading…'}</p>
+	{:else if !schema}
+		<p class="text-warning text-sm">
 			{msg.ed_reg_mlc_missing_template?.() ?? 'MLC template not available.'}
 		</p>
-	{/if}
-	<div class="flex justify-end gap-2">
+	{:else}
+		<ClinicalFormRenderer {schema} bind:values />
 		<WashButton
-			type="button"
-			className="btn btn-ghost cursor-pointer"
-			onClick={() => cancel()}
-		>
-			{m.cancel?.() ?? 'Cancel'}
-		</WashButton>
-		<WashButton
-			type="button"
-			className="btn btn-primary cursor-pointer"
+			className="btn btn-primary cursor-pointer self-start"
 			loading={submitting}
-			disabled={submitting || !schema}
-			aria-busy={submitting}
+			disabled={submitting}
 			onClick={() => void save()}
 		>
 			{m.save?.() ?? 'Save'}
 		</WashButton>
-	</div>
+	{/if}
 </div>

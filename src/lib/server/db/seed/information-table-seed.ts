@@ -174,6 +174,7 @@ export async function seedInformationTables() {
 			(122, 'Trauma Log', 4, 1, 910000, '/medora/home/nursing-workbench/trauma-log', 12),
 			(362, 'eMAR', 4, 1, 910000, '/medora/home/nursing-workbench/emar', 13),
 			(363, 'Care plans', 4, 1, 910000, '/medora/home/nursing-workbench/care-plan', 14),
+			(800016, 'MLC documentation', 4, 1, 910000, '/medora/home/nursing-workbench/mlc-documentation', 15),
 
 			-- Consultation Module
 			(13, 'EMR', 6, 1, null, '/medora/home/consultation/emr', 1),
@@ -192,8 +193,6 @@ export async function seedInformationTables() {
 			(123, 'Registration', 12, 1, null, '/medora/home/emergency/admission', 1),
 			(123001, 'ED Patient Registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
 			(123003, 'New patient', 12, 1, 123, '/medora/home/emergency/admission/new-patient', 2),
-			(123002, 'Registration list', 12, 1, 123, '/medora/home/emergency/admission/list', 3),
-			(125, 'Purchase item', 12, 1, null, '/medora/home/emergency/purchase-item', 2),
 
 			-- Perioperative module (13)
 			(130, 'OT Board', 13, 1, null, '/medora/home/perioperative/ot-board', 1),
@@ -327,8 +326,7 @@ export async function seedInformationTables() {
 		VALUES
 			(123, 'Registration', 12, 1, null, '/medora/home/emergency/admission', 1),
 			(123001, 'ED Patient Registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
-			(123003, 'New patient', 12, 1, 123, '/medora/home/emergency/admission/new-patient', 2),
-			(123002, 'Registration list', 12, 1, 123, '/medora/home/emergency/admission/list', 3)
+			(123003, 'New patient', 12, 1, 123, '/medora/home/emergency/admission/new-patient', 2)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			module_id = EXCLUDED.module_id,
@@ -341,7 +339,7 @@ export async function seedInformationTables() {
 		INSERT INTO user_group_page (user_group_id, page_id)
 		SELECT ugp.user_group_id, child.page_id
 		FROM user_group_page ugp
-		CROSS JOIN (VALUES (123), (123001), (123002), (123003)) AS child(page_id)
+		CROSS JOIN (VALUES (123), (123001), (123003)) AS child(page_id)
 		WHERE ugp.page_id IN (120, 121, 122, 481)
 			AND NOT EXISTS (
 				SELECT 1
@@ -355,7 +353,7 @@ export async function seedInformationTables() {
 		SELECT ugp.user_group_id, child.page_id
 		FROM user_group_page ugp
 		CROSS JOIN (VALUES (123003)) AS child(page_id)
-		WHERE ugp.page_id IN (123, 123001, 123002)
+		WHERE ugp.page_id IN (123, 123001)
 			AND NOT EXISTS (
 				SELECT 1
 				FROM user_group_page x
@@ -375,14 +373,12 @@ export async function seedInformationTables() {
 			sequence_no = EXCLUDED.sequence_no;
 		`);
 	await db.execute(sql`UPDATE page SET name = 'ED Patient Registration', sequence_no = 1 WHERE id = 123001`);
-	await db.execute(sql`UPDATE page SET sequence_no = 3 WHERE id = 123002`);
 	await db.execute(sql`
 		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 		VALUES
 			(124, 'ED Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 5),
 			(454, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
-			(455, 'ED billing setup', 1, 1, null, '/medora/home/administration/er-billing-setup', 20),
-			(125, 'Purchase item', 12, 1, null, '/medora/home/emergency/purchase-item', 2)
+			(455, 'ED billing setup', 1, 1, null, '/medora/home/administration/er-billing-setup', 20)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			module_id = EXCLUDED.module_id,

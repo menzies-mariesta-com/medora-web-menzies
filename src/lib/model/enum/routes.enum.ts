@@ -68,6 +68,7 @@ export enum WebRoutesEnum {
 	MEDORA_HOME_NURSING_WORKBENCH_TRAUMA_LOG = '/medora/home/nursing-workbench/trauma-log',
 	MEDORA_HOME_NURSING_WORKBENCH_EMAR = '/medora/home/nursing-workbench/emar',
 	MEDORA_HOME_NURSING_WORKBENCH_CARE_PLAN = '/medora/home/nursing-workbench/care-plan',
+	MEDORA_HOME_NURSING_WORKBENCH_MLC_DOCUMENTATION = '/medora/home/nursing-workbench/mlc-documentation',
 
 	// Consultation module (navbar auto-hides like nursing EMR)
 	MEDORA_HOME_CONSULTATION = '/medora/home/consultation',
@@ -114,8 +115,6 @@ export enum WebRoutesEnum {
 	MEDORA_HOME_EMERGENCY = '/medora/home/emergency',
 	MEDORA_HOME_EMERGENCY_ADMISSION = '/medora/home/emergency/admission',
 	MEDORA_HOME_EMERGENCY_ADMISSION_NEW = '/medora/home/emergency/admission/new',
-	MEDORA_HOME_EMERGENCY_ADMISSION_LIST = '/medora/home/emergency/admission/list',
-	MEDORA_HOME_EMERGENCY_PURCHASE_ITEM = '/medora/home/emergency/purchase-item',
 	MEDORA_HOME_BILLING_ER_BILLING = '/medora/home/billing/er-billing',
 	MEDORA_HOME_ADMINISTRATION_ER_BILLING_SETUP = '/medora/home/administration/er-billing-setup'
 }
