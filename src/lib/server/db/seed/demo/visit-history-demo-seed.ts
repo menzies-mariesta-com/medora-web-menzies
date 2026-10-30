@@ -2,8 +2,9 @@
  * Aryuda-scoped Patient Visit History Dashboard demo seed.
  *
  * Prerequisites:
- *   pnpm db:seed:information   # EMR services + doctors
- *   pnpm db:seed:visit-history # this script
+ *   pnpm db:seed:init
+ *   pnpm db:seed:demo:emr      # optional doctors + services (or create via UI)
+ *   pnpm db:seed:demo:visit-history
  *
  * Env:
  *   SEED_HOSPITAL_ID — optional; defaults to first active hospital matching "aryuda"
@@ -126,7 +127,7 @@ async function loadDoctors(hospitalId: string): Promise<StaffRow[]> {
 	);
 	if (rows.length === 0) {
 		throw new Error(
-			`No doctors for hospital ${hospitalId}. Run pnpm db:seed:information first.`
+			`No doctors for hospital ${hospitalId}. Run pnpm db:seed:demo:emr or create doctors in the app.`
 		);
 	}
 	return rows;
@@ -184,7 +185,7 @@ async function loadMedOrderMasters(): Promise<{
 	const durationUnitId = dur[0]?.id;
 	if (!doseUnitId || !frequencyId || !durationUnitId) {
 		throw new Error(
-			'Med order master rows missing. Run pnpm db:seed:master first.'
+			'Med order master rows missing. Run pnpm db:seed:init:master first.'
 		);
 	}
 	return {
@@ -717,7 +718,7 @@ export async function seedVisitHistoryDemo(): Promise<void> {
 
 	if (services.length === 0) {
 		throw new Error(
-			'No service_item rows for hospital. Run pnpm db:seed:information first.'
+			'No service_item rows for hospital. Run pnpm db:seed:demo:emr or add services in the app.'
 		);
 	}
 

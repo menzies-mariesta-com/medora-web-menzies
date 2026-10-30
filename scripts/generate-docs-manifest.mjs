@@ -6,7 +6,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const seedPath = join(root, 'src/lib/server/db/seed/information-table-seed.ts');
+const seedPath = join(root, 'src/lib/server/db/seed/init/information-table-seed.ts');
 const contentDir = join(root, 'src/lib/docs/content');
 const manifestPath = join(root, 'src/lib/docs/manifest.json');
 

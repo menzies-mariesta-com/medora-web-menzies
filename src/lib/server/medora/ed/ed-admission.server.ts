@@ -1,6 +1,6 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
-import { VisitTypeEnum } from '$lib/model/enum/db-link';
+import { StaffTypeEnum, VisitTypeEnum } from '$lib/model/enum/db-link';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { acuityDisplayForTriageLevelId } from '$lib/server/medora/er/ed-triage-level.server';
@@ -83,6 +83,13 @@ export async function registerEdArrival(
 	if (!patientId) throw error(400, 'patientId is required');
 	if (!branchId) throw error(400, 'branchId is required');
 
+	const staff = event.locals.staff;
+	let doctorId = payload.doctorId?.trim() ? payload.doctorId.trim() : null;
+	if (!doctorId && staff?.staffTypeId === StaffTypeEnum.DOCTOR) {
+		doctorId = staff.id;
+	}
+	if (!doctorId) throw error(400, 'doctorId is required');
+
 	const sourceRaw = payload.sourceOpdVisitId;
 	const sourceOpdVisitId =
 		typeof sourceRaw === 'string' && sourceRaw.trim() !== ''
@@ -94,7 +101,7 @@ export async function registerEdArrival(
 		branchId,
 		patientId,
 		visitTypeId: VisitTypeEnum.ED,
-		doctorId: payload.doctorId?.trim() ? payload.doctorId.trim() : null,
+		doctorId,
 		chiefComplaint: payload.chiefComplaint?.trim()
 			? payload.chiefComplaint.trim()
 			: null,
@@ -115,7 +122,7 @@ export async function registerEdArrival(
 		isMlc: payload.isMlc ?? false,
 		registrationRemarks: payload.registrationRemarks ?? null,
 		arrivedAt: payload.arrivedAt ?? null,
-		doctorId: payload.doctorId ?? null
+		doctorId: doctorId ?? null
 	});
 
 	if (typeof payload.erBedId === 'number' && payload.erBedId > 0) {

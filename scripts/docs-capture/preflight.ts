@@ -11,7 +11,7 @@ import {
 import {
 	DOCS_DEMO_GRN_INVOICE,
 	DOCS_DEMO_WARD_STORE_NAME
-} from '../../src/lib/server/db/seed/inventory-docs-demo-seed.ts';
+} from '../../src/lib/server/db/seed/demo/inventory-docs-demo-seed.ts';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { sql } from 'drizzle-orm';
@@ -31,7 +31,7 @@ async function resolveWardStoreId(hospitalId: string): Promise<number> {
 	const id = list[0]?.id;
 	if (id == null) {
 		throw new Error(
-			`Ward store "${DOCS_DEMO_WARD_STORE_NAME}" not found. Run: npm run db:seed:docs-demo`
+			`Ward store "${DOCS_DEMO_WARD_STORE_NAME}" not found. Run: npm run db:seed:demo:docs`
 		);
 	}
 	return id;
@@ -86,7 +86,7 @@ async function checkInventorySeedMarker(hospitalId: string): Promise<void> {
 	const list = (rows as { rows?: { id: string }[] }).rows ?? [];
 	if (list.length === 0) {
 		throw new Error(
-			`Inventory docs demo data missing (no GRN ${DOCS_DEMO_GRN_INVOICE}). Run: npm run db:seed:docs-demo`
+			`Inventory docs demo data missing (no GRN ${DOCS_DEMO_GRN_INVOICE}). Run: npm run db:seed:demo:docs`
 		);
 	}
 }
@@ -143,7 +143,7 @@ async function main() {
 		const n = countRowsFromPayload(json, probe.apiPath);
 		if (n < probe.minRows) {
 			throw new Error(
-				`${probe.label}: expected at least ${probe.minRows} row(s), got ${n}. Run: npm run db:seed:docs-demo`
+				`${probe.label}: expected at least ${probe.minRows} row(s), got ${n}. Run: npm run db:seed:demo:docs`
 			);
 		}
 		console.log(`  ok: ${probe.label} (${n} row(s))`);

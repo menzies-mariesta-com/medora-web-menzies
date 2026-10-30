@@ -18,7 +18,7 @@ export function plainTroubleshooting(accessDenied: boolean, needsVisit: boolean)
 		return '- **Screen will not open:** ask your hospital administrator to give your user group access to this page.\n- **Still stuck:** sign out, sign in again, and pick your hospital.';
 	}
 	const lines = [
-		'- **Blank screen:** run `npm run db:seed:docs-demo` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).',
+		'- **Blank screen:** run `npm run db:seed:demo:docs` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).',
 		'- **Cannot save:** check required fields marked with a red star.'
 	];
 	if (needsVisit) {

@@ -232,6 +232,27 @@
       "when": 1792000000000,
       "tag": "0032_remove_dc_visit_id",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792100000000,
+      "tag": "0033_unify_admission_bill_prefix_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792200000000,
+      "tag": "0034_hospital_department_entity",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1792300000000,
+      "tag": "0035_remove_clinical_platform_nav_pages",
+      "breakpoints": true
     }
   ]
 }

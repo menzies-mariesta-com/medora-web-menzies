@@ -18,6 +18,8 @@ import {
 	BillingStatusTaggingEnum,
 	StatusEnum
 } from '$lib/model/enum/db-link';
+import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
+import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import type { OpBillingSchema } from '$lib/server/db/table/information-table/information-table-schema-type';
 import { parseUuid } from '$lib/util/id.util';
 
@@ -41,6 +43,38 @@ type DiscountActionBody = {
  * Visit ids are UUIDs; Postgres advisory locks only accept int keys.
  */
 const OP_BILLING_SYNC_LOCK_CLASS = 87231401;
+
+async function nextBillNo(params: {
+	hospitalId: string;
+	branchId: string;
+}): Promise<string> {
+	const db = ensureDb();
+	const today = new Date().toISOString().slice(0, 10);
+	const [financialYear] = await db
+		.select({ id: table.financialYearTable.id })
+		.from(table.financialYearTable)
+		.where(
+			and(
+				eq(table.financialYearTable.hospitalId, params.hospitalId),
+				sql`${table.financialYearTable.startDate} <= ${today}`,
+				sql`${table.financialYearTable.endDate} >= ${today}`
+			)
+		)
+		.limit(1);
+	if (!financialYear) {
+		throw error(
+			400,
+			'Financial year is not configured for this hospital.'
+		);
+	}
+	return generatePrefix({
+		hospitalId: params.hospitalId,
+		branchId: params.branchId,
+		financialYearId: financialYear.id,
+		prefixKey: PREFIX_PURPOSE_STORAGE.BILL_NO,
+		context: {}
+	});
+}
 
 type Tx = Parameters<
 	Parameters<ReturnType<typeof ensureDb>['transaction']>[0]
@@ -537,10 +571,18 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		const db = ensureDb();
+		let billNo = sync.billingRow.billNo?.trim() || null;
+		if (!billNo) {
+			billNo = await nextBillNo({
+				hospitalId,
+				branchId: visitRow.branchId!
+			});
+		}
 		await db.transaction(async (tx) => {
 			await tx
 				.update(table.opBillingTable)
 				.set({
+					billNo,
 					statusTaggingId: BillingStatusTaggingEnum.CLOSED,
 					updatedAt: nowIso,
 					updatedBy: locals.user.id
@@ -554,7 +596,7 @@ export const POST: RequestHandler = async (event) => {
 				nowIso
 			});
 		});
-		return json({ ok: true });
+		return json({ ok: true, billNo });
 	}
 
 	if (action !== 'discount') {

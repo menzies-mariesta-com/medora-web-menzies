@@ -41,7 +41,6 @@ import {
 	categoryTable,
 	cityTable,
 	countryTable,
-	departmentTable,
 	genderTable,
 	identityTypeTable,
 	maritalStatusTable,
@@ -314,11 +313,24 @@ export const hospitalDepartmentTable = pgTable(
 		hospitalId: uuid('hospital_id')
 			.references(() => hospitalTable.id)
 			.notNull(),
-		departmentId: integer('department_id')
-			.references(() => departmentTable.id)
-			.notNull(),
+		name: varchar('name', { length: 512 }),
+		code: varchar('code', { length: 128 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
 		...timestamps
-	}
+	},
+	(table) => [
+		index('hospital_department_hospital_id_idx').on(table.hospitalId),
+		index('hospital_department_name_idx').on(table.name),
+		index('hospital_department_code_idx').on(table.code),
+		index('hospital_department_status_id_idx').on(table.statusId),
+		unique('hospital_department_hospital_code_unique').on(
+			table.hospitalId,
+			table.code
+		)
+	]
 );
 
 export const moduleTable = pgTable('module', {
@@ -381,9 +393,9 @@ export const staffDepartmentTable = pgTable('staff_department', {
 	staffId: uuid('staff_id')
 		.notNull()
 		.references(() => staffTable.id),
-	departmentId: integer('department_id')
+	hospitalDepartmentId: integer('hospital_department_id')
 		.notNull()
-		.references(() => departmentTable.id),
+		.references(() => hospitalDepartmentTable.id),
 	...junctionTimestamps
 });
 

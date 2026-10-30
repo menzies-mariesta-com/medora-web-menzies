@@ -11,7 +11,7 @@ function rowsOf<T>(result: unknown): T[] {
 	return Array.isArray(r?.rows) ? r.rows : [];
 }
 
-/** Idempotent demo ER ward/room/beds in unified master tables (is_er = true). */
+/** Demo ER ward/beds — `pnpm db:seed:demo:er`, not init. */
 export async function seedDemoErMasterForHospitals(
 	db: NeonHttpDatabase
 ): Promise<void> {
@@ -121,4 +121,28 @@ export async function seedDemoErMasterForHospitals(
 			);
 		}
 	}
+}
+
+/** Optional dev seed — not part of `pnpm db:seed`. */
+async function runDemoErMasterSeedCli(): Promise<void> {
+	const { drizzle } = await import('drizzle-orm/neon-http');
+	const { neon } = await import('@neondatabase/serverless');
+	const { ensureDatabaseUrl } = await import(
+		'$lib/server/db/ensure-database-url'
+	);
+	const client = neon(ensureDatabaseUrl());
+	const db = drizzle(client);
+	await seedDemoErMasterForHospitals(db);
+}
+
+if (process.argv[1]?.endsWith('seed-demo-er-master.server.ts')) {
+	runDemoErMasterSeedCli()
+		.then(() => process.exit(0))
+		.catch((error) => {
+			seedLogger.error(
+				'Demo ER master seed failed',
+				error instanceof Error ? error : new Error(String(error))
+			);
+			process.exit(1);
+		});
 }

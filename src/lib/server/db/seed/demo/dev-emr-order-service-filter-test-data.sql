@@ -1,6 +1,7 @@
 -- Optional dev data for EMR/CPOE Order page “Service Type” filter (Radiology / Laboratory / Nursing).
--- Prefer automated seed: run `pnpm db:seed:information` (see emr-order-demo-catalog.ts / emr-order-demo-seed.ts).
--- Prerequisites: run master-table-seed and information-table-seed (includes sub_category ids 90001–90003 and 91001–91040).
+-- Dev-only service/sub_category rows for EMR order filter testing.
+-- Not run by `pnpm db:seed`. Use `pnpm db:seed:demo:emr` (see emr-order-demo-catalog.ts).
+-- Prerequisites: `pnpm db:seed:init`, then `pnpm db:seed:demo:emr`.
 --
 -- 1. Replace HOSPITAL_UUID and BRANCH_UUID with your real ids (same hospital/branch as your test visit).
 --    Example: SELECT id, name FROM hospital;  SELECT id, name FROM hospital_branch WHERE hospital_id = '...';

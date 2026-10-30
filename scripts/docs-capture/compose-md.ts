@@ -70,7 +70,7 @@ ${buildWorkflowMermaid(mermaidSteps)}
 
 ## Walkthrough
 
-${walkthrough || '_Screenshots could not be captured. Run `npm run db:seed:docs-demo`, start the dev server, then re-run docs capture._'}
+${walkthrough || '_Screenshots could not be captured. Run `npm run db:seed:demo:docs`, start the dev server, then re-run docs capture._'}
 
 ## If something goes wrong
 

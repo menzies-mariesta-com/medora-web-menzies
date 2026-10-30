@@ -60,10 +60,15 @@ ALTER TABLE "ward" DROP COLUMN IF EXISTS "ward_markup";
 --> statement-breakpoint
 -- Page restructure: Ward Category + Ward under Ward Master; Room Master top-level
 INSERT INTO "page" ("id", "name", "module_id", "status_id", "parent_id", "page_url", "sequence_no")
-VALUES
-	(450001, 'Ward Category', 1, 1, 45, '/medora/home/administration/ward-master/ward-category', 1),
-	(450002, 'Ward', 1, 1, 45, '/medora/home/administration/ward-master/ward', 2),
-	(47, 'Room Master', 1, 1, null, '/medora/home/administration/room-master', 14)
+SELECT v."id", v."name", v."module_id", v."status_id", v."parent_id", v."page_url", v."sequence_no"
+FROM (
+	VALUES
+		(450001, 'Ward Category', 1, 1, 45, '/medora/home/administration/ward-master/ward-category', 1),
+		(450002, 'Ward', 1, 1, 45, '/medora/home/administration/ward-master/ward', 2),
+		(47, 'Room Master', 1, 1, null, '/medora/home/administration/room-master', 14)
+) AS v("id", "name", "module_id", "status_id", "parent_id", "page_url", "sequence_no")
+WHERE EXISTS (SELECT 1 FROM "module" m WHERE m."id" = 1)
+	AND EXISTS (SELECT 1 FROM "page" p WHERE p."id" = 45)
 ON CONFLICT ("id") DO UPDATE SET
 	"name" = EXCLUDED."name",
 	"parent_id" = EXCLUDED."parent_id",

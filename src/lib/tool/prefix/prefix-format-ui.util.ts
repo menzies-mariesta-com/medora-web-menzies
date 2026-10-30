@@ -45,7 +45,7 @@ export function defaultFormatPartsForStorageKey(
 		storageKey === 'DEPARTMENT_INDENT_NO' ||
 		storageKey === 'DEPARTMENT_ISSUE_NO' ||
 		storageKey === 'DEPARTMENT_CONSUMPTION_NO' ||
-		storageKey === 'IPD_ADMISSION_NO' ||
+		storageKey === 'BILL_NO' ||
 		storageKey === 'IP_BILL_NO'
 	) {
 		return [
@@ -55,7 +55,11 @@ export function defaultFormatPartsForStorageKey(
 			{ id: newPartId(), kind: 'sequence', padStart: 6 }
 		];
 	}
-	if (storageKey === 'VISIT_NO') {
+	if (
+		storageKey === 'ADMISSION_NO' ||
+		storageKey === 'VISIT_NO' ||
+		storageKey === 'IPD_ADMISSION_NO'
+	) {
 		return [
 			{ id: newPartId(), kind: 'field', path: 'financial_year.code' },
 			{ id: newPartId(), kind: 'field', path: 'hospital.code' },

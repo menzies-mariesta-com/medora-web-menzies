@@ -39,7 +39,7 @@ Use **ED Patient Registration** in **Emergency** for everyday hospital tasks. A 
 | OPD source visit | Optional; loads open OP billing context when linking from OPD. |
 | Chief complaint | Required clinical reason for ED arrival. |
 | Triage level | ED acuity at registration. |
-| Doctor | Attending physician for the encounter. |
+| Doctor | Required attending physician for the encounter. |
 | Admission date/time | Defaults to now; adjust if back-entering arrival. |
 | MLC | Marks medico-legal case; complete **MLC documentation** under Nursing Workbench when selected. |
 | Remarks | Free-text registration notes. |

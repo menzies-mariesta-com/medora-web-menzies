@@ -8,10 +8,6 @@ import {
 	buildClinicalFormDocumentText
 } from '$lib/util/clinical-form-print-body.util';
 import {
-	seedEmrDemoForAllHospitals,
-	seedEmrDemoSubCategories
-} from './emr-order-demo-seed';
-import {
 	importWhoIcdSystems,
 	isWhoIcdSeedSkipped,
 	WhoIcdCredentialsError
@@ -20,13 +16,14 @@ import {
 const client = neon(ensureDatabaseUrl());
 const db = drizzle(client);
 
-/** Fixed UUID for seed staff so we can reference it in staff_hospital, staff_department, etc. */
-// const SEED_STAFF_ID = '01900000-0000-7000-8000-000000000001';
-
 /**
- * Seed information/business tables with sample data.
+ * Seed static information / reference data for init (modules, pages, status tagging,
+ * document templates, allergy lookup, ED triage levels per hospital).
  *
  * Run after master-table-seed. Inserts in FK-safe order.
+ *
+ * Does **not** seed demo patients, staff, service items, inventory, ER demo beds, or
+ * transactional visits — use scripts under `src/lib/server/db/seed/demo/` (`pnpm db:seed:demo:*`).
  *
  * **ICD-10 / ICD-11:** imports the full WHO coded catalogues via the ICD-API
  * (`WHO_ICD_CLIENT_ID` + `WHO_ICD_CLIENT_SECRET` required). Set
@@ -44,7 +41,7 @@ const db = drizzle(client);
  * Also rewrites legacy `/heka/` module/page URLs to `/medora/` on every seed run
  * (seed uses ON CONFLICT DO NOTHING for those rows, so inserts alone would not update).
  *
- * npx tsx src/lib/server/db/seed/information-table-seed.ts
+ * npx tsx src/lib/server/db/seed/init/information-table-seed.ts
  */
 export async function seedInformationTables() {
 	seedLogger.info('Seeding information tables...');
@@ -259,20 +256,6 @@ export async function seedInformationTables() {
 			(350006, 'Dose unit', 1, 1, 35, '/medora/home/administration/medication-order-setup/dose-unit', 6),
 			(350007, 'Food relation', 1, 1, 35, '/medora/home/administration/medication-order-setup/food-relation', 7),
 
-			(360, 'Clinical platform', 1, 1, null, '/medora/home/administration/clinical-order-sets', 13),
-			(360001, 'Order sets', 1, 1, 360, '/medora/home/administration/clinical-order-sets', 1),
-			(360002, 'RxNorm drug mapping', 1, 1, 360, '/medora/home/administration/rxnorm-drug-mapping', 2),
-			(360006, 'RxNorm catalog', 1, 1, 360, '/medora/home/administration/rxnorm-catalog', 6),
-			(360003, 'Formulary', 1, 1, 360, '/medora/home/administration/formulary', 3),
-			(360004, 'Product barcodes', 1, 1, 360, '/medora/home/administration/pharmacy-product-identifier', 4),
-			(360005, 'Care plan templates', 1, 1, 360, '/medora/home/administration/nursing-care-plan-templates', 5),
-			(361, 'Clinical tasks', 1, 1, null, '/medora/home/clinical-tasks', 14),
-			(364, 'Medical records ROI', 1, 1, null, '/medora/home/medical-records/roi', 15),
-			(365, 'Ambulatory', 1, 1, null, '/medora/home/ambulatory/immunization', 16),
-			(365001, 'Immunizations', 1, 1, 365, '/medora/home/ambulatory/immunization', 1),
-			(365002, 'Registries', 1, 1, 365, '/medora/home/ambulatory/registry', 2),
-			(365003, 'Growth charts', 1, 1, 365, '/medora/home/ambulatory/growth-charts', 3),
-
 			-- Inventory Setup Module (main pages; no parent Inventory Setup page)
 			(19, 'Stores', 9, 1, null, '/medora/home/inventory-setup/stores', 1),
 			(20, 'Item Master', 9, 1, null, '/medora/home/inventory-setup/item-master', 2),
@@ -377,8 +360,7 @@ export async function seedInformationTables() {
 		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 		VALUES
 			(124, 'ED Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 5),
-			(454, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
-			(455, 'ED billing setup', 1, 1, null, '/medora/home/administration/er-billing-setup', 20)
+			(454, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			module_id = EXCLUDED.module_id,
@@ -1043,21 +1025,6 @@ export async function seedInformationTables() {
 		);
 	}
 
-	// 8c. Subcategories for EMR/CPOE order “Service Type” filter testing (category_id: 1=RADIOLOGY, 2=NURSING, 5=LAB)
-	await db.execute(sql`
-		INSERT INTO sub_category (id, category_id, sub_category_name, status_id)
-		VALUES
-			(90001, 1, '[Dev test] Radiology — General', 1),
-			(90002, 2, '[Dev test] Nursing — General', 1),
-			(90003, 5, '[Dev test] Laboratory — General', 1)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	seedLogger.info(
-		'Seeded: sub_category (dev test rows for order service-type filter)'
-	);
-
-	await seedEmrDemoSubCategories(db);
-
 	// 9. Allergy
 	await db.execute(sql`
 		INSERT INTO allergy (id, name)
@@ -1067,45 +1034,9 @@ export async function seedInformationTables() {
 	`);
 	seedLogger.info('Seeded: allergy');
 
-	// Diagnostics LIS dev catalog (no-op if migration 0024 not applied)
-	try {
-		await db.execute(sql`
-			INSERT INTO lab_test (id, code, name, section, data_type, unit, ref_range_low, ref_range_high, critical_low, critical_high, status_id)
-			VALUES
-				(900001, 'HGB', 'Hemoglobin', 'hematology', 'numeric', 'g/dL', 12, 16, 7, 20, 1),
-				(900002, 'WBC', 'White blood cell count', 'hematology', 'numeric', '10^3/uL', 4, 11, 2, 30, 1),
-				(900003, 'GLU', 'Glucose', 'chemistry', 'numeric', 'mg/dL', 70, 100, 40, 500, 1)
-			ON CONFLICT (id) DO NOTHING;
-		`);
-		await db.execute(sql`
-			INSERT INTO lab_panel (id, code, name, section, status_id)
-			VALUES (900001, 'CBC', 'Complete blood count', 'hematology', 1)
-			ON CONFLICT (id) DO NOTHING;
-		`);
-		await db.execute(sql`
-			INSERT INTO lab_panel_member (panel_id, test_id, sort_order)
-			VALUES (900001, 900001, 1), (900001, 900002, 2)
-			ON CONFLICT (panel_id, test_id) DO NOTHING;
-		`);
-		seedLogger.info('Seeded: lab_test / lab_panel (diagnostics dev)');
-	} catch {
-		seedLogger.info('Skipped: diagnostics lab catalog (tables not present)');
-	}
-
-	try {
-		const { seedDemoErMasterForHospitals } = await import(
-			'$lib/server/db/seed/seed-demo-er-master.server'
-		);
-		await seedDemoErMasterForHospitals(db);
-	} catch (e) {
-		seedLogger.warn(
-			`Skipped: demo ER master (${e instanceof Error ? e.message : String(e)})`
-		);
-	}
-
 	try {
 		const { seedEdTriageLevelsForHospitals } = await import(
-			'$lib/server/db/seed/seed-ed-triage-levels.server'
+			'$lib/server/db/seed/init/seed-ed-triage-levels.server'
 		);
 		await seedEdTriageLevelsForHospitals(db);
 	} catch (e) {
@@ -1113,8 +1044,6 @@ export async function seedInformationTables() {
 			`Skipped: ed_triage_level (${e instanceof Error ? e.message : String(e)})`
 		);
 	}
-
-	await seedEmrDemoForAllHospitals(db);
 }
 
 seedInformationTables()

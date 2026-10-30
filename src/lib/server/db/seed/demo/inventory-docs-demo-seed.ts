@@ -76,7 +76,7 @@ async function resolveSeedAdminUserId(): Promise<string> {
 	);
 	const id = rows[0]?.id;
 	if (!id) {
-		throw new Error(`Seed admin user not found for ${email}. Run db:seed:auth first.`);
+		throw new Error(`Seed admin user not found for ${email}. Run pnpm db:seed:init:auth first.`);
 	}
 	return id;
 }

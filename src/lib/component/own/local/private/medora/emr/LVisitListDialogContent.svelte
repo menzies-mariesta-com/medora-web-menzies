@@ -375,6 +375,7 @@
 		actionsHeader="Actions"
 		actionsVariant="select"
 		enableColumnFilters={true}
+		bind:columnFilters={tableFilters}
 		on:refresh={() => fetchPatients({ bustCache: true })}
 		on:pageSizeChange={() => {
 			currentPage = 1;

@@ -4,13 +4,14 @@ import { uuidV7 } from '$lib/util/id.util';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import { assertHospitalDepartmentForStaff } from '$lib/server/medora/administration/hospital-department.server';
 import { PasswordHashUtil } from '$lib/server/auth/password-hash.server';
 import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 import type {
 	BloodTypeSchema,
 	CitySchema,
 	CountrySchema,
-	DepartmentSchema,
+	HospitalDepartmentSchema,
 	GenderSchema,
 	HospitalBranchSchema,
 	IdentityTypeSchema,
@@ -139,7 +140,7 @@ export async function getStaffRegistrationLookups(
 ): Promise<{
 	titleData: TitleSchema[];
 	staffTypeData: StaffTypeSchema[];
-	departmentData: DepartmentSchema[];
+	departmentData: HospitalDepartmentSchema[];
 	branchData: HospitalBranchSchema[];
 	specializationData: SpecializationWithRelations[];
 	genderData: GenderSchema[];
@@ -189,9 +190,17 @@ export async function getStaffRegistrationLookups(
 			.orderBy(table.staffTypeTable.name),
 		ensureDb()
 			.select()
-			.from(table.departmentTable)
-			.where(notDeleted(table.departmentTable))
-			.orderBy(table.departmentTable.name),
+			.from(table.hospitalDepartmentTable)
+			.where(
+				and(
+					eq(
+						table.hospitalDepartmentTable.hospitalId,
+						input.hospitalId
+					),
+					notDeleted(table.hospitalDepartmentTable)
+				)
+			)
+			.orderBy(table.hospitalDepartmentTable.name),
 		ensureDb().query.specializationTable.findMany({
 			where: (t, { ne }) => ne(t.statusId, StatusEnum.DELETED),
 			with: { craftGroup: true, status: true },
@@ -448,9 +457,13 @@ export async function createStaffRegistration(
 			if (!staff) throw error(400, 'Failed to create staff.');
 
 			if (typeof input.departmentId === 'number') {
+				await assertHospitalDepartmentForStaff({
+					hospitalId: input.hospitalId,
+					hospitalDepartmentId: input.departmentId
+				});
 				await tx.insert(table.staffDepartmentTable).values({
 					staffId: staff.id,
-					departmentId: input.departmentId
+					hospitalDepartmentId: input.departmentId
 				});
 			}
 
@@ -653,9 +666,13 @@ export async function updateStaffRegistration(
 				.delete(table.staffDepartmentTable)
 				.where(eq(table.staffDepartmentTable.staffId, input.id));
 			if (input.departmentId != null) {
+				await assertHospitalDepartmentForStaff({
+					hospitalId: input.hospitalId,
+					hospitalDepartmentId: input.departmentId
+				});
 				await tx.insert(table.staffDepartmentTable).values({
 					staffId: input.id,
-					departmentId: input.departmentId
+					hospitalDepartmentId: input.departmentId
 				});
 			}
 		}

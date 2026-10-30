@@ -80,7 +80,7 @@ async function nextAdmissionNo(params: {
 		hospitalId: params.hospitalId,
 		branchId: params.branchId,
 		financialYearId: financialYear.id,
-		prefixKey: PREFIX_PURPOSE_STORAGE.IPD_ADMISSION_NO,
+		prefixKey: PREFIX_PURPOSE_STORAGE.ADMISSION_NO,
 		context: {}
 	});
 }
