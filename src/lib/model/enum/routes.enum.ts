@@ -115,8 +115,7 @@ export enum WebRoutesEnum {
 	MEDORA_HOME_EMERGENCY = '/medora/home/emergency',
 	MEDORA_HOME_EMERGENCY_ADMISSION = '/medora/home/emergency/admission',
 	MEDORA_HOME_EMERGENCY_ADMISSION_NEW = '/medora/home/emergency/admission/new',
-	MEDORA_HOME_BILLING_ER_BILLING = '/medora/home/billing/er-billing',
-	MEDORA_HOME_ADMINISTRATION_ER_BILLING_SETUP = '/medora/home/administration/er-billing-setup'
+	MEDORA_HOME_BILLING_ER_BILLING = '/medora/home/billing/er-billing'
 }
 
 /** Base path for a hospital's home (modules: administration, appointment, registration). hospitalId is UUID string. */

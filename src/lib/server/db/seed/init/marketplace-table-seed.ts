@@ -17,7 +17,7 @@ const db = drizzle(client);
  * - app forms (dashboard + pages per app)
  * - app archives
  *
- * npx tsx src/lib/server/db/seed/marketplace-table-seed.ts
+ * npx tsx src/lib/server/db/seed/init/marketplace-table-seed.ts
  */
 export async function seedMarketplaceTables() {
 	seedLogger.info('Seeding marketplace tables...');

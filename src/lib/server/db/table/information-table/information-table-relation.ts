@@ -73,7 +73,6 @@ import {
 	diagnosisTypeTable,
 	formNameTable,
 	countryTable,
-	departmentTable,
 	genderTable,
 	identityTypeTable,
 	maritalStatusTable,
@@ -244,15 +243,16 @@ export const prefixCounterTableRelations = relations(
 
 export const hospitalDepartmentTableRelations = relations(
 	hospitalDepartmentTable,
-	({ one }) => ({
+	({ one, many }) => ({
 		hospital: one(hospitalTable, {
 			fields: [hospitalDepartmentTable.hospitalId],
 			references: [hospitalTable.id]
 		}),
-		department: one(departmentTable, {
-			fields: [hospitalDepartmentTable.departmentId],
-			references: [departmentTable.id]
-		})
+		status: one(statusTable, {
+			fields: [hospitalDepartmentTable.statusId],
+			references: [statusTable.id]
+		}),
+		staffDepartments: many(staffDepartmentTable)
 	})
 );
 
@@ -297,9 +297,9 @@ export const staffDepartmentTableRelations = relations(
 			fields: [staffDepartmentTable.staffId],
 			references: [staffTable.id]
 		}),
-		department: one(departmentTable, {
-			fields: [staffDepartmentTable.departmentId],
-			references: [departmentTable.id]
+		hospitalDepartment: one(hospitalDepartmentTable, {
+			fields: [staffDepartmentTable.hospitalDepartmentId],
+			references: [hospitalDepartmentTable.id]
 		})
 	})
 );

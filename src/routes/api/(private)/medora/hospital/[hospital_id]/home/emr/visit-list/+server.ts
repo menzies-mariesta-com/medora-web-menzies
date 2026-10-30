@@ -63,10 +63,11 @@ export const GET: RequestHandler = async (event) => {
 			const doctorName =
 				event.url.searchParams.get('doctorName') ?? undefined;
 			const visitTypeRaw = event.url.searchParams.get('visitType');
-			const visitTypeId =
-				visitTypeRaw != null && visitTypeRaw.trim() !== ''
-					? Number(visitTypeRaw)
-					: undefined;
+			let visitTypeId: number | undefined;
+			if (visitTypeRaw != null && visitTypeRaw.trim() !== '') {
+				const parsed = Number(visitTypeRaw);
+				if (Number.isFinite(parsed)) visitTypeId = parsed;
+			}
 			const visitStatusRaw =
 				event.url.searchParams.get('visitStatus');
 			const visitStatus = (

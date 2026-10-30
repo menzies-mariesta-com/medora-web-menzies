@@ -6,7 +6,8 @@ import {
 	AllergyEnum,
 	IpdAdmissionStatusEnum,
 	StaffTypeEnum,
-	StatusEnum
+	StatusEnum,
+	VisitTypeEnum
 } from '$lib/model/enum/db-link';
 import { VITAL_REFERENCE_RANGES } from '$lib/config/vital.config';
 import {
@@ -97,6 +98,18 @@ function getDoctorEmrVisitScopeFilter(
 			AND rh.to_refer_doctorid = ${doctorId}
 			AND rh.cancel_at IS NULL
 			AND rh.accept_at IS NOT NULL
+		)`,
+		// ED: assigned doctor, or unassigned pool (common when registration omits doctor).
+		sql`EXISTS (
+			SELECT 1 FROM ed_encounter ee
+			WHERE ee.visit_id = ${table.patientVisitTable.id}
+			AND (
+				ee.assigned_doctor_id = ${doctorId}
+				OR (
+					ee.assigned_doctor_id IS NULL
+					AND ${table.patientVisitTable.visitTypeId} = ${VisitTypeEnum.ED}
+				)
+			)
 		)`
 	);
 }

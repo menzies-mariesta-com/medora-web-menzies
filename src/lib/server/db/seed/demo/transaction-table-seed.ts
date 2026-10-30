@@ -5,6 +5,8 @@ import { uuidV7 } from '$lib/util/id.util';
 import { seedLogger } from '$lib/logger';
 import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
 
+/** Demo appointments + patient visits — `pnpm db:seed:demo:transaction` (not init). */
+
 const client = neon(ensureDatabaseUrl());
 const db = drizzle(client);
 
@@ -405,7 +407,7 @@ async function seedPatientVisits(params: {
  * - `SEED_HOSPITAL_ID` — optional hospital UUID (defaults to first active hospital)
  * - `SEED_TRANSACTION_ROW_COUNT` — rows per entity (default 200)
  *
- * npx tsx src/lib/server/db/seed/transaction-table-seed.ts
+ * npx tsx src/lib/server/db/seed/demo/transaction-table-seed.ts
  */
 export async function seedTransactionTables() {
 	seedLogger.info(

@@ -124,7 +124,7 @@ function seedChildEnv(
 
 function runNpmScript(script: string, hospitalId: string, extraEnv: Record<string, string> = {}) {
 	seedLogger.info(`Running npm run ${script}…`);
-	if (script === 'db:seed' && process.env.WHO_ICD_SKIP_SEED?.trim() !== '0') {
+	if (script === 'db:seed:init' && process.env.WHO_ICD_SKIP_SEED?.trim() !== '0') {
 		seedLogger.info(
 			'Skipping WHO ICD import during global seed (WHO_ICD_SKIP_SEED=1). Set WHO_ICD_SKIP_SEED=0 to import from WHO ICD-API.'
 		);
@@ -144,15 +144,15 @@ async function main() {
 
 	const skipGlobal = process.env.DOCS_DEMO_SKIP_GLOBAL === '1';
 	if (!skipGlobal) {
-		runNpmScript('db:seed', hospitalId);
+		runNpmScript('db:seed:init', hospitalId);
 	} else {
-		seedLogger.info('Skipping global db:seed (DOCS_DEMO_SKIP_GLOBAL=1)');
+		seedLogger.info('Skipping init seed (DOCS_DEMO_SKIP_GLOBAL=1)');
 	}
 
 	process.env.SEED_HOSPITAL_ID = hospitalId;
 	await seedVisitHistoryDemo();
 
-	runNpmScript('db:seed:transaction', hospitalId, {
+	runNpmScript('db:seed:demo:transaction', hospitalId, {
 		SEED_TRANSACTION_ROW_COUNT: process.env.SEED_TRANSACTION_ROW_COUNT ?? '50'
 	});
 
@@ -173,7 +173,7 @@ main().catch((err) => {
 	);
 	if (message.includes('Failed query') && !message.includes('not found')) {
 		seedLogger.error(
-			'Neon HTTP may have dropped the connection. Retry npm run db:seed:docs-demo; check DATABASE_URL and network.'
+			'Neon HTTP may have dropped the connection. Retry npm run db:seed:demo:docs; check DATABASE_URL and network.'
 		);
 	}
 	process.exit(1);

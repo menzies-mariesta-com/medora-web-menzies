@@ -196,7 +196,7 @@ export async function getStaffByUserIdWithRelations(userId: string) {
 			user: true,
 			staffBranches: { with: { branch: true } },
 			staffHospitals: { with: { hospital: true } },
-			staffDepartments: { with: { department: true } },
+			staffDepartments: { with: { hospitalDepartment: true } },
 			staffUserGroups: { with: { userGroup: true } }
 		}
 	});

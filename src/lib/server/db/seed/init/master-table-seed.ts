@@ -1,8 +1,8 @@
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { CountryCodeData } from '../../../model/data/country-code.data.ts';
-import { StringUtil } from '../../../util/string.util.svelte.ts';
+import { CountryCodeData } from '../../../../model/data/country-code.data.ts';
+import { StringUtil } from '../../../../util/string.util.svelte.ts';
 import { seedLogger } from '$lib/logger';
 import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
 
@@ -16,7 +16,7 @@ const db = drizzle(client);
  * - **Order-aware** – inserts in FK‑safe order (status → country → state → city → others)
  * - **Idempotent-ish** – sets fixed primary keys so re-running will no-op on conflicts
  *
- * npx tsx src/lib/server/db/seed/master-table-seed.ts
+ * npx tsx src/lib/server/db/seed/init/master-table-seed.ts
  */
 export async function seedMasterTables() {
 	seedLogger.info('Seeding master tables...');
@@ -1218,16 +1218,7 @@ export async function seedMasterTables() {
 
 	seedLogger.info('Seeded: title');
 
-	// 14. Departments
-	await db.execute(sql`
-		INSERT INTO department (id, name, code, status_id)
-		VALUES 
-			(1, 'Emergency', 'em', 1),
-			(2, 'Cardiology', 'card', 1),
-			(3, 'Pediatrics', 'ped', 1)
-		ON CONFLICT (id) DO NOTHING;
-		`);
-	seedLogger.info('Seeded: department');
+	// 14. Departments — hospital-scoped via Administration → Departments (no global seed).
 
 	// 15. Postal Codes
 	await db.execute(sql`

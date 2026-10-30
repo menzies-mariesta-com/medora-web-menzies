@@ -385,14 +385,14 @@
 			(staff as { staffDetail?: { designation?: string } })
 				.staffDetail?.designation ?? '';
 		selectedDepartmentId =
-			(staff as { staffDepartments?: { departmentId: number }[] })
-				.staffDepartments?.[0]?.departmentId != null
+			(staff as { staffDepartments?: { hospitalDepartmentId: number }[] })
+				.staffDepartments?.[0]?.hospitalDepartmentId != null
 				? String(
 						(
 							staff as {
-								staffDepartments: { departmentId: number }[];
+								staffDepartments: { hospitalDepartmentId: number }[];
 							}
-						).staffDepartments[0].departmentId
+						).staffDepartments[0].hospitalDepartmentId
 					)
 				: '';
 		selectedSpecializationId =

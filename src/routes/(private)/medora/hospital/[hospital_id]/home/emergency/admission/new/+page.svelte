@@ -303,6 +303,14 @@
 			);
 			return;
 		}
+		if (!doctorId.trim()) {
+			toastService.addToast(
+				msg.ed_admission_select_doctor?.() ??
+					'Select the attending doctor',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
 
 		if (selectedSource?.hasOpenOpBill) {
 			const confirm = await dialogService.open({
@@ -473,6 +481,10 @@
 					<div class="md:col-span-2">
 						<label class="label-ink mb-1 block text-sm" for="ed-doctor">
 							{msg.ed_reg_doctor_label?.() ?? 'Doctor'}
+							<span
+								class="text-error align-top text-sm leading-none"
+								aria-hidden="true">*</span
+							>
 						</label>
 						<SearchSelect
 							id="ed-doctor"
@@ -480,6 +492,7 @@
 							searchFn={searchDoctors}
 							resolveLabel={getDoctorLabel}
 							disabled={isSubmitting}
+							required
 						/>
 					</div>
 					<div class="md:col-span-2 xl:col-span-3">

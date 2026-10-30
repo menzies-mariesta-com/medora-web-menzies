@@ -169,25 +169,6 @@ export const craftGroupTable = pgTable(
 	]
 );
 
-export const departmentTable = pgTable(
-	'department',
-	{
-		id: serial('id').primaryKey(),
-		name: varchar('name', { length: 512 }),
-		code: varchar('code', { length: 128 }),
-		statusId: integer('status_id')
-			.references(() => statusTable.id)
-			.notNull()
-			.default(StatusEnum.ACTIVE),
-		...timestamps
-	},
-	(table) => [
-		index('department_name_idx').on(table.name),
-		index('department_code_idx').on(table.code),
-		index('department_status_id_idx').on(table.statusId)
-	]
-);
-
 export const diagnosisTypeTable = pgTable(
 	'diagnosis_type',
 	{

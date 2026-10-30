@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = join(root, 'src/lib/docs/manifest.json');
-const seedPath = join(root, 'src/lib/server/db/seed/information-table-seed.ts');
+const seedPath = join(root, 'src/lib/server/db/seed/init/information-table-seed.ts');
 
 const regen = process.argv.includes('--regen-manifest');
 if (regen) {

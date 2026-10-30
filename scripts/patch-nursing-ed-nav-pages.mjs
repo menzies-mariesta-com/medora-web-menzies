@@ -21,8 +21,7 @@ const statements = [
 	`INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 	VALUES
 		(124, 'ED Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 5),
-		(454, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
-		(455, 'ED billing setup', 1, 1, null, '/medora/home/administration/er-billing-setup', 20)
+		(454, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19)
 	ON CONFLICT (id) DO UPDATE SET
 		name = EXCLUDED.name,
 		module_id = EXCLUDED.module_id,

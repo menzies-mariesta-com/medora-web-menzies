@@ -65,7 +65,7 @@ function postActionFromBody(body: unknown): unknown {
 	return (body as { action?: unknown }).action;
 }
 
-async function nextIpBillNo(params: {
+async function nextBillNo(params: {
 	hospitalId: string;
 	branchId: string;
 }): Promise<string> {
@@ -92,7 +92,7 @@ async function nextIpBillNo(params: {
 		hospitalId: params.hospitalId,
 		branchId: params.branchId,
 		financialYearId: financialYear.id,
-		prefixKey: PREFIX_PURPOSE_STORAGE.IP_BILL_NO,
+		prefixKey: PREFIX_PURPOSE_STORAGE.BILL_NO,
 		context: {}
 	});
 }
@@ -601,7 +601,7 @@ export const POST: RequestHandler = async (event) => {
 
 		let billNo = sync.billingRow.billNo?.trim() || null;
 		if (!billNo) {
-			billNo = await nextIpBillNo({
+			billNo = await nextBillNo({
 				hospitalId,
 				branchId: visitRow.branchId!
 			});

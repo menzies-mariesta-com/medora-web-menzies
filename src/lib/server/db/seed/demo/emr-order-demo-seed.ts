@@ -1,3 +1,7 @@
+/**
+ * Optional demo: seeded doctors, users, and service items per hospital.
+ * Run via `pnpm db:seed:demo:emr` — not part of `pnpm db:seed:init`.
+ */
 import { sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import argon2 from 'argon2';
@@ -451,7 +455,7 @@ export async function seedEmrDemoForAllHospitals(
 	const hospitals = await loadActiveHospitals(db);
 	if (hospitals.length === 0) {
 		seedLogger.info(
-			'EMR demo seed: no active hospitals — skip services/doctors (create a hospital, then re-run db:seed:information)'
+			'EMR demo seed: no active hospitals — create a hospital, then re-run pnpm db:seed:demo:emr'
 		);
 		return;
 	}
@@ -497,4 +501,29 @@ export async function seedEmrDemoForAllHospitals(
 	seedLogger.info(
 		`EMR demo seed complete. Doctor login password for seeded accounts: ${SEED_DOCTOR_PASSWORD}`
 	);
+}
+
+/** Optional dev seed — not part of `pnpm db:seed`. */
+export async function runEmrOrderDemoSeedCli(): Promise<void> {
+	const { drizzle } = await import('drizzle-orm/neon-http');
+	const { neon } = await import('@neondatabase/serverless');
+	const { ensureDatabaseUrl } = await import(
+		'$lib/server/db/ensure-database-url'
+	);
+	const client = neon(ensureDatabaseUrl());
+	const db = drizzle(client);
+	await seedEmrDemoSubCategories(db);
+	await seedEmrDemoForAllHospitals(db);
+}
+
+if (process.argv[1]?.endsWith('emr-order-demo-seed.ts')) {
+	runEmrOrderDemoSeedCli()
+		.then(() => process.exit(0))
+		.catch((error) => {
+			seedLogger.error(
+				'EMR demo seed failed',
+				error instanceof Error ? error : new Error(String(error))
+			);
+			process.exit(1);
+		});
 }
