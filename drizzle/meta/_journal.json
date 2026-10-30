@@ -253,6 +253,20 @@
       "when": 1792300000000,
       "tag": "0035_remove_clinical_platform_nav_pages",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792400000000,
+      "tag": "0036_service_tagging_billing_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792500000000,
+      "tag": "0037_billing_setup_service_tagging_link",
+      "breakpoints": true
     }
   ]
 }

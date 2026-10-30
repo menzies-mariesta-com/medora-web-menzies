@@ -45,6 +45,7 @@ import type {
 	itemUnitMasterTable,
 	serviceItemTable,
 	serviceTaggingTable,
+	billingSetupServiceTaggingTable,
 	storeTable,
 	storeUserGroupTable,
 	supportTicketTable,
@@ -433,6 +434,15 @@ export type ServiceTaggingSchemaInsert = InferInsertModel<
 >;
 export type ServiceTaggingSchemaUpdate =
 	Partial<ServiceTaggingSchemaInsert>;
+
+export type BillingSetupServiceTaggingSchema = InferSelectModel<
+	typeof billingSetupServiceTaggingTable
+>;
+export type BillingSetupServiceTaggingSchemaInsert = InferInsertModel<
+	typeof billingSetupServiceTaggingTable
+>;
+export type BillingSetupServiceTaggingSchemaUpdate =
+	Partial<BillingSetupServiceTaggingSchemaInsert>;
 
 export type StoreSchema = InferSelectModel<typeof storeTable>;
 export type StoreSchemaInsert = InferInsertModel<typeof storeTable>;

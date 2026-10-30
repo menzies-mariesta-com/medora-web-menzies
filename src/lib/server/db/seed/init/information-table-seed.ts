@@ -137,6 +137,13 @@ export async function seedInformationTables() {
 			(900004, 'Sub Category Master', 1, 1, 9, '/medora/home/administration/service-order/sub-category-master', 2),
 			(900005, 'Service Item Tagging', 1, 1, 9, '/medora/home/administration/service-order/service-item-tagging', 4),
 
+			-- Billing Setup module: per-billing-type service item tagging on visit closure.
+			-- ED sub-page is mapped to the ER (emergency) billing type.
+			(730000, 'Billing Setup', 1, 1, null, '/medora/home/administration/billing-setup', 16),
+			(730001, 'OP Billing', 1, 1, 730000, '/medora/home/administration/billing-setup/op-billing', 1),
+			(730002, 'IP Billing', 1, 1, 730000, '/medora/home/administration/billing-setup/ip-billing', 2),
+			(730003, 'ED Billing', 1, 1, 730000, '/medora/home/administration/billing-setup/ed-billing', 3),
+
 			-- document master
 			(10, 'Document Master', 1, 1, null, '/medora/home/administration/document-master', 7),
 			(100007, 'Document Type', 1, 1, 10, '/medora/home/administration/document-master/document-type', 1),
@@ -555,6 +562,21 @@ export async function seedInformationTables() {
 			retiredErMasterPageIds.map((id) => sql`${id}`),
 			sql`, `
 		)});
+		`);
+	// Billing Setup module: grant the new pages to user groups that can already
+	// see Service Item Tagging (page 900005), since it is a sibling/extension.
+	await db.execute(sql`
+		INSERT INTO user_group_page (user_group_id, page_id)
+		SELECT DISTINCT ugp.user_group_id, child.page_id
+		FROM user_group_page ugp
+		CROSS JOIN (VALUES (730000), (730001), (730002), (730003)) AS child(page_id)
+		WHERE ugp.page_id = 900005
+			AND NOT EXISTS (
+				SELECT 1
+				FROM user_group_page x
+				WHERE x.user_group_id = ugp.user_group_id
+					AND x.page_id = child.page_id
+			);
 		`);
 	seedLogger.info('Seeded: page');
 

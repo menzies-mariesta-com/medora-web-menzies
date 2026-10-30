@@ -45,6 +45,12 @@ export enum WebRoutesEnum {
 	MEDORA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP_ORDER_TYPE = '/medora/home/administration/medication-order-setup/order-type',
 	MEDORA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP_DOSE_UNIT = '/medora/home/administration/medication-order-setup/dose-unit',
 	MEDORA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP_FOOD_RELATION = '/medora/home/administration/medication-order-setup/food-relation',
+	// Billing Setup module (administration): per-billing-type service item tagging.
+	// ED sub-page is mapped to the ER (emergency) billing type.
+	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP = '/medora/home/administration/billing-setup',
+	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_OP = '/medora/home/administration/billing-setup/op-billing',
+	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_IP = '/medora/home/administration/billing-setup/ip-billing',
+	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_ED = '/medora/home/administration/billing-setup/ed-billing',
 	MEDORA_HOME_REGISTRATION = '/medora/home/registration',
 	MEDORA_HOME_REGISTRATION_PATIENT = '/medora/home/registration/patient',
 	MEDORA_HOME_REGISTRATION_PATIENT_REGISTRATION = '/medora/home/registration/patient/registration',

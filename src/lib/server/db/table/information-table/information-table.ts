@@ -16,6 +16,7 @@ import {
 	uuid,
 	unique,
 	uniqueIndex,
+	index,
 	time,
 	varchar
 } from 'drizzle-orm/pg-core';
@@ -62,7 +63,6 @@ import {
 	visitTypeTable,
 	weekdayTable
 } from '../master-table/master-table';
-import { index } from 'drizzle-orm/pg-core';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -1485,6 +1485,42 @@ export const serviceTaggingTable = pgTable('service_tagging', {
 		.default(StatusEnum.ACTIVE),
 	...timestamps
 });
+
+/**
+ * Links hospital billing setup (OP / IP / ER) to existing service_item_tagging rows
+ * for auto bill lines when a visit in that care setting is completed.
+ */
+export const billingSetupServiceTaggingTable = pgTable(
+	'billing_setup_service_tagging',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		careSetting: varchar('care_setting', { length: 8 }).notNull(),
+		serviceTaggingId: integer('service_tagging_id')
+			.notNull()
+			.references(() => serviceTaggingTable.id, {
+				onDelete: 'cascade'
+			}),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		uniqueIndex('billing_setup_hospital_care_tagging_uidx').on(
+			table.hospitalId,
+			table.careSetting,
+			table.serviceTaggingId
+		),
+		index('billing_setup_hospital_care_idx').on(
+			table.hospitalId,
+			table.careSetting
+		)
+	]
+);
 
 export const serviceOrderTable = pgTable('service_order', {
 	id: serial('id').primaryKey(),
