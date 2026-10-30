@@ -365,7 +365,20 @@ export const POST: RequestHandler = async (event) => {
 			const visitId = parseUuid(body['visitId']);
 			if (!visitId)
 				throw error(400, 'visitId is required');
-			return json(await obs.signPatientVisitClinical({ visitId }));
+			const signed = await obs.signPatientVisitClinical({ visitId });
+			const userId = event.locals.user?.id;
+			const hid = String(hospitalId ?? '');
+			if (userId && hid) {
+				const { applyBillingAutoTaggingsForVisit } = await import(
+					'$lib/server/medora/billing/billing-auto-tagging-on-visit-close.server'
+				);
+				await applyBillingAutoTaggingsForVisit({
+					hospitalId: hid,
+					visitId,
+					userId
+				});
+			}
+			return json(signed);
 		}
 		case 'visit.unsign': {
 			const visitId = parseUuid(body?.visitId);

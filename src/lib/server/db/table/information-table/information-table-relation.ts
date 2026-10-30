@@ -36,6 +36,7 @@ import {
 	staffDepartmentTable,
 	serviceItemTable,
 	serviceTaggingTable,
+	billingSetupServiceTaggingTable,
 	storeTable,
 	supportTicketTable,
 	staffDetailTable,
@@ -1205,7 +1206,7 @@ export const serviceItemTableRelations = relations(
 
 export const serviceTaggingTableRelations = relations(
 	serviceTaggingTable,
-	({ one }) => ({
+	({ one, many }) => ({
 		branch: one(hospitalBranchTable, {
 			fields: [serviceTaggingTable.branchId],
 			references: [hospitalBranchTable.id]
@@ -1216,6 +1217,25 @@ export const serviceTaggingTableRelations = relations(
 		}),
 		status: one(statusTable, {
 			fields: [serviceTaggingTable.statusId],
+			references: [statusTable.id]
+		}),
+		billingSetupLinks: many(billingSetupServiceTaggingTable)
+	})
+);
+
+export const billingSetupServiceTaggingTableRelations = relations(
+	billingSetupServiceTaggingTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [billingSetupServiceTaggingTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		serviceTagging: one(serviceTaggingTable, {
+			fields: [billingSetupServiceTaggingTable.serviceTaggingId],
+			references: [serviceTaggingTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [billingSetupServiceTaggingTable.statusId],
 			references: [statusTable.id]
 		})
 	})
