@@ -15,6 +15,7 @@
 		"build:github": "node scripts/build-github.mjs",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
+		"sync:bootstrap-wash-theme": "node scripts/sync-bootstrap-wash-theme.mjs",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && node scripts/check-ui-boundary.mjs && node scripts/check-security-markup.mjs && node scripts/check-public-seo.mjs && node scripts/check-tooltip-placement.mjs && node scripts/check-kit-prerender.mjs && node scripts/check-wash-ui.mjs && node scripts/verify-document-catalog.mjs && node scripts/check-docs-manifest.mjs && NODE_OPTIONS=--max-old-space-size=8192 npm run build",
 		"check:kit-prerender": "node scripts/check-kit-prerender.mjs",
 		"check:prerender-links": "node scripts/check-prerender-links.mjs",

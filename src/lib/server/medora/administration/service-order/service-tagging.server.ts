@@ -15,6 +15,78 @@ import type {
 } from '$lib/model/type/pagination.type';
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import {
+	normalizeMoneyDecimal2dpOrNull,
+	optionalMoneyDecimal2dp,
+	requireMoneyDecimal2dp
+} from '$lib/server/medora/money-field.server';
+
+const SERVICE_TAGGING_MONEY_OPTS = { allowNegative: false } as const;
+
+function normalizeServiceTaggingRow<T extends ServiceTaggingSchema>(
+	row: T
+): T {
+	return {
+		...row,
+		serviceAmount: normalizeMoneyDecimal2dpOrNull(row.serviceAmount),
+		serviceTaxAmount: normalizeMoneyDecimal2dpOrNull(row.serviceTaxAmount)
+	};
+}
+
+function normalizeServiceTaggingWritePayload(
+	payload: ServiceTaggingSchemaInsert
+): ServiceTaggingSchemaInsert {
+	return {
+		...payload,
+		serviceAmount: requireMoneyDecimal2dp(
+			payload.serviceAmount,
+			'Service amount',
+			SERVICE_TAGGING_MONEY_OPTS
+		),
+		serviceTaxAmount:
+			payload.serviceTaxAmount != null &&
+			String(payload.serviceTaxAmount).trim() !== ''
+				? optionalMoneyDecimal2dp(
+						payload.serviceTaxAmount,
+						'Service tax amount',
+						SERVICE_TAGGING_MONEY_OPTS
+					)
+				: null
+	};
+}
+
+function normalizeServiceTaggingUpdatePayload(
+	data: ServiceTaggingSchemaUpdate
+): ServiceTaggingSchemaUpdate {
+	const out: ServiceTaggingSchemaUpdate = { ...data };
+	if (data.serviceAmount !== undefined) {
+		out.serviceAmount = requireMoneyDecimal2dp(
+			data.serviceAmount,
+			'Service amount',
+			SERVICE_TAGGING_MONEY_OPTS
+		);
+	}
+	if (data.serviceTaxAmount !== undefined) {
+		out.serviceTaxAmount =
+			data.serviceTaxAmount == null ||
+			String(data.serviceTaxAmount).trim() === ''
+				? null
+				: optionalMoneyDecimal2dp(
+						data.serviceTaxAmount,
+						'Service tax amount',
+						SERVICE_TAGGING_MONEY_OPTS
+					);
+	}
+	return out;
+}
+
+function moneyFilterValueForEq(value: number | string): string {
+	return requireMoneyDecimal2dp(
+		value,
+		'Amount',
+		SERVICE_TAGGING_MONEY_OPTS
+	);
+}
 
 async function ensureBranchBelongsToHospital(
 	hospitalId: string,
@@ -107,7 +179,7 @@ export async function getServiceTaggings(
 			whereExpr,
 			eq(
 				table.serviceTaggingTable.serviceAmount,
-				String(input.serviceAmount)
+				moneyFilterValueForEq(input.serviceAmount)
 			)
 		)!;
 	}
@@ -116,7 +188,7 @@ export async function getServiceTaggings(
 			whereExpr,
 			eq(
 				table.serviceTaggingTable.serviceTaxAmount,
-				String(input.serviceTaxAmount)
+				moneyFilterValueForEq(input.serviceTaxAmount)
 			)
 		)!;
 	}
@@ -127,10 +199,11 @@ export async function getServiceTaggings(
 		)!;
 	}
 
-	return ensureDb()
+	const rows = await ensureDb()
 		.select()
 		.from(table.serviceTaggingTable)
 		.where(whereExpr);
+	return rows.map(normalizeServiceTaggingRow);
 }
 
 export async function getServiceTaggingsPaginated(
@@ -194,7 +267,7 @@ export async function getServiceTaggingsPaginated(
 			whereExpr,
 			eq(
 				table.serviceTaggingTable.serviceAmount,
-				String(params.serviceAmount)
+				moneyFilterValueForEq(params.serviceAmount)
 			)
 		)!;
 	}
@@ -203,7 +276,7 @@ export async function getServiceTaggingsPaginated(
 			whereExpr,
 			eq(
 				table.serviceTaggingTable.serviceTaxAmount,
-				String(params.serviceTaxAmount)
+				moneyFilterValueForEq(params.serviceTaxAmount)
 			)
 		)!;
 	}
@@ -230,7 +303,7 @@ export async function getServiceTaggingsPaginated(
 
 	const total = countResult[0]?.count ?? 0;
 	return {
-		data,
+		data: data.map(normalizeServiceTaggingRow),
 		total,
 		page,
 		pageSize,
@@ -248,13 +321,14 @@ export async function createServiceTagging(
 		input.branchId
 	);
 
-	const { hospitalId: _hid, ...payload } = input;
+	const { hospitalId: _hid, ...rawPayload } = input;
+	const payload = normalizeServiceTaggingWritePayload(rawPayload);
 	const [row] = await ensureDb()
 		.insert(table.serviceTaggingTable)
 		.values(payload)
 		.returning();
 	if (!row) throw new Error('Failed to create service tagging');
-	return row;
+	return normalizeServiceTaggingRow(row);
 }
 
 export async function updateServiceTagging(
@@ -272,11 +346,11 @@ export async function updateServiceTagging(
 	const { id, hospitalId: _hid, ...data } = input;
 	const [row] = await ensureDb()
 		.update(table.serviceTaggingTable)
-		.set(data)
+		.set(normalizeServiceTaggingUpdatePayload(data))
 		.where(eq(table.serviceTaggingTable.id, id))
 		.returning();
 	if (!row) throw error(404, 'Service tagging not found');
-	return row;
+	return normalizeServiceTaggingRow(row);
 }
 
 export async function deleteServiceTagging(

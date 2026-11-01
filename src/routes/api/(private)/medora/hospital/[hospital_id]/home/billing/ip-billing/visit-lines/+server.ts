@@ -23,6 +23,10 @@ import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import type { IpBillingSchema } from '$lib/server/db/schema-type';
 import { parseUuid } from '$lib/util/id.util';
+import {
+	normalizeIpBillingLineWrite,
+	normalizeOpBillingHeaderWrite
+} from '$lib/server/medora/money-normalize.server';
 
 type PendingDetailRow = OpBillingPendingLineRow;
 
@@ -298,7 +302,7 @@ async function syncOpenIpBillingForVisit(opts: {
 				r.lineSource === 'medication_order_line'
 					? r.medicationOrderLineId
 					: null;
-			return {
+			return normalizeIpBillingLineWrite({
 				ipBillingId: billingId,
 				lineIndex: idx + 1,
 				serviceOrderDetailId,
@@ -312,25 +316,27 @@ async function syncOpenIpBillingForVisit(opts: {
 				serviceAmount: r.serviceAmount ?? null,
 				serviceTaxAmount: r.serviceTaxAmount ?? null,
 				serviceUnit: r.serviceUnit ?? null,
-				lineTotal: computeLineTotal(r).toFixed(2),
+				lineTotal: computeLineTotal(r),
 				createdAt: opts.nowIso,
 				updatedAt: opts.nowIso,
 				createdBy: opts.userId,
 				updatedBy: opts.userId
-			};
+			});
 		})
 	);
 
 	await db
 		.update(table.ipBillingTable)
-		.set({
-			branchId: opts.branchId,
-			linesSubtotal: linesSubtotal.toFixed(2),
-			discountAmount: discountAmount.toFixed(2),
-			totalAmount: totalAmount.toFixed(2),
-			updatedAt: opts.nowIso,
-			updatedBy: opts.userId
-		})
+		.set(
+			normalizeOpBillingHeaderWrite({
+				branchId: opts.branchId,
+				linesSubtotal,
+				discountAmount,
+				totalAmount,
+				updatedAt: opts.nowIso,
+				updatedBy: opts.userId
+			})
+		)
 		.where(eq(table.ipBillingTable.id, billingId));
 
 	const billingRow = (await db.query.ipBillingTable.findFirst({

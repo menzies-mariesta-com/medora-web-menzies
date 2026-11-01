@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
+	import { tick } from 'svelte';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
@@ -22,8 +23,28 @@
 	import { WashThemeTool } from '$lib/tool/wash-theme.tool.svelte';
 	import { FontState } from '$lib/state/font.state.svelte';
 	import { WashThemeState } from '$lib/state/wash-theme.state.svelte';
+	import {
+		dismissAppBootstrapLoader,
+		isClientNavigationPending,
+		pathnameUsesClientBootstrapLoader,
+		syncAppBootstrapLoaderWashTheme
+	} from '$lib/util/app-bootstrap-loader.util';
 
 	let { children } = $props();
+
+	let bootstrapLoaderDismissed = $state(false);
+
+	function tryDismissBootstrapLoader() {
+		if (bootstrapLoaderDismissed || !browser) return;
+		if (!pathnameUsesClientBootstrapLoader(page.url.pathname)) {
+			dismissAppBootstrapLoader();
+			bootstrapLoaderDismissed = true;
+			return;
+		}
+		if (isClientNavigationPending(navigating)) return;
+		dismissAppBootstrapLoader();
+		bootstrapLoaderDismissed = true;
+	}
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const washThemeTool = new WashThemeTool();
@@ -38,12 +59,32 @@
 	/** Quick tools on every shell; hidden only for embedded views. */
 	const showQuickTool = $derived(!isEmbed);
 
-	lifeCycleUtil.onMount(() => {
+	lifeCycleUtil.onMount(async () => {
 		washThemeTool.boot();
 		fontTool.boot();
 		WashThemeState.pigment = washThemeTool.getPigment();
 		WashThemeState.mode = washThemeTool.getMode();
 		FontState.font = fontTool.getFont();
+		syncAppBootstrapLoaderWashTheme();
+		if (
+			pathnameUsesClientBootstrapLoader(page.url.pathname) &&
+			isClientNavigationPending(navigating) &&
+			navigating.complete
+		) {
+			try {
+				await navigating.complete;
+			} catch {
+				/* navigation aborted */
+			}
+		}
+		await tick();
+		tryDismissBootstrapLoader();
+	});
+
+	$effect(() => {
+		page.url.pathname;
+		navigating.to;
+		tryDismissBootstrapLoader();
 	});
 	lifeCycleUtil.onDestroy(() => {
 		fontTool.destroy();

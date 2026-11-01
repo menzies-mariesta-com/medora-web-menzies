@@ -24,16 +24,20 @@ import type {
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import { requireMoneyDecimal2dp } from '$lib/server/medora/money-field.server';
 
 function parseStoreMarkupPercent(
 	raw: string | number | null | undefined
 ): string {
 	if (raw == null || raw === '') return '0.00';
-	const n = Number(raw);
-	if (!Number.isFinite(n) || n < 0 || n > 999) {
+	const fixed = requireMoneyDecimal2dp(raw, 'Store markup', {
+		allowNegative: false
+	});
+	const n = Number(fixed);
+	if (n > 999) {
 		throw error(400, 'Store markup must be between 0 and 999');
 	}
-	return n.toFixed(2);
+	return fixed;
 }
 
 export type StoreUserGroupRef = { id: number; name: string | null };

@@ -267,6 +267,13 @@
       "when": 1792500000000,
       "tag": "0037_billing_setup_service_tagging_link",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792600000000,
+      "tag": "0038_normalize_money_decimal_scale_2",
+      "breakpoints": true
     }
   ]
 }
