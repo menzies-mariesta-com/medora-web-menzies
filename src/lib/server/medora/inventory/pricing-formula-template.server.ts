@@ -10,6 +10,8 @@ import {
 	type PricingFormulaTemplateListRow
 } from '$lib/model/type/medora/pricing-formula-template.type';
 import { ensureHospitalInventoryAccess } from './inventory-scope.server';
+import { requireMoneyDecimal2dp } from '$lib/server/medora/money-field.server';
+import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
 
 function parseSlotOrder(raw: unknown): PricingFormulaSlot[] {
 	if (!Array.isArray(raw) || raw.length === 0) {
@@ -44,7 +46,7 @@ export function rowToPricingFormulaTemplateDto(
 		includeFreeQty: row.includeFreeQty,
 		includeItemMarkup: row.includeItemMarkup,
 		includeStoreMarkup: row.includeStoreMarkup,
-		mslMarkupPercent: row.mslMarkupPercent,
+		mslMarkupPercent: row.mslMarkupPercent != null ? toDbMoney2dp(row.mslMarkupPercent) : row.mslMarkupPercent,
 		slotOrder: parseSlotOrder(row.slotOrder),
 		isSystemDefault: row.isSystemDefault,
 		statusId: row.statusId
@@ -52,11 +54,17 @@ export function rowToPricingFormulaTemplateDto(
 }
 
 function parseMarkupPercent(raw: string, label: string): string {
-	const n = Number(raw);
-	if (!Number.isFinite(n) || n < 0 || n > 999) {
+	try {
+		const fixed = requireMoneyDecimal2dp(raw, label, {
+			allowNegative: false
+		});
+		if (Number(fixed) > 999) {
+			throw error(400, `Invalid ${label}`);
+		}
+		return fixed;
+	} catch {
 		throw error(400, `Invalid ${label}`);
 	}
-	return n.toFixed(2);
 }
 
 export type PricingFormulaTemplateWriteInput = {

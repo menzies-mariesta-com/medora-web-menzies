@@ -23,7 +23,7 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
-	import { formatNumberDisplay } from '$lib/util/number-display.util';
+	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import { m } from '$lib/paraglide/messages';
@@ -197,14 +197,14 @@
 			header: 'Amount',
 			widthClass: 'w-28',
 			filterable: false,
-			format: (_v, row) => formatNumberDisplay(row.serviceAmount)
+			format: (_v, row) => formatMoneyAmount(row.serviceAmount)
 		},
 		{
 			id: 'serviceTaxAmount',
 			header: 'Tax',
 			widthClass: 'w-28',
 			filterable: false,
-			format: (_v, row) => formatNumberDisplay(row.serviceTaxAmount)
+			format: (_v, row) => formatMoneyAmount(row.serviceTaxAmount)
 		}
 	];
 

@@ -16,6 +16,7 @@ import {
 	ITEM_MASTER_CATEGORY_IDS,
 	isItemMasterCategoryId
 } from '$lib/model/enum/item-master-category.enum';
+import { requireMoneyDecimal2dp } from '$lib/server/medora/money-field.server';
 import {
 	normalizePagination,
 	type PaginatedResult,
@@ -67,11 +68,14 @@ export function parseItemMarkupPercent(
 	raw: string | number | null | undefined
 ): string {
 	if (raw == null || raw === '') return '0.00';
-	const n = Number(raw);
-	if (!Number.isFinite(n) || n < 0 || n > 999) {
+	const fixed = requireMoneyDecimal2dp(raw, 'Item markup', {
+		allowNegative: false
+	});
+	const n = Number(fixed);
+	if (n > 999) {
 		throw new Error('Item markup must be between 0 and 999.');
 	}
-	return n.toFixed(2);
+	return fixed;
 }
 
 function hospitalItemScope(hospitalId: string) {

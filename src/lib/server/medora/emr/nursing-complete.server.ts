@@ -9,6 +9,7 @@ import {
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import { normalizeServiceOrderDetailRead } from '$lib/server/medora/money-normalize.server';
 import type { ServiceOrderDetailSchema } from '$lib/server/db/schema-type';
 
 function requireUser(event: RequestEvent): void {
@@ -113,7 +114,9 @@ export async function getServiceOrderDetailPaginatedForOrders(
 
 	const total = countResult[0]?.count ?? 0;
 	return {
-		data: data as unknown as ServiceOrderDetailSchema[],
+		data: (data as ServiceOrderDetailSchema[]).map(
+			normalizeServiceOrderDetailRead
+		),
 		total,
 		page,
 		pageSize,

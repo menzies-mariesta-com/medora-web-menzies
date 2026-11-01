@@ -7,6 +7,7 @@ import type { ServiceTaggingSchema } from '$lib/server/db/schema-type';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { getActiveBillingSetupTaggingsForCareSetting } from '$lib/server/medora/administration/billing-setup/billing-setup-service-tagging.server';
+import { normalizeMoneyDecimal2dpOrZero } from '$lib/server/medora/money-field.server';
 
 function toDateOnly(value: string | null | undefined): string | null {
 	const str = (value ?? '').trim();
@@ -176,8 +177,10 @@ export async function applyBillingAutoTaggingsOnVisitClose(input: {
 			await tx.insert(table.serviceOrderDetailTable).values({
 				serviceOrderId,
 				serviceId: tagging.serviceId,
-				serviceAmount: tagging.serviceAmount ?? '0',
-				serviceTaxAmount: tagging.serviceTaxAmount ?? '0',
+				serviceAmount: normalizeMoneyDecimal2dpOrZero(tagging.serviceAmount),
+				serviceTaxAmount: normalizeMoneyDecimal2dpOrZero(
+					tagging.serviceTaxAmount
+				),
 				serviceUnit: 1,
 				nursingCompleteTime: nowIso,
 				statusId: StatusEnum.ACTIVE,

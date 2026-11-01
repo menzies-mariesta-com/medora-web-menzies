@@ -11,6 +11,7 @@ import type {
 } from '$lib/model/type/pagination.type';
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import { normalizeMoneyDecimal2dpOrNull } from '$lib/server/medora/money-field.server';
 import type {
 	BillingSetupAvailableTaggingRow,
 	BillingSetupServiceTaggingLinkRow
@@ -225,8 +226,8 @@ export async function listBillingSetupLinksPaginated(
 		serviceName: r.serviceName,
 		serviceCode: r.serviceCode,
 		validDate: r.validDate,
-		serviceAmount: r.serviceAmount,
-		serviceTaxAmount: r.serviceTaxAmount,
+		serviceAmount: normalizeMoneyDecimal2dpOrNull(r.serviceAmount),
+		serviceTaxAmount: normalizeMoneyDecimal2dpOrNull(r.serviceTaxAmount),
 		allowEdit: r.allowEdit,
 		taggingStatusId: r.taggingStatusId,
 		categoryName: r.categoryName,
@@ -364,8 +365,8 @@ export async function listAvailableServiceTaggingsForBillingSetup(
 		branchId: r.branchId,
 		serviceId: r.serviceId,
 		validDate: r.validDate,
-		serviceAmount: r.serviceAmount,
-		serviceTaxAmount: r.serviceTaxAmount,
+		serviceAmount: normalizeMoneyDecimal2dpOrNull(r.serviceAmount),
+		serviceTaxAmount: normalizeMoneyDecimal2dpOrNull(r.serviceTaxAmount),
 		allowEdit: r.allowEdit,
 		statusId: r.statusId,
 		serviceName: r.serviceName,

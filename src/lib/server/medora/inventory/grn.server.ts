@@ -40,6 +40,7 @@ import {
 	resolveItemUnitMasterForItemPurchaseUnit
 } from './item-unit-inventory.server';
 import { computeLandedCostTotals } from '$lib/tool/inventory/grn-pricing.util';
+import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
 
 function parseGrnOptionalQty(s: string | null | undefined): number {
 	if (s == null || s === '') return 0;
@@ -63,15 +64,23 @@ type GrnInvoiceChargeInput = {
 };
 
 function grnInvoiceChargeDbValues(input: GrnInvoiceChargeInput) {
-	const discAmt = parseGrnMoney(input.invoiceDiscountAmount);
-	const discPct = parseGrnMoney(input.invoiceDiscountPercent);
-	const taxAmt = parseGrnMoney(input.invoiceTaxAmount);
-	const taxPct = parseGrnMoney(input.invoiceTaxPercent);
 	return {
-		invoiceDiscountAmount: discAmt.toFixed(2),
-		invoiceDiscountPercent: discPct.toFixed(2),
-		invoiceTaxAmount: taxAmt.toFixed(2),
-		invoiceTaxPercent: taxPct.toFixed(2)
+		invoiceDiscountAmount: parseMoney2dp(
+			input.invoiceDiscountAmount ?? '0',
+			'invoice discount amount'
+		),
+		invoiceDiscountPercent: parseMoney2dp(
+			input.invoiceDiscountPercent ?? '0',
+			'invoice discount percent'
+		),
+		invoiceTaxAmount: parseMoney2dp(
+			input.invoiceTaxAmount ?? '0',
+			'invoice tax amount'
+		),
+		invoiceTaxPercent: parseMoney2dp(
+			input.invoiceTaxPercent ?? '0',
+			'invoice tax percent'
+		)
 	};
 }
 
@@ -627,10 +636,10 @@ export async function createAndPostGoodsReceipt(
 					unitId: poLine.unitId,
 					freeQty: String(freeQ),
 					freeUnitId,
-					discountAmount: landed.discountTotal.toFixed(2),
-					discountPercent: Number(discPct).toFixed(2),
-					taxAmount: landed.taxTotal.toFixed(2),
-					taxPercent: Number(taxPct).toFixed(2),
+					discountAmount: toDbMoney2dp(landed.discountTotal),
+					discountPercent: toDbMoney2dp(discPct),
+					taxAmount: toDbMoney2dp(landed.taxTotal),
+					taxPercent: toDbMoney2dp(taxPct),
 					createdBy: userId,
 					updatedBy: userId
 				})
@@ -896,10 +905,10 @@ export async function createAndPostDirectGoodsReceipt(
 					unitId: ln.unitId,
 					freeQty: String(freeQ),
 					freeUnitId,
-					discountAmount: landed.discountTotal.toFixed(2),
-					discountPercent: Number(discPct).toFixed(2),
-					taxAmount: landed.taxTotal.toFixed(2),
-					taxPercent: Number(taxPct).toFixed(2),
+					discountAmount: toDbMoney2dp(landed.discountTotal),
+					discountPercent: toDbMoney2dp(discPct),
+					taxAmount: toDbMoney2dp(landed.taxTotal),
+					taxPercent: toDbMoney2dp(taxPct),
 					createdBy: userId,
 					updatedBy: userId
 				})

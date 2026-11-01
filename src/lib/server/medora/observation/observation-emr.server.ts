@@ -68,6 +68,11 @@ import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.serve
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import type { VisitServiceLinePrintRow } from '$lib/util/document-placeholder.util';
 import { formatMoneyAmount } from '$lib/util/number-display.util';
+import {
+	normalizeServiceOrderDetailRead,
+	normalizeServiceOrderDetailWrite,
+	toDbMoney2dp
+} from '$lib/server/medora/money-normalize.server';
 import { computeSalePriceAtTransactionDb } from '$lib/server/medora/inventory/sale-price.server';
 import { INTERNAL_SALES_PRICING_MODULE } from '$lib/model/type/medora/inv-pricing-module.type';
 import { unitSalePriceForOutUnit } from '$lib/tool/inventory/med-order-out-qty.util';
@@ -1854,7 +1859,7 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 			subCategoryName,
 			orderNo: r.batchNo?.trim() || null,
 			discount: null,
-			serviceAmount: unitPrice ?? '0',
+			serviceAmount: toDbMoney2dp(unitPrice ?? '0'),
 			serviceTaxAmount: '0',
 			serviceUnit
 		});
@@ -1951,7 +1956,7 @@ export async function getServiceOrderDetailById(input: {
 			)
 		)
 		.limit(1);
-	return row ?? null;
+	return row ? normalizeServiceOrderDetailRead(row) : null;
 }
 
 export async function createServiceOrderDetail(
@@ -1965,7 +1970,7 @@ export async function createServiceOrderDetail(
 	}
 	const [row] = await ensureDb()
 		.insert(table.serviceOrderDetailTable)
-		.values(payload)
+		.values(normalizeServiceOrderDetailWrite(payload))
 		.returning();
 	if (!row) throw new Error('Insert failed');
 	try {
@@ -1976,7 +1981,7 @@ export async function createServiceOrderDetail(
 	} catch {
 		// Lab bridge is best-effort if diagnostics schema is not migrated yet
 	}
-	return row;
+	return normalizeServiceOrderDetailRead(row);
 }
 
 export async function updateServiceOrderDetail(
@@ -2001,11 +2006,11 @@ export async function updateServiceOrderDetail(
 	await assertServiceOrderDetailNotLockedByClosedOpBill(id);
 	const [row] = await ensureDb()
 		.update(table.serviceOrderDetailTable)
-		.set(rest)
+		.set(normalizeServiceOrderDetailWrite(rest))
 		.where(eq(table.serviceOrderDetailTable.id, id))
 		.returning();
 	if (!row) throw new Error('Update failed');
-	return row;
+	return normalizeServiceOrderDetailRead(row);
 }
 
 export async function deleteServiceOrderDetail(input: {
