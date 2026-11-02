@@ -72,7 +72,22 @@
 		</script>
 
 		<link rel="stylesheet" href="/medora-bootstrap-wash-theme.css" />
+		<link rel="stylesheet" href="/medora-bootstrap-font.css" />
 		<link rel="stylesheet" href="/medora-bootstrap-loading.css" />
+		<link
+			rel="preload"
+			href="/fonts/wash/maple-mono-latin-700-normal.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin=""
+		/>
+		<link
+			rel="preload"
+			href="/fonts/wash/maple-mono-latin-500-normal.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin=""
+		/>
 
 		%sveltekit.head%
 	</head>
@@ -102,8 +117,13 @@
 				root.setAttribute('aria-busy', 'true');
 				root.innerHTML =
 					'<div class="medora-bootstrap-loader-inner">' +
-					'<span class="loading loading-lg loading-spinner text-primary" aria-hidden="true"></span>' +
-					'<span class="medora-bootstrap-label">Medora is Loading</span>' +
+					'<img class="medora-bootstrap-mark" src="/medora-logo.svg" alt="" width="40" height="40" decoding="async" />' +
+					'<div class="studio-load-stroke" aria-hidden="true">' +
+					'<span class="studio-load-stroke__mark"></span>' +
+					'</div>' +
+					'<div class="studio-load-ink">' +
+					'<p class="studio-load-ink__word">Medora Menzies</p>' +
+					'</div>' +
 					'</div>';
 				var rootStyle = getComputedStyle(document.documentElement);
 				var washVars = [
@@ -112,7 +132,13 @@
 					'--color-base-content',
 					'--color-primary',
 					'--color-primary-content',
+					'--color-secondary',
 					'--color-accent',
+					'--wash-a',
+					'--wash-b',
+					'--wash-c',
+					'--ink-muted',
+					'--ink-border',
 					'--radius-box',
 					'--size-selector'
 				];
