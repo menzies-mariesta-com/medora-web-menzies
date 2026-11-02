@@ -342,7 +342,7 @@ async function shouldSkipPatient(
 			SELECT COUNT(*)::int AS c
 			FROM patient_visit pv
 			INNER JOIN patient p ON p.id = pv.patient_id
-			LEFT JOIN service_order so ON so.visit_id = pv.id
+			LEFT JOIN patient_service_order so ON so.visit_id = pv.id
 			LEFT JOIN medication_order_batch mob ON mob.visit_id = pv.id AND mob.deleted_at IS NULL
 			WHERE p.hospital_id = ${hospitalId}::uuid
 			  AND p.code = ${patientCode}
@@ -566,7 +566,7 @@ async function seedClinicalForVisit(params: {
 	if (scenario.serviceOrderLineCount > 0 && services.length > 0) {
 		const orderRows = rowsOf<{ id: number }>(
 			await db.execute(sql`
-				INSERT INTO service_order (branch_id, visit_id, order_no, status_id, order_date)
+				INSERT INTO patient_service_order (branch_id, visit_id, order_no, status_id, order_date)
 				VALUES (
 					${branchId}::uuid,
 					${visitId},
@@ -586,7 +586,7 @@ async function seedClinicalForVisit(params: {
 			for (let i = 0; i < lineCount; i++) {
 				const svc = services[i]!;
 				await db.execute(sql`
-					INSERT INTO service_order_detail (
+					INSERT INTO patient_service_order_detail (
 						service_order_id,
 						service_id,
 						advising_doctor_id,

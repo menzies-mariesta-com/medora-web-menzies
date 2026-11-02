@@ -898,7 +898,7 @@
 	"observation_emr_service_amount": "Service amount",
 	"observation_emr_tax_amount": "Tax amount",
 	"observation_emr_units": "Units",
-	"observation_emr_instruction": "Instruction / description",
+	"observation_emr_instruction": "Instructions",
 	"observation_emr_urgent": "Urgent",
 	"observation_emr_visit_missing": "Visit information is missing.",
 	"observation_emr_service_required": "Service is required.",

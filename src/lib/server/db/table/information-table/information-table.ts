@@ -1522,7 +1522,7 @@ export const billingSetupServiceTaggingTable = pgTable(
 	]
 );
 
-export const serviceOrderTable = pgTable('service_order', {
+export const serviceOrderTable = pgTable('patient_service_order', {
 	id: serial('id').primaryKey(),
 	branchId: uuid('branch_id')
 		.notNull()
@@ -1545,7 +1545,7 @@ export const serviceOrderTable = pgTable('service_order', {
 });
 
 export const serviceOrderDetailTable = pgTable(
-	'service_order_detail',
+	'patient_service_order_detail',
 	{
 		id: serial('id').primaryKey(),
 		serviceOrderId: integer('service_order_id')

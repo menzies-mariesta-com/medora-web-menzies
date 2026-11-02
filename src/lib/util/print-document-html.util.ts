@@ -4,6 +4,8 @@
  * - pdfRaster: linear layout without fixed positioning (html2canvas-friendly).
  */
 
+import caseSheetDocumentCss from '$lib/asset/style/case-sheet-document.css?raw';
+
 export type PrintDocumentHtmlVariant = 'browser' | 'pdfRaster';
 
 export type PrintDocumentLayoutInput = {
@@ -139,55 +141,7 @@ export const PRINT_DOCUMENT_UTILITY_CSS = `
 		font-size: 16px;
 		font-weight: 700;
 	}
-	.case-sheet-meta-print { margin-bottom: 12px; }
-	.case-sheet-section { margin-top: 14px; }
-	.case-sheet-section h3 {
-		margin: 0 0 8px;
-		font-size: 11px;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		border-bottom: 1px solid #000;
-		padding-bottom: 4px;
-	}
-	.case-sheet-list { margin: 0; padding-left: 1.25rem; }
-	.case-sheet-list li { margin-bottom: 8px; }
-	.case-sheet-empty {
-		margin: 0;
-		font-size: 10px;
-		font-style: italic;
-	}
-	.case-sheet-muted { font-size: 10px; }
-	.case-sheet-records {
-		margin: 6px 0 0;
-		padding: 0;
-		list-style: none;
-	}
-	.case-sheet-record {
-		margin-bottom: 8px;
-		padding: 6px 8px;
-		border: 1px solid #000;
-		break-inside: avoid;
-	}
-	.case-sheet-record-title {
-		margin: 0 0 4px;
-		font-size: 10px;
-		font-weight: 700;
-	}
-	.case-sheet-record-dl {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 4px 10px;
-		margin: 0;
-		font-size: 10px;
-	}
-	.case-sheet-record-dl dt {
-		margin: 0;
-		font-weight: 600;
-	}
-	.case-sheet-record-dl dd {
-		margin: 0;
-	}
+	${caseSheetDocumentCss}
 	.catalog-section-title {
 		margin: 14px 0 8px;
 		font-size: 12px;
