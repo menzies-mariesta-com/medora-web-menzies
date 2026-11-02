@@ -13,12 +13,9 @@
 	const hospitalId = $derived(page.params.hospital_id);
 
 	lifeCycleUtil.onMount(() => {
-		const first = getEdAdmissionSubPages({
+		const first = 		getEdAdmissionSubPages({
 			erRegistration: m.ed_admission_new_title(),
-			newPatient: msg.ed_admission_tab_new_patient?.() ?? 'New patient',
-			list:
-				msg.ed_admission_tab_registration_list?.() ??
-				'Registration list'
+			newPatient: msg.ed_admission_tab_new_patient?.() ?? 'New patient'
 		})[0];
 		if (first?.pageUrl && hospitalId)
 			routerUtil.replaceRoute(

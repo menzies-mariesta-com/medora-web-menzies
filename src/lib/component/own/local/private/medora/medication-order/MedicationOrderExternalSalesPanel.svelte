@@ -702,7 +702,7 @@ const lifeCycleUtil = new LifeCycleUtil();
 		if (!hospitalId || !visitId) return;
 		const base = medoraHospitalPageUrl(
 			hospitalId,
-			WebRoutesEnum.MEDORA_HOME_BILLING_OP_BILLING
+			WebRoutesEnum.MEDORA_HOME_BILLING_BILL
 		);
 		routerUtil.replaceRoute(`${base}?visitId=${encodeURIComponent(visitId)}`);
 	}

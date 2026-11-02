@@ -9,7 +9,8 @@ export const PREFIX_PURPOSE_STORAGE = {
 	 * When not configured, registration falls back to {@link PATIENT_CODE}.
 	 */
 	EXTERNAL_PATIENT_CODE: 'EXTERNAL_PATIENT_CODE',
-	VISIT_NO: 'VISIT_NO',
+	/** OPD / ED / IPD visits and IPD admission numbers (one hospital-wide format). */
+	ADMISSION_NO: 'ADMISSION_NO',
 	ORDER_NO: 'ORDER_NO',
 	PURCHASE_REQUISITION_NO: 'PURCHASE_REQUISITION_NO',
 	PURCHASE_ORDER_NO: 'PURCHASE_ORDER_NO',
@@ -20,19 +21,32 @@ export const PREFIX_PURPOSE_STORAGE = {
 	MEDICATION_ORDER_BATCH_NO: 'MEDICATION_ORDER_BATCH_NO',
 	/** Walk-in external sale receipt number. */
 	MEDICATION_ORDER_RECEIPT_NO: 'MEDICATION_ORDER_RECEIPT_NO',
-	/** IPD admission number. */
-	IPD_ADMISSION_NO: 'IPD_ADMISSION_NO',
-	/** Inpatient bill number. */
-	IP_BILL_NO: 'IP_BILL_NO'
+	/** OP and IP final bill numbers (one hospital-wide format). */
+	BILL_NO: 'BILL_NO'
 } as const;
 
 export type PrefixPurposeStorageKey =
 	(typeof PREFIX_PURPOSE_STORAGE)[keyof typeof PREFIX_PURPOSE_STORAGE];
 
+/** Legacy DB / counter keys merged into {@link PREFIX_PURPOSE_STORAGE.ADMISSION_NO} / BILL_NO. */
+const LEGACY_ADMISSION_KEYS = new Set(['VISIT_NO', 'IPD_ADMISSION_NO']);
+const LEGACY_BILL_KEYS = new Set(['IP_BILL_NO']);
+
+/** Normalize storage keys after unifying visit / IPD admission / bill purposes. */
+export function normalizePrefixStorageKey(key: string): string {
+	if (LEGACY_ADMISSION_KEYS.has(key)) {
+		return PREFIX_PURPOSE_STORAGE.ADMISSION_NO;
+	}
+	if (LEGACY_BILL_KEYS.has(key)) {
+		return PREFIX_PURPOSE_STORAGE.BILL_NO;
+	}
+	return key;
+}
+
 export type PrefixPurposeId =
 	| 'patient'
 	| 'external_patient'
-	| 'visit'
+	| 'admission'
 	| 'order'
 	| 'pr'
 	| 'po'
@@ -41,8 +55,7 @@ export type PrefixPurposeId =
 	| 'dc'
 	| 'med_order_batch'
 	| 'med_order_receipt'
-	| 'ipd_admission'
-	| 'ip_bill';
+	| 'bill';
 
 export interface PrefixPurposeDefinition {
 	readonly id: PrefixPurposeId;
@@ -55,7 +68,7 @@ export const PREFIX_PURPOSES: readonly PrefixPurposeDefinition[] = [
 		id: 'external_patient',
 		storageKey: PREFIX_PURPOSE_STORAGE.EXTERNAL_PATIENT_CODE
 	},
-	{ id: 'visit', storageKey: PREFIX_PURPOSE_STORAGE.VISIT_NO },
+	{ id: 'admission', storageKey: PREFIX_PURPOSE_STORAGE.ADMISSION_NO },
 	{ id: 'order', storageKey: PREFIX_PURPOSE_STORAGE.ORDER_NO },
 	{
 		id: 'pr',
@@ -82,18 +95,12 @@ export const PREFIX_PURPOSES: readonly PrefixPurposeDefinition[] = [
 		id: 'med_order_receipt',
 		storageKey: PREFIX_PURPOSE_STORAGE.MEDICATION_ORDER_RECEIPT_NO
 	},
-	{
-		id: 'ipd_admission',
-		storageKey: PREFIX_PURPOSE_STORAGE.IPD_ADMISSION_NO
-	},
-	{
-		id: 'ip_bill',
-		storageKey: PREFIX_PURPOSE_STORAGE.IP_BILL_NO
-	}
+	{ id: 'bill', storageKey: PREFIX_PURPOSE_STORAGE.BILL_NO }
 ] as const;
 
 export function findPurposeByStorageKey(
 	key: string
 ): PrefixPurposeDefinition | undefined {
-	return PREFIX_PURPOSES.find((p) => p.storageKey === key);
+	const normalized = normalizePrefixStorageKey(key);
+	return PREFIX_PURPOSES.find((p) => p.storageKey === normalized);
 }

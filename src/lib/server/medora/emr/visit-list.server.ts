@@ -6,7 +6,8 @@ import {
 	AllergyEnum,
 	IpdAdmissionStatusEnum,
 	StaffTypeEnum,
-	StatusEnum
+	StatusEnum,
+	VisitTypeEnum
 } from '$lib/model/enum/db-link';
 import { VITAL_REFERENCE_RANGES } from '$lib/config/vital.config';
 import {
@@ -14,6 +15,9 @@ import {
 	type PaginationParams,
 	type PaginatedResult
 } from '$lib/model/type/pagination.type';
+import {
+	paginatedEntityStatusEq
+} from '$lib/server/medora/paginated-entity-status-filter.server';
 import {
 	and,
 	count,
@@ -29,8 +33,10 @@ import {
 	type SQL
 } from 'drizzle-orm';
 import type {
+	EmrVisitListScope,
 	PatientVisitForEmrList,
 	VisitStatusCode,
+	VisitStatusFilterCode,
 	VisitTypeOption
 } from '$lib/model/type/medora/emr/visit-list.type';
 
@@ -96,6 +102,18 @@ function getDoctorEmrVisitScopeFilter(
 			AND rh.to_refer_doctorid = ${doctorId}
 			AND rh.cancel_at IS NULL
 			AND rh.accept_at IS NOT NULL
+		)`,
+		// ED: assigned doctor, or unassigned pool (common when registration omits doctor).
+		sql`EXISTS (
+			SELECT 1 FROM ed_encounter ee
+			WHERE ee.visit_id = ${table.patientVisitTable.id}
+			AND (
+				ee.assigned_doctor_id = ${doctorId}
+				OR (
+					ee.assigned_doctor_id IS NULL
+					AND ${table.patientVisitTable.visitTypeId} = ${VisitTypeEnum.ED}
+				)
+			)
 		)`
 	);
 }
@@ -214,11 +232,11 @@ function buildAbnormalVitalWhere(
 }
 
 export async function getAbnormalVitalVisitIdsByVisitIds(params: {
-	visitIds: number[];
-}): Promise<number[]> {
-	const ids = params.visitIds.filter(
-		(id) => Number.isInteger(id) && id > 0
-	);
+	visitIds: string[];
+}): Promise<string[]> {
+	const ids = params.visitIds
+		.map((id) => String(id ?? '').trim())
+		.filter((id) => id !== '');
 	if (ids.length === 0) return [];
 
 	const pd = table.patientDiagnosisTable;
@@ -315,18 +333,23 @@ export async function getPatientVisitPaginatedForEmr(
 		branchName?: string;
 		doctorName?: string;
 		visitTypeId?: number | null;
-		visitStatus?: VisitStatusCode | 'closed' | 'discharged';
+		visitStatus?: VisitStatusFilterCode;
 		/** When true, only visits with an active IPD admission row. */
 		hasActiveAdmission?: boolean;
+		/** Default `doctor` (consultation). Use `hospital` for nursing/billing choose-visit. */
+		listScope?: EmrVisitListScope;
+		statusId?: number;
 	}
 ): Promise<PaginatedResult<PatientVisitForEmrList>> {
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
 
-	// Hide soft-deleted and inactive (e.g. appointment cancel after check-in) visits.
 	let whereExpr: any = and(
 		ne(table.patientVisitTable.statusId, StatusEnum.DELETED),
-		ne(table.patientVisitTable.statusId, StatusEnum.INACTIVE)
+		paginatedEntityStatusEq(
+			table.patientVisitTable.statusId,
+			params?.statusId
+		)
 	);
 
 	if (params?.hospitalId) {
@@ -336,8 +359,9 @@ export async function getPatientVisitPaginatedForEmr(
 		);
 	}
 
+	const listScope = params?.listScope ?? 'doctor';
 	const selectedBranchId = getSelectedBranchId(event);
-	if (selectedBranchId) {
+	if (listScope === 'doctor' && selectedBranchId) {
 		whereExpr = and(
 			whereExpr,
 			eq(table.patientVisitTable.branchId, selectedBranchId)
@@ -491,6 +515,14 @@ export async function getPatientVisitPaginatedForEmr(
 							)
 						)
 					: and(whereExpr, sql`1=0` as any);
+		} else if (visitStatus === 'active') {
+			whereExpr =
+				tagging.closedDischargedId != null
+					? and(
+							whereExpr,
+							sql`${table.patientVisitTable.statusTaggingId} IS DISTINCT FROM ${tagging.closedDischargedId}` as any
+						)
+					: whereExpr;
 		}
 	}
 
@@ -506,8 +538,10 @@ export async function getPatientVisitPaginatedForEmr(
 		);
 	}
 
-	const doctorScope = getDoctorEmrVisitScopeFilter(event);
-	if (doctorScope) whereExpr = and(whereExpr, doctorScope);
+	if (listScope === 'doctor') {
+		const doctorScope = getDoctorEmrVisitScopeFilter(event);
+		if (doctorScope) whereExpr = and(whereExpr, doctorScope);
+	}
 
 	const [data, countResult] = await Promise.all([
 		ensureDb().query.patientVisitTable.findMany({
@@ -517,6 +551,7 @@ export async function getPatientVisitPaginatedForEmr(
 				visitType: true,
 				hospital: true,
 				branch: true,
+				status: true,
 				doctor: { with: { title: true } }
 			},
 			orderBy: (t, { desc }) => desc(t.createdAt),
@@ -530,9 +565,9 @@ export async function getPatientVisitPaginatedForEmr(
 	]);
 
 	const visitIds = data
-		.map((d) => d.id)
-		.filter((id): id is number => id != null);
-	const vitalsByVisitId = new Set<number>();
+		.map((d) => String(d.id ?? '').trim())
+		.filter((id) => id !== '');
+	const vitalsByVisitId = new Set<string>();
 	if (visitIds.length) {
 		const vitalRows = await ensureDb()
 			.select({ visitId: table.patientDiagnosisTable.visitId })
@@ -544,12 +579,14 @@ export async function getPatientVisitPaginatedForEmr(
 					ne(table.patientDiagnosisTable.statusId, StatusEnum.DELETED)
 				)
 			);
-		for (const r of vitalRows) vitalsByVisitId.add(r.visitId);
+		for (const r of vitalRows) {
+			vitalsByVisitId.add(String(r.visitId));
+		}
 	}
 
 	const dataWithStatus: PatientVisitForEmrList[] = data.map(
 		(row: any) => {
-			const hasVitals = vitalsByVisitId.has(row.id);
+			const hasVitals = vitalsByVisitId.has(String(row.id));
 			const visitStatus = resolveVisitStatusCode({
 				hasVitals,
 				statusTaggingId: row.statusTaggingId as

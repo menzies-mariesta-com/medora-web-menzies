@@ -13,6 +13,7 @@ import type {
 	IpdAccommodationBillingPolicyRow
 } from '$lib/model/type/medora/ipd/ipd.type';
 import { money } from '$lib/server/medora/ipd/tariff.server';
+import { normalizeIpBillingLineWrite, toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
 import { and, asc, eq } from 'drizzle-orm';
 
 function parseCutoffMinutes(cutoffTime: string): number {
@@ -310,21 +311,23 @@ export async function postAccommodationLinesToIpBill(input: {
 	await db.transaction(async (tx) => {
 		for (const charge of charges) {
 			const remark = `${charge.label} · ${charge.days} day(s) @ ${charge.dailyTariff}`;
-			await tx.insert(table.ipBillingLineTable).values({
-				ipBillingId: input.ipBillingId,
-				lineIndex: nextIndex++,
-				serviceId,
-				serviceNameSnapshot: `${serviceName}: ${remark}`.slice(
-					0,
-					512
-				),
-				discount: '0',
-				serviceAmount: charge.amount,
-				serviceTaxAmount: '0',
-				serviceUnit: 1,
-				lineTotal: charge.amount
-			});
-			subtotal += Number(charge.amount);
+			await tx.insert(table.ipBillingLineTable).values(
+				normalizeIpBillingLineWrite({
+					ipBillingId: input.ipBillingId,
+					lineIndex: nextIndex++,
+					serviceId,
+					serviceNameSnapshot: `${serviceName}: ${remark}`.slice(
+						0,
+						512
+					),
+					discount: '0',
+					serviceAmount: charge.amount,
+					serviceTaxAmount: '0',
+					serviceUnit: 1,
+					lineTotal: charge.amount
+				})
+			);
+			subtotal += Number(toDbMoney2dp(charge.amount));
 		}
 		const newSub = money(Number(bill.linesSubtotal ?? 0) + subtotal);
 		await tx

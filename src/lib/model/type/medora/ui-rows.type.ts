@@ -48,6 +48,46 @@ export type ServiceTaggingListRow = PatientRegMasterTimestamps & {
 	service?: ServiceItemListRow | null;
 };
 
+/** Billing setup → service_tagging FK link with joined tagging display fields. */
+export type BillingSetupServiceTaggingLinkRow = {
+	id: number;
+	hospitalId: string;
+	careSetting: string;
+	serviceTaggingId: number;
+	statusId: number;
+	createdAt: string | null;
+	updatedAt: string | null;
+	deletedAt: string | null;
+	branchId: string;
+	branchName: string | null;
+	serviceId: number;
+	serviceName: string | null;
+	serviceCode: string | null;
+	validDate: string | null;
+	serviceAmount: string | null;
+	serviceTaxAmount: string | null;
+	allowEdit: boolean;
+	taggingStatusId: number;
+	categoryName: string | null;
+	subCategoryName: string | null;
+};
+
+/** Service item tagging row for billing-setup pick list (not yet linked). */
+export type BillingSetupAvailableTaggingRow = {
+	id: number;
+	branchId: string;
+	serviceId: number;
+	validDate: string | null;
+	serviceAmount: string | null;
+	serviceTaxAmount: string | null;
+	allowEdit: boolean;
+	statusId: number;
+	serviceName: string | null;
+	serviceCode: string | null;
+	categoryName: string | null;
+	subCategoryName: string | null;
+};
+
 export type ServiceOrderListRow = PatientRegMasterTimestamps & {
 	id: number;
 	branchId: string;

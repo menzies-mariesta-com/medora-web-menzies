@@ -2,11 +2,11 @@
 title: "Allergies"
 docType: journal
 slug: patient-journal/allergies
-workflowSlugs: ["nursing-workbench-emr-allergy"]
+workflowSlugs: ["nursing-workbench-allergy"]
 ---
 
 ## Patient journal: Allergies
 
 Longitudinal chart section. Related workflows:
 
-- [nursing-workbench-emr-allergy](/docs/workflows/nursing-workbench-emr-allergy)
+- [nursing-workbench-allergy](/docs/workflows/nursing-workbench-allergy)

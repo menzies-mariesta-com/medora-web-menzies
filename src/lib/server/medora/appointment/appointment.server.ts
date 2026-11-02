@@ -13,6 +13,7 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import { activeEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import type {
 	AppointmentBlockSchema,
 	AppointmentBlockSchemaInsert,
@@ -46,7 +47,7 @@ export async function listDoctorStaff(
 	const hospitalCondition = sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${input.hospitalId})`;
 	const baseCondition = and(
 		eq(table.staffTable.staffTypeId, 3),
-		ne(table.staffTable.statusId, StatusEnum.DELETED),
+		activeEntityStatusEq(table.staffTable.statusId),
 		hospitalCondition
 	);
 	const branchCondition =
@@ -98,9 +99,8 @@ export async function getDoctorStaffPaginated(
 			ilike(table.staffTable.phonePrimary, pattern)
 		);
 
-	const notDeletedCondition = ne(
-		table.staffTable.statusId,
-		StatusEnum.DELETED
+	const notDeletedCondition = activeEntityStatusEq(
+		table.staffTable.statusId
 	);
 	const doctorCondition = eq(table.staffTable.staffTypeId, 3);
 	const hospitalCondition = sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${params.hospitalId})`;

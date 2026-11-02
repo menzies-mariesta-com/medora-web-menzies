@@ -58,9 +58,14 @@ CREATE INDEX "room_category_id_idx" ON "room" USING btree ("room_category_id");
 ALTER TABLE "room" DROP COLUMN IF EXISTS "room_markup";
 --> statement-breakpoint
 INSERT INTO "page" ("id", "name", "module_id", "status_id", "parent_id", "page_url", "sequence_no")
-VALUES
-	(470001, 'Room Category', 1, 1, 47, '/medora/home/administration/room-master/room-category', 1),
-	(470002, 'Room', 1, 1, 47, '/medora/home/administration/room-master/room', 2)
+SELECT v."id", v."name", v."module_id", v."status_id", v."parent_id", v."page_url", v."sequence_no"
+FROM (
+	VALUES
+		(470001, 'Room Category', 1, 1, 47, '/medora/home/administration/room-master/room-category', 1),
+		(470002, 'Room', 1, 1, 47, '/medora/home/administration/room-master/room', 2)
+) AS v("id", "name", "module_id", "status_id", "parent_id", "page_url", "sequence_no")
+WHERE EXISTS (SELECT 1 FROM "module" m WHERE m."id" = 1)
+	AND EXISTS (SELECT 1 FROM "page" p WHERE p."id" = 47)
 ON CONFLICT ("id") DO UPDATE SET
 	"name" = EXCLUDED."name",
 	"parent_id" = EXCLUDED."parent_id",

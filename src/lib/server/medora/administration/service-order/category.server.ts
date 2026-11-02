@@ -9,6 +9,10 @@ import type {
 	CategorySchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import {
+	activeEntityStatusEq,
+	paginatedEntityStatusEq
+} from '$lib/server/medora/paginated-entity-status-filter.server';
 import type {
 	PaginatedResult,
 	PaginationParams
@@ -26,7 +30,7 @@ export async function getCategories(
 	return ensureDb()
 		.select()
 		.from(table.categoryTable)
-		.where(ne(table.categoryTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.categoryTable.statusId))
 		.orderBy(table.categoryTable.categoryName);
 }
 
@@ -42,9 +46,9 @@ export async function getCategoriesPaginated(
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
 
-	let whereExpr: SQL = ne(
+	let whereExpr: SQL = paginatedEntityStatusEq(
 		table.categoryTable.statusId,
-		StatusEnum.DELETED
+		params.statusId
 	);
 
 	if (params.id != null) {
@@ -59,13 +63,6 @@ export async function getCategoriesPaginated(
 		whereExpr = and(
 			whereExpr,
 			ilike(table.categoryTable.categoryName, `%${nameTerm}%`)
-		)!;
-	}
-
-	if (params.statusId != null) {
-		whereExpr = and(
-			whereExpr,
-			eq(table.categoryTable.statusId, params.statusId)
 		)!;
 	}
 

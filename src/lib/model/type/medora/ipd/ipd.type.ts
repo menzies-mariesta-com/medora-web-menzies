@@ -6,6 +6,7 @@ export type WardCategoryRow = {
 	name: string;
 	code: string | null;
 	wardMarkup: string;
+	isEr?: boolean;
 	statusId: number;
 };
 
@@ -15,6 +16,7 @@ export type RoomCategoryRow = {
 	name: string;
 	code: string | null;
 	roomMarkup: string;
+	isEr?: boolean;
 	statusId: number;
 };
 
@@ -25,6 +27,7 @@ export type WardRow = {
 	wardCategoryId: number;
 	name: string;
 	code: string | null;
+	isEr?: boolean;
 	statusId: number;
 	branchName?: string | null;
 	wardCategoryName?: string | null;
@@ -40,6 +43,7 @@ export type RoomRow = {
 	code: string | null;
 	capacity: number;
 	amenities: string | null;
+	isEr?: boolean;
 	statusId: number;
 	wardName?: string | null;
 	wardCode?: string | null;
@@ -56,6 +60,7 @@ export type BedRow = {
 	code: string | null;
 	basePrice: string;
 	bedStatus: number;
+	isEr?: boolean;
 	statusId: number;
 	roomName?: string | null;
 	roomCode?: string | null;

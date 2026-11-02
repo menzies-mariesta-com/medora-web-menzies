@@ -5,17 +5,25 @@
 	import GPrivateMedoraNavbar from '$lib/component/own/global/private/medora/GPrivateMedoraNavbar.svelte';
 	import AnimatedPageContent from '$lib/component/own/library/gsap/AnimatedPageContent.svelte';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import { isNursingChartPath } from '$lib/tool/nursing/nursing-worklist.util';
 	import {
 		setPageData,
 		getUniqueModuleData,
 		getPageData,
-		pathnameForPageMatch
+		pathnameForPageMatch,
+		getSectionIndexRedirectTarget
 	} from '$lib/state/page.state.svelte';
+	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import type { StaffWithRelations } from '$lib/model/type/medora/staff.type';
+	import { scrollMedoraSubnavActiveTabsIntoView } from '$lib/util/medora-subnav-scroll.util';
+	import { isMedoraVisitScopedPagePath } from '$lib/util/medora-visit-scoped-nav.util';
+	import { replaceState } from '$app/navigation';
+	import { browser } from '$app/environment';
 
 	let { children, data } = $props();
 
+	const routerUtil = new RouterUtil();
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 
 	// Page list comes from server: all pages for OWNER/SYSTEM_ADMIN, filtered by user group for STAFF
@@ -29,23 +37,16 @@
 	const isEmbed = $derived(
 		page.url.searchParams.get('embed') === '1'
 	);
-	const isInEmrCloneEmr = $derived(
-		pathnameForPageMatch().startsWith(
-			WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_EMR
-		) ||
-			pathnameForPageMatch().startsWith(
-				WebRoutesEnum.MEDORA_HOME_CONSULTATION_EMR
-			) ||
-			pathnameForPageMatch().startsWith(
-				WebRoutesEnum.MEDORA_HOME_CONSULTATION_CPOE
-			) ||
-			pathnameForPageMatch().startsWith(
-				WebRoutesEnum.MEDORA_HOME_MEDICATION_ORDER
-			) ||
-			pathnameForPageMatch().startsWith(
-				WebRoutesEnum.MEDORA_HOME_BILLING
-			)
-	);
+	const isInEmrCloneEmr = $derived.by(() => {
+		const logicalPath = pathnameForPageMatch();
+		return (
+			isNursingChartPath(logicalPath) ||
+			logicalPath.startsWith(WebRoutesEnum.MEDORA_HOME_CONSULTATION_EMR) ||
+			logicalPath.startsWith(WebRoutesEnum.MEDORA_HOME_CONSULTATION_CPOE) ||
+			logicalPath.startsWith(WebRoutesEnum.MEDORA_HOME_MEDICATION_ORDER) ||
+			logicalPath.startsWith(WebRoutesEnum.MEDORA_HOME_BILLING)
+		);
+	});
 	// Appointment module UX: hide the module bar navbar automatically.
 	const isInAppointmentModule = $derived(
 		pathnameForPageMatch().startsWith('/medora/home/appointment')
@@ -141,6 +142,39 @@
 			signatureImageUrl: s.staffDetail?.signatureImageUrl ?? null,
 			signatureText: s.staffDetail?.signatureText ?? null
 		};
+	});
+
+	$effect(() => {
+		page.url.pathname;
+		pathnameForPageMatch();
+		scrollMedoraSubnavActiveTabsIntoView();
+	});
+
+	/** Drop stray `?visitId=` on admin/setup routes without a full navigation (avoids racing child redirects). */
+	$effect(() => {
+		if (!browser) return;
+		const logicalPath = pathnameForPageMatch();
+		if (isMedoraVisitScopedPagePath(logicalPath)) return;
+		if (!page.url.searchParams.has('visitId')) return;
+		const next = new URL(page.url);
+		next.searchParams.delete('visitId');
+		const target = `${next.pathname}${next.search}${next.hash}`;
+		replaceState(target, page.state);
+	});
+
+	/** Section index → first sub-page (client navigations; mirrors home layout server redirect). */
+	$effect(() => {
+		if (!browser || !hospitalId) return;
+		getPageData();
+		const target = getSectionIndexRedirectTarget(hospitalId);
+		if (!target) return;
+		try {
+			const targetPath = new URL(target, page.url.origin).pathname;
+			if (page.url.pathname === targetPath) return;
+		} catch {
+			return;
+		}
+		routerUtil.replaceRoute(target);
 	});
 </script>
 

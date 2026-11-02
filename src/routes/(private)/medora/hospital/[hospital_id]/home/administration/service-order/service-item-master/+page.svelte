@@ -202,14 +202,13 @@
 			(a.subCategoryName ?? '').localeCompare(b.subCategoryName ?? '')
 		);
 
-		// Ensure current selection is valid
 		if (
+			selectedSubCategoryId &&
 			!subCategories.find(
 				(s) => String(s.id) === selectedSubCategoryId
-			) &&
-			subCategories.length > 0
+			)
 		) {
-			selectedSubCategoryId = String(subCategories[0].id);
+			selectedSubCategoryId = '';
 		}
 	}
 
@@ -377,10 +376,10 @@
 	function onCategoryChange() {
 		const available = filteredSubCategories;
 		if (
+			selectedSubCategoryId &&
 			!available.find((sc) => String(sc.id) === selectedSubCategoryId)
 		) {
-			selectedSubCategoryId =
-				available.length > 0 ? String(available[0].id) : '';
+			selectedSubCategoryId = '';
 		}
 	}
 
@@ -395,6 +394,8 @@
 		formActive = true;
 		mode = 'create';
 		editingId = null;
+		selectedCategoryId = '';
+		selectedSubCategoryId = '';
 	}
 
 	function startCreate() {
@@ -404,6 +405,9 @@
 	function startEdit(row: ServiceItemListRow) {
 		mode = 'edit';
 		editingId = row.id;
+		const sc = subCategories.find((s) => s.id === row.subCategoryId);
+		selectedCategoryId =
+			sc?.categoryId != null ? String(sc.categoryId) : '';
 		selectedSubCategoryId =
 			row.subCategoryId != null ? String(row.subCategoryId) : '';
 		formServiceName = row.serviceName ?? '';

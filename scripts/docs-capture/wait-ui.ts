@@ -233,7 +233,7 @@ export async function waitForTableSettled(
 
 		if (!stillLoading && bodyText.includes('Showing 0 of 0') && minRows > 0) {
 			throw new TableDataNotReadyError(
-				'Table finished loading but has no rows (Showing 0 of 0). Run npm run db:seed:docs-demo (includes inventory demo) or check filters/hospital.'
+				'Table finished loading but has no rows (Showing 0 of 0). Run npm run db:seed:demo:docs (includes inventory demo) or check filters/hospital.'
 			);
 		}
 

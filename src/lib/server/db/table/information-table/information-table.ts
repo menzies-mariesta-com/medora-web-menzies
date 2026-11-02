@@ -16,6 +16,7 @@ import {
 	uuid,
 	unique,
 	uniqueIndex,
+	index,
 	time,
 	varchar
 } from 'drizzle-orm/pg-core';
@@ -41,7 +42,6 @@ import {
 	categoryTable,
 	cityTable,
 	countryTable,
-	departmentTable,
 	genderTable,
 	identityTypeTable,
 	maritalStatusTable,
@@ -63,7 +63,6 @@ import {
 	visitTypeTable,
 	weekdayTable
 } from '../master-table/master-table';
-import { index } from 'drizzle-orm/pg-core';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -314,11 +313,24 @@ export const hospitalDepartmentTable = pgTable(
 		hospitalId: uuid('hospital_id')
 			.references(() => hospitalTable.id)
 			.notNull(),
-		departmentId: integer('department_id')
-			.references(() => departmentTable.id)
-			.notNull(),
+		name: varchar('name', { length: 512 }),
+		code: varchar('code', { length: 128 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
 		...timestamps
-	}
+	},
+	(table) => [
+		index('hospital_department_hospital_id_idx').on(table.hospitalId),
+		index('hospital_department_name_idx').on(table.name),
+		index('hospital_department_code_idx').on(table.code),
+		index('hospital_department_status_id_idx').on(table.statusId),
+		unique('hospital_department_hospital_code_unique').on(
+			table.hospitalId,
+			table.code
+		)
+	]
 );
 
 export const moduleTable = pgTable('module', {
@@ -381,9 +393,9 @@ export const staffDepartmentTable = pgTable('staff_department', {
 	staffId: uuid('staff_id')
 		.notNull()
 		.references(() => staffTable.id),
-	departmentId: integer('department_id')
+	hospitalDepartmentId: integer('hospital_department_id')
 		.notNull()
-		.references(() => departmentTable.id),
+		.references(() => hospitalDepartmentTable.id),
 	...junctionTimestamps
 });
 
@@ -1474,6 +1486,42 @@ export const serviceTaggingTable = pgTable('service_tagging', {
 	...timestamps
 });
 
+/**
+ * Links hospital billing setup (OP / IP / ER) to existing service_item_tagging rows
+ * for auto bill lines when a visit in that care setting is completed.
+ */
+export const billingSetupServiceTaggingTable = pgTable(
+	'billing_setup_service_tagging',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		careSetting: varchar('care_setting', { length: 8 }).notNull(),
+		serviceTaggingId: integer('service_tagging_id')
+			.notNull()
+			.references(() => serviceTaggingTable.id, {
+				onDelete: 'cascade'
+			}),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		uniqueIndex('billing_setup_hospital_care_tagging_uidx').on(
+			table.hospitalId,
+			table.careSetting,
+			table.serviceTaggingId
+		),
+		index('billing_setup_hospital_care_idx').on(
+			table.hospitalId,
+			table.careSetting
+		)
+	]
+);
+
 export const serviceOrderTable = pgTable('service_order', {
 	id: serial('id').primaryKey(),
 	branchId: uuid('branch_id')
@@ -1845,6 +1893,8 @@ export const wardCategoryTable = pgTable(
 		})
 			.notNull()
 			.default('0'),
+		/** When true, category is for Emergency (ED) master data only. */
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1880,6 +1930,7 @@ export const roomCategoryTable = pgTable(
 		})
 			.notNull()
 			.default('0'),
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1913,6 +1964,7 @@ export const wardTable = pgTable(
 			}),
 		name: varchar('name', { length: 512 }).notNull(),
 		code: varchar('code', { length: 64 }),
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1955,6 +2007,7 @@ export const roomTable = pgTable(
 		capacity: integer('capacity').notNull().default(0),
 		/** Optional amenity / privacy notes (e.g. Ensuite, Isolation). */
 		amenities: text('amenities'),
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1993,6 +2046,7 @@ export const bedTable = pgTable(
 		bedStatus: integer('bed_status')
 			.notNull()
 			.default(IpdBedStatusEnum.FREE),
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()

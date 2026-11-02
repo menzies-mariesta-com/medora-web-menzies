@@ -4,13 +4,15 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
+	import type { EmrVisitListScope } from '$lib/model/type/medora/emr/visit-list.type';
 
 	let {
 		visitId = '',
 		hospitalId,
 		onVisitSelected,
 		onVisitReset,
-		className = ''
+		className = '',
+		listScope = 'doctor' as EmrVisitListScope
 	} = $props<{
 		visitId?: string;
 		hospitalId: string | undefined;
@@ -20,6 +22,7 @@
 		}) => void;
 		onVisitReset: () => void;
 		className?: string;
+		listScope?: EmrVisitListScope;
 	}>();
 
 	const hasVisit = $derived(!!visitId);
@@ -45,6 +48,6 @@
 				</WashButton>
 			</WashTooltip>
 		{/if}
-		<LChooseVisitButton {hospitalId} {onVisitSelected} />
+		<LChooseVisitButton {hospitalId} {onVisitSelected} {listScope} />
 	</div>
 </div>

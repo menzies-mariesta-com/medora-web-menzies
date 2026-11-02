@@ -15,6 +15,10 @@
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { BedModalState } from '$lib/state/bed-modal.state.svelte';
+	import {
+		administrationBedMasterApi,
+		type AdministrationMasterScope
+	} from '$lib/tool/medora/administration-master-scope.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
@@ -32,8 +36,13 @@
 			? `/api/medora/hospital/${hospitalId}/home/administration`
 			: ''
 	);
+
+	let formIsEr = $state(false);
+	const masterScope = $derived(
+		(formIsEr ? 'er' : 'ipd') satisfies AdministrationMasterScope
+	);
 	const bedApi = $derived(
-		administrationApi ? `${administrationApi}/bed-master` : ''
+		hospitalId ? administrationBedMasterApi(hospitalId, masterScope) : ''
 	);
 
 	let wards = $state<WardRow[]>([]);
@@ -62,9 +71,9 @@
 	);
 
 	async function loadWards() {
-		if (!administrationApi) return;
+		if (!hospitalId) return;
 		const response = await fetch(
-			`${administrationApi}/ward-master?active=1`,
+			`${administrationApi}/ward-master?active=1${formIsEr ? '&scope=er' : ''}`,
 			{ credentials: 'include', cache: 'no-store' }
 		);
 		if (!response.ok) throw new Error('Failed to load wards');
@@ -72,12 +81,12 @@
 	}
 
 	async function loadRooms(wardId: number) {
-		if (!administrationApi || !wardId) {
+		if (!hospitalId || !wardId) {
 			rooms = [];
 			return;
 		}
 		const response = await fetch(
-			`${administrationApi}/room-master?active=1&wardId=${wardId}`,
+			`${administrationApi}/room-master?active=1&wardId=${wardId}${formIsEr ? '&scope=er' : ''}`,
 			{ credentials: 'include', cache: 'no-store' }
 		);
 		if (!response.ok) {
@@ -92,6 +101,10 @@
 		try {
 			await loadWards();
 			const state = BedModalState;
+			formIsEr =
+				state.mode === 'edit'
+					? Boolean(state.editBed?.isEr)
+					: state.isEr;
 			if (state.mode === 'edit' && state.editBed) {
 				formWardId = String(state.editBed.wardId ?? '');
 				formRoomId = String(state.editBed.roomId);
@@ -169,7 +182,7 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					...(isEdit ? { id: modalState.editBed?.id } : {}),
-					roomId,
+					...(formIsEr ? { erRoomId: roomId } : { roomId }),
 					name: formName.trim(),
 					code: formCode.trim() || null,
 					basePrice: formBasePrice.trim() || '0',
@@ -199,11 +212,43 @@
 			isSubmitting = false;
 		}
 	}
+	async function reloadForErScope() {
+		if (modalState.mode === 'edit') return;
+		formWardId = '';
+		formRoomId = '';
+		try {
+			await loadWards();
+		} catch (error) {
+			toastService.addToast(
+				error instanceof Error
+					? error.message
+					: 'Unable to load wards',
+				StatusColorEnum.ERROR
+			);
+		}
+	}
 </script>
 
 <form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
 	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 		<div class="flex flex-col gap-4">
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<span class="shrink-0 sm:w-36">Emergency (ED)</span>
+				<label
+					class="flex max-w-80 flex-1 cursor-pointer items-center gap-2"
+				>
+					<WashCheckbox
+						bind:checked={formIsEr}
+						disabled={isLoading || modalState.mode === 'edit'}
+						onCheckedChange={reloadForErScope}
+					/>
+					<span class="text-sm opacity-80">
+						ED bed (ED bed status board)
+					</span>
+				</label>
+			</div>
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>

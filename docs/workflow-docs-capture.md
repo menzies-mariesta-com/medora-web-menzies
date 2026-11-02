@@ -13,12 +13,12 @@ npm run dev
 **Terminal B:** seed, preflight, capture
 
 ```bash
-npm run db:seed:docs-demo
+npm run db:seed:demo:docs
 npm run docs:capture:preflight
 npm run docs:capture -- --resume
 ```
 
-If table-data errors mention inventory, re-run `npm run db:seed:docs-demo` (or `npm run db:seed:docs-demo-inventory` only) before `--resume` or `--retry-failed`.
+If table-data errors mention inventory, re-run `npm run db:seed:demo:docs` (or `npm run db:seed:demo:docs-inventory` only) before `--resume` or `--retry-failed`.
 
 ### Two-factor authentication
 
@@ -39,12 +39,12 @@ Uses `scripts/.docs-capture-2fa-backup.json`. Requires Neon/`DATABASE_URL` acces
 2. Seed demo data for that hospital:
 
 ```bash
-npm run db:seed:docs-demo
+npm run db:seed:demo:docs
 ```
 
-This runs global seed (modules, document master catalog, EMR demo services), visit-history demo, transactional demo rows, and **inventory docs demo** (GRN, department issue, consumption, report rows). Set `DOCS_DEMO_SKIP_GLOBAL=1` to skip the global `db:seed` pass. Set `DOCS_DEMO_SKIP_INVENTORY=1` to skip inventory transactional seed only.
+This runs init seed (modules, document master catalog), visit-history demo, transactional demo rows, and **inventory docs demo** (GRN, department issue, consumption, report rows). Set `DOCS_DEMO_SKIP_GLOBAL=1` to skip the `db:seed:init` pass. Set `DOCS_DEMO_SKIP_INVENTORY=1` to skip inventory transactional seed only.
 
-**WHO ICD-API:** `db:seed:docs-demo` sets `WHO_ICD_SKIP_SEED=1` automatically so seeding does not call `icdaccessmanagement.who.int` (common VPN/firewall timeouts). Workflow doc capture does not need the diagnosis catalogue. To run a full WHO import during global seed, set `WHO_ICD_SKIP_SEED=0` before running.
+**WHO ICD-API:** `db:seed:demo:docs` sets `WHO_ICD_SKIP_SEED=1` automatically so seeding does not call `icdaccessmanagement.who.int` (common VPN/firewall timeouts). Workflow doc capture does not need the diagnosis catalogue. To run a full WHO import during init information seed, set `WHO_ICD_SKIP_SEED=0` before running.
 
 3. **Dev server in a separate terminal:** `npm run dev` (port 4002). Capture waits up to 2 minutes for it to respond.
 4. `.env` includes `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `DATABASE_URL`, and optionally `DOCS_CAPTURE_HOSPITAL_ID` / `SEED_HOSPITAL_ID`.

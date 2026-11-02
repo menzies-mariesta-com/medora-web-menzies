@@ -20,7 +20,6 @@ export async function getOrCreateHospitalEdBillingConfig(hospitalId: string) {
 export async function updateHospitalEdBillingConfig(input: {
 	hospitalId: string;
 	erBedServiceItemId?: number | null;
-	erConsumableServiceItemId?: number | null;
 }) {
 	await getOrCreateHospitalEdBillingConfig(input.hospitalId);
 	const [row] = await ensureDb()
@@ -28,9 +27,6 @@ export async function updateHospitalEdBillingConfig(input: {
 		.set({
 			...(input.erBedServiceItemId !== undefined
 				? { erBedServiceItemId: input.erBedServiceItemId }
-				: {}),
-			...(input.erConsumableServiceItemId !== undefined
-				? { erConsumableServiceItemId: input.erConsumableServiceItemId }
 				: {}),
 			updatedAt: new Date().toISOString()
 		})

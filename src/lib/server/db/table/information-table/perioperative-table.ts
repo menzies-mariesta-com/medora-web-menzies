@@ -28,11 +28,13 @@ import {
 } from './information-table';
 import { itemBatchTable } from './inventory-transaction-table';
 import {
-	edTriageLevelTable,
-	erBedTable,
-	erRoomTable,
-	erWardTable
+	edTriageLevelTable
 } from './er-master-table';
+import {
+	bedTable,
+	roomTable,
+	wardTable
+} from './information-table';
 
 const perioperativeTimestamps = {
 	createdAt: timestamp('created_at', {
@@ -277,13 +279,13 @@ export const edEncounterTable = pgTable(
 		assignedDoctorId: uuid('assigned_doctor_id').references(
 			() => staffTable.id
 		),
-		erWardId: integer('er_ward_id').references(() => erWardTable.id, {
+		erWardId: integer('er_ward_id').references(() => wardTable.id, {
 			onDelete: 'set null'
 		}),
-		erRoomId: integer('er_room_id').references(() => erRoomTable.id, {
+		erRoomId: integer('er_room_id').references(() => roomTable.id, {
 			onDelete: 'set null'
 		}),
-		erBedId: integer('er_bed_id').references(() => erBedTable.id, {
+		erBedId: integer('er_bed_id').references(() => bedTable.id, {
 			onDelete: 'set null'
 		}),
 		erBedAssignedAt: timestamp('er_bed_assigned_at', {

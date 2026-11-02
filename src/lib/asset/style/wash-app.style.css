@@ -143,6 +143,63 @@ details.dropdown:not([open]) > .dropdown-content {
 	);
 }
 
+/*
+ * Sub-page tab strips (schedule master, staff, EMR, nursing chart, etc.):
+ * one row + horizontal scroll instead of wrapping to two rows.
+ * Layout +layout.svelte files set flex-wrap: wrap; !important keeps a single row.
+ */
+:where(
+	.staff-subnav-tabs,
+	.emr-subnav-tabs,
+	.nursing-chart-tabs,
+	.billing-subnav-tabs,
+	.patient-subnav-tabs,
+	.adt-subnav-tabs,
+	.ed-subnav-tabs
+) {
+	flex-wrap: nowrap !important;
+	overflow-x: auto;
+	overflow-y: hidden;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: thin;
+	max-width: 100%;
+	min-width: 0;
+	/* Room for active tab underline (was clipped by overflow-y). */
+	padding-bottom: 2px;
+	scroll-padding-inline: 1rem;
+}
+
+:where(
+	.staff-subnav-tab,
+	.emr-subnav-tab,
+	.nursing-chart-tab,
+	.billing-subnav-tab,
+	.patient-subnav-tab,
+	.adt-subnav-tab,
+	.ed-subnav-tab
+) {
+	flex-shrink: 0;
+	white-space: nowrap;
+	/* Layout uses margin-bottom: -1px to overlap the strip border; that gets
+	   clipped by overflow-x scroll — draw the active line inside the tab instead. */
+	margin-bottom: 0 !important;
+}
+
+/* Same look as layout `.active` underline, but inset so horizontal scroll cannot clip it. */
+:where(
+	.staff-subnav-tab.active,
+	.emr-subnav-tab.active,
+	.nursing-chart-tab.active,
+	.billing-subnav-tab.active,
+	.patient-subnav-tab.active,
+	.adt-subnav-tab.active,
+	.ed-subnav-tab.active
+) {
+	opacity: 1 !important;
+	font-weight: 600;
+	border-bottom-color: transparent !important;
+	box-shadow: inset 0 -2px 0 0 var(--color-primary, #570df8);
+}
 
 /*
  * MenziesTable card chrome header: title left, refresh/add/headerActions right.
@@ -258,6 +315,17 @@ details.dropdown:not([open]) > .dropdown-content {
 .menzies-table-icon-action-tip[data-tone='error'] {
 	--menzies-tip-bg: var(--color-error);
 	--menzies-tip-fg: var(--color-error-content);
+}
+
+/* Doctor schedule card (WashTable): tips open left so they are not clipped. */
+.doctor-schedule-list-table .menzies-table-actions-col {
+	position: relative;
+	overflow: visible;
+	vertical-align: middle;
+}
+.doctor-schedule-list-table .menzies-table-icon-action-tip__label {
+	left: auto;
+	right: calc(100% + 0.4rem);
 }
 
 /*

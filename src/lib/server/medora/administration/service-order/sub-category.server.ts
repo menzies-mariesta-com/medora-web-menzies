@@ -17,6 +17,10 @@ import type {
 	SubCategorySchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import {
+	activeEntityStatusEq,
+	paginatedEntityStatusEq
+} from '$lib/server/medora/paginated-entity-status-filter.server';
 import type {
 	PaginatedResult,
 	PaginationParams
@@ -35,9 +39,8 @@ export async function getSubCategories(
 	}
 ): Promise<SubCategorySchema[]> {
 	ensureAuthed(event);
-	let whereExpr: SQL = ne(
-		table.subCategoryTable.statusId,
-		StatusEnum.DELETED
+	let whereExpr: SQL = activeEntityStatusEq(
+		table.subCategoryTable.statusId
 	);
 
 	if (params?.categoryId != null) {
@@ -76,9 +79,9 @@ export async function getSubCategoriesPaginated(
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
 
-	let whereExpr: SQL = ne(
+	let whereExpr: SQL = paginatedEntityStatusEq(
 		table.subCategoryTable.statusId,
-		StatusEnum.DELETED
+		params.statusId
 	);
 
 	if (params.categoryId != null) {
@@ -110,13 +113,6 @@ export async function getSubCategoriesPaginated(
 		whereExpr = and(
 			whereExpr,
 			ilike(table.subCategoryTable.subCategoryName, `%${nameTerm}%`)
-		)!;
-	}
-
-	if (params.statusId != null) {
-		whereExpr = and(
-			whereExpr,
-			eq(table.subCategoryTable.statusId, params.statusId)
 		)!;
 	}
 

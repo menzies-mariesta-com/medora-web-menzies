@@ -4,6 +4,9 @@ import type {
 	MedoraPageRow,
 	PageWithRelations
 } from '$lib/model/type/medora/page.type';
+import {
+	medoraHospitalPageUrl,
+} from '$lib/model/enum/routes.enum';
 
 export type PageTreeItem = MedoraPageRow & { children: PageTreeItem[] };
 
@@ -131,4 +134,20 @@ function getSubPagesForParentId(parentId: number): MedoraPageRow[] {
 	return getPageData()
 		.filter((p) => p.parentId === parentId)
 		.sort((a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0));
+}
+
+/**
+ * Hospital URL for the first sub-page when the current route is a section index
+ * (same rules as {@link medoraSectionIndexRedirectTarget} on the server).
+ */
+export function getSectionIndexRedirectTarget(
+	hospitalId: string
+): string | null {
+	if (!hospitalId) return null;
+	const logicalPath = pathnameForPageMatch();
+	if (normPath(logicalPath) === normPath('/medora/home')) return null;
+	const subs = getSubPagesForPageUrl(logicalPath);
+	const first = subs[0];
+	if (!first?.pageUrl) return null;
+	return medoraHospitalPageUrl(hospitalId, first.pageUrl);
 }

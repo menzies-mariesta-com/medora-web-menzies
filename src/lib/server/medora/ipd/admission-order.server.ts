@@ -207,15 +207,12 @@ export async function listAdmissionOrdersPaginated(
 	if (typeof params.id === 'number') {
 		conditions.push(eq(table.ipdAdmissionOrderTable.id, params.id));
 	}
-	if (
-		typeof params.sourceOpdVisitId === 'number' &&
-		Boolean(params.sourceOpdVisitId) &&
-		params.sourceOpdVisitId > 0
-	) {
+	const sourceOpdVisitId = params.sourceOpdVisitId?.trim();
+	if (sourceOpdVisitId) {
 		conditions.push(
 			eq(
 				table.ipdAdmissionOrderTable.sourceOpdVisitId,
-				params.sourceOpdVisitId
+				sourceOpdVisitId
 			)
 		);
 	}

@@ -6,6 +6,7 @@ import type {
 	UnitSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { paginatedEntityStatusEq, activeEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import type { UnitMasterListRow } from '$lib/model/type/medora/ui-rows.type';
 import {
 	normalizePagination,
@@ -28,7 +29,7 @@ export async function listUnitTypesForUnitMaster() {
 	return ensureDb()
 		.select()
 		.from(table.unitTypeTable)
-		.where(ne(table.unitTypeTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.unitTypeTable.statusId))
 		.orderBy(asc(table.unitTypeTable.name));
 }
 
@@ -41,7 +42,7 @@ export async function getUnitsPaginated(
 ): Promise<PaginatedResult<UnitMasterListRow>> {
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
-	const notDeleted = ne(table.unitTable.statusId, StatusEnum.DELETED);
+	const notDeleted = paginatedEntityStatusEq(table.unitTable.statusId, params?.statusId);
 	const parts = [notDeleted];
 	const search = params?.search?.trim();
 	if (search && search.length > 0) {
@@ -50,9 +51,6 @@ export async function getUnitsPaginated(
 	const ut = params?.unitTypeId;
 	if (ut != null && Number.isFinite(ut)) {
 		parts.push(eq(table.unitTable.unitTypeId, ut));
-	}
-	if (typeof params?.statusId === 'number') {
-		parts.push(eq(table.unitTable.statusId, params.statusId));
 	}
 	const whereClause = and(...parts);
 
