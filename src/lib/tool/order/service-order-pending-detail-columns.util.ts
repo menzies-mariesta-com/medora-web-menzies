@@ -62,20 +62,20 @@ export function serviceOrderLineItemColumns<
 			format: (_value, row) => row.serviceName || '–'
 		},
 		{
-			id: 'categoryName',
-			header: 'Category',
-			widthClass: 'w-40',
-			filterable: false,
-			format: (_value, row) =>
-				row.categoryName?.trim() ? row.categoryName : '–'
-		},
-		{
 			id: 'subCategoryName',
 			header: 'Sub category',
 			widthClass: 'w-48',
 			filterable: false,
 			format: (_value, row) =>
 				row.subCategoryName?.trim() ? row.subCategoryName : '–'
+		},
+		{
+			id: 'categoryName',
+			header: 'Category',
+			widthClass: 'w-40',
+			filterable: false,
+			format: (_value, row) =>
+				row.categoryName?.trim() ? row.categoryName : '–'
 		},
 		{
 			id: 'instruction',

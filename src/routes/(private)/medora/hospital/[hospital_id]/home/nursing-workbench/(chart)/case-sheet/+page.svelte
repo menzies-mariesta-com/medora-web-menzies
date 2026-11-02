@@ -5,8 +5,8 @@
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideSave from '$lib/component/own/library/lucide/LucideSave.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import { StatusEnum } from '$lib/model/enum/db-link';
 	import type { CaseSheetGetResponse } from '$lib/model/type/medora/case-sheet.type';
+	import type { DocumentMasterPrintBootstrap } from '$lib/model/type/medora/document-print.type';
 	import type {
 		PatientDiagnosisListRow,
 		ServiceOrderDetailListRow
@@ -14,13 +14,12 @@
 	import { m } from '$lib/paraglide/messages';
 	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import { buildCaseSheetPrintBodyHtml } from '$lib/util/case-sheet-print-body.util';
+	import type { CaseSheetPrintFormatters } from '$lib/util/case-sheet-print-body.util';
+	import type { CaseSheetPrintLabels } from '$lib/util/case-sheet-print-body.util';
 	import {
-		buildCaseSheetOrderFields,
-		buildCaseSheetVitalFields,
-		type CaseSheetOrderFieldLabels,
-		type CaseSheetVitalFieldLabels
-	} from '$lib/util/case-sheet-record-fields.util';
+		buildCaseSheetBodyHtmlFromData,
+		buildCaseSheetDocumentMasterPrintOptions
+	} from '$lib/util/case-sheet-document-preview.util';
 	import {
 		buildPrintHtmlFromDocumentMasterBootstrap,
 		fetchDocumentPrintBootstrap,
@@ -33,10 +32,7 @@
 	} from '$lib/util/html-to-pdf.util';
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import { StringUtil } from '$lib/util/string.util.svelte';
 
-	// Refactor note: this page now fetches via mirrored `/api/medora/hospital/.../case-sheet`.
-	// Keep lightweight local types to avoid importing removed remote tool layers.
 	type PatientVisitWithRelations = any;
 	type PatientAllergyWithRelations = any;
 	type DiagnosisWithType = any;
@@ -46,6 +42,7 @@
 		orderNo: string | null;
 		serviceName: string | null;
 		subCategoryName?: string | null;
+		categoryName?: string | null;
 	};
 
 	const visitIdStr = $derived(
@@ -70,6 +67,9 @@
 	let patientConditionEntries = $state<
 		PatientFormEntryWithRelations[]
 	>([]);
+
+	let printBootstrap = $state<DocumentMasterPrintBootstrap | null>(null);
+	let printTemplateReady = $state(false);
 
 	let isLoading = $state(false);
 	let isPrinting = $state(false);
@@ -120,96 +120,132 @@
 		return String(value);
 	}
 
-	function vitalStatusLabel(row: PatientDiagnosisListRow): string {
-		return row.statusId === StatusEnum.ACTIVE
-			? m.nursing_case_sheet_status_active()
-			: row.statusId === StatusEnum.INACTIVE
-				? m.nursing_case_sheet_status_inactive()
-				: `${m.observation_emr_status()} ${row.statusId ?? '–'}`;
+	function caseSheetContentLabels(): CaseSheetPrintLabels {
+		return {
+			chiefComplaint: m.observation_emr_chief_complaint(),
+			patientCondition: m.observation_emr_patient_condition(),
+			diagnosis: m.observation_emr_diagnosis(),
+			diagnosisEmpty: m.observation_emr_diagnosis_empty(),
+			diagnosisTypeLabel: m.observation_emr_diagnosis_type_label(),
+			allergies: m.observation_emr_allergies(),
+			allergyEmpty: m.observation_emr_allergy_empty(),
+			allergySeverity: m.nursing_case_sheet_allergy_severity(),
+			allergyReaction: m.nursing_case_sheet_allergy_reaction(),
+			vitals: m.observation_emr_vitals(),
+			orderHistory: m.observation_emr_order_history(),
+			service: m.observation_emr_service(),
+			serviceAmount: m.observation_emr_service_amount(),
+			units: m.observation_emr_units(),
+			urgent: m.observation_emr_urgent(),
+			noEntries: m.nursing_case_sheet_no_entries(),
+			yes: m.nursing_case_sheet_yes(),
+			no: m.nursing_case_sheet_no(),
+			vitalColDate: m.nursing_case_sheet_col_date(),
+			vitalColHeight: m.nursing_case_sheet_col_height_cm(),
+			vitalColWeight: m.nursing_case_sheet_col_weight_kg(),
+			vitalColBmi: m.nursing_case_sheet_col_bmi(),
+			vitalColBp: m.nursing_case_sheet_col_bp(),
+			vitalColPulse: m.nursing_case_sheet_col_pulse(),
+			vitalColTemp: m.nursing_case_sheet_col_temp(),
+			vitalColSpo2: m.nursing_case_sheet_col_spo2(),
+			vitalColSymptom: m.nursing_case_sheet_col_symptom(),
+			vitalColRespiration: m.nursing_case_sheet_col_respiration(),
+			vitalColRbs: m.nursing_case_sheet_col_rbs(),
+			vitalColDescription: m.nursing_case_sheet_col_description(),
+			vitalColRemark: m.remark(),
+			orderColOrderNo: m.nursing_case_sheet_col_order_no(),
+			orderColService: m.observation_emr_service(),
+			orderColSubCategory: m.service_item_sub_category_label(),
+			orderColCategory: m.service_item_category_label(),
+			orderColDescription: m.observation_emr_instruction(),
+			orderColTaxAmount: m.observation_emr_tax_amount(),
+			orderColDiscount: m.op_billing_print_discount(),
+			orderColNursingComplete: m.nursing_case_sheet_col_nursing_complete(),
+			generatedFooter: m.nursing_case_sheet_generated()
+		};
 	}
 
-	function allergyStatusLabel(
-		row: PatientAllergyWithRelations
-	): string {
-		return row.statusId === StatusEnum.ACTIVE
-			? m.nursing_case_sheet_status_active()
-			: row.statusId === StatusEnum.INACTIVE
-				? m.nursing_case_sheet_status_inactive()
-				: `${m.observation_emr_status()} ${row.statusId ?? '–'}`;
-	}
-
-	function orderLineStatusLabel(row: OrderDetailVisitRow): string {
-		return row.statusId === StatusEnum.ACTIVE
-			? m.nursing_case_sheet_status_active()
-			: row.statusId === StatusEnum.INACTIVE
-				? m.nursing_case_sheet_status_inactive()
-				: '–';
-	}
-
-	const patientDisplayName = $derived(
-		visitRow?.patient
-			? StringUtil.patientDisplayName(visitRow.patient)
-			: '–'
-	);
-
-	const vitalFieldLabels = $derived({
-		date: m.nursing_case_sheet_col_date(),
-		height: m.nursing_case_sheet_col_height_cm(),
-		weight: m.nursing_case_sheet_col_weight_kg(),
-		bmi: m.nursing_case_sheet_col_bmi(),
-		bp: m.nursing_case_sheet_col_bp(),
-		pulse: m.nursing_case_sheet_col_pulse(),
-		temp: m.nursing_case_sheet_col_temp(),
-		spo2: m.nursing_case_sheet_col_spo2(),
-		respiration: m.nursing_case_sheet_col_respiration(),
-		rbs: m.nursing_case_sheet_col_rbs(),
-		symptom: m.nursing_case_sheet_col_symptom(),
-		description: m.nursing_case_sheet_col_description(),
-		remark: m.remark(),
-		status: m.observation_emr_status()
-	} satisfies CaseSheetVitalFieldLabels);
-
-	const orderFieldLabels = $derived({
-		orderNo: m.nursing_case_sheet_col_order_no(),
-		service: m.observation_emr_service(),
-		subCategory: m.service_item_sub_category_label(),
-		instruction: m.observation_emr_instruction(),
-		serviceAmount: m.observation_emr_service_amount(),
-		taxAmount: m.observation_emr_tax_amount(),
-		discount: m.op_billing_print_discount(),
-		units: m.observation_emr_units(),
-		urgent: m.observation_emr_urgent(),
-		yes: m.nursing_case_sheet_yes(),
-		no: m.nursing_case_sheet_no(),
-		nursingComplete: m.nursing_case_sheet_col_nursing_complete(),
-		status: m.observation_emr_status()
-	} satisfies CaseSheetOrderFieldLabels);
-
-	function vitalRecordFields(row: PatientDiagnosisListRow) {
-		return buildCaseSheetVitalFields(row, vitalFieldLabels, {
+	function caseSheetFormatters(): CaseSheetPrintFormatters {
+		return {
 			formatText,
 			formatDateTime,
 			formatVital,
 			formatNumberDisplay,
-			getVitalDisplayDate,
-			statusLabel: vitalStatusLabel
-		});
+			getVitalDisplayDate
+		};
 	}
 
-	function orderRecordFields(row: OrderDetailVisitRow) {
-		return buildCaseSheetOrderFields(row, orderFieldLabels, {
-			formatText,
-			formatDateTime,
-			formatNumberDisplay,
-			statusLabel: orderLineStatusLabel
-		});
+	function caseSheetMasterLabelPlaceholders() {
+		return {
+			title: m.nursing_case_sheet_title(),
+			visitNo: m.visit_history_visit_label_visit_no(),
+			patient: m.visit_history_visit_label_patient(),
+			patientCode: m.visit_history_visit_label_patient_code(),
+			visitDate: m.visit_history_visit_label_visit_date(),
+			doctor: m.visit_history_visit_label_doctor(),
+			generated: m.nursing_case_sheet_generated()
+		};
 	}
 
-	function orderRecordTitle(row: OrderDetailVisitRow): string {
-		const service =
-			row.serviceName?.trim() ||
-			(row.serviceId != null ? `Service ${row.serviceId}` : '–');
-		return `${formatText(row.orderNo)} · ${service}`;
+	function buildCaseSheetPrintOpts() {
+		const bodyHtml = buildCaseSheetBodyHtmlFromData(
+			caseSheetContentLabels(),
+			caseSheetFormatters(),
+			{
+				chiefComplaintEntries,
+				patientConditionEntries,
+				visitDiagnoses,
+				allergies,
+				vitals,
+				orderLines
+			}
+		);
+
+		return {
+			...buildCaseSheetDocumentMasterPrintOptions({
+				visit: visitRow,
+				printBy: printByName,
+				bodyHtml,
+				labels: caseSheetMasterLabelPlaceholders()
+			}),
+			iframeId: 'case-sheet-print-iframe'
+		};
+	}
+
+	const caseSheetPreviewHtml = $derived.by(() => {
+		if (!printTemplateReady || !printBootstrap?.document?.documentText) {
+			return '';
+		}
+		if (!visitRow) return '';
+		try {
+			return buildPrintHtmlFromDocumentMasterBootstrap(
+				printBootstrap,
+				buildCaseSheetPrintOpts(),
+				'browser'
+			);
+		} catch (err) {
+			console.error('Case sheet preview HTML failed', err);
+			return '';
+		}
+	});
+
+	async function ensurePrintBootstrap(): Promise<DocumentMasterPrintBootstrap | null> {
+		if (printBootstrap?.document?.documentText) return printBootstrap;
+		if (!hospitalId) return null;
+		try {
+			const bootstrap = await fetchDocumentPrintBootstrap(
+				hospitalId,
+				DOCUMENT_PRINT_CODE.CASE_SHEET
+			);
+			printBootstrap = bootstrap;
+			printTemplateReady = Boolean(bootstrap.document?.documentText);
+			return bootstrap.document?.documentText ? bootstrap : null;
+		} catch (err) {
+			console.error('Case sheet template load failed', err);
+			printBootstrap = null;
+			printTemplateReady = false;
+			return null;
+		}
 	}
 
 	async function loadCaseSheet() {
@@ -270,6 +306,11 @@
 	}
 
 	$effect(() => {
+		if (!mounted || !hospitalId) return;
+		void ensurePrintBootstrap();
+	});
+
+	$effect(() => {
 		if (!mounted) return;
 		const id = visitId;
 		if (!id) {
@@ -285,97 +326,6 @@
 		void loadCaseSheet();
 	});
 
-	function printCaseSheetLabels() {
-		return {
-			chiefComplaint: m.observation_emr_chief_complaint(),
-			patientCondition: m.observation_emr_patient_condition(),
-			diagnosis: m.observation_emr_diagnosis(),
-			diagnosisEmpty: m.observation_emr_diagnosis_empty(),
-			diagnosisTypeLabel: m.observation_emr_diagnosis_type_label(),
-			allergies: m.observation_emr_allergies(),
-			allergyEmpty: m.observation_emr_allergy_empty(),
-			allergySeverity: m.nursing_case_sheet_allergy_severity(),
-			allergyReaction: m.nursing_case_sheet_allergy_reaction(),
-			vitals: m.observation_emr_vitals(),
-			orderHistory: m.observation_emr_order_history(),
-			service: m.observation_emr_service(),
-			serviceAmount: m.observation_emr_service_amount(),
-			units: m.observation_emr_units(),
-			urgent: m.observation_emr_urgent(),
-			noEntries: m.nursing_case_sheet_no_entries(),
-			yes: m.nursing_case_sheet_yes(),
-			no: m.nursing_case_sheet_no(),
-			vitalColDate: m.nursing_case_sheet_col_date(),
-			vitalColHeight: m.nursing_case_sheet_col_height_cm(),
-			vitalColWeight: m.nursing_case_sheet_col_weight_kg(),
-			vitalColBmi: m.nursing_case_sheet_col_bmi(),
-			vitalColBp: m.nursing_case_sheet_col_bp(),
-			vitalColPulse: m.nursing_case_sheet_col_pulse(),
-			vitalColTemp: m.nursing_case_sheet_col_temp(),
-			vitalColSpo2: m.nursing_case_sheet_col_spo2(),
-			vitalColSymptom: m.nursing_case_sheet_col_symptom(),
-			vitalColRespiration: m.nursing_case_sheet_col_respiration(),
-			vitalColRbs: m.nursing_case_sheet_col_rbs(),
-			vitalColDescription: m.nursing_case_sheet_col_description(),
-			vitalColRemark: m.remark(),
-			vitalColStatus: m.observation_emr_status(),
-			orderColOrderNo: m.nursing_case_sheet_col_order_no(),
-			orderColDescription: m.observation_emr_instruction(),
-			orderColSubCategory: m.service_item_sub_category_label(),
-			orderColTaxAmount: m.observation_emr_tax_amount(),
-			orderColDiscount: m.op_billing_print_discount(),
-			orderColNursingComplete: m.nursing_case_sheet_col_nursing_complete(),
-			orderColStatus: m.observation_emr_status()
-		};
-	}
-
-	function buildCaseSheetPrintOpts() {
-		const bodyHtml = buildCaseSheetPrintBodyHtml({
-			labels: printCaseSheetLabels(),
-			formatters: {
-				formatText,
-				formatDateTime,
-				formatVital,
-				formatNumberDisplay,
-				getVitalDisplayDate,
-				vitalStatusLabel,
-				orderStatusLabel: orderLineStatusLabel
-			},
-			chiefComplaintEntries,
-			patientConditionEntries,
-			visitDiagnoses,
-			allergies,
-			vitals,
-			orderLines
-		});
-
-		const printedAt = new Date().toLocaleString('en-US', {
-			dateStyle: 'short',
-			timeStyle: 'short'
-		});
-
-		return {
-			visit: visitRow,
-			printBy: printByName,
-			extraPlaceholders: {
-				'{{print.body_html}}': bodyHtml,
-				'{{print.datetime}}': printedAt,
-				'{{print.label_title}}': m.nursing_case_sheet_title(),
-				'{{print.label_visit_no}}':
-					m.visit_history_visit_label_visit_no(),
-				'{{print.label_patient}}':
-					m.visit_history_visit_label_patient(),
-				'{{print.label_patient_code}}':
-					m.visit_history_visit_label_patient_code(),
-				'{{print.label_visit_date}}':
-					m.visit_history_visit_label_visit_date(),
-				'{{print.label_doctor}}': m.visit_history_visit_label_doctor(),
-				'{{print.label_generated}}': m.nursing_case_sheet_generated()
-			},
-			iframeId: 'case-sheet-print-iframe'
-		};
-	}
-
 	async function printCaseSheet() {
 		if (!visitId || !visitRow || !hospitalId) {
 			toastService.addToast(
@@ -387,11 +337,8 @@
 
 		isPrinting = true;
 		try {
-			const bootstrap = await fetchDocumentPrintBootstrap(
-				hospitalId,
-				DOCUMENT_PRINT_CODE.CASE_SHEET
-			);
-			if (!bootstrap.document?.documentText) {
+			const bootstrap = await ensurePrintBootstrap();
+			if (!bootstrap?.document?.documentText) {
 				toastService.addToast(
 					'Failed to prepare case sheet print. Run DB seed or configure CASE_SHEET_PRINT in Document Master.',
 					StatusColorEnum.ERROR
@@ -434,11 +381,8 @@
 
 		isSaving = true;
 		try {
-			const bootstrap = await fetchDocumentPrintBootstrap(
-				hospitalId,
-				DOCUMENT_PRINT_CODE.CASE_SHEET
-			);
-			if (!bootstrap.document?.documentText) {
+			const bootstrap = await ensurePrintBootstrap();
+			if (!bootstrap?.document?.documentText) {
 				toastService.addToast(
 					'Failed to prepare case sheet. Run DB seed or configure CASE_SHEET_PRINT in Document Master.',
 					StatusColorEnum.ERROR
@@ -510,369 +454,83 @@
 			</div>
 		{/if}
 		{#if visitRow}
-			<article class="case-sheet-document">
-				<header class="case-sheet-header">
-					<div
-						class="case-sheet-title-row flex items-center justify-between gap-2"
-					>
-						<h2 class="case-sheet-doc-title">
-							{m.nursing_case_sheet_title()}
-						</h2>
-						<div class="no-print flex shrink-0 items-center gap-1">
-							<div
-								class="tooltip tooltip-primary"
-								data-tip={m.save()}
-							>
-								<button
-									type="button"
-									class="btn btn-ghost btn-square btn-primary"
-									class:cursor-pointer={!isSaving && !isPrinting}
-									class:cursor-not-allowed={isSaving || isPrinting}
-									class:loading={isSaving}
-									disabled={isSaving || isPrinting}
-									aria-busy={isSaving}
-									aria-label={m.save()}
-									onclick={saveCaseSheet}
-								>
-									<LucideSave className="size-4" />
-								</button>
-							</div>
-							<div
-								class="tooltip tooltip-secondary"
-								data-tip={m.nursing_case_sheet_print()}
-							>
-								<button
-									type="button"
-									class="btn btn-ghost btn-square btn-secondary"
-									class:cursor-pointer={!isSaving && !isPrinting}
-									class:cursor-not-allowed={isSaving || isPrinting}
-									class:loading={isPrinting}
-									disabled={isSaving || isPrinting}
-									aria-busy={isPrinting}
-									aria-label={m.nursing_case_sheet_print()}
-									onclick={printCaseSheet}
-								>
-									<LucidePrinter className="size-4" />
-								</button>
-							</div>
-						</div>
+			<div
+				class="no-print mb-3 flex flex-wrap items-center justify-between gap-2"
+			>
+				<h2 class="text-lg font-semibold">
+					{m.nursing_case_sheet_title()}
+				</h2>
+				<div class="flex shrink-0 items-center gap-1">
+					<div class="tooltip tooltip-primary" data-tip={m.save()}>
+						<button
+							type="button"
+							class="btn btn-ghost btn-square btn-primary"
+							class:cursor-pointer={!isSaving && !isPrinting}
+							class:cursor-not-allowed={isSaving || isPrinting}
+							class:loading={isSaving}
+							disabled={isSaving || isPrinting}
+							aria-busy={isSaving}
+							aria-label={m.save()}
+							onclick={saveCaseSheet}
+						>
+							<LucideSave className="size-4" />
+						</button>
 					</div>
-					<dl class="case-sheet-meta">
-						<div>
-							<dt>{m.visit_history_visit_label_visit_no()}</dt>
-							<dd>{formatText(visitRow.visitNo)}</dd>
-						</div>
-						<div>
-							<dt>{m.visit_history_visit_label_patient()}</dt>
-							<dd>{patientDisplayName}</dd>
-						</div>
-						{#if visitRow.patient?.code}
-							<div>
-								<dt>{m.visit_history_visit_label_patient_code()}</dt>
-								<dd>{visitRow.patient.code}</dd>
-							</div>
-						{/if}
-						<div>
-							<dt>{m.visit_history_visit_label_visit_date()}</dt>
-							<dd>{formatDateTime(visitRow.createdAt ?? null)}</dd>
-						</div>
-					</dl>
-				</header>
+					<div
+						class="tooltip tooltip-secondary"
+						data-tip={m.nursing_case_sheet_print()}
+					>
+						<button
+							type="button"
+							class="btn btn-ghost btn-square btn-secondary"
+							class:cursor-pointer={!isSaving && !isPrinting}
+							class:cursor-not-allowed={isSaving || isPrinting}
+							class:loading={isPrinting}
+							disabled={isSaving || isPrinting}
+							aria-busy={isPrinting}
+							aria-label={m.nursing_case_sheet_print()}
+							onclick={printCaseSheet}
+						>
+							<LucidePrinter className="size-4" />
+						</button>
+					</div>
+				</div>
+			</div>
 
-				<section class="case-sheet-section">
-					<h3>{m.observation_emr_chief_complaint()}</h3>
-					{#if chiefComplaintEntries.length === 0}
-						<p class="case-sheet-empty">
-							{m.nursing_case_sheet_no_entries()}
-						</p>
-					{:else}
-						<ol class="case-sheet-list">
-							{#each chiefComplaintEntries as row (row.id)}
-								<li>
-									<div>{formatText(row.description)}</div>
-								</li>
-							{/each}
-						</ol>
-					{/if}
-				</section>
-
-				<section class="case-sheet-section">
-					<h3>{m.observation_emr_patient_condition()}</h3>
-					{#if patientConditionEntries.length === 0}
-						<p class="case-sheet-empty">
-							{m.nursing_case_sheet_no_entries()}
-						</p>
-					{:else}
-						<ol class="case-sheet-list">
-							{#each patientConditionEntries as row (row.id)}
-								<li>
-									<div>{formatText(row.description)}</div>
-								</li>
-							{/each}
-						</ol>
-					{/if}
-				</section>
-
-				<section class="case-sheet-section">
-					<h3>{m.observation_emr_diagnosis()}</h3>
-					{#if visitDiagnoses.length === 0}
-						<p class="case-sheet-empty">
-							{m.observation_emr_diagnosis_empty()}
-						</p>
-					{:else}
-						<ol class="case-sheet-list">
-							{#each visitDiagnoses as row (row.id)}
-								<li>
-									<div>
-										{formatText(row.description)}
-										{#if row.diagnosisType?.name}
-											<span class="case-sheet-muted">
-												({m.observation_emr_diagnosis_type_label()}: {row
-													.diagnosisType.name})
-											</span>
-										{/if}
-									</div>
-								</li>
-							{/each}
-						</ol>
-					{/if}
-				</section>
-
-				<section class="case-sheet-section">
-					<h3>{m.observation_emr_allergies()}</h3>
-					{#if allergies.length === 0}
-						<p class="case-sheet-empty">
-							{m.observation_emr_allergy_empty()}
-						</p>
-					{:else}
-						<ol class="case-sheet-list">
-							{#each allergies as row (row.id)}
-								<li>
-									<div>
-										<strong
-											>{formatText(row.allergy?.name ?? null)}</strong
-										>
-										{m.nursing_case_sheet_allergy_severity()}:
-										{formatText(row.severity?.name ?? null)};
-										{m.nursing_case_sheet_allergy_reaction()}:
-										{formatText(row.reaction)}
-									</div>
-								</li>
-							{/each}
-						</ol>
-					{/if}
-				</section>
-
-				<section class="case-sheet-section">
-					<h3>{m.observation_emr_vitals()}</h3>
-					{#if vitals.length === 0}
-						<p class="case-sheet-empty">
-							{m.nursing_case_sheet_no_entries()}
-						</p>
-					{:else}
-						<ol class="case-sheet-records">
-							{#each vitals as row (row.id)}
-								<li class="case-sheet-record">
-									<p class="case-sheet-record-title">
-										{formatDateTime(getVitalDisplayDate(row))}
-									</p>
-									<dl class="case-sheet-record-dl">
-										{#each vitalRecordFields(row) as field (field.label)}
-											<div>
-												<dt>{field.label}</dt>
-												<dd>{field.value}</dd>
-											</div>
-										{/each}
-									</dl>
-								</li>
-							{/each}
-						</ol>
-					{/if}
-				</section>
-
-				<section class="case-sheet-section">
-					<h3>{m.observation_emr_order_history()}</h3>
-					{#if orderLines.length === 0}
-						<p class="case-sheet-empty">
-							{m.nursing_case_sheet_no_entries()}
-						</p>
-					{:else}
-						<ol class="case-sheet-records">
-							{#each orderLines as row (row.id)}
-								<li class="case-sheet-record">
-									<p class="case-sheet-record-title">
-										{orderRecordTitle(row)}
-									</p>
-									<dl class="case-sheet-record-dl">
-										{#each orderRecordFields(row) as field (field.label)}
-											<div>
-												<dt>{field.label}</dt>
-												<dd>{field.value}</dd>
-											</div>
-										{/each}
-									</dl>
-								</li>
-							{/each}
-						</ol>
-					{/if}
-				</section>
-
-				<footer class="case-sheet-footer">
-					{m.nursing_case_sheet_generated()}:
-					{new Date().toLocaleString('en-US', {
-						dateStyle: 'short',
-						timeStyle: 'short'
-					})}
-				</footer>
-			</article>
+			{#if !printTemplateReady}
+				<WashAlert
+					type={StatusColorEnum.ERROR}
+					message="Failed to prepare case sheet print. Run DB seed or configure CASE_SHEET_PRINT in Document Master."
+					className="z-0"
+				/>
+			{:else if !caseSheetPreviewHtml}
+				<div
+					class="flex min-h-[50vh] items-center justify-center text-sm text-base-content/60"
+					role="status"
+				>
+					<span class="loading loading-spinner loading-md"></span>
+				</div>
+			{:else}
+				<!-- Identical HTML to print dialog / saved PDF (Document Master + print shell) -->
+				<iframe
+					class="case-sheet-print-preview"
+					title={m.nursing_case_sheet_title()}
+					srcdoc={caseSheetPreviewHtml}
+				></iframe>
+			{/if}
 		{/if}
 	{/if}
 </div>
 
 <style>
-	.case-sheet-document {
-		max-width: 64rem;
+	.case-sheet-print-preview {
+		display: block;
+		width: 100%;
+		max-width: 210mm;
+		min-height: 75vh;
 		margin: 0 auto;
-		padding: 1.75rem 1.5rem 2rem;
-		background: var(--fallback-b1, oklch(var(--b1)));
-		color: var(--fallback-bc, oklch(var(--bc)));
-		border: 1px solid
-			color-mix(in oklab, currentColor 12%, transparent);
+		border: 1px solid color-mix(in oklab, currentColor 18%, transparent);
 		border-radius: 0.25rem;
-		font-family: 'Georgia', 'Times New Roman', serif;
-		font-size: 0.95rem;
-		line-height: 1.5;
-	}
-
-	.case-sheet-header {
-		margin-bottom: 1.5rem;
-		padding-bottom: 1rem;
-		border-bottom: 2px solid
-			color-mix(in oklab, currentColor 18%, transparent);
-	}
-
-	.case-sheet-title-row {
-		margin: 0 0 0.75rem;
-	}
-
-	.case-sheet-doc-title {
-		font-size: 1.35rem;
-		font-weight: 700;
-		margin: 0;
-		letter-spacing: 0.02em;
-	}
-
-	.case-sheet-meta {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-		gap: 0.65rem 1.25rem;
-		margin: 0;
-		font-size: 0.88rem;
-		font-family: ui-sans-serif, system-ui, sans-serif;
-	}
-
-	.case-sheet-meta dt {
-		font-weight: 600;
-		color: color-mix(in oklab, currentColor 55%, transparent);
-		margin: 0;
-		font-size: 0.72rem;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-	}
-
-	.case-sheet-meta dd {
-		margin: 0.1rem 0 0;
-	}
-
-	.case-sheet-section {
-		margin-top: 1.35rem;
-		break-inside: avoid;
-	}
-
-	.case-sheet-section h3 {
-		font-size: 1rem;
-		font-weight: 700;
-		margin: 0 0 0.5rem;
-		font-family: ui-sans-serif, system-ui, sans-serif;
-		border-bottom: 1px solid
-			color-mix(in oklab, currentColor 14%, transparent);
-		padding-bottom: 0.25rem;
-	}
-
-	.case-sheet-list {
-		margin: 0.35rem 0 0;
-		padding-left: 1.35rem;
-	}
-
-	.case-sheet-list li {
-		margin-bottom: 0.35rem;
-	}
-
-	.case-sheet-empty {
-		margin: 0.35rem 0 0;
-		font-style: italic;
-		color: color-mix(in oklab, currentColor 50%, transparent);
-	}
-
-	.case-sheet-muted {
-		color: color-mix(in oklab, currentColor 45%, transparent);
-		font-size: 0.92em;
-	}
-
-	.case-sheet-records {
-		list-style: none;
-		margin: 0.5rem 0 0;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.case-sheet-record {
-		border: 1px solid
-			color-mix(in oklab, currentColor 14%, transparent);
-		border-radius: 0.25rem;
-		padding: 0.65rem 0.75rem;
-		font-family: ui-sans-serif, system-ui, sans-serif;
-		font-size: 0.84rem;
-		break-inside: avoid;
-	}
-
-	.case-sheet-record-title {
-		margin: 0 0 0.45rem;
-		font-weight: 600;
-		font-size: 0.88rem;
-	}
-
-	.case-sheet-record-dl {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-		gap: 0.45rem 1rem;
-		margin: 0;
-	}
-
-	.case-sheet-record-dl dt {
-		margin: 0;
-		font-weight: 600;
-		font-size: 0.72rem;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		color: color-mix(in oklab, currentColor 55%, transparent);
-	}
-
-	.case-sheet-record-dl dd {
-		margin: 0.1rem 0 0;
-		white-space: pre-wrap;
-		word-break: break-word;
-	}
-
-	.case-sheet-footer {
-		margin-top: 2rem;
-		padding-top: 0.75rem;
-		border-top: 1px solid
-			color-mix(in oklab, currentColor 14%, transparent);
-		font-size: 0.78rem;
-		color: color-mix(in oklab, currentColor 48%, transparent);
-		font-family: ui-sans-serif, system-ui, sans-serif;
+		background: #fff;
 	}
 </style>

@@ -891,7 +891,7 @@
 	"observation_emr_service_amount": "ဝန်ဆောင်မှုပမာဏ",
 	"observation_emr_tax_amount": "အခွန်ပမာဏ",
 	"observation_emr_units": "ယူနစ်",
-	"observation_emr_instruction": "ညွှန်ကြားချက်/ဖော်ပြချက်",
+	"observation_emr_instruction": "ညွှန်ကြားချက်များ",
 	"observation_emr_urgent": "အရေးတကြီး",
 	"observation_emr_visit_missing": "လည်ပတ်မှု အချက်အလက် ပျောက်ဆုံးနေပါသည်။",
 	"observation_emr_service_required": "ဝန်ဆောင်မှု လိုအပ်ပါသည်။",
