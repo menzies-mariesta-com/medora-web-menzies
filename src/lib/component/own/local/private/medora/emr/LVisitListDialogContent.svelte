@@ -4,6 +4,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type {
+		EmrVisitListScope,
 		PatientVisitForEmrList,
 		VisitStatusCode,
 		VisitStatusFilterCode
@@ -15,7 +16,11 @@
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
-	import { VisitTypeEnum } from '$lib/model/enum/db-link';
+	import { StatusEnum, VisitTypeEnum } from '$lib/model/enum/db-link';
+	import {
+		activeInactiveEntityStatusColumn,
+		appendEntityStatusIdSearchParam
+	} from '$lib/tool/menzies/menzies-table-entity-status.util';
 
 	const VISIT_LIST_DEFAULT_PAGE_SIZE = 20;
 
@@ -23,8 +28,12 @@
 
 	let {
 		confirm,
-		title = m.choose_visit()
-	}: DialogSlotProps & { title?: string } = $props();
+		title = m.choose_visit(),
+		listScope = 'doctor' as EmrVisitListScope
+	}: DialogSlotProps & {
+		title?: string;
+		listScope?: EmrVisitListScope;
+	} = $props();
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
@@ -37,7 +46,9 @@
 	const urlVisitStatus = page.url.searchParams.get('visitStatus')?.trim();
 	/** Optional URL hints only — no module-specific Visit Type / admission presets. */
 	const initialFilters: Record<string, string> = (() => {
-		const filters: Record<string, string> = {};
+		const filters: Record<string, string> = {
+			status: String(StatusEnum.ACTIVE)
+		};
 		if (urlVisitType) filters.visitType = urlVisitType;
 		if (urlVisitStatus) filters.visitStatus = urlVisitStatus;
 		return filters;
@@ -63,11 +74,10 @@
 			: ''
 	);
 
-	const visitStatusOptions: {
+	const visitStatusFilterOptions: {
 		value: VisitStatusFilterCode;
 		label: string;
 	}[] = [
-		{ value: 'active', label: 'Active' },
 		{ value: 'open', label: 'Open' },
 		{ value: 'vital', label: 'Vital' },
 		{ value: 'seen', label: 'Seen' },
@@ -78,7 +88,8 @@
 		status: VisitStatusCode | null | undefined
 	) {
 		return (
-			visitStatusOptions.find((o) => o.value === status)?.label ?? '—'
+			visitStatusFilterOptions.find((o) => o.value === status)?.label ??
+				'—'
 		);
 	}
 
@@ -210,10 +221,14 @@
 			widthClass: 'w-28 min-w-[7rem]',
 			filterable: true,
 			filterType: 'select',
-			filterOptionsGetter: () => visitStatusOptions,
+			filterOptionsGetter: () => visitStatusFilterOptions,
 			field: 'visitStatus',
 			format: (_value, row) => formatVisitStatus(row.visitStatus)
 		},
+		activeInactiveEntityStatusColumn<PatientVisitForEmrList>({
+			header: 'Status',
+			widthClass: 'w-28 min-w-[7rem]'
+		}),
 		{
 			id: 'alert',
 			header: m.observation_emr_alert(),
@@ -264,6 +279,7 @@
 		try {
 			const params = new URLSearchParams();
 			params.set('mode', 'visit.list');
+			params.set('listScope', listScope);
 			params.set('page', String(currentPage));
 			params.set('pageSize', String(pageSize));
 
@@ -283,12 +299,16 @@
 			if (visitType) params.set('visitType', visitType);
 			const visitStatus = tableFilters.visitStatus?.trim();
 			if (visitStatus) params.set('visitStatus', visitStatus);
+			appendEntityStatusIdSearchParam(params, tableFilters);
 			if (tableFilters.hasActiveAdmission === '1') {
 				params.set('hasActiveAdmission', '1');
 			}
 			if (opts?.bustCache) params.set('_t', String(Date.now()));
 
-			const res = await fetch(`${endpointBase}?${params.toString()}`);
+			const res = await fetch(`${endpointBase}?${params.toString()}`, {
+				credentials: 'include',
+				cache: 'no-store'
+			});
 			if (!res.ok)
 				throw new Error(`Failed to load visits (${res.status})`);
 			const data = (await res.json()) as {

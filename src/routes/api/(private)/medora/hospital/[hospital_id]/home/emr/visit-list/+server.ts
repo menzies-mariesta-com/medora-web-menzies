@@ -2,7 +2,11 @@ import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as emrVisitList from '$lib/server/medora/emr/visit-list.server';
-import type { VisitStatusFilterCode } from '$lib/model/type/medora/emr/visit-list.type';
+import type {
+	EmrVisitListScope,
+	VisitStatusFilterCode
+} from '$lib/model/type/medora/emr/visit-list.type';
+import { parsePaginationStatusIdParam } from '$lib/server/medora/paginated-entity-status-filter.server';
 import { parseUuid } from '$lib/util/id.util';
 
 export const GET: RequestHandler = async (event) => {
@@ -78,6 +82,12 @@ export const GET: RequestHandler = async (event) => {
 			const hasActiveAdmission =
 				event.url.searchParams.get('hasActiveAdmission') === '1' ||
 				event.url.searchParams.get('hasActiveAdmission') === 'true';
+			const listScopeRaw = event.url.searchParams.get('listScope');
+			const listScope: EmrVisitListScope =
+				listScopeRaw === 'hospital' ? 'hospital' : 'doctor';
+			const statusId = parsePaginationStatusIdParam(
+				event.url.searchParams.get('statusId')
+			);
 
 			const result =
 				await emrVisitList.getPatientVisitPaginatedForEmr(event, {
@@ -92,7 +102,9 @@ export const GET: RequestHandler = async (event) => {
 					doctorName,
 					visitTypeId,
 					visitStatus,
-					hasActiveAdmission: hasActiveAdmission || undefined
+					hasActiveAdmission: hasActiveAdmission || undefined,
+					listScope,
+					statusId
 				});
 
 			const patientIds = result.data

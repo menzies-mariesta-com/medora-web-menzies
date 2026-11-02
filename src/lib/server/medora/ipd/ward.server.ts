@@ -7,6 +7,7 @@ import type {
 	WardSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import type { WardRow } from '$lib/model/type/medora/ipd/ipd.type';
 import {
 	normalizePagination,
@@ -78,7 +79,10 @@ export async function getWardPaginated(
 		normalizePagination(params);
 	const conditions = [
 		eq(table.wardTable.hospitalId, params.hospitalId),
-		ne(table.wardTable.statusId, StatusEnum.DELETED)
+		paginatedEntityStatusEq(
+			table.wardTable.statusId,
+			params.statusId
+		)
 	];
 	const nameFilter = params?.name?.trim();
 	if (nameFilter) {
@@ -87,9 +91,6 @@ export async function getWardPaginated(
 	const codeFilter = params?.code?.trim();
 	if (codeFilter) {
 		conditions.push(ilike(table.wardTable.code, `%${codeFilter}%`));
-	}
-	if (typeof params?.statusId === 'number') {
-		conditions.push(eq(table.wardTable.statusId, params.statusId));
 	}
 	if (params.branchId) {
 		conditions.push(eq(table.wardTable.branchId, params.branchId));

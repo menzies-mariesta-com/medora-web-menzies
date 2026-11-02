@@ -8,6 +8,7 @@ import {
 	getExternalReferPaginated,
 	updateExternalRefer
 } from '$lib/server/medora/administration/external-refer.server';
+import { parsePaginationStatusIdParam } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
@@ -34,13 +35,17 @@ export const GET: RequestHandler = async (event) => {
 		event.url.searchParams.get('pageSize') ?? '10'
 	);
 	const search = event.url.searchParams.get('search') ?? undefined;
+	const statusId = parsePaginationStatusIdParam(
+		event.url.searchParams.get('statusId')
+	);
 
 	const data = await getExternalReferPaginated(event, {
 		hospitalId,
 		page,
 		pageSize,
 		search:
-			search != null && search.trim() !== '' ? search : undefined
+			search != null && search.trim() !== '' ? search : undefined,
+		statusId
 	});
 	return json(data);
 };

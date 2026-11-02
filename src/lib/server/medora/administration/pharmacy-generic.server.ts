@@ -6,6 +6,7 @@ import type {
 	PharmacyGenericSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import {
 	normalizePagination,
 	type PaginatedResult,
@@ -34,7 +35,10 @@ export async function getPharmacyGenericPaginated(
 		normalizePagination(params);
 	const parts = [
 		hospitalScope(hospitalId),
-		ne(table.pharmacyGenericTable.statusId, StatusEnum.DELETED)
+		paginatedEntityStatusEq(
+			table.pharmacyGenericTable.statusId,
+			params?.statusId
+		)
 	];
 	const search = params?.search?.trim();
 	if (search && search.length > 0) {
@@ -44,11 +48,6 @@ export async function getPharmacyGenericPaginated(
 	if (codeOnly && codeOnly.length > 0) {
 		parts.push(
 			ilike(table.pharmacyGenericTable.code, `%${codeOnly}%`)
-		);
-	}
-	if (typeof params?.statusId === 'number') {
-		parts.push(
-			eq(table.pharmacyGenericTable.statusId, params.statusId)
 		);
 	}
 	const whereClause = and(...parts);

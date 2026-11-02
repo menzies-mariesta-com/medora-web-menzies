@@ -3,13 +3,13 @@ import type { LayoutServerLoad } from './$types';
 import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 import { medoraHospitalHome } from '$lib/model/enum/routes.enum';
 import { RoleEnum } from '$lib/model/enum/db-link';
-import { COOKIE_SESSION_EXTENDED_FOR } from '$lib/server/medora/auth/session-extend.server';
 
 export const load: LayoutServerLoad = async ({
 	locals,
 	url,
-	cookies
+	depends
 }) => {
+	depends('app:session-expiry');
 	if (!locals.user) {
 		const redirectTo = `${url.pathname}${url.search}`;
 		throw redirect(
@@ -31,11 +31,8 @@ export const load: LayoutServerLoad = async ({
 		// No assigned hospital: redirect to /medora/hospital so the page can show "No hospital assigned"
 	}
 	const sessionId = locals.session?.id ?? null;
-	const extendedFor =
-		cookies.get(COOKIE_SESSION_EXTENDED_FOR) ?? null;
 	return {
 		sessionId,
-		sessionExpiresAt: locals.session?.expiresAt ?? null,
-		sessionExtendedOnce: !!sessionId && extendedFor === sessionId
+		sessionExpiresAt: locals.session?.expiresAt ?? null
 	};
 };

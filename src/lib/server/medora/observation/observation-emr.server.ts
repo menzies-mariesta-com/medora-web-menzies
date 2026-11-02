@@ -22,6 +22,7 @@ import {
 	VisitStatusTaggingEnum,
 	VisitTypeEnum
 } from '$lib/model/enum/db-link';
+import { activeEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import {
 	normalizePagination,
 	type PaginationParams
@@ -1118,7 +1119,7 @@ export async function listAllergiesMaster(): Promise<
 	return ensureDb()
 		.select()
 		.from(table.allergyTable)
-		.where(ne(table.allergyTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.allergyTable.statusId))
 		.orderBy(table.allergyTable.id);
 }
 

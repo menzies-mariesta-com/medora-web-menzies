@@ -17,6 +17,7 @@ import {
 	eq
 } from 'drizzle-orm';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 const staffWithRelationsWith = {
 	title: true,
@@ -72,7 +73,10 @@ export async function getStaffListPaginated(
 	const staffPhonePrimary = params.staffPhonePrimary?.trim();
 
 	const conditions = [
-		ne(table.staffTable.statusId, StatusEnum.DELETED)
+		paginatedEntityStatusEq(
+			table.staffTable.statusId,
+			params.statusId
+		)
 	];
 
 	if (searchTerm) {

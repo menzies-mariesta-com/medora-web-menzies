@@ -14,6 +14,7 @@ import type {
 } from '$lib/model/type/pagination.type';
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import type { DocumentSettingWithRelations } from '$lib/model/type/document-setting.type';
 
 export async function assertDocumentSettingAccessible(
@@ -50,24 +51,19 @@ export async function getDocumentSettingsPaginated(
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
 
-	const notDeleted = ne(
-		table.documentSettingTable.statusId,
-		StatusEnum.DELETED
-	);
 	const hospitalFilter = params.includeGlobal
 		? or(
 				eq(table.documentSettingTable.hospitalId, params.hospitalId),
 				isNull(table.documentSettingTable.hospitalId)
 			)
 		: eq(table.documentSettingTable.hospitalId, params.hospitalId);
-	const statusFilter =
-		params.statusId != null
-			? eq(table.documentSettingTable.statusId, params.statusId)
-			: null;
-	const whereExpr =
-		statusFilter != null
-			? and(hospitalFilter, notDeleted, statusFilter)
-			: and(hospitalFilter, notDeleted);
+	const whereExpr = and(
+		hospitalFilter,
+		paginatedEntityStatusEq(
+			table.documentSettingTable.statusId,
+			params.statusId
+		)
+	);
 
 	const [data, countResult] = await Promise.all([
 		ensureDb().query.documentSettingTable.findMany({

@@ -5,12 +5,14 @@
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideAppWindow from '$lib/component/own/library/lucide/LucideAppWindow.svelte';
 	import LVisitListDialogContent from '$lib/component/own/local/private/medora/emr/LVisitListDialogContent.svelte';
+	import type { EmrVisitListScope } from '$lib/model/type/medora/emr/visit-list.type';
 
 	let {
 		hospitalId,
 		onVisitSelected,
 		label = m.select_visit(),
-		className = ''
+		className = '',
+		listScope = 'doctor' as EmrVisitListScope
 	} = $props<{
 		hospitalId: string | undefined;
 		onVisitSelected: (data: {
@@ -19,6 +21,7 @@
 		}) => void;
 		label?: string;
 		className?: string;
+		listScope?: EmrVisitListScope;
 	}>();
 
 	async function handleClick() {
@@ -31,7 +34,7 @@
 			title: '',
 			component: LVisitListDialogContent,
 			fullScreen: true,
-			props: { title: m.choose_visit() }
+			props: { title: m.choose_visit(), listScope }
 		});
 		if (result?.confirmed && result.data) {
 			onVisitSelected(result.data);

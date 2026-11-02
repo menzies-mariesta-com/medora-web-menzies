@@ -24,6 +24,7 @@ import type {
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import { activeEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import { requireMoneyDecimal2dp } from '$lib/server/medora/money-field.server';
 
 function parseStoreMarkupPercent(
@@ -82,11 +83,11 @@ async function ensureUserGroupsBelongToHospital(
 		.select({ id: table.userGroupTable.id })
 		.from(table.userGroupTable)
 		.where(
-			and(
-				inArray(table.userGroupTable.id, userGroupIds),
-				eq(table.userGroupTable.hospitalId, hospitalId),
-				ne(table.userGroupTable.statusId, StatusEnum.DELETED)
-			)
+				and(
+					inArray(table.userGroupTable.id, userGroupIds),
+					eq(table.userGroupTable.hospitalId, hospitalId),
+					activeEntityStatusEq(table.userGroupTable.statusId)
+				)
 		);
 	if (rows.length !== userGroupIds.length) {
 		throw error(400, 'Invalid user group(s) for this hospital');
@@ -475,7 +476,7 @@ export async function getStoreLookups(
 			.where(
 				and(
 					eq(table.userGroupTable.hospitalId, input.hospitalId),
-					ne(table.userGroupTable.statusId, StatusEnum.DELETED)
+					activeEntityStatusEq(table.userGroupTable.statusId)
 				)
 			)
 			.orderBy(table.userGroupTable.name),

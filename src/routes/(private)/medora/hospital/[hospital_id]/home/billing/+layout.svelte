@@ -118,6 +118,7 @@
 	<LVisitInfoBar
 		visitId={selectedVisitId}
 		{hospitalId}
+		listScope="hospital"
 		onVisitSelected={handleVisitSelected}
 		onVisitReset={handleVisitReset}
 	/>

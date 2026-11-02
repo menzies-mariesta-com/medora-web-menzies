@@ -21,6 +21,7 @@ import {
 import { and, count, desc, eq, ilike, ne, sql } from 'drizzle-orm';
 import { syncRoomCapacityFromBeds } from '$lib/server/medora/ipd/room.server';
 import { isErScopeCondition } from '$lib/server/medora/ipd/master-is-er.util';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 async function assertRoomInHospital(input: {
 	hospitalId: string;
@@ -53,7 +54,10 @@ export async function getBedPaginated(
 		normalizePagination(params);
 	const conditions = [
 		eq(table.bedTable.hospitalId, params.hospitalId),
-		ne(table.bedTable.statusId, StatusEnum.DELETED)
+		paginatedEntityStatusEq(
+			table.bedTable.statusId,
+			params.statusId
+		)
 	];
 	const nameFilter = params?.name?.trim();
 	if (nameFilter) {
@@ -62,9 +66,6 @@ export async function getBedPaginated(
 	const codeFilter = params?.code?.trim();
 	if (codeFilter) {
 		conditions.push(ilike(table.bedTable.code, `%${codeFilter}%`));
-	}
-	if (typeof params?.statusId === 'number') {
-		conditions.push(eq(table.bedTable.statusId, params.statusId));
 	}
 	if (typeof params.roomId === 'number') {
 		conditions.push(eq(table.bedTable.roomId, params.roomId));

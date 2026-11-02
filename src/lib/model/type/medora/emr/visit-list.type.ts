@@ -18,6 +18,8 @@ export type PatientVisitForEmrList = {
 	id: string;
 	visitNo: string | null;
 	createdAt?: string | Date | null;
+	statusId?: number | null;
+	status?: { id?: number; name: string | null } | null;
 	visitStatus: VisitStatusCode;
 	visitType: { id: number; name: string | null } | null;
 	hospital: { id: string; name: string | null } | null;
@@ -43,3 +45,9 @@ export type PatientVisitForEmrList = {
 };
 
 export type VisitTypeOption = { id: number; name: string | null };
+
+/**
+ * `doctor` — EMR/consultation picker (assigned doctor, referrals, ED pool; branch cookie).
+ * `hospital` — nursing/billing picker (all active visits at hospital, any branch).
+ */
+export type EmrVisitListScope = 'doctor' | 'hospital';

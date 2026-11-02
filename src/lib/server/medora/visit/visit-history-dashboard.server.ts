@@ -230,12 +230,11 @@ export async function getVisitDashboardPayload(
 
 	const selectedVisit =
 		(await ensureDb().query.patientVisitTable.findFirst({
-			where: (t, { and, eq, ne }) =>
+			where: (t, { and, eq }) =>
 				and(
 					eq(t.id, input.visitId),
 					eq(t.hospitalId, input.hospitalId),
-					ne(t.statusId, StatusEnum.DELETED),
-					ne(t.statusId, StatusEnum.INACTIVE)
+					eq(t.statusId, StatusEnum.ACTIVE)
 				),
 			with: {
 				patient: { with: { title: true, gender: true } },
@@ -295,12 +294,11 @@ export async function getVisitDashboardPayload(
 
 	const [patientVisits, orderLines, clinical] = await Promise.all([
 		ensureDb().query.patientVisitTable.findMany({
-			where: (t, { and, eq, ne }) =>
+			where: (t, { and, eq }) =>
 				and(
 					eq(t.patientId, patientId),
 					eq(t.hospitalId, input.hospitalId),
-					ne(t.statusId, StatusEnum.DELETED),
-					ne(t.statusId, StatusEnum.INACTIVE)
+					eq(t.statusId, StatusEnum.ACTIVE)
 				),
 			with: {
 				patient: { with: { title: true, gender: true } },
@@ -338,12 +336,12 @@ async function getOrderLinesForVisit(
 	visitId: string
 ): Promise<ServiceOrderDetailRowForVisit[]> {
 	const orders = await ensureDb().query.serviceOrderTable.findMany({
-		where: (t, { and, eq, ne }) =>
-			and(eq(t.visitId, visitId), ne(t.statusId, StatusEnum.DELETED)),
+		where: (t, { and, eq }) =>
+			and(eq(t.visitId, visitId), eq(t.statusId, StatusEnum.ACTIVE)),
 		columns: { id: true, orderNo: true },
 		with: {
 			details: {
-				where: (d, { ne }) => ne(d.statusId, StatusEnum.DELETED),
+				where: (d, { eq }) => eq(d.statusId, StatusEnum.ACTIVE),
 				with: { serviceItem: true }
 			}
 		}

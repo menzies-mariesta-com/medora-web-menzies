@@ -2,33 +2,30 @@
 	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
-	import {
-		formatNumberDisplay,
-		type NumberDisplayInput
-	} from '$lib/util/number-display.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import type {
 		ServiceItemListRow,
 		ServiceOrderDetailListRow,
 		ServiceOrderListRow,
 		ServiceTaggingListRow,
-		SubCategoryListRow
+		SubCategoryListRow,
+		CategoryListRow
 	} from '$lib/model/type/medora/ui-rows.type';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type { StaffWithRelations } from '$lib/model/type/medora/staff.type';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LObservationOrderLineDeleteDialogContent from '$lib/component/own/local/private/medora/observation/LObservationOrderLineDeleteDialogContent.svelte';
-	import MenziesTable, {
-		type MenziesTableColumn
-	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTable from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
-	import LNursingEmrOrderHistoryDialog from '$lib/component/own/local/private/medora/nursing-workbench/emr/order/LNursingEmrOrderHistoryDialog.svelte';
+	import LNursingEmrOrderHistoryTable, {
+		type NursingEmrOrderHistoryItem
+	} from '$lib/component/own/local/private/medora/nursing-workbench/emr/order/LNursingEmrOrderHistoryTable.svelte';
+	import LNursingEmrOrderPendingDialog from '$lib/component/own/local/private/medora/nursing-workbench/emr/order/LNursingEmrOrderPendingDialog.svelte';
 	import LServiceOrderPendingLineDialogContent, {
 		type ServiceOrderPendingLineFilter,
 		type ServiceOrderPendingLineResult
@@ -38,6 +35,12 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastInfo, toastSuccess } from '$lib/util/toast-copy.util';
+	import { parseMenziesTableEntityStatusId } from '$lib/tool/menzies/menzies-table-entity-status.util';
+	import { serviceOrderPendingDetailColumns } from '$lib/tool/order/service-order-pending-detail-columns.util';
+	import {
+		serviceCatalogLabelsForService,
+		serviceCatalogLabelsForServiceId
+	} from '$lib/tool/order/service-order-catalog-labels.util';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 
@@ -94,6 +97,7 @@
 		hospitalId: string;
 		branchId: string;
 		visitNo?: string | null;
+		doctorId?: string | null;
 	};
 
 	let visit = $state<CpoeOrderVisitPayload | null>(null);
@@ -108,6 +112,8 @@
 		id: number;
 		serviceId: number;
 		serviceName: string;
+		subCategoryName: string;
+		categoryName: string;
 		advisingDoctorId: string | null;
 		advisingDoctorName: string | null;
 		serviceAmount: string | null;
@@ -117,12 +123,7 @@
 		isUrgent: boolean;
 	};
 
-	type HistoryItem = ServiceOrderDetailListRow & {
-		orderNo: string | null;
-		advisingDoctorName: string | null;
-		serviceName: string;
-		subCategoryName: string;
-	};
+	type HistoryItem = NursingEmrOrderHistoryItem;
 
 	let pendingItems = $state<PendingItem[]>([]);
 	let branchServices = $state<ServiceItemListRow[]>([]);
@@ -132,27 +133,28 @@
 	let isLoadingHistory = $state(false);
 
 	let currentDetailPage = $state(1);
+	let currentHistoryPage = $state(1);
 	let detailPageSizeStr = $state(
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
 	);
-	const detailPageSizeNum = $derived(Number(detailPageSizeStr) || 10);
-	const pagedPendingItems = $derived(
-		pendingItems.slice(
-			(currentDetailPage - 1) * detailPageSizeNum,
-			currentDetailPage * detailPageSizeNum
-		)
+	let historyPageSizeStr = $state(
+		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
 	);
 
 	/** Maps `service_item.sub_category_id` → `sub_category.category_id` (Radiology=1, Nursing=2, Laboratory=5). */
 	let subCategoryIdToCategoryId = $state<Map<number, number>>(
 		new Map()
 	);
+	let subCategoryNameById = $state<Map<number, string>>(new Map());
+	let categoryNameById = $state<Map<number, string>>(new Map());
 	let serviceFilterSubCategoryPromise: Promise<void> | null = null;
 
 	let lastLoadedVisitId = $state<number | null>(null);
 
 	let historyItems = $state<HistoryItem[]>([]);
-	let showHistory = $state(false);
+	let historyTableFilters = $state<Record<string, string>>({});
+	let showPendingOrderDialog = $state(false);
+	let isSavingOrder = $state(false);
 
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -181,16 +183,19 @@
 					patientId: v.patientId,
 					hospitalId: v.hospitalId,
 					branchId: v.branchId,
-					visitNo: v.visitNo ?? null
+					visitNo: v.visitNo ?? null,
+					doctorId: v.doctorId?.trim() || null
 				};
 				await fetchBranchServices(v.hospitalId, v.branchId);
 				pendingItems = [];
+				void loadOrderHistory();
 			} else {
 				visit = null;
 				branchServices = [];
 				branchTaggings = [];
 				currentOrder = null;
 				pendingItems = [];
+				historyItems = [];
 			}
 		} finally {
 			isLoadingVisit = false;
@@ -203,15 +208,28 @@
 			return;
 		}
 		serviceFilterSubCategoryPromise = (async () => {
-			const all = await apiGet<SubCategoryListRow[]>(
-				'subCategory.list',
-				{}
-			);
+			const [all, categories] = await Promise.all([
+				apiGet<SubCategoryListRow[]>('subCategory.list', {}),
+				apiGet<CategoryListRow[]>('category.list', {})
+			]);
 			const map = new Map<number, number>();
+			const subNames = new Map<number, string>();
 			for (const s of all) {
-				map.set(Number(s.id), Number(s.categoryId));
+				const id = Number(s.id);
+				map.set(id, Number(s.categoryId));
+				subNames.set(
+					id,
+					(s.subCategoryName ?? '').trim() || '–'
+				);
 			}
 			subCategoryIdToCategoryId = map;
+			subCategoryNameById = subNames;
+			categoryNameById = new Map(
+				categories.map((c) => [
+					Number(c.id),
+					(c.categoryName ?? '').trim() || '–'
+				])
+			);
 		})();
 		await serviceFilterSubCategoryPromise;
 	}
@@ -554,7 +572,8 @@
 				getServiceLabelForValue,
 				searchDoctors,
 				getDoctorLabelForValue,
-				loadPricing: loadPricingForDialog
+				loadPricing: loadPricingForDialog,
+				defaultAdvisingDoctorId: visit?.doctorId ?? ''
 			}
 		});
 		if (!result.confirmed || !result.data) return;
@@ -587,10 +606,19 @@
 				pendingItems.length === 0
 					? 1
 					: Math.max(...pendingItems.map((p) => p.id)) + 1;
+			const catalogLabels = serviceCatalogLabelsForServiceId(
+				serviceId,
+				branchServices,
+				subCategoryNameById,
+				subCategoryIdToCategoryId,
+				categoryNameById
+			);
 			const newItem: PendingItem = {
 				id: editRow?.id ?? nextId,
 				serviceId,
 				serviceName: data.serviceName,
+				subCategoryName: catalogLabels.subCategoryName,
+				categoryName: catalogLabels.categoryName,
 				advisingDoctorId: data.advisingDoctorId.trim() || null,
 				advisingDoctorName: data.advisingDoctorName,
 				serviceAmount,
@@ -635,104 +663,7 @@
 		);
 	}
 
-	const detailColumns: MenziesTableColumn<PendingItem>[] = [
-		{
-			id: 'serviceId',
-			header: 'No.',
-			widthClass: 'w-16',
-			filterable: false,
-			format: (_value, row, index) => String(index + 1)
-		},
-		{
-			id: 'serviceName',
-			header: 'Service Name',
-			widthClass: 'w-64',
-			filterable: false,
-			format: (_value, row) => row.serviceName || '–'
-		},
-		{
-			id: 'instruction',
-			header: 'Description',
-			widthClass: 'w-64',
-			filterable: false,
-			format: (_value, row) =>
-				(row.instruction as string | null | undefined)?.trim() ||
-				`Service ${row.serviceId ?? ''}`
-		},
-		{
-			id: 'serviceAmount',
-			header: 'Service Amount',
-			widthClass: 'w-32',
-			filterable: false,
-			format: (value) =>
-				formatNumberDisplay(value as NumberDisplayInput)
-		},
-		{
-			id: 'serviceUnit',
-			header: 'Unit',
-			widthClass: 'w-20',
-			filterable: false,
-			format: (value) => (value != null ? String(value) : '–')
-		},
-		{
-			id: 'serviceTaxAmount',
-			header: 'Tax',
-			widthClass: 'w-24',
-			filterable: false,
-			format: (value) =>
-				formatNumberDisplay(value as NumberDisplayInput)
-		},
-		{
-			id: 'isUrgent',
-			header: 'Urgent',
-			widthClass: 'w-20',
-			filterable: false,
-			format: (_value, row) => (row.isUrgent ? 'Yes' : 'No')
-		},
-		{
-			id: 'advisingDoctorName',
-			header: 'Advising Doctor',
-			widthClass: 'w-40',
-			filterable: false,
-			format: (_value, row) =>
-				row.advisingDoctorName && row.advisingDoctorName.trim()
-					? row.advisingDoctorName
-					: '–'
-		},
-		{
-			id: 'amountDisplay',
-			header: 'Amount',
-			widthClass: 'w-32',
-			filterable: false,
-			format: (value) =>
-				formatNumberDisplay(value as NumberDisplayInput)
-		}
-	];
-
-	const historyColumns: MenziesTableColumn<HistoryItem>[] = [
-		{
-			id: 'status',
-			header: 'Status',
-			widthClass: 'w-28',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: [
-				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
-				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
-			],
-			defaultFilterValue: String(StatusEnum.ACTIVE),
-			format: (_value, row) =>
-				row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'
-		},
-		{
-			id: 'orderNo',
-			header: 'Order No',
-			widthClass: 'w-32',
-			filterable: false,
-			format: (value) => (value ? String(value) : '–')
-		},
-		...(detailColumns as MenziesTableColumn<HistoryItem>[])
-	];
+	const detailColumns = serviceOrderPendingDetailColumns<PendingItem>();
 
 	async function handleSaveOrder() {
 		if (!visit || !visit.branchId || !visitId) {
@@ -763,6 +694,7 @@
 			orderTimeInput || new Date().toTimeString().slice(0, 5);
 		const lineCount = pendingItems.length;
 
+		isSavingOrder = true;
 		try {
 			const created = await apiPost<ServiceOrderListRow>(
 				'serviceOrder.create',
@@ -796,6 +728,8 @@
 			);
 
 			pendingItems = [];
+			showPendingOrderDialog = false;
+			await loadOrderHistory();
 			toastSuccess(
 				toastService,
 				m.entity_medication_order(),
@@ -807,14 +741,34 @@
 				'Could not save service order and line items',
 				err
 			);
+		} finally {
+			isSavingOrder = false;
 		}
 	}
 
-	async function handleShowHistory() {
+	function openPendingOrderDialog() {
+		orderDateInput = todayDateString();
+		orderTimeInput = new Date().toTimeString().slice(0, 5);
+		currentDetailPage = 1;
+		showPendingOrderDialog = true;
+	}
+
+	function closePendingOrderDialog() {
+		if (isSavingOrder) return;
+		showPendingOrderDialog = false;
+	}
+
+	function handleHistoryFiltersChange(filters: Record<string, string>) {
+		historyTableFilters = filters;
+		currentHistoryPage = 1;
+		void loadOrderHistory();
+	}
+
+	async function loadOrderHistory() {
 		if (!visitId || !hospitalId) return;
 		isLoadingHistory = true;
-		showHistory = true;
 		try {
+			await ensureServiceFilterSubCategoryIdsLoaded();
 			const orders = await apiGet<ServiceOrderListRow[]>(
 				'serviceOrder.list',
 				{ visitId: String(visitId) }
@@ -832,11 +786,16 @@
 				])
 			);
 
+			const statusId =
+				parseMenziesTableEntityStatusId(historyTableFilters) ??
+				StatusEnum.ACTIVE;
+
 			const details = await apiGet<ServiceOrderDetailListRow[]>(
 				'orderLine.list',
 				{
 					visitId: String(visitId),
-					serviceOrderIds: orderIds.map(String)
+					serviceOrderIds: orderIds.map(String),
+					statusId: String(statusId)
 				}
 			);
 
@@ -876,14 +835,6 @@
 				serviceNameMap.set(id, resolvedServices[i]);
 			});
 
-			const allSubCats = await apiGet<any[]>('subCategory.list', {});
-			const subCatNameById = new Map(
-				allSubCats.map((s) => [
-					Number(s.id),
-					(s.subCategoryName ?? '').trim() || '–'
-				])
-			);
-
 			const resolvedServiceRows = await Promise.all(
 				serviceIdList.map((id) =>
 					apiGet<ServiceItemListRow | null>('serviceItem.byId', {
@@ -892,14 +843,17 @@
 				)
 			);
 			const serviceSubCategoryNameMap = new Map<number, string>();
+			const serviceCategoryNameMap = new Map<number, string>();
 			serviceIdList.forEach((id, i) => {
 				const svc = resolvedServiceRows[i];
-				if (!svc) {
-					serviceSubCategoryNameMap.set(id, '–');
-					return;
-				}
-				const nm = subCatNameById.get(Number(svc.subCategoryId));
-				serviceSubCategoryNameMap.set(id, nm ?? '–');
+				const labels = serviceCatalogLabelsForService(
+					svc,
+					subCategoryNameById,
+					subCategoryIdToCategoryId,
+					categoryNameById
+				);
+				serviceSubCategoryNameMap.set(id, labels.subCategoryName);
+				serviceCategoryNameMap.set(id, labels.categoryName);
 			});
 
 			historyItems = details.map((d) => ({
@@ -914,6 +868,9 @@
 					: '',
 				subCategoryName: d.serviceId
 					? (serviceSubCategoryNameMap.get(d.serviceId) ?? '–')
+					: '–',
+				categoryName: d.serviceId
+					? (serviceCategoryNameMap.get(d.serviceId) ?? '–')
 					: '–'
 			}));
 		} catch (err) {
@@ -926,10 +883,6 @@
 		} finally {
 			isLoadingHistory = false;
 		}
-	}
-
-	function closeHistory() {
-		showHistory = false;
 	}
 
 	async function handleDeleteHistoryItem(row: HistoryItem) {
@@ -952,7 +905,7 @@
 				id: row.id,
 				cancelRemark: result.data?.cancelRemark ?? ''
 			});
-			await handleShowHistory();
+			await loadOrderHistory();
 			toastSuccess(
 				toastService,
 				m.entity_order_item(),
@@ -999,73 +952,73 @@
 						bind:pageSize={detailPageSizeStr}
 						bind:currentPage={currentDetailPage}
 						totalRowCount={0}
-						showRefreshButton={false}
 						emptyMessage="Loading…"
 						showRowActions={false}
 						enableColumnFilters={false}
+						on:refresh={() => {
+							if (visitId) void fetchVisit();
+						}}
 					/>
 				</div>
 			{:else}
-				<div
-					class="flex flex-wrap items-center justify-end gap-2"
-				>
-					<WashButton
-						className="btn-outline btn-sm"
-						onClick={handleShowHistory}
-					>
-						Order history
-					</WashButton>
-					<WashButton
-						className="btn-primary btn-sm px-8"
-						onClick={handleSaveOrder}
-					>
-						Save
-					</WashButton>
-				</div>
-
-				<div
-					class={TableEnum.HEIGHT}
-				>
-					<MenziesTable
-						title="Order items (pending list)"
-						description={pendingItems.length === 0
-							? msg.cpoe_order_pending_empty()
-							: ''}
-						rows={pagedPendingItems}
-						columns={detailColumns}
-						isLoading={false}
-						bind:pageSize={detailPageSizeStr}
-						bind:currentPage={currentDetailPage}
-						totalRowCount={pendingItems.length}
-						showRefreshButton={false}
-						emptyMessage="No items."
-						showRowActions={true}
-						actionsHeader="Actions"
-						actionsVariant="none"
-						enableColumnFilters={false}
-						showAddButton={true}
-						addLabel={msg.cpoe_order_add_to_list()}
-						onAdd={openPendingLineDialog}
-					>
-						{#snippet rowActions(row, rowIndex)}
-							<MenziesTableEditDeleteActions
-								onEdit={() =>
-									openPendingLineDialog(row as PendingItem)}
-								onDelete={() =>
-									handleDeleteDetail(row as PendingItem)}
-							/>
-						{/snippet}
-					</MenziesTable>
-				</div>
-
-				<LNursingEmrOrderHistoryDialog
-					open={showHistory}
-					onClose={closeHistory}
+				<LNursingEmrOrderHistoryTable
 					items={historyItems}
-					isLoading={isLoadingHistory}
-					pageSizeStr={detailPageSizeStr}
+					isLoading={isLoadingHistory || isLoadingVisit}
+					bind:pageSizeStr={historyPageSizeStr}
+					bind:currentPage={currentHistoryPage}
+					bind:columnFilters={historyTableFilters}
+					onFiltersChange={handleHistoryFiltersChange}
 					onDelete={handleDeleteHistoryItem}
+					onAdd={openPendingOrderDialog}
+					addLabel={msg.cpoe_order_add_to_list()}
+					onRefresh={() => loadOrderHistory()}
 				/>
+
+				<LNursingEmrOrderPendingDialog
+					open={showPendingOrderDialog}
+					onClose={closePendingOrderDialog}
+					onSave={handleSaveOrder}
+					isSaving={isSavingOrder}
+					description={msg.cpoe_order_pending_empty()}
+				>
+					{#snippet table()}
+						<div class="flex min-h-0 flex-1 flex-col">
+							<MenziesTable
+								rows={pendingItems}
+								columns={detailColumns}
+								isLoading={false}
+								bind:pageSize={detailPageSizeStr}
+								bind:currentPage={currentDetailPage}
+								emptyMessage="No items."
+								showRowActions={true}
+								actionsHeader="Actions"
+								actionsVariant="none"
+								enableColumnFilters={false}
+								showAddButton={true}
+								addLabel={msg.cpoe_order_add_to_list()}
+								onAdd={openPendingLineDialog}
+								fillParent={true}
+								on:refresh={async () => {
+									if (visit) {
+										await fetchBranchServices(
+											visit.hospitalId,
+											visit.branchId
+										);
+									}
+								}}
+							>
+								{#snippet rowActions(row, rowIndex)}
+									<MenziesTableEditDeleteActions
+										onEdit={() =>
+											openPendingLineDialog(row as PendingItem)}
+										onDelete={() =>
+											handleDeleteDetail(row as PendingItem)}
+									/>
+								{/snippet}
+							</MenziesTable>
+						</div>
+					{/snippet}
+				</LNursingEmrOrderPendingDialog>
 			{/if}
 		</div>
 	{/if}

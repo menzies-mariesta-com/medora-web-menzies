@@ -9,8 +9,10 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+	import { sessionExtendMessageParams } from '$lib/util/session-extend-message.util';
 const msg = m as Record<string, (inputs?: object) => string>;
 	const toastService = new ToastService();
+	const sessionExtendMsg = sessionExtendMessageParams();
 
 	export type SessionExtendDialogResult = {
 		sessionExpiresAt: string;
@@ -58,14 +60,6 @@ const msg = m as Record<string, (inputs?: object) => string>;
 					);
 					return;
 				}
-				if (res.status === 409) {
-					toastService.addToast(
-						msg.session_extend_already_extended(),
-						StatusColorEnum.WARNING
-					);
-					cancel();
-					return;
-				}
 				toastService.addToast(
 					msg.session_extend_failed(),
 					StatusColorEnum.ERROR,
@@ -86,7 +80,7 @@ const msg = m as Record<string, (inputs?: object) => string>;
 			}
 
 			toastService.addToast(
-				msg.session_extend_success(),
+				msg.session_extend_success(sessionExtendMsg),
 				StatusColorEnum.SUCCESS
 			);
 			await confirm({
@@ -115,7 +109,7 @@ const msg = m as Record<string, (inputs?: object) => string>;
 	onsubmit={onSubmit}
 >
 	<p class="text-sm text-base-content/80">
-		{msg.session_extend_password_hint()}
+		{msg.session_extend_password_hint(sessionExtendMsg)}
 	</p>
 	<div class="flex flex-col gap-1">
 		<label class="label" for="session-extend-password">
