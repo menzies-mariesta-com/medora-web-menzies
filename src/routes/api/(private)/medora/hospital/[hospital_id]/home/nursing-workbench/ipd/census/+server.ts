@@ -141,17 +141,6 @@ export async function POST(event: RequestEvent) {
 			hospitalId,
 			admissionId
 		});
-		const userId = event.locals.user?.id;
-		if (userId && discharged.visitId) {
-			const { applyBillingAutoTaggingsForVisit } = await import(
-				'$lib/server/medora/billing/billing-auto-tagging-on-visit-close.server'
-			);
-			await applyBillingAutoTaggingsForVisit({
-				hospitalId,
-				visitId: discharged.visitId,
-				userId
-			});
-		}
 		return json(discharged);
 	}
 

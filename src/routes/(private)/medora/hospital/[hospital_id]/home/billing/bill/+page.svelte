@@ -3,11 +3,7 @@
 	import { page } from '$app/state';
 	import LBillingBillPage from '$lib/component/own/local/private/medora/billing/LBillingBillPage.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
-	import {
-		billingApiSegmentForVisitType,
-		fetchVisitTypeIdForBilling,
-		type BillingApiSegment
-	} from '$lib/tool/billing/billing-api-segment.util';
+	import { fetchVisitTypeIdForBilling } from '$lib/tool/billing/billing-api-segment.util';
 
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 	const visitId = $derived(VisitState.visitId);
@@ -15,15 +11,7 @@
 	let visitTypeId = $state<number | null>(null);
 	let segmentLoading = $state(false);
 
-	const billingApiSegment = $derived.by((): BillingApiSegment => {
-		if (!visitId) return 'op-billing';
-		if (segmentLoading && visitTypeId == null) return 'op-billing';
-		return billingApiSegmentForVisitType(visitTypeId);
-	});
-
-	const billPageKey = $derived(
-		`${billingApiSegment}:${visitId ?? ''}:${visitTypeId ?? ''}`
-	);
+	const billPageKey = $derived(`${visitId ?? ''}:${visitTypeId ?? ''}`);
 
 	$effect(() => {
 		const id = parseUuid(visitId);
@@ -51,6 +39,10 @@
 	});
 </script>
 
-{#key billPageKey}
-	<LBillingBillPage {billingApiSegment} />
-{/key}
+{#if segmentLoading && visitId && visitTypeId == null}
+	<p class="text-sm text-base-content/70">Loading visit billing context…</p>
+{:else}
+	{#key billPageKey}
+		<LBillingBillPage {visitTypeId} />
+	{/key}
+{/if}

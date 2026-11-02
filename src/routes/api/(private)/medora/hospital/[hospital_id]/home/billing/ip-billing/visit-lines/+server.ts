@@ -1,7 +1,6 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import {
-	getPendingOpBillingServiceDetailRowsForVisit,
-	type OpBillingPendingLineRow
+	getPendingOpBillingServiceDetailRowsForVisit
 } from '$lib/server/medora/observation/observation-emr.server';
 import {
 	getIpBillingReadiness,
@@ -24,11 +23,16 @@ import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.serve
 import type { IpBillingSchema } from '$lib/server/db/schema-type';
 import { parseUuid } from '$lib/util/id.util';
 import {
+	dedupePendingBillRows,
+	mergeClinicalAndBillingSetupPendingRows,
+	type PendingBillLineRow
+} from '$lib/server/medora/billing/billing-setup-bill-lines.server';
+import {
 	normalizeIpBillingLineWrite,
 	normalizeOpBillingHeaderWrite
 } from '$lib/server/medora/money-normalize.server';
 
-type PendingDetailRow = OpBillingPendingLineRow;
+type PendingDetailRow = PendingBillLineRow;
 
 type IpBillingWithAuditStaff = IpBillingSchema & {
 	discountedByStaff?: unknown;
@@ -204,12 +208,18 @@ async function syncOpenIpBillingForVisit(opts: {
 	pendingRows: PendingDetailRow[];
 }> {
 	const db = ensureDb();
-	const pendingRows =
-		await getPendingOpBillingServiceDetailRowsForVisit({
-			visitId: opts.visitId,
+	const pendingRows = dedupePendingBillRows(
+		await mergeClinicalAndBillingSetupPendingRows({
 			hospitalId: opts.hospitalId,
-			branchId: opts.branchId
-		});
+			visitId: opts.visitId,
+			branchId: opts.branchId,
+			clinicalRows: await getPendingOpBillingServiceDetailRowsForVisit({
+				visitId: opts.visitId,
+				hospitalId: opts.hospitalId,
+				branchId: opts.branchId
+			})
+		})
+	);
 
 	let openBill = await consolidateOpenIpBillings({
 		visitId: opts.visitId,

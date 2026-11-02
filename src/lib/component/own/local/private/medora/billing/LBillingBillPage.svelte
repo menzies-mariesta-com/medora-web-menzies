@@ -16,7 +16,10 @@
 	import OpBillingReadinessPanel from '$lib/component/own/local/private/medora/billing/OpBillingReadinessPanel.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.enum';
-	import { BillingStatusTaggingEnum } from '$lib/model/enum/db-link';
+	import {
+		BillingStatusTaggingEnum,
+		VisitTypeEnum
+	} from '$lib/model/enum/db-link';
 	import type {
 		OpBillingLine,
 		OpBillingMeta,
@@ -28,6 +31,7 @@
 	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
 	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
 	import { buildOpBillingPrintBodyHtml } from '$lib/util/op-billing-print-table.util';
+	import { formatBillingCategorySubCategoryHeading } from '$lib/util/billing-group-heading.util';
 	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { sanitizeUserFacingErrorText } from '$lib/util/user-facing-error.util';
@@ -38,21 +42,26 @@
 	>;
 
 	let {
-		billingApiSegment
+		visitTypeId
 	}: {
-		billingApiSegment: 'op-billing' | 'er-billing' | 'ip-billing';
+		visitTypeId: number | null;
 	} = $props();
 
 	const visitId = $derived(VisitState.visitId);
 	const hospitalId = $derived(page.params.hospital_id ?? '');
-	const isIpBilling = $derived(billingApiSegment === 'ip-billing');
+	const isIpBilling = $derived(visitTypeId === VisitTypeEnum.IPD);
+	const billingUiKey = $derived(
+		isIpBilling ? 'ip-billing' : visitTypeId === VisitTypeEnum.ED ? 'er-billing' : 'op-billing'
+	);
+	const billApiBase = $derived(
+		hospitalId
+			? `/api/medora/hospital/${hospitalId}/home/billing/bill`
+			: ''
+	);
 
 	function bm(key: string) {
 		return msg[`${isIpBilling ? 'ip' : 'op'}_billing_${key}`];
 	}
-	const billsApiSegment = $derived(
-		isIpBilling ? 'ip-billing' : 'op-billing'
-	);
 	const printDocumentCode = $derived(
 		isIpBilling
 			? DOCUMENT_PRINT_CODE.IP_BILL
@@ -77,7 +86,9 @@
 
 	type BillingGroup = {
 		subCategoryId: number | null;
+		categoryName: string | null;
 		subCategoryName: string;
+		groupHeading: string;
 		lines: BillingLine[];
 		subtotal: number;
 	};
@@ -109,6 +120,7 @@
 		orderNo: string | null;
 		subCategoryId: number | null;
 		subCategoryName: string | null;
+		categoryName: string | null;
 		serviceAmount: string | number | null;
 		serviceTaxAmount: string | number | null;
 		discount: string | number | null;
@@ -207,6 +219,9 @@
 	}
 
 	function opBillingLineRowKey(line: BillingLine): string {
+		if (line.lineSource === 'billing_setup') {
+			return `billing_setup-${line.id}`;
+		}
 		if (
 			line.lineSource === 'medication_order_line' ||
 			line.lineSource === 'service_order_detail' ||
@@ -233,11 +248,18 @@
 			const key = String(line.subCategoryId ?? 'none');
 			const other = tr(bm('group_other'), 'Other');
 			const name = (line.subCategoryName ?? other).trim() || other;
+			const categoryName = (line.categoryName ?? '').trim() || null;
 			let group = byKey[key];
 			if (!group) {
 				group = {
 					subCategoryId: line.subCategoryId,
+					categoryName,
 					subCategoryName: name,
+					groupHeading: formatBillingCategorySubCategoryHeading({
+						categoryName,
+						subCategoryName: name,
+						fallbackSubCategory: other
+					}),
 					lines: [],
 					subtotal: 0
 				};
@@ -248,7 +270,7 @@
 		}
 
 		return Object.values(byKey).sort((a, b) =>
-			a.subCategoryName.localeCompare(b.subCategoryName)
+			a.groupHeading.localeCompare(b.groupHeading)
 		);
 	}
 
@@ -282,14 +304,11 @@
 	async function postBillingUpdate(
 		payload: Record<string, unknown>
 	) {
-		const res = await fetch(
-			`/api/medora/hospital/${hospitalId}/home/billing/${billingApiSegment}/visit-lines`,
-			{
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(payload)
-			}
-		);
+		const res = await fetch(`${billApiBase}/visit-lines`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(payload)
+		});
 		return res;
 	}
 
@@ -326,7 +345,7 @@
 		loadError = '';
 		try {
 			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/billing/${billingApiSegment}/visit-lines?visitId=${visitNumeric}`
+				`${billApiBase}/visit-lines?visitId=${visitNumeric}`
 			);
 			if (requestSeq !== billingLinesLoadSeq) return;
 			if (!res.ok) {
@@ -539,7 +558,7 @@
 		const v = opts.visitSummary;
 		const bodyHtml = buildOpBillingPrintBodyHtml({
 			groups: opts.groups.map((g) => ({
-				subCategoryName: g.subCategoryName,
+				subCategoryName: g.groupHeading,
 				lines: g.lines.map((line) => ({
 					serviceName: line.serviceName,
 					orderNo: line.orderNo,
@@ -650,7 +669,7 @@
 		historyError = '';
 		try {
 			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/billing/${billsApiSegment}/bills?visitId=${visitNumeric}`
+				`${billApiBase}/bills?visitId=${visitNumeric}`
 			);
 			if (!res.ok) {
 				historyBills = [];
@@ -677,14 +696,11 @@
 
 		historyPrintLoadingId = billingId;
 		try {
-			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/billing/${billsApiSegment}/bills`,
-				{
-					method: 'POST',
-					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify({ billingId })
-				}
-			);
+			const res = await fetch(`${billApiBase}/bills`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ billingId })
+			});
 			if (!res.ok) {
 				historyError = tr(
 					undefined,
@@ -729,6 +745,7 @@
 				orderNo: l.orderNo,
 				subCategoryId: l.subCategoryId,
 				subCategoryName: l.subCategoryName,
+				categoryName: l.categoryName ?? null,
 				serviceAmount: l.serviceAmount,
 				serviceTaxAmount: l.serviceTaxAmount,
 				discount: l.discount,
@@ -982,7 +999,7 @@
 								<div
 									class="collapse-title flex items-center justify-between gap-4 text-sm font-medium"
 								>
-									<span class="truncate">{group.subCategoryName}</span
+									<span class="truncate">{group.groupHeading}</span
 									>
 									<span
 										class="font-mono text-base-content/80 tabular-nums"
@@ -1034,7 +1051,7 @@
 
 {#if isDiscountModalOpen}
 	<WashDialog
-		id={`${billingApiSegment}-discount-modal`}
+		id={`${billingUiKey}-discount-modal`}
 		open={true}
 		onClose={() => (isDiscountModalOpen = false)}
 		title={tr(bm('discount_title'), 'Discount')}
@@ -1174,7 +1191,7 @@
 
 {#if isHistoryModalOpen}
 	<WashDialog
-		id={`${billingApiSegment}-history-modal`}
+		id={`${billingUiKey}-history-modal`}
 		open={true}
 		onClose={() => (isHistoryModalOpen = false)}
 		title={tr(undefined, 'Bill history')}

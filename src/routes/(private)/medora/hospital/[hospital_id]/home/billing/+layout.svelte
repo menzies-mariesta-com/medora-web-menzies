@@ -6,7 +6,6 @@
 	} from '$lib/model/enum/routes.enum';
 	import {
 		getPageData,
-		getSubPagesForPageUrl,
 		pathnameForPageMatch
 	} from '$lib/state/page.state.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
@@ -27,16 +26,18 @@
 	);
 
 	const billingTabs = $derived.by(() => {
-		const bill = getPageData().find(
-			(p) =>
-				(p.pageUrl ?? '').replace(/\/$/, '') ===
-				WebRoutesEnum.MEDORA_HOME_BILLING_BILL
-		);
-		if (!bill) return [];
-		return [
-			bill,
-			...getSubPagesForPageUrl(WebRoutesEnum.MEDORA_HOME_BILLING_BILL)
-		];
+		const tabUrls = new Set<string>([
+			WebRoutesEnum.MEDORA_HOME_BILLING_BILL,
+			WebRoutesEnum.MEDORA_HOME_BILLING_ADVANCE_DEPOSIT
+		]);
+		return getPageData()
+			.filter((p) => {
+				const u = (p.pageUrl ?? '').replace(/\/$/, '');
+				return tabUrls.has(u);
+			})
+			.sort(
+				(a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0)
+			);
 	});
 
 	const showBillingTabs = $derived(

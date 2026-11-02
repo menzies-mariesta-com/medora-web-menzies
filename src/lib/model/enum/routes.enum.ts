@@ -101,9 +101,11 @@ export enum WebRoutesEnum {
 	// Billing module (navbar auto-hides like nursing EMR)
 	MEDORA_HOME_BILLING = '/medora/home/billing',
 	MEDORA_HOME_BILLING_BILL = '/medora/home/billing/bill',
+	MEDORA_HOME_BILLING_ADVANCE_DEPOSIT = '/medora/home/billing/advance-deposit',
 	MEDORA_HOME_BILLING_OP_BILLING = '/medora/home/billing/op-billing',
 	MEDORA_HOME_BILLING_IP_BILLING = '/medora/home/billing/ip-billing',
 	MEDORA_HOME_BILLING_IP_BILLING_BILL = '/medora/home/billing/ip-billing/bill',
+	/** @deprecated Use MEDORA_HOME_BILLING_ADVANCE_DEPOSIT */
 	MEDORA_HOME_BILLING_IP_ADVANCE_DEPOSIT = '/medora/home/billing/ip-billing/advance-deposit',
 
 	// Medication Order module (navbar auto-hides like nursing EMR)
