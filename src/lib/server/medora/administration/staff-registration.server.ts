@@ -7,6 +7,7 @@ import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-ho
 import { assertHospitalDepartmentForStaff } from '$lib/server/medora/administration/hospital-department.server';
 import { PasswordHashUtil } from '$lib/server/auth/password-hash.server';
 import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
+import { activeEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import type {
 	BloodTypeSchema,
 	CitySchema,
@@ -157,9 +158,6 @@ export async function getStaffRegistrationLookups(
 }> {
 	await ensureCanAccessHospital(event, input.hospitalId);
 
-	const notDeleted = (t: { statusId: unknown }) =>
-		ne(t.statusId as never, StatusEnum.DELETED);
-
 	const [
 		titleData,
 		staffTypeData,
@@ -181,12 +179,12 @@ export async function getStaffRegistrationLookups(
 		ensureDb()
 			.select()
 			.from(table.titleTable)
-			.where(notDeleted(table.titleTable))
+			.where(activeEntityStatusEq(table.titleTable.statusId))
 			.orderBy(table.titleTable.name),
 		ensureDb()
 			.select()
 			.from(table.staffTypeTable)
-			.where(notDeleted(table.staffTypeTable))
+			.where(activeEntityStatusEq(table.staffTypeTable.statusId))
 			.orderBy(table.staffTypeTable.name),
 		ensureDb()
 			.select()
@@ -197,34 +195,34 @@ export async function getStaffRegistrationLookups(
 						table.hospitalDepartmentTable.hospitalId,
 						input.hospitalId
 					),
-					notDeleted(table.hospitalDepartmentTable)
+					activeEntityStatusEq(table.hospitalDepartmentTable.statusId)
 				)
 			)
 			.orderBy(table.hospitalDepartmentTable.name),
 		ensureDb().query.specializationTable.findMany({
-			where: (t, { ne }) => ne(t.statusId, StatusEnum.DELETED),
+			where: (t, { eq }) => eq(t.statusId, StatusEnum.ACTIVE),
 			with: { craftGroup: true, status: true },
 			orderBy: [asc(table.specializationTable.name)]
 		}),
 		ensureDb()
 			.select()
 			.from(table.genderTable)
-			.where(notDeleted(table.genderTable))
+			.where(activeEntityStatusEq(table.genderTable.statusId))
 			.orderBy(table.genderTable.name),
 		ensureDb()
 			.select()
 			.from(table.maritalStatusTable)
-			.where(notDeleted(table.maritalStatusTable))
+			.where(activeEntityStatusEq(table.maritalStatusTable.statusId))
 			.orderBy(table.maritalStatusTable.name),
 		ensureDb()
 			.select()
 			.from(table.countryTable)
-			.where(notDeleted(table.countryTable))
+			.where(activeEntityStatusEq(table.countryTable.statusId))
 			.orderBy(table.countryTable.name),
 		ensureDb()
 			.select()
 			.from(table.identityTypeTable)
-			.where(notDeleted(table.identityTypeTable))
+			.where(activeEntityStatusEq(table.identityTypeTable.statusId))
 			.orderBy(table.identityTypeTable.name),
 		ensureDb()
 			.select()
@@ -232,39 +230,39 @@ export async function getStaffRegistrationLookups(
 			.where(
 				and(
 					eq(table.userGroupTable.hospitalId, input.hospitalId),
-					ne(table.userGroupTable.statusId, StatusEnum.DELETED)
+					activeEntityStatusEq(table.userGroupTable.statusId)
 				)
 			)
 			.orderBy(table.userGroupTable.name),
 		ensureDb()
 			.select()
 			.from(table.staffEmploymentTypeTable)
-			.where(notDeleted(table.staffEmploymentTypeTable))
+			.where(activeEntityStatusEq(table.staffEmploymentTypeTable.statusId))
 			.orderBy(table.staffEmploymentTypeTable.name),
 		ensureDb()
 			.select()
 			.from(table.stateTable)
-			.where(notDeleted(table.stateTable))
+			.where(activeEntityStatusEq(table.stateTable.statusId))
 			.orderBy(table.stateTable.name),
 		ensureDb()
 			.select()
 			.from(table.cityTable)
-			.where(notDeleted(table.cityTable))
+			.where(activeEntityStatusEq(table.cityTable.statusId))
 			.orderBy(table.cityTable.name),
 		ensureDb()
 			.select()
 			.from(table.postalCodeTable)
-			.where(notDeleted(table.postalCodeTable))
+			.where(activeEntityStatusEq(table.postalCodeTable.statusId))
 			.orderBy(table.postalCodeTable.value),
 		ensureDb()
 			.select()
 			.from(table.bloodTypeTable)
-			.where(notDeleted(table.bloodTypeTable))
+			.where(activeEntityStatusEq(table.bloodTypeTable.statusId))
 			.orderBy(table.bloodTypeTable.name),
 		ensureDb()
 			.select()
 			.from(table.nationalityTable)
-			.where(notDeleted(table.nationalityTable))
+			.where(activeEntityStatusEq(table.nationalityTable.statusId))
 			.orderBy(table.nationalityTable.name),
 		ensureDb()
 			.select()
@@ -653,12 +651,14 @@ export async function updateStaffRegistration(
 			staffPatch.staffDetailId = staffDetailId;
 		}
 
-		await tx
-			.update(table.staffTable)
-			.set(staffPatch)
-			.where(
-				and(eq(table.staffTable.id, input.id), hospitalCondition)
-			);
+		if (Object.keys(staffPatch).length > 0) {
+			await tx
+				.update(table.staffTable)
+				.set(staffPatch)
+				.where(
+					and(eq(table.staffTable.id, input.id), hospitalCondition)
+				);
+		}
 
 		// Department: replace all
 		if (input.departmentId !== undefined) {
@@ -717,7 +717,7 @@ export async function updateStaffRegistration(
 						and(
 							eq(table.userGroupTable.hospitalId, input.hospitalId),
 							inArray(table.userGroupTable.id, uniqueIds),
-							ne(table.userGroupTable.statusId, StatusEnum.DELETED)
+							activeEntityStatusEq(table.userGroupTable.statusId)
 						)
 					);
 				if (groups.length > 0) {

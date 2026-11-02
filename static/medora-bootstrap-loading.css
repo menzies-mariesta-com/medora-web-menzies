@@ -91,6 +91,16 @@ html[data-theme$='-dark'] #medora-app-bootstrap-loader .medora-bootstrap-loader-
 	object-fit: cover;
 }
 
+#medora-app-bootstrap-loader .medora-bootstrap-brand-row {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem;
+	width: 100%;
+	max-width: 20rem;
+}
+
 /* Wash UI studio loaders (bootstrap subset): stroke sweep + ink soak */
 #medora-app-bootstrap-loader {
 	--ease-absorb: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -127,16 +137,10 @@ html[data-theme$='-dark'] #medora-app-bootstrap-loader .medora-bootstrap-loader-
 	animation: studio-stroke-sweep 1.6s var(--ease-absorb) infinite;
 }
 
-#medora-app-bootstrap-loader .studio-load-ink {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 0.75rem;
-	width: 100%;
-}
-
 #medora-app-bootstrap-loader .studio-load-ink__word {
 	margin: 0;
+	flex: 0 1 auto;
+	min-width: 0;
 	font-family: var(--font-sans, 'Maple Mono', ui-monospace, monospace);
 	font-size: clamp(1.25rem, 2.5vw, 1.75rem);
 	font-weight: 700;

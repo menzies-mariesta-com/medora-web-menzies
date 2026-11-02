@@ -9,6 +9,7 @@ import type {
 	ServiceTaggingSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import type {
 	PaginatedResult,
 	PaginationParams
@@ -144,9 +145,9 @@ export async function getServiceTaggings(
 		);
 	}
 
-	let whereExpr: SQL = ne(
+	let whereExpr: SQL = paginatedEntityStatusEq(
 		table.serviceTaggingTable.statusId,
-		StatusEnum.DELETED
+		input.statusId
 	);
 
 	if (input.branchId) {
@@ -192,13 +193,6 @@ export async function getServiceTaggings(
 			)
 		)!;
 	}
-	if (input.statusId != null) {
-		whereExpr = and(
-			whereExpr,
-			eq(table.serviceTaggingTable.statusId, input.statusId)
-		)!;
-	}
-
 	const rows = await ensureDb()
 		.select()
 		.from(table.serviceTaggingTable)
@@ -280,13 +274,6 @@ export async function getServiceTaggingsPaginated(
 			)
 		)!;
 	}
-	if (params.statusId != null) {
-		whereExpr = and(
-			whereExpr,
-			eq(table.serviceTaggingTable.statusId, params.statusId)
-		)!;
-	}
-
 	const [data, countResult] = await Promise.all([
 		ensureDb()
 			.select()

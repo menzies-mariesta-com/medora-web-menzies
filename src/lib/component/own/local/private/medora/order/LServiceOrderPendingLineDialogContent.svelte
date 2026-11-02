@@ -60,7 +60,8 @@
 		getServiceLabelForValue,
 		searchDoctors,
 		getDoctorLabelForValue,
-		loadPricing
+		loadPricing,
+		defaultAdvisingDoctorId = ''
 	}: DialogSlotProps & {
 		orderDate?: string;
 		orderTime?: string;
@@ -82,6 +83,8 @@
 			serviceId: string,
 			orderDate: string
 		) => Promise<ServiceOrderPendingLinePricing>;
+		/** Prefill Order by (Adv Dr.) when adding a line (e.g. visit doctor). */
+		defaultAdvisingDoctorId?: string;
 	} = $props();
 
 	const toastService = new ToastService();
@@ -103,7 +106,7 @@
 
 	function clearLineFields() {
 		detailServiceIdInput = '';
-		detailAdvisingDoctorIdInput = '';
+		detailAdvisingDoctorIdInput = defaultAdvisingDoctorId.trim();
 		detailServiceAmountInput = '';
 		detailServiceTaxAmountInput = '';
 		detailServiceUnitInput = '1';
@@ -117,7 +120,11 @@
 		orderTimeInput = orderTimeProp;
 		const init = initial;
 		detailServiceIdInput = init?.serviceId ?? '';
-		detailAdvisingDoctorIdInput = init?.advisingDoctorId ?? '';
+		if (init) {
+			detailAdvisingDoctorIdInput = init.advisingDoctorId ?? '';
+		} else {
+			detailAdvisingDoctorIdInput = defaultAdvisingDoctorId;
+		}
 		detailServiceAmountInput = init?.serviceAmount ?? '';
 		detailServiceTaxAmountInput = init?.serviceTaxAmount ?? '';
 		detailServiceUnitInput = init?.serviceUnit ?? '1';

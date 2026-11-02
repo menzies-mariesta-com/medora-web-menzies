@@ -14,6 +14,7 @@ import {
 } from '$lib/model/type/pagination.type';
 import { and, count, eq, ilike, ne } from 'drizzle-orm';
 import { isErScopeCondition } from '$lib/server/medora/ipd/master-is-er.util';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 export async function getWardCategoryPaginated(
 	params: PaginationParams & { hospitalId: string; isEr?: boolean }
@@ -22,7 +23,10 @@ export async function getWardCategoryPaginated(
 		normalizePagination(params);
 	const conditions = [
 		eq(table.wardCategoryTable.hospitalId, params.hospitalId),
-		ne(table.wardCategoryTable.statusId, StatusEnum.DELETED)
+		paginatedEntityStatusEq(
+			table.wardCategoryTable.statusId,
+			params.statusId
+		)
 	];
 	const nameFilter = params?.name?.trim();
 	if (nameFilter) {
@@ -34,11 +38,6 @@ export async function getWardCategoryPaginated(
 	if (codeFilter) {
 		conditions.push(
 			ilike(table.wardCategoryTable.code, `%${codeFilter}%`)
-		);
-	}
-	if (typeof params?.statusId === 'number') {
-		conditions.push(
-			eq(table.wardCategoryTable.statusId, params.statusId)
 		);
 	}
 	const isErCond = isErScopeCondition(

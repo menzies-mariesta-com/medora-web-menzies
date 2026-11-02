@@ -19,6 +19,7 @@ import type {
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { assertDocumentSettingAccessible } from '$lib/server/medora/document-master/document-setting.server';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 const documentWithRelationsWith = {
 	documentType: true,
@@ -141,16 +142,6 @@ export async function getDocumentsPaginatedWithRelations(
 
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
-	const notDeletedFilter = ne(
-		table.documentTable.statusId,
-		StatusEnum.DELETED
-	);
-	const statusFilter =
-		params?.statusId != null
-			? eq(table.documentTable.statusId, params.statusId)
-			: null;
-
-	/** Hospital Document Master: custom docs only (not system catalog or hospital forks). */
 	const hospitalCustomFilter = params?.hospitalId
 		? and(
 				eq(table.documentTable.isSystemCatalog, false),
@@ -163,9 +154,11 @@ export async function getDocumentsPaginatedWithRelations(
 		: and(eq(table.documentTable.isSystemCatalog, false), isNull(table.documentTable.catalogCode));
 
 	const whereExpr = and(
-		notDeletedFilter,
-		hospitalCustomFilter,
-		statusFilter ?? undefined
+		paginatedEntityStatusEq(
+			table.documentTable.statusId,
+			params?.statusId
+		),
+		hospitalCustomFilter
 	);
 
 	const [data, countResult] = await Promise.all([

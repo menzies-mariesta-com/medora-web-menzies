@@ -14,6 +14,7 @@ import {
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
 import { and, asc, count, eq, ilike, ne } from 'drizzle-orm';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 export async function getEdTriageLevelPaginated(
 	params: PaginationParams & { hospitalId: string }
@@ -22,17 +23,15 @@ export async function getEdTriageLevelPaginated(
 		normalizePagination(params);
 	const conditions = [
 		eq(table.edTriageLevelTable.hospitalId, params.hospitalId),
-		ne(table.edTriageLevelTable.statusId, StatusEnum.DELETED)
+		paginatedEntityStatusEq(
+			table.edTriageLevelTable.statusId,
+			params.statusId
+		)
 	];
 	const nameFilter = params?.name?.trim();
 	if (nameFilter) {
 		conditions.push(
 			ilike(table.edTriageLevelTable.name, `%${nameFilter}%`)
-		);
-	}
-	if (typeof params?.statusId === 'number') {
-		conditions.push(
-			eq(table.edTriageLevelTable.statusId, params.statusId)
 		);
 	}
 	const whereClause = and(...conditions);

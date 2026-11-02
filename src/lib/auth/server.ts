@@ -18,6 +18,7 @@ import { sendEmailServer } from '$lib/server/util/mailer.server';
 import { PasswordHashUtil } from '$lib/server/auth/password-hash.server';
 import { env } from '$env/dynamic/private';
 import { authLogger } from '$lib/logger';
+import { AppEnum } from '$lib/model/enum/app.enum';
 
 const passwordHashUtil = new PasswordHashUtil();
 const baseURL = env.BETTER_AUTH_BASE_URL || 'http://localhost:4002';
@@ -67,9 +68,8 @@ export const auth = betterAuth({
 	baseURL,
 	trustedOrigins,
 	session: {
-		// Hard 2-hour session lifetime (no auto refresh extension),
-		// so users are logged out automatically after inactivity/usage.
-		expiresIn: 60 * 60 * 2,
+		// Fixed lifetime at login (12h). Manual extend resets to 12h from confirmation time.
+		expiresIn: AppEnum.MAX_SESSION_SECONDS,
 		disableSessionRefresh: true
 	},
 	database: drizzleAdapter(db!, {

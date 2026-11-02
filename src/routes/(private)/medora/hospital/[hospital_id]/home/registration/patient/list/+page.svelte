@@ -33,6 +33,10 @@
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import {
+		activeInactiveEntityStatusColumn,
+		appendEntityStatusIdSearchParam
+	} from '$lib/tool/menzies/menzies-table-entity-status.util';
 
 	const dateTimeUtil = new DateTimeUtil();
 	const routerUtil = new RouterUtil();
@@ -94,6 +98,7 @@
 					'patientPhonePrimary',
 					tableFilters.phonePrimary.trim()
 				);
+			appendEntityStatusIdSearchParam(sp, tableFilters);
 			if (opts?.bustCache) sp.set('_t', String(Date.now()));
 
 			const res = await fetch(
@@ -319,14 +324,9 @@
 				}`;
 			}
 		},
-		{
-			id: 'status',
-			header: 'Status',
-			widthClass: 'w-32 min-w-[8rem]',
-			defaultFilterValue: 'Active',
-			filterable: false,
-			field: 'status.name'
-		},
+		activeInactiveEntityStatusColumn<PatientWithRelations>({
+			header: 'Status'
+		}),
 		{
 			id: 'createdAt',
 			header: 'Created at',

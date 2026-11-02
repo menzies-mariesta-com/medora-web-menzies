@@ -6,6 +6,7 @@ import type {
 	HospitalDepartmentSchemaInsert
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import {
 	normalizePagination,
 	type PaginatedResult,
@@ -20,7 +21,10 @@ export async function getHospitalDepartmentPaginated(
 		normalizePagination(params);
 	const conditions = [
 		eq(table.hospitalDepartmentTable.hospitalId, params.hospitalId),
-		ne(table.hospitalDepartmentTable.statusId, StatusEnum.DELETED)
+		paginatedEntityStatusEq(
+			table.hospitalDepartmentTable.statusId,
+			params.statusId
+		)
 	];
 	const nameFilter = params?.name?.trim();
 	if (nameFilter) {
@@ -38,11 +42,6 @@ export async function getHospitalDepartmentPaginated(
 				table.hospitalDepartmentTable.code,
 				`%${codeFilter}%`
 			)
-		);
-	}
-	if (typeof params?.statusId === 'number') {
-		conditions.push(
-			eq(table.hospitalDepartmentTable.statusId, params.statusId)
 		);
 	}
 	const whereClause = and(...conditions);

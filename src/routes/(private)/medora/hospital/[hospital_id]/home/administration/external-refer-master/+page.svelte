@@ -15,6 +15,10 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+	import {
+		activeInactiveEntityStatusColumn,
+		appendEntityStatusIdSearchParam
+	} from '$lib/tool/menzies/menzies-table-entity-status.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -27,6 +31,9 @@
 	);
 	let searchInput = $state('');
 	let isLoading = $state(false);
+	let tableFilters = $state<Record<string, string>>({});
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 
 	type DialogMode = 'create' | 'view' | 'edit';
 	let modalState = $state<{ mode: DialogMode; id?: number } | null>(
@@ -78,6 +85,7 @@
 			url.searchParams.set('pageSize', String(pageSize));
 			if (searchInput.trim())
 				url.searchParams.set('search', searchInput.trim());
+			appendEntityStatusIdSearchParam(url.searchParams, tableFilters);
 			if (opts?.bustCache)
 				url.searchParams.set('_t', String(Date.now()));
 
@@ -92,6 +100,10 @@
 
 	lifeCycleUtil.onMount(() => {
 		fetchRefer();
+	});
+
+	lifeCycleUtil.onDestroy(() => {
+		if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
 	});
 
 	let searchDebounceTimeout: ReturnType<typeof setTimeout> | null =
@@ -226,13 +238,10 @@
 				header: m.email(),
 				widthClass: 'w-48 min-w-[12rem]'
 			},
-			{
-				id: 'status',
+			activeInactiveEntityStatusColumn<ExternalReferWithRelations>({
 				header: m.status(),
-				widthClass: 'w-28 min-w-[7rem]',
-				defaultFilterValue: 'Active',
-				field: 'status.name'
-			},
+				widthClass: 'w-28 min-w-[7rem]'
+			}),
 			{
 				id: 'createdAt',
 				header: m.created_at(),
@@ -280,7 +289,7 @@
 		showRowActions={true}
 		actionsHeader={m.actions()}
 		actionsVariant="none"
-		enableColumnFilters={false}
+		enableColumnFilters={true}
 		showAddButton={true}
 		addLabel={m.create()}
 		onAdd={openCreate}
@@ -290,6 +299,14 @@
 			fetchRefer();
 		}}
 		on:pageChange={() => fetchRefer()}
+		on:filtersChange={(event) => {
+			if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
+			tableFilters = event.detail.filters;
+			filterDebounceTimeout = setTimeout(() => {
+				currentPage = 1;
+				fetchRefer();
+			}, 300);
+		}}
 	>
 		{#snippet rowActions(row, _rowIndex)}
 			<MenziesTableViewEditDeleteActions

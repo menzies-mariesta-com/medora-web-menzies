@@ -16,6 +16,12 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { buildCaseSheetPrintBodyHtml } from '$lib/util/case-sheet-print-body.util';
 	import {
+		buildCaseSheetOrderFields,
+		buildCaseSheetVitalFields,
+		type CaseSheetOrderFieldLabels,
+		type CaseSheetVitalFieldLabels
+	} from '$lib/util/case-sheet-record-fields.util';
+	import {
 		buildPrintHtmlFromDocumentMasterBootstrap,
 		fetchDocumentPrintBootstrap,
 		printFromDocumentMasterBootstrap
@@ -39,6 +45,7 @@
 	type OrderDetailVisitRow = ServiceOrderDetailListRow & {
 		orderNo: string | null;
 		serviceName: string | null;
+		subCategoryName?: string | null;
 	};
 
 	const visitIdStr = $derived(
@@ -63,7 +70,6 @@
 	let patientConditionEntries = $state<
 		PatientFormEntryWithRelations[]
 	>([]);
-	let userDisplayById = $state<Record<string, string>>({});
 
 	let isLoading = $state(false);
 	let isPrinting = $state(false);
@@ -114,11 +120,6 @@
 		return String(value);
 	}
 
-	function formatUserName(userId: string | null | undefined): string {
-		if (!userId) return '–';
-		return userDisplayById[userId]?.trim() || '–';
-	}
-
 	function vitalStatusLabel(row: PatientDiagnosisListRow): string {
 		return row.statusId === StatusEnum.ACTIVE
 			? m.nursing_case_sheet_status_active()
@@ -151,6 +152,66 @@
 			: '–'
 	);
 
+	const vitalFieldLabels = $derived({
+		date: m.nursing_case_sheet_col_date(),
+		height: m.nursing_case_sheet_col_height_cm(),
+		weight: m.nursing_case_sheet_col_weight_kg(),
+		bmi: m.nursing_case_sheet_col_bmi(),
+		bp: m.nursing_case_sheet_col_bp(),
+		pulse: m.nursing_case_sheet_col_pulse(),
+		temp: m.nursing_case_sheet_col_temp(),
+		spo2: m.nursing_case_sheet_col_spo2(),
+		respiration: m.nursing_case_sheet_col_respiration(),
+		rbs: m.nursing_case_sheet_col_rbs(),
+		symptom: m.nursing_case_sheet_col_symptom(),
+		description: m.nursing_case_sheet_col_description(),
+		remark: m.remark(),
+		status: m.observation_emr_status()
+	} satisfies CaseSheetVitalFieldLabels);
+
+	const orderFieldLabels = $derived({
+		orderNo: m.nursing_case_sheet_col_order_no(),
+		service: m.observation_emr_service(),
+		subCategory: m.service_item_sub_category_label(),
+		instruction: m.observation_emr_instruction(),
+		serviceAmount: m.observation_emr_service_amount(),
+		taxAmount: m.observation_emr_tax_amount(),
+		discount: m.op_billing_print_discount(),
+		units: m.observation_emr_units(),
+		urgent: m.observation_emr_urgent(),
+		yes: m.nursing_case_sheet_yes(),
+		no: m.nursing_case_sheet_no(),
+		nursingComplete: m.nursing_case_sheet_col_nursing_complete(),
+		status: m.observation_emr_status()
+	} satisfies CaseSheetOrderFieldLabels);
+
+	function vitalRecordFields(row: PatientDiagnosisListRow) {
+		return buildCaseSheetVitalFields(row, vitalFieldLabels, {
+			formatText,
+			formatDateTime,
+			formatVital,
+			formatNumberDisplay,
+			getVitalDisplayDate,
+			statusLabel: vitalStatusLabel
+		});
+	}
+
+	function orderRecordFields(row: OrderDetailVisitRow) {
+		return buildCaseSheetOrderFields(row, orderFieldLabels, {
+			formatText,
+			formatDateTime,
+			formatNumberDisplay,
+			statusLabel: orderLineStatusLabel
+		});
+	}
+
+	function orderRecordTitle(row: OrderDetailVisitRow): string {
+		const service =
+			row.serviceName?.trim() ||
+			(row.serviceId != null ? `Service ${row.serviceId}` : '–');
+		return `${formatText(row.orderNo)} · ${service}`;
+	}
+
 	async function loadCaseSheet() {
 		if (!visitId) {
 			visitRow = null;
@@ -160,7 +221,6 @@
 			visitDiagnoses = [];
 			chiefComplaintEntries = [];
 			patientConditionEntries = [];
-			userDisplayById = {};
 			return;
 		}
 
@@ -172,7 +232,6 @@
 		visitDiagnoses = [];
 		chiefComplaintEntries = [];
 		patientConditionEntries = [];
-		userDisplayById = {};
 		try {
 			if (!hospitalId) {
 				visitRow = null;
@@ -205,7 +264,6 @@
 			)
 				? data.patientConditionEntries
 				: [];
-			userDisplayById = data.userDisplayById ?? {};
 		} finally {
 			isLoading = false;
 		}
@@ -222,7 +280,6 @@
 			visitDiagnoses = [];
 			chiefComplaintEntries = [];
 			patientConditionEntries = [];
-			userDisplayById = {};
 			return;
 		}
 		void loadCaseSheet();
@@ -248,9 +305,6 @@
 			noEntries: m.nursing_case_sheet_no_entries(),
 			yes: m.nursing_case_sheet_yes(),
 			no: m.nursing_case_sheet_no(),
-			enteredBy: 'Entered by',
-			updatedBy: 'Updated by',
-			on: 'on',
 			vitalColDate: m.nursing_case_sheet_col_date(),
 			vitalColHeight: m.nursing_case_sheet_col_height_cm(),
 			vitalColWeight: m.nursing_case_sheet_col_weight_kg(),
@@ -260,8 +314,18 @@
 			vitalColTemp: m.nursing_case_sheet_col_temp(),
 			vitalColSpo2: m.nursing_case_sheet_col_spo2(),
 			vitalColSymptom: m.nursing_case_sheet_col_symptom(),
+			vitalColRespiration: m.nursing_case_sheet_col_respiration(),
+			vitalColRbs: m.nursing_case_sheet_col_rbs(),
+			vitalColDescription: m.nursing_case_sheet_col_description(),
+			vitalColRemark: m.remark(),
+			vitalColStatus: m.observation_emr_status(),
 			orderColOrderNo: m.nursing_case_sheet_col_order_no(),
-			orderColDescription: m.nursing_case_sheet_col_description()
+			orderColDescription: m.observation_emr_instruction(),
+			orderColSubCategory: m.service_item_sub_category_label(),
+			orderColTaxAmount: m.observation_emr_tax_amount(),
+			orderColDiscount: m.op_billing_print_discount(),
+			orderColNursingComplete: m.nursing_case_sheet_col_nursing_complete(),
+			orderColStatus: m.observation_emr_status()
 		};
 	}
 
@@ -271,10 +335,11 @@
 			formatters: {
 				formatText,
 				formatDateTime,
-				formatUserName,
 				formatVital,
 				formatNumberDisplay,
-				getVitalDisplayDate
+				getVitalDisplayDate,
+				vitalStatusLabel,
+				orderStatusLabel: orderLineStatusLabel
 			},
 			chiefComplaintEntries,
 			patientConditionEntries,
@@ -525,20 +590,6 @@
 							{#each chiefComplaintEntries as row (row.id)}
 								<li>
 									<div>{formatText(row.description)}</div>
-									<p class="case-sheet-audit">
-										Entered by {formatUserName(
-											row.createdBy as string | null
-										)} on
-										{formatDateTime(
-											row.createdAt as string | null | undefined
-										)}
-										· Updated by {formatUserName(
-											row.updatedBy as string | null
-										)} on
-										{formatDateTime(
-											row.updatedAt as string | null | undefined
-										)}
-									</p>
 								</li>
 							{/each}
 						</ol>
@@ -556,20 +607,6 @@
 							{#each patientConditionEntries as row (row.id)}
 								<li>
 									<div>{formatText(row.description)}</div>
-									<p class="case-sheet-audit">
-										Entered by {formatUserName(
-											row.createdBy as string | null
-										)} on
-										{formatDateTime(
-											row.createdAt as string | null | undefined
-										)}
-										· Updated by {formatUserName(
-											row.updatedBy as string | null
-										)} on
-										{formatDateTime(
-											row.updatedAt as string | null | undefined
-										)}
-									</p>
 								</li>
 							{/each}
 						</ol>
@@ -595,20 +632,6 @@
 											</span>
 										{/if}
 									</div>
-									<p class="case-sheet-audit">
-										Entered by {formatUserName(
-											row.createdBy as string | null
-										)} on
-										{formatDateTime(
-											row.createdAt as string | null | undefined
-										)}
-										· Updated by {formatUserName(
-											row.updatedBy as string | null
-										)} on
-										{formatDateTime(
-											row.updatedAt as string | null | undefined
-										)}
-									</p>
 								</li>
 							{/each}
 						</ol>
@@ -634,20 +657,6 @@
 										{m.nursing_case_sheet_allergy_reaction()}:
 										{formatText(row.reaction)}
 									</div>
-									<p class="case-sheet-audit">
-										Entered by {formatUserName(
-											row.createdBy as string | null
-										)} on
-										{formatDateTime(
-											row.createdAt as string | null | undefined
-										)}
-										· Updated by {formatUserName(
-											row.updatedBy as string | null
-										)} on
-										{formatDateTime(
-											row.updatedAt as string | null | undefined
-										)}
-									</p>
 								</li>
 							{/each}
 						</ol>
@@ -661,62 +670,23 @@
 							{m.nursing_case_sheet_no_entries()}
 						</p>
 					{:else}
-						<div class="case-sheet-table-wrap">
-							<table class="case-sheet-table">
-								<thead>
-									<tr>
-										<th>{m.nursing_case_sheet_col_date()}</th>
-										<th>{m.nursing_case_sheet_col_height_cm()}</th>
-										<th>{m.nursing_case_sheet_col_weight_kg()}</th>
-										<th>{m.nursing_case_sheet_col_bmi()}</th>
-										<th>{m.nursing_case_sheet_col_bp()}</th>
-										<th>{m.nursing_case_sheet_col_pulse()}</th>
-										<th>{m.nursing_case_sheet_col_temp()}</th>
-										<th>{m.nursing_case_sheet_col_spo2()}</th>
-										<th>{m.nursing_case_sheet_col_symptom()}</th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each vitals as row (row.id)}
-										<tr>
-											<td
-												>{formatDateTime(
-													getVitalDisplayDate(row)
-												)}</td
-											>
-											<td>{formatVital(row.height)}</td>
-											<td>{formatVital(row.weight)}</td>
-											<td>{formatVital(row.bmi)}</td>
-											<td
-												>{formatVital(row.bpSystolic)}/{formatVital(
-													row.bpDiastolic
-												)}</td
-											>
-											<td>{formatVital(row.pulse)}</td>
-											<td>{formatVital(row.temperature)}</td>
-											<td>{formatVital(row.spO2)}</td>
-											<td>
-												<div>{formatVital(row.symptom)}</div>
-												<p class="case-sheet-audit">
-													Entered by {formatUserName(
-														row.createdBy as string | null
-													)} on
-													{formatDateTime(
-														row.createdAt as string | null | undefined
-													)}
-													· Updated by {formatUserName(
-														row.updatedBy as string | null
-													)} on
-													{formatDateTime(
-														row.updatedAt as string | null | undefined
-													)}
-												</p>
-											</td>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
+						<ol class="case-sheet-records">
+							{#each vitals as row (row.id)}
+								<li class="case-sheet-record">
+									<p class="case-sheet-record-title">
+										{formatDateTime(getVitalDisplayDate(row))}
+									</p>
+									<dl class="case-sheet-record-dl">
+										{#each vitalRecordFields(row) as field (field.label)}
+											<div>
+												<dt>{field.label}</dt>
+												<dd>{field.value}</dd>
+											</div>
+										{/each}
+									</dl>
+								</li>
+							{/each}
+						</ol>
 					{/if}
 				</section>
 
@@ -727,62 +697,23 @@
 							{m.nursing_case_sheet_no_entries()}
 						</p>
 					{:else}
-						<div class="case-sheet-table-wrap">
-							<table class="case-sheet-table">
-								<thead>
-									<tr>
-										<th>{m.nursing_case_sheet_col_order_no()}</th>
-										<th>{m.observation_emr_service()}</th>
-										<th>{m.nursing_case_sheet_col_description()}</th>
-										<th>{m.observation_emr_service_amount()}</th>
-										<th>{m.observation_emr_units()}</th>
-										<th>{m.observation_emr_urgent()}</th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each orderLines as row (row.id)}
-										<tr>
-											<td>{formatText(row.orderNo)}</td>
-											<td>
-												{formatText(
-													row.serviceName ??
-														`Service ${row.serviceId}`
-												)}
-											</td>
-											<td>
-												<div>{formatText(row.instruction)}</div>
-												<p class="case-sheet-audit">
-													Entered by {formatUserName(
-														row.createdBy as string | null
-													)} on
-													{formatDateTime(
-														row.createdAt as string | null | undefined
-													)}
-													· Updated by {formatUserName(
-														row.updatedBy as string | null
-													)} on
-													{formatDateTime(
-														row.updatedAt as string | null | undefined
-													)}
-												</p>
-											</td>
-											<td>{formatNumberDisplay(row.serviceAmount)}</td
-											>
-											<td>
-												{row.serviceUnit != null
-													? String(row.serviceUnit)
-													: '–'}
-											</td>
-											<td>
-												{row.isUrgent
-													? m.nursing_case_sheet_yes()
-													: m.nursing_case_sheet_no()}
-											</td>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
+						<ol class="case-sheet-records">
+							{#each orderLines as row (row.id)}
+								<li class="case-sheet-record">
+									<p class="case-sheet-record-title">
+										{orderRecordTitle(row)}
+									</p>
+									<dl class="case-sheet-record-dl">
+										{#each orderRecordFields(row) as field (field.label)}
+											<div>
+												<dt>{field.label}</dt>
+												<dd>{field.value}</dd>
+											</div>
+										{/each}
+									</dl>
+								</li>
+							{/each}
+						</ol>
 					{/if}
 				</section>
 
@@ -800,7 +731,7 @@
 
 <style>
 	.case-sheet-document {
-		max-width: 52rem;
+		max-width: 64rem;
 		margin: 0 auto;
 		padding: 1.75rem 1.5rem 2rem;
 		background: var(--fallback-b1, oklch(var(--b1)));
@@ -883,42 +814,56 @@
 		color: color-mix(in oklab, currentColor 50%, transparent);
 	}
 
-	.case-sheet-audit {
-		margin-top: 0.4rem;
-		font-size: 0.78rem;
-		color: color-mix(in oklab, currentColor 55%, transparent);
-		font-family: ui-sans-serif, system-ui, sans-serif;
-	}
-
 	.case-sheet-muted {
 		color: color-mix(in oklab, currentColor 45%, transparent);
 		font-size: 0.92em;
 	}
 
-	.case-sheet-table-wrap {
-		margin-top: 0.5rem;
-		overflow-x: auto;
-		font-family: ui-sans-serif, system-ui, sans-serif;
-		font-size: 0.82rem;
+	.case-sheet-records {
+		list-style: none;
+		margin: 0.5rem 0 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
 	}
 
-	.case-sheet-table {
-		width: 100%;
-		border-collapse: collapse;
-	}
-
-	.case-sheet-table th,
-	.case-sheet-table td {
+	.case-sheet-record {
 		border: 1px solid
-			color-mix(in oklab, currentColor 16%, transparent);
-		padding: 0.35rem 0.5rem;
-		text-align: left;
-		vertical-align: top;
+			color-mix(in oklab, currentColor 14%, transparent);
+		border-radius: 0.25rem;
+		padding: 0.65rem 0.75rem;
+		font-family: ui-sans-serif, system-ui, sans-serif;
+		font-size: 0.84rem;
+		break-inside: avoid;
 	}
 
-	.case-sheet-table th {
+	.case-sheet-record-title {
+		margin: 0 0 0.45rem;
 		font-weight: 600;
-		background: color-mix(in oklab, currentColor 6%, transparent);
+		font-size: 0.88rem;
+	}
+
+	.case-sheet-record-dl {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+		gap: 0.45rem 1rem;
+		margin: 0;
+	}
+
+	.case-sheet-record-dl dt {
+		margin: 0;
+		font-weight: 600;
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: color-mix(in oklab, currentColor 55%, transparent);
+	}
+
+	.case-sheet-record-dl dd {
+		margin: 0.1rem 0 0;
+		white-space: pre-wrap;
+		word-break: break-word;
 	}
 
 	.case-sheet-footer {

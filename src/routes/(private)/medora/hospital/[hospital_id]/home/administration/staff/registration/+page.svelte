@@ -26,6 +26,7 @@
 	} from '$lib/model/type/medora/staff-reg-ui.type';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { browser } from '$app/environment';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -589,6 +590,7 @@
 	async function handleOnSubmit(e: SubmitEvent) {
 		e.preventDefault();
 		if (!browser) return;
+		if (isLoading) return;
 		const form = e.currentTarget as HTMLFormElement;
 		const fd = new FormData(form);
 
@@ -653,7 +655,14 @@
 
 		isLoading = true;
 		try {
-			if (staffEditId) {
+			const updatingStaffId =
+				staffEditId ??
+				(isEditMode && editId && typeof editId === 'string'
+					? editId
+					: null);
+
+			if (updatingStaffId) {
+				if (!staffEditId) staffEditId = updatingStaffId;
 				const hid =
 					typeof page.params.hospital_id === 'string'
 						? page.params.hospital_id
@@ -662,7 +671,7 @@
 					? await getJson<any>(
 							staffRegistrationApiUrl(hid, {
 								mode: 'staff',
-								id: staffEditId
+								id: updatingStaffId
 							}),
 							{ method: 'GET' }
 						)
@@ -700,7 +709,7 @@
 						method: 'POST',
 						headers: { 'content-type': 'application/json' },
 						body: JSON.stringify({
-							id: staffEditId,
+							id: updatingStaffId,
 							user: {
 								id: userId,
 								name:
@@ -809,7 +818,7 @@
 									method: 'POST',
 									headers: { 'content-type': 'application/json' },
 									body: JSON.stringify({
-										id: staffEditId,
+										id: updatingStaffId,
 										staff: { photoUrl: data.url }
 									})
 								}
@@ -825,7 +834,7 @@
 							method: 'POST',
 							headers: { 'content-type': 'application/json' },
 							body: JSON.stringify({
-								id: staffEditId,
+								id: updatingStaffId,
 								staff: { photoUrl: null }
 							})
 						}
@@ -847,7 +856,7 @@
 								method: 'POST',
 								headers: { 'content-type': 'application/json' },
 								body: JSON.stringify({
-									id: staffEditId,
+									id: updatingStaffId,
 									staff: {},
 									staffDetail: { signatureImageUrl: data.url }
 								})
@@ -1093,6 +1102,11 @@
 			}
 
 			disableCreateSave = true;
+			staffEditId = staffId;
+			await goto(
+				`${page.url.pathname}?edit=${encodeURIComponent(staffId)}`,
+				{ replaceState: true, keepFocus: true, noScroll: true }
+			);
 		} catch (error: unknown) {
 			let message: string | null = null;
 
@@ -1123,6 +1137,13 @@
 
 	function resetStaffFormForNew() {
 		disableCreateSave = false;
+		staffEditId = null;
+		lastLoadedStaffId = null;
+		void goto(page.url.pathname, {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 		selectedStaffCode = '';
 		selectedTitleId = '';
 		selectedFirstName = '';
