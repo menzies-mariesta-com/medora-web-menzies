@@ -23,6 +23,7 @@ import {
 	unitSalePriceForOutUnit,
 	type MedOrderIumUnitIds
 } from '$lib/tool/inventory/med-order-out-qty.util';
+import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
 
 type Db = NeonDatabase<typeof schema>;
 
@@ -74,7 +75,7 @@ export async function computeBatchTotalFromLines(
 			unitSalePrice: ln.unitSalePrice
 		});
 	}
-	return sum.toFixed(2);
+	return toDbMoney2dp(sum);
 }
 
 async function getIumFactors(

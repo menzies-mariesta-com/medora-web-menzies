@@ -2,7 +2,8 @@ import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as obs from '$lib/server/medora/observation/observation-emr.server';
 import { getSubCategories } from '$lib/server/medora/administration/service-order/sub-category.server';
-import { and, inArray, ne } from 'drizzle-orm';
+import { getCategories } from '$lib/server/medora/administration/service-order/category.server';
+import { and, eq, inArray } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -44,6 +45,14 @@ export async function GET(event: RequestEvent) {
 				.filter((n) => Number.isFinite(n));
 			if (!serviceOrderIds.length)
 				throw error(400, 'serviceOrderIds is required');
+			const statusIdRaw = event.url.searchParams.get('statusId');
+			const statusId =
+				statusIdRaw != null && statusIdRaw.trim() !== ''
+					? Number(statusIdRaw)
+					: StatusEnum.ACTIVE;
+			if (!Number.isFinite(statusId)) {
+				throw error(400, 'statusId must be a number');
+			}
 			const rows = await ensureDb()
 				.select()
 				.from(table.serviceOrderDetailTable)
@@ -53,10 +62,7 @@ export async function GET(event: RequestEvent) {
 							table.serviceOrderDetailTable.serviceOrderId,
 							serviceOrderIds
 						),
-						ne(
-							table.serviceOrderDetailTable.statusId,
-							StatusEnum.DELETED
-						)
+						eq(table.serviceOrderDetailTable.statusId, statusId)
 					)
 				)
 				.orderBy(table.serviceOrderDetailTable.id);
@@ -124,6 +130,9 @@ export async function GET(event: RequestEvent) {
 		}
 		case 'subCategory.list': {
 			return json(await getSubCategories(event));
+		}
+		case 'category.list': {
+			return json(await getCategories(event));
 		}
 		case 'doctor.search': {
 			const search = event.url.searchParams.get('search') ?? '';

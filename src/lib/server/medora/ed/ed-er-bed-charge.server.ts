@@ -5,6 +5,7 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 import { getOrCreateHospitalEdBillingConfig } from './hospital-ed-billing-config.server';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
+import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
 
 /**
  * Idempotent: ensures one auto ER bed service line exists for the encounter.
@@ -123,8 +124,14 @@ export async function ensureErBedChargeServiceLine(input: {
 			.values({
 				serviceOrderId,
 				serviceId: svc.id,
-				serviceAmount: svc.serviceAmount ?? '0',
-				serviceTaxAmount: svc.serviceTaxAmount ?? '0',
+				serviceAmount: toDbMoney2dp(
+					(svc as { serviceAmount?: string | null }).serviceAmount ??
+						'0'
+				),
+				serviceTaxAmount: toDbMoney2dp(
+					(svc as { serviceTaxAmount?: string | null })
+						.serviceTaxAmount ?? '0'
+				),
 				serviceUnit: 1,
 				nursingCompleteTime: nowIso,
 				statusId: StatusEnum.ACTIVE,

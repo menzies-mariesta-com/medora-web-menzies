@@ -157,20 +157,37 @@ export const PRINT_DOCUMENT_UTILITY_CSS = `
 		font-size: 10px;
 		font-style: italic;
 	}
-	.case-sheet-audit {
-		margin: 4px 0 0;
-		font-size: 9px;
-	}
 	.case-sheet-muted { font-size: 10px; }
-	.case-sheet-table-wrap { overflow-x: auto; }
-	.case-sheet-table { width: 100%; border-collapse: collapse; font-size: 10px; }
-	.case-sheet-table th,
-	.case-sheet-table td {
-		border: 1px solid #000;
-		padding: 4px 6px;
-		vertical-align: top;
+	.case-sheet-records {
+		margin: 6px 0 0;
+		padding: 0;
+		list-style: none;
 	}
-	.case-sheet-table th { font-weight: 600; }
+	.case-sheet-record {
+		margin-bottom: 8px;
+		padding: 6px 8px;
+		border: 1px solid #000;
+		break-inside: avoid;
+	}
+	.case-sheet-record-title {
+		margin: 0 0 4px;
+		font-size: 10px;
+		font-weight: 700;
+	}
+	.case-sheet-record-dl {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 4px 10px;
+		margin: 0;
+		font-size: 10px;
+	}
+	.case-sheet-record-dl dt {
+		margin: 0;
+		font-weight: 600;
+	}
+	.case-sheet-record-dl dd {
+		margin: 0;
+	}
 	.catalog-section-title {
 		margin: 14px 0 8px;
 		font-size: 12px;

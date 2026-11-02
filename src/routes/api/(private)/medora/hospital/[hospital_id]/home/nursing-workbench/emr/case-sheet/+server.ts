@@ -2,23 +2,11 @@ import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as obs from '$lib/server/medora/observation/observation-emr.server';
-import { getUserDisplayNameByIds } from '$lib/server/medora/user-display.server';
 import type {
 	PatientDiagnosisSchema,
 	ServiceOrderDetailSchema
 } from '$lib/server/db/schema-type';
 import { parseUuid } from '$lib/util/id.util';
-
-function collectAuditUserIds(rows: unknown[]): string[] {
-	const ids: string[] = [];
-	for (const row of rows) {
-		if (row == null || typeof row !== 'object') continue;
-		const r = row as { createdBy?: string | null; updatedBy?: string | null };
-		if (r.createdBy?.trim()) ids.push(r.createdBy.trim());
-		if (r.updatedBy?.trim()) ids.push(r.updatedBy.trim());
-	}
-	return ids;
-}
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -56,8 +44,7 @@ export async function GET(event: RequestEvent) {
 			orderLines: [],
 			visitDiagnoses: [],
 			chiefComplaintEntries: [],
-			patientConditionEntries: [],
-			userDisplayById: {}
+			patientConditionEntries: []
 		});
 	}
 
@@ -110,16 +97,6 @@ export async function GET(event: RequestEvent) {
 		patientConditionEntries as { statusId?: number | null }[]
 	);
 
-	const userIds = [
-		...collectAuditUserIds(allergies),
-		...collectAuditUserIds(activeVitals),
-		...collectAuditUserIds(activeOrderLines),
-		...collectAuditUserIds(activeVisitDiagnoses),
-		...collectAuditUserIds(activeChiefComplaintEntries),
-		...collectAuditUserIds(activePatientConditionEntries)
-	];
-	const userDisplayById = await getUserDisplayNameByIds(userIds);
-
 	return json({
 		visitRow,
 		allergies,
@@ -127,7 +104,6 @@ export async function GET(event: RequestEvent) {
 		orderLines: activeOrderLines as OrderDetailVisitRow[],
 		visitDiagnoses: activeVisitDiagnoses,
 		chiefComplaintEntries: activeChiefComplaintEntries,
-		patientConditionEntries: activePatientConditionEntries,
-		userDisplayById
+		patientConditionEntries: activePatientConditionEntries
 	});
 }

@@ -218,9 +218,14 @@ ALTER TABLE "ipd_accommodation_billing_policy" ADD CONSTRAINT "ipd_accommodation
 CREATE UNIQUE INDEX "ipd_accommodation_billing_policy_hospital_uidx" ON "ipd_accommodation_billing_policy" USING btree ("hospital_id");
 --> statement-breakpoint
 INSERT INTO "page" ("id", "name", "module_id", "status_id", "parent_id", "page_url", "sequence_no")
-VALUES
-	(450001, 'Ward', 1, 1, 45, '/medora/home/administration/ward-master/ward', 1),
-	(450002, 'Room', 1, 1, 45, '/medora/home/administration/ward-master/room', 2)
+SELECT v."id", v."name", v."module_id", v."status_id", v."parent_id", v."page_url", v."sequence_no"
+FROM (
+	VALUES
+		(450001, 'Ward', 1, 1, 45, '/medora/home/administration/ward-master/ward', 1),
+		(450002, 'Room', 1, 1, 45, '/medora/home/administration/ward-master/room', 2)
+) AS v("id", "name", "module_id", "status_id", "parent_id", "page_url", "sequence_no")
+WHERE EXISTS (SELECT 1 FROM "module" m WHERE m."id" = 1)
+	AND EXISTS (SELECT 1 FROM "page" p WHERE p."id" = 45)
 ON CONFLICT ("id") DO UPDATE SET
 	"name" = EXCLUDED."name",
 	"parent_id" = EXCLUDED."parent_id",

@@ -3,6 +3,7 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PatientPortalContext } from './require-patient-context.server';
+import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
 
 export type PatientBillType = 'op' | 'ip';
 
@@ -23,9 +24,9 @@ function mapOpBill(row: {
 		billNo: row.billNo,
 		visitId: row.visitId,
 		visitNo: row.visit?.visitNo ?? null,
-		linesSubtotal: row.linesSubtotal,
-		discountAmount: row.discountAmount,
-		totalAmount: row.totalAmount,
+		linesSubtotal: toDbMoney2dp(row.linesSubtotal),
+		discountAmount: toDbMoney2dp(row.discountAmount),
+		totalAmount: toDbMoney2dp(row.totalAmount),
 		advanceAppliedAmount: null,
 		amountPaid: null,
 		statusName: row.statusTagging?.name ?? null,
@@ -52,11 +53,11 @@ function mapIpBill(row: {
 		billNo: row.billNo,
 		visitId: row.visitId,
 		visitNo: row.visit?.visitNo ?? null,
-		linesSubtotal: row.linesSubtotal,
-		discountAmount: row.discountAmount,
-		totalAmount: row.totalAmount,
-		advanceAppliedAmount: row.advanceAppliedAmount,
-		amountPaid: row.amountPaid,
+		linesSubtotal: toDbMoney2dp(row.linesSubtotal),
+		discountAmount: toDbMoney2dp(row.discountAmount),
+		totalAmount: toDbMoney2dp(row.totalAmount),
+		advanceAppliedAmount: toDbMoney2dp(row.advanceAppliedAmount),
+		amountPaid: toDbMoney2dp(row.amountPaid),
 		statusName: row.statusTagging?.name ?? null,
 		createdAt: row.createdAt
 	};
@@ -114,10 +115,13 @@ function mapBillLine(line: {
 	return {
 		serviceName: line.serviceNameSnapshot,
 		subCategoryName: line.subCategoryNameSnapshot,
-		serviceAmount: line.serviceAmount,
-		serviceTaxAmount: line.serviceTaxAmount,
-		discount: line.discount,
-		lineTotal: line.lineTotal,
+		serviceAmount: line.serviceAmount != null ? toDbMoney2dp(line.serviceAmount) : null,
+		serviceTaxAmount:
+			line.serviceTaxAmount != null
+				? toDbMoney2dp(line.serviceTaxAmount)
+				: null,
+		discount: line.discount != null ? toDbMoney2dp(line.discount) : null,
+		lineTotal: toDbMoney2dp(line.lineTotal),
 		quantity: line.serviceUnit
 	};
 }

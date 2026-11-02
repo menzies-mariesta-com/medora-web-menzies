@@ -31,9 +31,6 @@
 			? page.params.hospital_id
 			: ''
 	);
-	const visitIdFromQuery = $derived(
-		page.url.searchParams.get('visitId')?.trim() ?? ''
-	);
 
 	let { data } = $props();
 	const selectedInventoryFromStoreId = $derived(
@@ -316,10 +313,7 @@
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						storeId,
-						...(visitIdFromQuery ? { visitId: visitIdFromQuery } : {}),
-						remarks: visitIdFromQuery
-							? `ED visit ${visitIdFromQuery}${remarks.trim() ? ` | ${remarks.trim()}` : ''}`
-							: remarks.trim() || null,
+						remarks: remarks.trim() || null,
 						lines: payloadLines
 					})
 				}
@@ -351,11 +345,6 @@
 		<LucideArrowLeft className="mr-1 size-4" />
 	</WashButton>
 	<h1 class="text-xl font-semibold">{m.inv_dc_new_title()}</h1>
-	{#if visitIdFromQuery}
-		<span class="badge badge-outline text-xs">
-			Visit {visitIdFromQuery.slice(0, 8)}…
-		</span>
-	{/if}
 </div>
 
 <WashCard className="mb-4">

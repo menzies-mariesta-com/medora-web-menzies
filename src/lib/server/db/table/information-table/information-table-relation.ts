@@ -36,6 +36,7 @@ import {
 	staffDepartmentTable,
 	serviceItemTable,
 	serviceTaggingTable,
+	billingSetupServiceTaggingTable,
 	storeTable,
 	supportTicketTable,
 	staffDetailTable,
@@ -73,7 +74,6 @@ import {
 	diagnosisTypeTable,
 	formNameTable,
 	countryTable,
-	departmentTable,
 	genderTable,
 	identityTypeTable,
 	maritalStatusTable,
@@ -244,15 +244,16 @@ export const prefixCounterTableRelations = relations(
 
 export const hospitalDepartmentTableRelations = relations(
 	hospitalDepartmentTable,
-	({ one }) => ({
+	({ one, many }) => ({
 		hospital: one(hospitalTable, {
 			fields: [hospitalDepartmentTable.hospitalId],
 			references: [hospitalTable.id]
 		}),
-		department: one(departmentTable, {
-			fields: [hospitalDepartmentTable.departmentId],
-			references: [departmentTable.id]
-		})
+		status: one(statusTable, {
+			fields: [hospitalDepartmentTable.statusId],
+			references: [statusTable.id]
+		}),
+		staffDepartments: many(staffDepartmentTable)
 	})
 );
 
@@ -297,9 +298,9 @@ export const staffDepartmentTableRelations = relations(
 			fields: [staffDepartmentTable.staffId],
 			references: [staffTable.id]
 		}),
-		department: one(departmentTable, {
-			fields: [staffDepartmentTable.departmentId],
-			references: [departmentTable.id]
+		hospitalDepartment: one(hospitalDepartmentTable, {
+			fields: [staffDepartmentTable.hospitalDepartmentId],
+			references: [hospitalDepartmentTable.id]
 		})
 	})
 );
@@ -1205,7 +1206,7 @@ export const serviceItemTableRelations = relations(
 
 export const serviceTaggingTableRelations = relations(
 	serviceTaggingTable,
-	({ one }) => ({
+	({ one, many }) => ({
 		branch: one(hospitalBranchTable, {
 			fields: [serviceTaggingTable.branchId],
 			references: [hospitalBranchTable.id]
@@ -1216,6 +1217,25 @@ export const serviceTaggingTableRelations = relations(
 		}),
 		status: one(statusTable, {
 			fields: [serviceTaggingTable.statusId],
+			references: [statusTable.id]
+		}),
+		billingSetupLinks: many(billingSetupServiceTaggingTable)
+	})
+);
+
+export const billingSetupServiceTaggingTableRelations = relations(
+	billingSetupServiceTaggingTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [billingSetupServiceTaggingTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		serviceTagging: one(serviceTaggingTable, {
+			fields: [billingSetupServiceTaggingTable.serviceTaggingId],
+			references: [serviceTaggingTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [billingSetupServiceTaggingTable.statusId],
 			references: [statusTable.id]
 		})
 	})

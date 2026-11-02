@@ -70,6 +70,8 @@ export async function POST(event: RequestEvent) {
 		if (!Number.isFinite(bedId) || bedId <= 0)
 			throw error(400, 'bedId is required');
 		if (!branchId) throw error(400, 'branchId is required');
+		const sourceOpdVisitId = parseUuid(body.sourceOpdVisitId);
+		const admissionOrderId = Number(body.admissionOrderId);
 		return json(
 			await admission.admitVisitToIpd(event, {
 				hospitalId,
@@ -79,6 +81,11 @@ export async function POST(event: RequestEvent) {
 				wardId: Number.isFinite(wardId as number) ? wardId : undefined,
 				admittingDoctorId: body.admittingDoctorId ?? null,
 				reasonNotes: body.reasonNotes ?? null,
+				sourceOpdVisitId: sourceOpdVisitId ?? null,
+				admissionOrderId:
+					Number.isFinite(admissionOrderId) && admissionOrderId > 0
+						? admissionOrderId
+						: null,
 				actorStaffId: actorStaffId(event)
 			})
 		);
@@ -130,12 +137,22 @@ export async function POST(event: RequestEvent) {
 		const admissionId = Number(body.admissionId);
 		if (!Number.isFinite(admissionId) || admissionId <= 0)
 			throw error(400, 'admissionId is required');
-		return json(
-			await admission.dischargeAdmission({
+		const discharged = await admission.dischargeAdmission({
+			hospitalId,
+			admissionId
+		});
+		const userId = event.locals.user?.id;
+		if (userId && discharged.visitId) {
+			const { applyBillingAutoTaggingsForVisit } = await import(
+				'$lib/server/medora/billing/billing-auto-tagging-on-visit-close.server'
+			);
+			await applyBillingAutoTaggingsForVisit({
 				hospitalId,
-				admissionId
-			})
-		);
+				visitId: discharged.visitId,
+				userId
+			});
+		}
+		return json(discharged);
 	}
 
 	if (action === 'close') {

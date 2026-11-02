@@ -1,6 +1,7 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as bed from '$lib/server/medora/ipd/bed.server';
+import { isErForMasterPicker, isErFromScopeQuery } from '$lib/server/medora/ipd/master-is-er.util';
 import {
 	IpdBedStatusEnum,
 	StatusEnum
@@ -43,10 +44,15 @@ export async function GET(event: RequestEvent) {
 			await bed.listFreeBeds({
 				hospitalId,
 				wardId: Number.isFinite(wardId as number) ? wardId : undefined,
-				roomId: Number.isFinite(roomId as number) ? roomId : undefined
+				roomId: Number.isFinite(roomId as number) ? roomId : undefined,
+				isEr: isErForMasterPicker(
+					event.url.searchParams.get('scope')
+				)
 			})
 		);
 	}
+
+	const isEr = isErFromScopeQuery(event.url.searchParams.get('scope'));
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
 	const pageSize = Number(
@@ -89,7 +95,8 @@ export async function GET(event: RequestEvent) {
 				: undefined,
 			statusId: Number.isFinite(statusId as number)
 				? statusId
-				: undefined
+				: undefined,
+			isEr
 		})
 	);
 }

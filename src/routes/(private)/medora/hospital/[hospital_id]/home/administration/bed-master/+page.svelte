@@ -15,6 +15,13 @@
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import type { BedRow } from '$lib/model/type/medora/ipd/ipd.type';
+	import {
+		administrationBedMasterApi,
+		erBedRowAsUnified,
+		masterScopeDisplayLabel,
+		type UnifiedBedListRow
+	} from '$lib/tool/medora/administration-master-scope.util';
+	import { erBedStatusLabel } from '$lib/tool/medora/er-bed-status-label.util';
 	import { m } from '$lib/paraglide/messages';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -30,13 +37,8 @@
 			? page.params.hospital_id
 			: ''
 	);
-	const bedApi = $derived(
-		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/administration/bed-master`
-			: ''
-	);
 
-	let rows = $state<BedRow[]>([]);
+	let rows = $state<UnifiedBedListRow[]>([]);
 	let total = $state(0);
 	let totalPages = $state(1);
 	let currentPage = $state(1);
@@ -53,7 +55,16 @@
 		[IpdBedStatusEnum.CLEANING]: 'Cleaning'
 	};
 
-	const bedColumns: MenziesTableColumn<BedRow>[] = [
+	const msg = m as Record<string, (inputs?: object) => string>;
+
+	const bedColumns: MenziesTableColumn<UnifiedBedListRow>[] = [
+		{
+			id: 'scope',
+			header: 'Scope',
+			widthClass: 'w-20 min-w-[4rem]',
+			filterable: false,
+			format: (_v, row) => masterScopeDisplayLabel(row.isEr)
+		},
 		{
 			id: 'id',
 			header: m.id(),
@@ -121,7 +132,12 @@
 				}
 			],
 			format: (_value, row) =>
-				bedStatusLabels[row.bedStatus] ?? String(row.bedStatus)
+				row.isEr
+					? erBedStatusLabel(row.bedStatus, {
+							vacant: msg.ed_bed_status_vacant?.() ?? 'Vacant',
+							occupied: msg.ed_bed_status_occupied?.() ?? 'Occupied'
+						})
+					: (bedStatusLabels[row.bedStatus] ?? String(row.bedStatus))
 		},
 		{
 			id: 'status',
@@ -139,43 +155,64 @@
 		}
 	];
 
+	async function fetchScopePage(scope: 'ipd' | 'er') {
+		if (!hospitalId) {
+			return { data: [] as UnifiedBedListRow[], total: 0, totalPages: 1 };
+		}
+		const listApi = `/api/medora/hospital/${hospitalId}/home/administration/bed-master`;
+		const query = new SvelteURLSearchParams({
+			page: String(currentPage),
+			pageSize: String(Number(pageSizeStr) || 10)
+		});
+		if (scope === 'ipd') query.set('scope', 'ipd');
+		else if (scope === 'er') query.set('scope', 'er');
+		const name = tableFilters.name?.trim();
+		const code = tableFilters.code?.trim();
+		const bedStatus = Number(tableFilters.bedStatus);
+		const statusId = Number(tableFilters.status);
+		if (name) query.set('name', name);
+		if (code) query.set('code', code);
+		if (Number.isFinite(bedStatus) && bedStatus > 0) {
+			query.set('bedStatus', String(bedStatus));
+		}
+		if (Number.isFinite(statusId) && statusId > 0) {
+			query.set('statusId', String(statusId));
+		}
+		const response = await fetch(`${listApi}?${query.toString()}`, {
+			credentials: 'include',
+			cache: 'no-store'
+		});
+		if (!response.ok) {
+			const text = await response.text().catch(() => '');
+			throw new Error(text || `Load failed: ${response.status}`);
+		}
+		const result = (await response.json()) as {
+			data: BedRow[];
+			total: number;
+			totalPages: number;
+		};
+		const data = result.data.map((r) =>
+			erBedRowAsUnified({
+				...r,
+				isEr: r.isEr ?? scope === 'er'
+			})
+		);
+		return { ...result, data };
+	}
+
 	async function fetchRows() {
-		if (!bedApi) return;
+		if (!hospitalId) return;
 		isLoading = true;
 		try {
-			const query = new SvelteURLSearchParams({
-				page: String(currentPage),
-				pageSize: String(Number(pageSizeStr) || 10)
-			});
-			const name = tableFilters.name?.trim();
-			const code = tableFilters.code?.trim();
-			const bedStatus = Number(tableFilters.bedStatus);
-			const statusId = Number(tableFilters.status);
-			if (name) query.set('name', name);
-			if (code) query.set('code', code);
-			if (Number.isFinite(bedStatus) && bedStatus > 0) {
-				query.set('bedStatus', String(bedStatus));
-			}
-			if (Number.isFinite(statusId) && statusId > 0) {
-				query.set('statusId', String(statusId));
-			}
-
-			const response = await fetch(`${bedApi}?${query.toString()}`, {
-				credentials: 'include',
-				cache: 'no-store'
-			});
-			if (!response.ok) {
-				const text = await response.text().catch(() => '');
-				throw new Error(text || `Load failed: ${response.status}`);
-			}
-			const result = (await response.json()) as {
-				data: BedRow[];
-				total: number;
-				totalPages: number;
-			};
-			rows = result.data;
-			total = result.total;
-			totalPages = result.totalPages;
+			const [ipd, er] = await Promise.all([
+				fetchScopePage('ipd'),
+				fetchScopePage('er')
+			]);
+			rows = [...ipd.data, ...er.data].sort((a, b) =>
+				(a.name ?? '').localeCompare(b.name ?? '')
+			);
+			total = ipd.total + er.total;
+			totalPages = Math.max(ipd.totalPages, er.totalPages, 1);
 		} catch (error) {
 			toastService.addToast(
 				error instanceof Error
@@ -198,6 +235,7 @@
 	async function openCreate() {
 		BedModalState.mode = 'create';
 		BedModalState.editBed = null;
+		BedModalState.isEr = false;
 		const result = await dialogService.open({
 			title: 'New Bed',
 			component: BedFormModal
@@ -205,9 +243,10 @@
 		if (result.confirmed) fetchRows();
 	}
 
-	async function openEdit(row: BedRow) {
+	async function openEdit(row: UnifiedBedListRow) {
 		BedModalState.mode = 'edit';
 		BedModalState.editBed = row;
+		BedModalState.isEr = Boolean(row.isEr);
 		const result = await dialogService.open({
 			title: 'Edit Bed',
 			component: BedFormModal
@@ -215,13 +254,17 @@
 		if (result.confirmed) fetchRows();
 	}
 
-	async function handleDelete(row: BedRow) {
+	async function handleDelete(row: UnifiedBedListRow) {
 		const result = await dialogService.open({
 			title: 'Delete Bed',
 			message: `Delete "${row.name || row.code || `Bed ${row.id}`}"?`,
 			variant: DialogVariantEnum.CONFIRM
 		});
-		if (!result.confirmed || !bedApi) return;
+		if (!result.confirmed || !hospitalId) return;
+		const bedApi = administrationBedMasterApi(
+			hospitalId,
+			row.isEr ? 'er' : 'ipd'
+		);
 
 		try {
 			const response = await fetch(
@@ -244,8 +287,9 @@
 		}
 	}
 
-	async function markAvailable(row: BedRow) {
-		if (!bedApi) return;
+	async function markAvailable(row: UnifiedBedListRow) {
+		if (!hospitalId || row.isEr) return;
+		const bedApi = administrationBedMasterApi(hospitalId, 'ipd');
 		try {
 			const response = await fetch(bedApi, {
 				method: 'POST',
@@ -312,7 +356,7 @@
 		>
 			{#snippet rowActions(row)}
 				<div class="flex items-center gap-1">
-					{#if row.bedStatus === IpdBedStatusEnum.CLEANING || row.bedStatus === IpdBedStatusEnum.BLOCKED}
+					{#if !row.isEr && (row.bedStatus === IpdBedStatusEnum.CLEANING || row.bedStatus === IpdBedStatusEnum.BLOCKED)}
 						<WashButton
 							className="btn-ghost btn-xs"
 							onClick={() => markAvailable(row)}

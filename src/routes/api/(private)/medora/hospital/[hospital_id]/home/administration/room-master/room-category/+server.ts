@@ -1,6 +1,7 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as roomCategory from '$lib/server/medora/ipd/room-category.server';
+import { isErForMasterPicker, isErFromScopeQuery } from '$lib/server/medora/ipd/master-is-er.util';
 import { StatusEnum } from '$lib/model/enum/db-link';
 
 function hospitalIdFrom(event: RequestEvent): string {
@@ -21,9 +22,16 @@ export async function GET(event: RequestEvent) {
 
 	if (event.url.searchParams.get('active') === '1') {
 		return json(
-			await roomCategory.listActiveRoomCategories({ hospitalId })
+			await roomCategory.listActiveRoomCategories({
+				hospitalId,
+				isEr: isErForMasterPicker(
+					event.url.searchParams.get('scope')
+				)
+			})
 		);
 	}
+
+	const isEr = isErFromScopeQuery(event.url.searchParams.get('scope'));
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
 	const pageSize = Number(
@@ -46,7 +54,8 @@ export async function GET(event: RequestEvent) {
 			code,
 			statusId: Number.isFinite(statusId as number)
 				? statusId
-				: undefined
+				: undefined,
+			isEr
 		})
 	);
 }
@@ -63,6 +72,7 @@ export async function POST(event: RequestEvent) {
 			name,
 			code: body.code ? String(body.code).trim() : null,
 			roomMarkup: String(body.roomMarkup ?? '0'),
+			isEr: Boolean(body.isEr),
 			statusId:
 				body.statusId === StatusEnum.INACTIVE
 					? StatusEnum.INACTIVE

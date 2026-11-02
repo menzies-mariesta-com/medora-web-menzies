@@ -17,6 +17,7 @@ import {
 	sql
 } from 'drizzle-orm';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 const patientWithRelationsWith = {
 	user: true,
@@ -50,7 +51,10 @@ export async function getPatientListPaginated(
 	const patientPhonePrimary = params.patientPhonePrimary?.trim();
 
 	const conditions = [
-		ne(table.patientTable.statusId, StatusEnum.DELETED),
+		paginatedEntityStatusEq(
+			table.patientTable.statusId,
+			params.statusId
+		),
 		eq(table.patientTable.hospitalId, hospitalId)
 	];
 

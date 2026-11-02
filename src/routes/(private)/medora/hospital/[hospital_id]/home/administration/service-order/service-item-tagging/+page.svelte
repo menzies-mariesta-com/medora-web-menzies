@@ -26,7 +26,12 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte.js';
-	import { formatNumberDisplay } from '$lib/util/number-display.util';
+	import {
+		formatMoneyAmount,
+		formatNumberDisplay,
+		moneyInputStringFromDecimal,
+		toMoneyDecimalString
+	} from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
@@ -142,13 +147,13 @@
 			id: 'serviceAmount',
 			header: 'Amount',
 			widthClass: 'w-32',
-			format: (_v, row) => formatNumberDisplay(row.serviceAmount)
+			format: (_v, row) => formatMoneyAmount(row.serviceAmount)
 		},
 		{
 			id: 'serviceTaxAmount',
 			header: 'Tax amount',
 			widthClass: 'w-32',
-			format: (_v, row) => formatNumberDisplay(row.serviceTaxAmount)
+			format: (_v, row) => formatMoneyAmount(row.serviceTaxAmount)
 		},
 		{
 			id: 'validDate',
@@ -435,10 +440,12 @@
 		editingId = row.id;
 		formServiceId = String(row.serviceId);
 		formServiceAmount =
-			row.serviceAmount != null ? String(row.serviceAmount) : '';
+			row.serviceAmount != null
+				? moneyInputStringFromDecimal(row.serviceAmount)
+				: '';
 		formServiceTaxAmount =
 			row.serviceTaxAmount != null
-				? String(row.serviceTaxAmount)
+				? moneyInputStringFromDecimal(row.serviceTaxAmount)
 				: '';
 		formValidDate = toDateInputValue(row.validDate);
 		formAllowEdit = row.allowEdit ?? true;
@@ -565,9 +572,9 @@
 								body: JSON.stringify({
 									branchId,
 									serviceId,
-									serviceAmount: serviceAmountNum.toString(),
+									serviceAmount: toMoneyDecimalString(amount),
 									serviceTaxAmount: taxStr
-										? serviceTaxAmountNum.toString()
+										? toMoneyDecimalString(taxStr)
 										: null,
 									validDate,
 									allowEdit,
@@ -589,9 +596,9 @@
 						method: 'PUT',
 						body: JSON.stringify({
 							id: editingId,
-							serviceAmount: serviceAmountNum.toString(),
+							serviceAmount: toMoneyDecimalString(amount),
 							serviceTaxAmount: taxStr
-								? serviceTaxAmountNum.toString()
+								? toMoneyDecimalString(taxStr)
 								: null,
 							validDate,
 							allowEdit,
@@ -968,12 +975,12 @@
 												{#each row.branches as branch}
 													<td class="text-right tabular-nums">
 														{branch.amount != null
-															? formatNumberDisplay(branch.amount)
+															? formatMoneyAmount(branch.amount)
 															: '—'}
 													</td>
 													<td class="text-right tabular-nums">
 														{branch.tax != null
-															? formatNumberDisplay(branch.tax)
+															? formatMoneyAmount(branch.tax)
 															: '—'}
 													</td>
 												{/each}

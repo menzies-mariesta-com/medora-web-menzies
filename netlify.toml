@@ -9,6 +9,10 @@
 	command = "npm ci && npm run build:netlify"
 	publish = "build"
 
+[functions]
+	# Smaller bundles / faster cold starts on serverless (native deps stay external).
+	external_node_modules = ["argon2", "ws"]
+
 [build.environment]
 	NODE_VERSION = "22"
 	# Make Netlify's automatic `pnpm install` a no-op (real install is npm ci above).

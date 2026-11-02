@@ -5,6 +5,7 @@ import {
 	getPatientByIdWithRelations,
 	getPatientListPaginated
 } from '$lib/server/medora/registration/patient.server';
+import { parsePaginationStatusIdParam } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
@@ -29,6 +30,9 @@ export const GET: RequestHandler = async (event) => {
 		event.url.searchParams.get('patientName') ?? undefined;
 	const patientPhonePrimary =
 		event.url.searchParams.get('patientPhonePrimary') ?? undefined;
+	const statusId = parsePaginationStatusIdParam(
+		event.url.searchParams.get('statusId')
+	);
 
 	const data = await getPatientListPaginated(event, {
 		hospitalId,
@@ -37,7 +41,8 @@ export const GET: RequestHandler = async (event) => {
 		search,
 		patientCode,
 		patientName,
-		patientPhonePrimary
+		patientPhonePrimary,
+		statusId
 	});
 	return json(data);
 };

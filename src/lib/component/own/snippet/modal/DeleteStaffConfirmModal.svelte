@@ -28,8 +28,9 @@
 				below.
 			</p>
 			<WashInputField
-				className="input-sm w-full"
+				className="input-sm w-full font-mono text-sm"
 				inputPlaceholderText="Type the staff email"
+				maxlength={254}
 				bind:value={typedEmail}
 			/>
 		</div>

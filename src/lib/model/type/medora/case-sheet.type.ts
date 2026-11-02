@@ -7,5 +7,4 @@ export type CaseSheetGetResponse = {
 	visitDiagnoses: unknown[];
 	chiefComplaintEntries: unknown[];
 	patientConditionEntries: unknown[];
-	userDisplayById: Record<string, string>;
 };

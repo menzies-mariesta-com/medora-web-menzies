@@ -4,11 +4,10 @@ import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { BedTariffContext } from '$lib/model/type/medora/ipd/ipd.type';
 import { and, eq } from 'drizzle-orm';
+import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
 
 function money(value: string | number | null | undefined): string {
-	const n = Number(value ?? 0);
-	if (!Number.isFinite(n)) return '0.00';
-	return n.toFixed(2);
+	return toDbMoney2dp(value ?? 0);
 }
 
 function sumMoney(...parts: Array<string | number | null | undefined>): string {
