@@ -1676,6 +1676,7 @@ export type OpBillingPendingMedicationLineRow = {
 	serviceName: string | null;
 	subCategoryId: number | null;
 	subCategoryName: string | null;
+	categoryName: string | null;
 	orderNo: string | null;
 	discount: string | null;
 	serviceAmount: string | null;
@@ -1797,12 +1798,24 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 		branchId
 	});
 	let subCategoryName: string | null = null;
+	let categoryName: string | null = null;
 	const [sc] = await ensureDb()
-		.select({ name: table.subCategoryTable.subCategoryName })
+		.select({
+			name: table.subCategoryTable.subCategoryName,
+			categoryId: table.subCategoryTable.categoryId
+		})
 		.from(table.subCategoryTable)
 		.where(eq(table.subCategoryTable.id, svc.subCategoryId))
 		.limit(1);
 	if (sc?.name) subCategoryName = sc.name;
+	if (sc?.categoryId != null) {
+		const [cat] = await ensureDb()
+			.select({ name: table.categoryTable.categoryName })
+			.from(table.categoryTable)
+			.where(eq(table.categoryTable.id, sc.categoryId))
+			.limit(1);
+		if (cat?.name) categoryName = cat.name;
+	}
 
 	const lineIds = rawLines.map((r) => r.id);
 	const allocRows =
@@ -1889,6 +1902,7 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 			serviceName: r.itemName?.trim() || null,
 			subCategoryId: svc.subCategoryId,
 			subCategoryName,
+			categoryName,
 			orderNo: r.batchNo?.trim() || null,
 			discount: null,
 			serviceAmount: toDbMoney2dp(unitPrice ?? '0'),

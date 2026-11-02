@@ -1,4 +1,4 @@
-/** GET `/api/medora/hospital/{id}/home/billing/op-billing/visit-lines` */
+/** GET `/api/medora/hospital/{id}/home/billing/bill/visit-lines` (OP/ER/IP by visit type) */
 
 export type OpBillingCloseBlockReason =
 	| 'nursing_incomplete'
@@ -57,10 +57,12 @@ export type OpBillingLine = {
 	lineSource?:
 		| 'service_order_detail'
 		| 'medication_order_line'
-		| 'department_consumption_line';
+		| 'department_consumption_line'
+		| 'billing_setup';
 	serviceId: number;
 	serviceName: string | null;
 	orderNo: string | null;
+	categoryName: string | null;
 	subCategoryId: number | null;
 	subCategoryName: string | null;
 	serviceAmount: string | number | null;

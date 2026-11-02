@@ -236,7 +236,7 @@ export async function seedInformationTables() {
 
 			-- Billing module (one Bill page for OP/ER/IP; advance deposit sub-page)
 			(150003, 'Bill', 8, 1, null, '/medora/home/billing/bill', 1),
-			(150002, 'Advance Deposit', 8, 1, 150003, '/medora/home/billing/ip-billing/advance-deposit', 2),
+			(150002, 'Advance Deposit', 8, 1, null, '/medora/home/billing/advance-deposit', 2),
 
 			-- Administration: Financial Year & Prefix Configuration
 			(16, 'Prefix Configuration', 1, 1, null, '/medora/home/administration/prefix-configuration', 9),
@@ -482,7 +482,7 @@ export async function seedInformationTables() {
 		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 		VALUES
 			(150003, 'Bill', 8, 1, null, '/medora/home/billing/bill', 1),
-			(150002, 'Advance Deposit', 8, 1, 150003, '/medora/home/billing/ip-billing/advance-deposit', 2)
+			(150002, 'Advance Deposit', 8, 1, null, '/medora/home/billing/advance-deposit', 2)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			module_id = EXCLUDED.module_id,

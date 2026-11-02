@@ -32,7 +32,7 @@
 	const visitId = $derived(VisitState.visitId);
 	const api = $derived(
 		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/billing/ip-billing/advance-deposit`
+			? `/api/medora/hospital/${hospitalId}/home/billing/advance-deposit`
 			: ''
 	);
 

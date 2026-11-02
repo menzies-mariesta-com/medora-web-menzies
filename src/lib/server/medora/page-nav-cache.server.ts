@@ -76,9 +76,8 @@ function navCacheLooksCurrent(pages: PageWithRelations[]): boolean {
 	const billAdvance = pages.find((p) => p.id === BILL_ADVANCE_PAGE_ID);
 	if (
 		!billAdvance ||
-		billAdvance.parentId !== BILL_ROOT_PAGE_ID ||
-		billAdvance.pageUrl !==
-			'/medora/home/billing/ip-billing/advance-deposit'
+		billAdvance.parentId != null ||
+		billAdvance.pageUrl !== '/medora/home/billing/advance-deposit'
 	) {
 		return false;
 	}
