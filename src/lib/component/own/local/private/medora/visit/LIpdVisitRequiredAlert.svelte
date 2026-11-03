@@ -37,7 +37,7 @@
 			typeof hospitalId === 'string' && hospitalId.trim() !== ''
 				? hospitalId.trim()
 				: '';
-		if (!id || !Number.isFinite(id) || id <= 0 || !hid) {
+		if (!id || !hid) {
 			visitTypeId = null;
 			isLoading = false;
 			return;

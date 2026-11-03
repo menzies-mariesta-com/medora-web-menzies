@@ -76,5 +76,12 @@ export type OpBillingVisitLinesGetResponse = {
 	visit: OpBillingVisitSummary | null;
 	billing: OpBillingMeta | null;
 	readiness: OpBillingReadiness | null;
+	/** IP billing GET only: sum of advance deposits for this visit. */
+	advanceTotal?: number;
+	advanceCredit?: number;
+	balanceDue?: number;
+	/** IP: amount patient pays after discount and advance (same as balanceDue for open bills). */
+	payableAmount?: number;
+	advanceRefundDue?: number;
 	error?: string;
 };

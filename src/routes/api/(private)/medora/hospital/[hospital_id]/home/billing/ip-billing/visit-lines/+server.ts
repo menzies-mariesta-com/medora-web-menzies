@@ -532,6 +532,11 @@ export const GET: RequestHandler = async (event) => {
 			advanceTotal,
 			advanceCredit,
 			balanceDue,
+			payableAmount: balanceDue,
+			advanceRefundDue:
+				advanceTotal > advanceCredit
+					? Math.round((advanceTotal - advanceCredit) * 100) / 100
+					: 0,
 			admissionId: admissionForDeposit?.id ?? null
 		},
 		{ status: 200 }
