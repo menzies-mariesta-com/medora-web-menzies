@@ -3,7 +3,7 @@ title: "Bill"
 description: "How to use Bill in Billing."
 docType: workflow
 slug: workflows/billing-bill
-pageId: 810001
+pageId: 800100
 moduleId: 8
 pageUrl: "/medora/home/billing/bill"
 generated: true

@@ -330,10 +330,17 @@
 		</div>
 	{/if}
 
+	<div class="space-y-1">
+		<h2 class="text-base font-semibold">
+			{m.inv_stock_alert_section_recipients()}
+		</h2>
+		<p class="text-sm opacity-70">{m.inv_stock_alert_recipients_hint()}</p>
+	</div>
+
 	<div class={TableEnum.HEIGHT}>
 		<MenziesTable
-			title={m.inv_stock_alert_title()}
-			description={m.inv_stock_alert_subtitle()}
+			title=""
+			description=""
 			showAddButton={true}
 			addLabel={m.inv_stock_alert_add()}
 			addDisabled={bundleLoading || savingAll}

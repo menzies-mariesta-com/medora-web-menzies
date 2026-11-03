@@ -306,7 +306,7 @@
 	}
 </script>
 
-<div class="flex flex-col gap-4 p-4">
+<div class="flex flex-col gap-6">
 	{#if showForm}
 		<WashCard>
 			<WashCardBody>
@@ -399,9 +399,15 @@
 		</WashCard>
 	{/if}
 
+	<div class="space-y-1">
+		<h2 class="text-base font-semibold">{m.inv_pricing_template_title()}</h2>
+		<p class="text-sm opacity-70">{m.inv_pricing_template_subtitle()}</p>
+	</div>
+
 	<div class={TableEnum.HEIGHT}>
 		<MenziesTable
-			title={m.inv_pricing_template_title()}
+			title=""
+			description=""
 			showAddButton={true}
 			addLabel={m.inv_pricing_template_create()}
 			onAdd={() => {

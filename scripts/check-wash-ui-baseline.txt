@@ -120,8 +120,8 @@ src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/approval
 src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/item-master/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/item-unit-master/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/pharmacy-generic/+page.svelte: own/library/menzies clone path
-src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/pricing-config/+page.svelte: own/library/menzies clone path
-src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/pricing-formula-templates/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/pricing-configuration/config/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/pricing-configuration/formula-templates/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/reorder-level/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/stock-alerts/recipients/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/inventory-setup/stores/+page.svelte: own/library/menzies clone path
