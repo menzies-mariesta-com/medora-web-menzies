@@ -81,7 +81,7 @@ async function nextAdmissionNo(params: {
 		branchId: params.branchId,
 		financialYearId: financialYear.id,
 		prefixKey: PREFIX_PURPOSE_STORAGE.ADMISSION_NO,
-		context: {}
+		context: { visitTypeId: VisitTypeEnum.IPD }
 	});
 }
 
