@@ -198,7 +198,7 @@ async function consolidateOpenOpBillings(
  * Serialized per visit (advisory xact lock) so concurrent GET/POST cannot
  * interleave delete+insert and duplicate `op_billing_line` rows.
  */
-async function syncOpenOpBillingForVisit(opts: {
+export async function syncOpenOpBillingForVisit(opts: {
 	hospitalId: string;
 	visitId: string;
 	branchId: string;

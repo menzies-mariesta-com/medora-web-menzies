@@ -6,7 +6,7 @@ import {
 } from '$lib/model/enum/db-link';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, inArray, ne } from 'drizzle-orm';
 
 const MAX_SOURCE_CHAIN_DEPTH = 10;
 
@@ -67,6 +67,87 @@ export async function assertValidSourceVisit(input: {
 		cursor = parent?.sourceVisitId ?? null;
 		depth += 1;
 	}
+}
+
+/**
+ * Visit ids in the same conversion chain: ancestors via `source_visit_id`,
+ * descendants that point at any id in the chain (same patient).
+ */
+export async function listSourceLinkedVisitIds(input: {
+	hospitalId: string;
+	visitId: string;
+	db?: ReturnType<typeof ensureDb>;
+}): Promise<string[]> {
+	const db = input.db ?? ensureDb();
+	const visitId = input.visitId.trim();
+	const hospitalId = input.hospitalId.trim();
+	if (!visitId || !hospitalId) return visitId ? [visitId] : [];
+
+	const [seed] = await db
+		.select({
+			patientId: table.patientVisitTable.patientId,
+			sourceVisitId: table.patientVisitTable.sourceVisitId
+		})
+		.from(table.patientVisitTable)
+		.where(
+			and(
+				eq(table.patientVisitTable.id, visitId),
+				eq(table.patientVisitTable.hospitalId, hospitalId),
+				ne(table.patientVisitTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.limit(1);
+	if (!seed) return [visitId];
+
+	const ids = new Set<string>([visitId]);
+	let cursor: string | null = seed.sourceVisitId;
+	let depth = 0;
+	while (cursor && depth < MAX_SOURCE_CHAIN_DEPTH) {
+		if (ids.has(cursor)) break;
+		ids.add(cursor);
+		const [parent] = await db
+			.select({ sourceVisitId: table.patientVisitTable.sourceVisitId })
+			.from(table.patientVisitTable)
+			.where(
+				and(
+					eq(table.patientVisitTable.id, cursor),
+					eq(table.patientVisitTable.patientId, seed.patientId),
+					ne(table.patientVisitTable.statusId, StatusEnum.DELETED)
+				)
+			)
+			.limit(1);
+		cursor = parent?.sourceVisitId ?? null;
+		depth += 1;
+	}
+
+	let frontier = [...ids];
+	for (
+		let pass = 0;
+		pass < MAX_SOURCE_CHAIN_DEPTH && frontier.length > 0;
+		pass += 1
+	) {
+		const children = await db
+			.select({ id: table.patientVisitTable.id })
+			.from(table.patientVisitTable)
+			.where(
+				and(
+					eq(table.patientVisitTable.hospitalId, hospitalId),
+					eq(table.patientVisitTable.patientId, seed.patientId),
+					ne(table.patientVisitTable.statusId, StatusEnum.DELETED),
+					inArray(table.patientVisitTable.sourceVisitId, frontier)
+				)
+			);
+		const next: string[] = [];
+		for (const c of children) {
+			if (!ids.has(c.id)) {
+				ids.add(c.id);
+				next.push(c.id);
+			}
+		}
+		frontier = next;
+	}
+
+	return [...ids];
 }
 
 /** Active IPD admission whose visit was converted from `sourceVisitId`. */

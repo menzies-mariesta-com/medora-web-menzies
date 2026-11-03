@@ -192,7 +192,7 @@ async function consolidateOpenIpBillings(opts: {
  * Syncs the single open OP bill for the visit to nursing-complete lines that are
  * not yet on any closed bill. When nothing is pending, the open draft is removed.
  */
-async function syncOpenIpBillingForVisit(opts: {
+export async function syncOpenIpBillingForVisit(opts: {
 	hospitalId: string;
 	visitId: string;
 	branchId: string;
