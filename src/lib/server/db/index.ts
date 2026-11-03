@@ -230,6 +230,14 @@ function buildSoftDeleteSet(
 	return setValues;
 }
 
+/** Draft bill sync replaces lines via DELETE+INSERT; must not soft-delete tombstones. */
+function usesHardDeleteForTable(tableDef: TableLike): boolean {
+	return (
+		tableDef === schema.opBillingLineTable ||
+		tableDef === schema.ipBillingLineTable
+	);
+}
+
 function wrapInsertBuilder(
 	tableDef: TableLike,
 	builder: object,
@@ -318,7 +326,10 @@ function withAudit(
 						tableDef as never
 					);
 					const softDeleteSet = buildSoftDeleteSet(tableDef, userId);
-					if (Object.keys(softDeleteSet).length === 0) {
+					if (
+						Object.keys(softDeleteSet).length === 0 ||
+						usesHardDeleteForTable(tableDef as TableLike)
+					) {
 						return hardDeleteBuilder;
 					}
 
