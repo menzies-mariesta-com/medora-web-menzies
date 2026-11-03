@@ -16,7 +16,10 @@
 	import OpBillingReadinessPanel from '$lib/component/own/local/private/medora/billing/OpBillingReadinessPanel.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.enum';
-	import { BillingStatusTaggingEnum } from '$lib/model/enum/db-link';
+	import {
+		BillingStatusTaggingEnum,
+		VisitTypeEnum
+	} from '$lib/model/enum/db-link';
 	import type {
 		OpBillingLine,
 		OpBillingMeta,
@@ -28,31 +31,66 @@
 	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
 	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
 	import { buildOpBillingPrintBodyHtml } from '$lib/util/op-billing-print-table.util';
+	import { formatBillingCategorySubCategoryHeading } from '$lib/util/billing-group-heading.util';
 	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { sanitizeUserFacingErrorText } from '$lib/util/user-facing-error.util';
+	import LBillingAllVisitsPanel from '$lib/component/own/local/private/medora/billing/LBillingAllVisitsPanel.svelte';
+	import {
+		canCloseAllOpenBillDetails,
+		closeAllOpenBills,
+		fetchAllOpenBillVisitDetails,
+		printAllOpenBillsCombined,
+		type BillingPrintLabels,
+		type OpenBillVisitDetail
+	} from '$lib/tool/billing/billing-open-bills-batch.util.svelte';
+
+	let {
+		visitTypeId,
+		billingViewAll = $bindable(false),
+		openBillDetails = $bindable([] as OpenBillVisitDetail[]),
+		openBillDetailsLoading = false,
+		openBillsGrandTotal = $bindable('0')
+	}: {
+		visitTypeId: number | null;
+		billingViewAll?: boolean;
+		openBillDetails?: OpenBillVisitDetail[];
+		openBillDetailsLoading?: boolean;
+		openBillsGrandTotal?: string;
+	} = $props();
+
+	let closeAllConfirmOpen = $state(false);
+	let closeAllWorking = $state(false);
+	let discountTargetVisitId = $state<string | null>(null);
 
 	const msg = m as Record<
 		string,
 		(inputs?: Record<string, unknown>) => string
 	>;
 
-	let {
-		billingApiSegment
-	}: {
-		billingApiSegment: 'op-billing' | 'er-billing' | 'ip-billing';
-	} = $props();
-
 	const visitId = $derived(VisitState.visitId);
 	const hospitalId = $derived(page.params.hospital_id ?? '');
-	const isIpBilling = $derived(billingApiSegment === 'ip-billing');
+	const isIpBilling = $derived(visitTypeId === VisitTypeEnum.IPD);
+	const billingUiKey = $derived(
+		isIpBilling ? 'ip-billing' : visitTypeId === VisitTypeEnum.ED ? 'er-billing' : 'op-billing'
+	);
+	const billApiBase = $derived(
+		hospitalId
+			? `/api/medora/hospital/${hospitalId}/home/billing/bill`
+			: ''
+	);
 
 	function bm(key: string) {
 		return msg[`${isIpBilling ? 'ip' : 'op'}_billing_${key}`];
 	}
-	const billsApiSegment = $derived(
-		isIpBilling ? 'ip-billing' : 'op-billing'
-	);
+
+	function bmForVisitType(
+		visitTypeId: number | null | undefined,
+		key: string
+	) {
+		const isIp = visitTypeId === VisitTypeEnum.IPD;
+		return msg[`${isIp ? 'ip' : 'op'}_billing_${key}`];
+	}
 	const printDocumentCode = $derived(
 		isIpBilling
 			? DOCUMENT_PRINT_CODE.IP_BILL
@@ -77,7 +115,9 @@
 
 	type BillingGroup = {
 		subCategoryId: number | null;
+		categoryName: string | null;
 		subCategoryName: string;
+		groupHeading: string;
 		lines: BillingLine[];
 		subtotal: number;
 	};
@@ -109,6 +149,7 @@
 		orderNo: string | null;
 		subCategoryId: number | null;
 		subCategoryName: string | null;
+		categoryName: string | null;
 		serviceAmount: string | number | null;
 		serviceTaxAmount: string | number | null;
 		discount: string | number | null;
@@ -145,29 +186,50 @@
 		return Number.isFinite(raw) ? raw : 0;
 	});
 
-	const discountValue = $derived.by(() => {
-		const total = Number(grandTotal) || 0;
-		if (total <= 0) return 0;
+	const discountTargetDetail = $derived.by(() => {
+		if (!discountTargetVisitId) return null;
+		return (
+			openBillDetails.find(
+				(d) => d.row.visitId === discountTargetVisitId
+			) ?? null
+		);
+	});
 
+	const discountPreviewBaseTotal = $derived.by(() => {
+		if (discountTargetDetail) return discountTargetDetail.grandTotal;
+		return grandTotal;
+	});
+
+	function discountAmountForTotal(total: number): number {
+		if (total <= 0) return 0;
 		if (discountType === BillingDiscountTypeEnum.PERCENT) {
 			const pct = Math.min(100, Math.max(0, discountInputNumber));
 			return Math.min(total, (total * pct) / 100);
 		}
-
 		if (discountType === BillingDiscountTypeEnum.FIXED_AMOUNT) {
 			const amt = Math.max(0, discountInputNumber);
 			return Math.min(total, amt);
 		}
-
 		return 0;
-	});
+	}
+
+	const discountValue = $derived.by(() =>
+		discountAmountForTotal(Number(grandTotal) || 0)
+	);
+
+	const discountPreviewValue = $derived.by(() =>
+		discountAmountForTotal(Number(discountPreviewBaseTotal) || 0)
+	);
 
 	const netTotal = $derived.by(() => {
 		const total = Number(grandTotal) || 0;
 		return Math.max(0, total - discountValue);
 	});
 
-	const hasDiscount = $derived(discountValue > 0);
+	const discountPreviewNetTotal = $derived.by(() => {
+		const total = Number(discountPreviewBaseTotal) || 0;
+		return Math.max(0, total - discountPreviewValue);
+	});
 
 	/** Bill was closed; discount is frozen for that bill. */
 	const visitLevelDiscountLocked = $derived.by(() => {
@@ -175,6 +237,27 @@
 			billingMeta?.statusTaggingId === BillingStatusTaggingEnum.CLOSED
 		);
 	});
+
+	const discountModalLocked = $derived.by(() => {
+		if (discountTargetDetail) {
+			return (
+				discountTargetDetail.data.billing?.statusTaggingId ===
+				BillingStatusTaggingEnum.CLOSED
+			);
+		}
+		return visitLevelDiscountLocked;
+	});
+
+	function trForDiscountModal(key: string, fallback: string): string {
+		const typeId =
+			discountTargetDetail?.row.visitTypeId ?? visitTypeId;
+		const getter = discountTargetDetail
+			? bmForVisitType(typeId, key)
+			: bm(key);
+		return tr(getter, fallback);
+	}
+
+	const hasDiscount = $derived(discountValue > 0);
 
 	const canCloseBill = $derived(
 		Boolean(billingReadiness?.canCloseBill) &&
@@ -207,6 +290,9 @@
 	}
 
 	function opBillingLineRowKey(line: BillingLine): string {
+		if (line.lineSource === 'billing_setup') {
+			return `billing_setup-${line.id}`;
+		}
 		if (
 			line.lineSource === 'medication_order_line' ||
 			line.lineSource === 'service_order_detail' ||
@@ -233,11 +319,18 @@
 			const key = String(line.subCategoryId ?? 'none');
 			const other = tr(bm('group_other'), 'Other');
 			const name = (line.subCategoryName ?? other).trim() || other;
+			const categoryName = (line.categoryName ?? '').trim() || null;
 			let group = byKey[key];
 			if (!group) {
 				group = {
 					subCategoryId: line.subCategoryId,
+					categoryName,
 					subCategoryName: name,
+					groupHeading: formatBillingCategorySubCategoryHeading({
+						categoryName,
+						subCategoryName: name,
+						fallbackSubCategory: other
+					}),
 					lines: [],
 					subtotal: 0
 				};
@@ -248,7 +341,7 @@
 		}
 
 		return Object.values(byKey).sort((a, b) =>
-			a.subCategoryName.localeCompare(b.subCategoryName)
+			a.groupHeading.localeCompare(b.groupHeading)
 		);
 	}
 
@@ -282,14 +375,11 @@
 	async function postBillingUpdate(
 		payload: Record<string, unknown>
 	) {
-		const res = await fetch(
-			`/api/medora/hospital/${hospitalId}/home/billing/${billingApiSegment}/visit-lines`,
-			{
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(payload)
-			}
-		);
+		const res = await fetch(`${billApiBase}/visit-lines`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(payload)
+		});
 		return res;
 	}
 
@@ -326,7 +416,7 @@
 		loadError = '';
 		try {
 			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/billing/${billingApiSegment}/visit-lines?visitId=${visitNumeric}`
+				`${billApiBase}/visit-lines?visitId=${visitNumeric}`
 			);
 			if (requestSeq !== billingLinesLoadSeq) return;
 			if (!res.ok) {
@@ -410,14 +500,22 @@
 	}
 
 	async function applyDiscount() {
-		if (!visitId) return;
-		if (!billingMeta) return;
-		if (visitLevelDiscountLocked) return;
-		const visitNumeric = parseUuid(visitId) ?? '';
-		if (
-			!visitNumeric
-		)
-			return;
+		if (billingViewAll && !discountTargetVisitId) return;
+		const targetVisitId = discountTargetVisitId ?? visitId;
+		if (!targetVisitId) return;
+		if (!billingViewAll && !billingMeta) return;
+		if (discountModalLocked) return;
+		const visitNumeric = parseUuid(targetVisitId) ?? '';
+		if (!visitNumeric) return;
+
+		if (discountTargetDetail) {
+			if (
+				discountTargetDetail.data.billing?.statusTaggingId ===
+				BillingStatusTaggingEnum.CLOSED
+			) {
+				return;
+			}
+		}
 
 		const payload =
 			discountType === BillingDiscountTypeEnum.PERCENT
@@ -477,7 +575,13 @@
 				return;
 			}
 			isDiscountModalOpen = false;
-			await loadBillingLines(String(visitNumeric));
+			discountTargetVisitId = null;
+			if (billingViewAll) {
+				await reloadOpenBillDetails();
+				VisitState.notifyBillingDataChanged();
+			} else {
+				await loadBillingLines(String(visitNumeric));
+			}
 		} catch (err) {
 			console.error(err);
 			loadError = tr(
@@ -539,7 +643,7 @@
 		const v = opts.visitSummary;
 		const bodyHtml = buildOpBillingPrintBodyHtml({
 			groups: opts.groups.map((g) => ({
-				subCategoryName: g.subCategoryName,
+				subCategoryName: g.groupHeading,
 				lines: g.lines.map((line) => ({
 					serviceName: line.serviceName,
 					orderNo: line.orderNo,
@@ -650,7 +754,7 @@
 		historyError = '';
 		try {
 			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/billing/${billsApiSegment}/bills?visitId=${visitNumeric}`
+				`${billApiBase}/bills?visitId=${visitNumeric}`
 			);
 			if (!res.ok) {
 				historyBills = [];
@@ -677,14 +781,11 @@
 
 		historyPrintLoadingId = billingId;
 		try {
-			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/billing/${billsApiSegment}/bills`,
-				{
-					method: 'POST',
-					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify({ billingId })
-				}
-			);
+			const res = await fetch(`${billApiBase}/bills`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ billingId })
+			});
 			if (!res.ok) {
 				historyError = tr(
 					undefined,
@@ -729,6 +830,7 @@
 				orderNo: l.orderNo,
 				subCategoryId: l.subCategoryId,
 				subCategoryName: l.subCategoryName,
+				categoryName: l.categoryName ?? null,
 				serviceAmount: l.serviceAmount,
 				serviceTaxAmount: l.serviceTaxAmount,
 				discount: l.discount,
@@ -785,19 +887,149 @@
 	}
 
 	$effect(() => {
-		if (!browser) return;
+		if (!browser || billingViewAll) return;
+		void VisitState.billingRefreshRevision;
 		void loadBillingLines(visitId);
 	});
 
+	function billThisVisitFromAll(id: string) {
+		VisitState.visitId = id;
+		billingViewAll = false;
+	}
+
+	function scopeMsg(key: string, fallback: string): string {
+		try {
+			const fn = msg[key];
+			return typeof fn === 'function' ? fn() : fallback;
+		} catch {
+			return fallback;
+		}
+	}
+
+	function allVisitsPrintLabels(): BillingPrintLabels {
+		return {
+			service: tr(bm('print_service'), 'Service'),
+			order: tr(bm('print_order'), 'Order'),
+			amount: tr(bm('print_amount'), 'Amount'),
+			subtotal: tr(bm('print_subtotal'), 'Subtotal'),
+			grandTotal: tr(bm('print_grand_total'), 'Grand total'),
+			discount: tr(bm('print_discount'), 'Discount'),
+			netTotal: tr(bm('print_net_total'), 'Net total'),
+			allVisitsTotal:
+				scopeMsg('billing_scope_print_all_combined', 'All visits total'),
+			patient: tr(bm('print_patient'), 'Patient'),
+			patientCode: tr(bm('print_patient_code'), 'Patient code'),
+			visitNo: tr(bm('print_visit_no'), 'Visit no.'),
+			date: tr(bm('print_date'), 'Date'),
+			doctor: tr(bm('print_doctor'), 'Doctor'),
+			branch: tr(bm('print_branch'), 'Branch'),
+			generated: tr(bm('print_generated'), 'Printed'),
+			thankYou: tr(bm('print_thank_you'), 'Thank you for choosing us.'),
+			opTitle: tr(bm('title'), 'OP Billing'),
+			ipTitle: 'IP Billing'
+		};
+	}
+
+	async function printAllVisitsInCard() {
+		if (!hospitalId || !openBillDetails.length) return;
+		await printAllOpenBillsCombined({
+			hospitalId,
+			details: openBillDetails,
+			labels: allVisitsPrintLabels()
+		});
+	}
+
+	function syncGrandTotalFromDetails() {
+		let sum = 0;
+		for (const d of openBillDetails) {
+			if (Number.isFinite(d.netTotal)) sum += d.netTotal;
+		}
+		openBillsGrandTotal = sum.toFixed(2);
+	}
+
+	async function reloadOpenBillDetails() {
+		if (!hospitalId || openBillDetails.length === 0) return;
+		const rows = openBillDetails.map((d) => d.row);
+		openBillDetails = await fetchAllOpenBillVisitDetails({
+			hospitalId,
+			rows,
+			otherGroupLabel: tr(bm('group_other'), 'Other')
+		});
+		syncGrandTotalFromDetails();
+	}
+
+	const canCloseAllBills = $derived(
+		canCloseAllOpenBillDetails(openBillDetails) &&
+			openBillDetails.length > 0
+	);
+
+	function setDiscountFieldsFromMeta(b: BillingMeta | null | undefined) {
+		if (!b?.discountTypeId || b.discountTypeId === BillingDiscountTypeEnum.NONE) {
+			discountType = BillingDiscountTypeEnum.NONE;
+			discountInput = '';
+		} else if (b.discountTypeId === BillingDiscountTypeEnum.PERCENT) {
+			discountType = BillingDiscountTypeEnum.PERCENT;
+			const pct = Number(b.discountPercent ?? 0);
+			discountInput =
+				Number.isFinite(pct) && pct > 0 ? String(pct) : '';
+		} else if (b.discountTypeId === BillingDiscountTypeEnum.FIXED_AMOUNT) {
+			discountType = BillingDiscountTypeEnum.FIXED_AMOUNT;
+			const amt = Number(b.discountAmount ?? 0);
+			discountInput =
+				Number.isFinite(amt) && amt > 0 ? String(amt) : '';
+		}
+	}
+
+	function openDiscountForVisit(targetId: string) {
+		const detail = openBillDetails.find((d) => d.row.visitId === targetId);
+		if (!detail?.data.billing) return;
+		discountTargetVisitId = targetId;
+		setDiscountFieldsFromMeta(detail.data.billing);
+		isDiscountModalOpen = true;
+	}
+
+	function openSingleVisitDiscount() {
+		discountTargetVisitId = null;
+		setDiscountFieldsFromMeta(billingMeta);
+		isDiscountModalOpen = true;
+	}
+
+	async function onCloseAllBillsConfirmed() {
+		closeAllConfirmOpen = false;
+		if (!hospitalId || !openBillDetails.length || !canCloseAllBills) return;
+		closeAllWorking = true;
+		loadError = '';
+		try {
+			const result = await closeAllOpenBills({
+				hospitalId,
+				rows: openBillDetails.map((d) => d.row)
+			});
+			if (result.closed.length > 0) {
+				VisitState.notifyBillingDataChanged();
+				await reloadOpenBillDetails();
+				if (openBillDetails.length === 0) {
+					billingViewAll = false;
+				}
+			}
+			if (result.failed.length > 0) {
+				const f = result.failed[0]!;
+				const label = f.visitNo ?? f.visitId.slice(0, 8);
+				loadError = `${label}: ${f.message}`;
+			}
+		} finally {
+			closeAllWorking = false;
+		}
+	}
+
 	$effect(() => {
-		if (!billingMeta && isDiscountModalOpen) {
+		if (!billingMeta && isDiscountModalOpen && !billingViewAll) {
 			isDiscountModalOpen = false;
 		}
 	});
 </script>
 
 {#snippet billingBillMarkup()}
-{#if visitId}
+{#if visitId && !billingViewAll}
 	<div class="mb-2 flex flex-wrap items-center justify-end gap-2">
 		<WashTooltip tooltipText={tr(undefined, 'History')} className="">
 			<WashButton
@@ -816,8 +1048,62 @@
 <WashCard>
 	<WashCardBody className="gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
-			<WashCardBodyTitle>{tr(bm('title'), 'Billing')}</WashCardBodyTitle>
-			{#if visitId}
+			<WashCardBodyTitle
+				>{billingViewAll
+					? scopeMsg('billing_scope_view_all', 'All open visits')
+					: tr(bm('title'), 'Billing')}</WashCardBodyTitle
+			>
+			{#if visitId && billingViewAll}
+				<div class="flex flex-wrap items-center gap-2">
+					<WashTooltip
+						tooltipText={scopeMsg(
+							'billing_scope_print_all',
+							'Print all visits'
+						)}
+						className=""
+					>
+						<WashButton
+							className="btn-outline btn-sm gap-2"
+							disabled={openBillDetailsLoading ||
+								openBillDetails.length === 0}
+							onClick={() => void printAllVisitsInCard()}
+						>
+							<LucidePrinter className="size-4" />
+							{scopeMsg(
+								'billing_scope_print_all',
+								'Print all visits'
+							)}
+						</WashButton>
+					</WashTooltip>
+					<WashTooltip
+						tooltipText={canCloseAllBills
+							? scopeMsg(
+									'billing_scope_close_all',
+									'Close all bills'
+								)
+							: scopeMsg(
+									'billing_scope_close_all_not_ready',
+									'One or more visits are not ready to close.'
+								)}
+						className=""
+					>
+						<WashButton
+							className="btn-outline btn-sm"
+							disabled={openBillDetailsLoading ||
+								closeAllWorking ||
+								!canCloseAllBills}
+							onClick={() => {
+								closeAllConfirmOpen = true;
+							}}
+						>
+							{scopeMsg(
+								'billing_scope_close_all',
+								'Close all bills'
+							)}
+						</WashButton>
+					</WashTooltip>
+				</div>
+			{:else if visitId}
 				<div class="flex flex-wrap items-center gap-2">
 					<WashTooltip
 						tooltipText={canCloseBill
@@ -859,6 +1145,34 @@
 			<p class="text-sm text-base-content/70">
 				{tr(bm('select_visit_hint'), 'Select a visit to bill.')}
 			</p>
+		{:else if billingViewAll}
+			{#if loadError}
+				<p class="text-sm text-error">{loadError}</p>
+			{/if}
+			{#if openBillDetailsLoading}
+				<p class="text-sm text-base-content/60">Loading all visits…</p>
+			{:else if openBillDetails.length === 0}
+				<p class="text-sm text-base-content/60">
+					{scopeMsg(
+						'billing_scope_select_visit',
+						'Select a visit to see open bills.'
+					)}
+				</p>
+			{:else}
+				<LBillingAllVisitsPanel
+					embedded
+					{hospitalId}
+					details={openBillDetails}
+					grandTotalLabel={scopeMsg(
+						'billing_scope_grand_total',
+						'Total (all visits)'
+					)}
+					{openBillsGrandTotal}
+					currentVisitId={visitId ?? ''}
+					onSelectVisit={billThisVisitFromAll}
+					onOpenDiscount={openDiscountForVisit}
+				/>
+			{/if}
 		{:else}
 			<OpBillingReadinessPanel
 				readiness={billingReadiness}
@@ -920,7 +1234,7 @@
 									className="btn-primary btn-sm btn-circle"
 									disabled={!billingMeta}
 									onClick={() => {
-										if (billingMeta) isDiscountModalOpen = true;
+										if (billingMeta) openSingleVisitDiscount();
 									}}
 								>
 									<LucideStrikeThrough className="size-4" />
@@ -982,7 +1296,7 @@
 								<div
 									class="collapse-title flex items-center justify-between gap-4 text-sm font-medium"
 								>
-									<span class="truncate">{group.subCategoryName}</span
+									<span class="truncate">{group.groupHeading}</span
 									>
 									<span
 										class="font-mono text-base-content/80 tabular-nums"
@@ -1034,14 +1348,19 @@
 
 {#if isDiscountModalOpen}
 	<WashDialog
-		id={`${billingApiSegment}-discount-modal`}
+		id={`${billingUiKey}-discount-modal`}
 		open={true}
-		onClose={() => (isDiscountModalOpen = false)}
-		title={tr(bm('discount_title'), 'Discount')}
-		description={tr(
-			bm('discount_subtitle'),
-			'Apply a discount to the grand total.'
-		)}
+		onClose={() => {
+			isDiscountModalOpen = false;
+			discountTargetVisitId = null;
+		}}
+		title={trForDiscountModal('discount_title', 'Discount')}
+		description={discountTargetDetail
+			? `${trForDiscountModal('discount_subtitle', 'Apply a discount to the grand total.')} · ${discountTargetDetail.row.visitNo ?? discountTargetDetail.data.visit?.visitNo ?? discountTargetVisitId?.slice(0, 8) ?? ''}`
+			: trForDiscountModal(
+					'discount_subtitle',
+					'Apply a discount to the grand total.'
+				)}
 		boxClassName="max-w-md"
 		showActions={false}
 	>
@@ -1050,8 +1369,8 @@
 				<div class="form-control w-full">
 					<label for="a11y-page-c9753b" class="label">
 						<span class="label-text">
-							{tr(
-								bm('discount_type_label'),
+							{trForDiscountModal(
+								'discount_type_label',
 								'Discount type'
 							)}
 						</span>
@@ -1063,19 +1382,22 @@
 						options={[
 							{
 								value: String(BillingDiscountTypeEnum.NONE),
-								label: tr(bm('discount_type_none'), 'None')
+								label: trForDiscountModal(
+									'discount_type_none',
+									'None'
+								)
 							},
 							{
 								value: String(BillingDiscountTypeEnum.PERCENT),
-								label: tr(
-									bm('discount_type_percent'),
+								label: trForDiscountModal(
+									'discount_type_percent',
 									'Percent (%)'
 								)
 							},
 							{
 								value: String(BillingDiscountTypeEnum.FIXED_AMOUNT),
-								label: tr(
-									bm('discount_type_fixed_amount'),
+								label: trForDiscountModal(
+									'discount_type_fixed_amount',
 									'Fixed amount'
 								)
 							}
@@ -1131,7 +1453,7 @@
 							{tr(bm('discount_preview_label'), 'Preview')}
 						</span>
 						<span class="font-mono tabular-nums">
-							-{formatMoneyAmount(discountValue)}
+							-{formatMoneyAmount(discountPreviewValue)}
 						</span>
 					</div>
 					<div
@@ -1144,7 +1466,7 @@
 							)}</span
 						>
 						<span class="font-mono tabular-nums">
-							{formatMoneyAmount(netTotal)}
+							{formatMoneyAmount(discountPreviewNetTotal)}
 						</span>
 					</div>
 				</div>
@@ -1163,10 +1485,10 @@
 			</WashButton>
 			<WashButton
 				className="btn-primary"
-				disabled={visitLevelDiscountLocked}
+				disabled={discountModalLocked}
 				onClick={() => void applyDiscount()}
 			>
-				{tr(bm('discount_apply'), 'Apply')}
+				{trForDiscountModal('discount_apply', 'Apply')}
 			</WashButton>
 		</WashDialogFooter>
 	</WashDialog>
@@ -1174,7 +1496,7 @@
 
 {#if isHistoryModalOpen}
 	<WashDialog
-		id={`${billingApiSegment}-history-modal`}
+		id={`${billingUiKey}-history-modal`}
 		open={true}
 		onClose={() => (isHistoryModalOpen = false)}
 		title={tr(undefined, 'Bill history')}
@@ -1312,9 +1634,44 @@
 		</WashDialogFooter>
 	</WashDialog>
 {/if}
+
+{#if closeAllConfirmOpen}
+	<WashDialog
+		open={true}
+		title={scopeMsg('billing_scope_close_all', 'Close all bills')}
+		onClose={() => {
+			closeAllConfirmOpen = false;
+		}}
+		showActions={false}
+	>
+		<p class="text-sm">
+			{scopeMsg(
+				'billing_scope_close_all_confirm',
+				'Close every open bill for this patient?'
+			)}
+		</p>
+		<WashDialogFooter>
+			<WashButton
+				className="btn-ghost"
+				onClick={() => {
+					closeAllConfirmOpen = false;
+				}}
+			>
+				Cancel
+			</WashButton>
+			<WashButton
+				className="btn-primary"
+				disabled={closeAllWorking || !canCloseAllBills}
+				onClick={() => void onCloseAllBillsConfirmed()}
+			>
+				{scopeMsg('billing_scope_close_all', 'Close all bills')}
+			</WashButton>
+		</WashDialogFooter>
+	</WashDialog>
+{/if}
 {/snippet}
 
-{#if isIpBilling}
+{#if isIpBilling && !billingViewAll}
 	<LIpdVisitRequiredAlert
 		{hospitalId}
 		visitId={visitId ?? ''}

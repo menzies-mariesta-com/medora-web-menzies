@@ -37,6 +37,7 @@ import {
 	serviceItemTable,
 	serviceTaggingTable,
 	billingSetupServiceTaggingTable,
+	hospitalBillingSettingTable,
 	storeTable,
 	supportTicketTable,
 	staffDetailTable,
@@ -152,7 +153,21 @@ export const hospitalTableRelations = relations(
 		wardCategories: many(wardCategoryTable),
 		roomCategories: many(roomCategoryTable),
 		rooms: many(roomTable),
-		beds: many(bedTable)
+		beds: many(bedTable),
+		billingSetting: one(hospitalBillingSettingTable, {
+			fields: [hospitalTable.id],
+			references: [hospitalBillingSettingTable.hospitalId]
+		})
+	})
+);
+
+export const hospitalBillingSettingTableRelations = relations(
+	hospitalBillingSettingTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [hospitalBillingSettingTable.hospitalId],
+			references: [hospitalTable.id]
+		})
 	})
 );
 
@@ -479,6 +494,14 @@ export const patientVisitTableRelations = relations(
 		status: one(statusTable, {
 			fields: [patientVisitTable.statusId],
 			references: [statusTable.id]
+		}),
+		sourceVisit: one(patientVisitTable, {
+			fields: [patientVisitTable.sourceVisitId],
+			references: [patientVisitTable.id],
+			relationName: 'visitSourceChain'
+		}),
+		derivedVisits: many(patientVisitTable, {
+			relationName: 'visitSourceChain'
 		}),
 		diagnoses: many(patientDiagnosisTable),
 		patientDocuments: many(patientDocumentTable),

@@ -16,3 +16,16 @@ export function redirectToUnifiedBillingBill(input: {
 	const search = input.searchParams.toString();
 	throw redirect(302, search ? `${base}?${search}` : base);
 }
+
+/** Redirect legacy IP advance-deposit URL to unified billing advance deposit. */
+export function redirectToUnifiedBillingAdvanceDeposit(input: {
+	hospitalId: string;
+	searchParams: URLSearchParams;
+}): never {
+	const base = medoraHospitalPageUrl(
+		input.hospitalId,
+		WebRoutesEnum.MEDORA_HOME_BILLING_ADVANCE_DEPOSIT
+	);
+	const search = input.searchParams.toString();
+	throw redirect(302, search ? `${base}?${search}` : base);
+}

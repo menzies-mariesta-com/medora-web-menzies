@@ -102,481 +102,204 @@ export async function seedInformationTables() {
 	// 2b. Financial year (per hospital) and prefix configuration seeds can be added here later per environment.
 
 	// 3. Page (depends: module, status)
+	// Page ids: top-level page n (1-based) → module×100000 + n×100 (100100, 100200, …); sub-page s (1-based) → parent + s (100101, 100102, …; never parent+0).
 	await db.execute(sql`
 		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 		VALUES
-			-- Parent Page Id (1 -> 100000)
-			-- Child Page Id (1 -> 100001)
-			-- Child Page Id (1 -> 100002)
-			-- Parent Page Id (2 -> 200000)
-			-- Child Page Id (2 -> 200001)
+			-- ── Module 1: Administration ──
+			(100100, 'Staff', 1, 1, null, '/medora/home/administration/staff', 1),
+			(100101, 'Staff Registration', 1, 1, 100100, '/medora/home/administration/staff/registration', 1),
+			(100102, 'Staff List', 1, 1, 100100, '/medora/home/administration/staff/list', 2),
+			(100200, 'Schedule Master', 1, 1, null, '/medora/home/administration/schedule-master', 1),
+			(100201, 'Doctor Schedule', 1, 1, 100200, '/medora/home/administration/schedule-master/doctor-schedule', 1),
+			(100300, 'External Refer Master', 1, 1, null, '/medora/home/administration/external-refer-master', 1),
+			(100400, 'User Group', 1, 1, null, '/medora/home/administration/user-group', 4),
+			(100500, 'Branches', 1, 1, null, '/medora/home/administration/branches', 5),
+			(100600, 'Service Order', 1, 1, null, '/medora/home/administration/service-order', 6),
+			(100601, 'Category Master', 1, 1, 100600, '/medora/home/administration/service-order/category-master', 1),
+			(100602, 'Sub Category Master', 1, 1, 100600, '/medora/home/administration/service-order/sub-category-master', 2),
+			(100603, 'Service Item Master', 1, 1, 100600, '/medora/home/administration/service-order/service-item-master', 3),
+			(100604, 'Service Item Tagging', 1, 1, 100600, '/medora/home/administration/service-order/service-item-tagging', 4),
+			(100700, 'Document Master', 1, 1, null, '/medora/home/administration/document-master', 7),
+			(100701, 'Document Type', 1, 1, 100700, '/medora/home/administration/document-master/document-type', 1),
+			(100702, 'Document', 1, 1, 100700, '/medora/home/administration/document-master/document', 2),
+			(100703, 'Document Setting', 1, 1, 100700, '/medora/home/administration/document-master/document-setting', 3),
+			(100704, 'Master Templates', 1, 1, 100700, '/medora/home/administration/document-master/template-library', 4),
+			(100705, 'Hospital Template Access', 1, 1, 100700, '/medora/home/administration/document-master/hospital-templates', 5),
+			(100800, 'Financial Year', 1, 1, null, '/medora/home/administration/financial-year', 8),
+			(100900, 'Prefix Configuration', 1, 1, null, '/medora/home/administration/prefix-configuration', 9),
+			(101000, 'Departments', 1, 1, null, '/medora/home/administration/departments', 10),
+			(101100, 'Medication Order Setup', 1, 1, null, '/medora/home/administration/medication-order-setup', 12),
+			(101101, 'Frequency', 1, 1, 101100, '/medora/home/administration/medication-order-setup/frequency', 1),
+			(101102, 'Form', 1, 1, 101100, '/medora/home/administration/medication-order-setup/form', 2),
+			(101103, 'Route', 1, 1, 101100, '/medora/home/administration/medication-order-setup/route', 3),
+			(101104, 'Duration unit', 1, 1, 101100, '/medora/home/administration/medication-order-setup/duration', 4),
+			(101105, 'Order type', 1, 1, 101100, '/medora/home/administration/medication-order-setup/order-type', 5),
+			(101106, 'Dose unit', 1, 1, 101100, '/medora/home/administration/medication-order-setup/dose-unit', 6),
+			(101107, 'Food relation', 1, 1, 101100, '/medora/home/administration/medication-order-setup/food-relation', 7),
+			(101200, 'Ward Master', 1, 1, null, '/medora/home/administration/ward-master', 13),
+			(101201, 'Ward Category', 1, 1, 101200, '/medora/home/administration/ward-master/ward-category', 1),
+			(101202, 'Ward', 1, 1, 101200, '/medora/home/administration/ward-master/ward', 2),
+			(101300, 'Room Master', 1, 1, null, '/medora/home/administration/room-master', 14),
+			(101301, 'Room Category', 1, 1, 101300, '/medora/home/administration/room-master/room-category', 1),
+			(101302, 'Room', 1, 1, 101300, '/medora/home/administration/room-master/room', 2),
+			(101400, 'Bed Master', 1, 1, null, '/medora/home/administration/bed-master', 15),
+			(101500, 'Billing Setup', 1, 1, null, '/medora/home/administration/billing-setup', 16),
+			(101501, 'OP Billing', 1, 1, 101500, '/medora/home/administration/billing-setup/op-billing', 1),
+			(101502, 'IP Billing', 1, 1, 101500, '/medora/home/administration/billing-setup/ip-billing', 2),
+			(101503, 'ED Billing', 1, 1, 101500, '/medora/home/administration/billing-setup/ed-billing', 3),
+			(101504, 'Billing Settings', 1, 1, 101500, '/medora/home/administration/billing-setup/settings', 4),
+			(101600, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
 
-			-- Administration Module
-			-- staff pages
-			(1, 'Staff', 1, 1, null, '/medora/home/administration/staff', 1),
-			(100001, 'Staff Registration', 1, 1, 1, '/medora/home/administration/staff/registration', 1),
-			(100002, 'Staff List', 1, 1, 1, '/medora/home/administration/staff/list', 2),
+			-- ── Module 2: Registration ──
+			(200100, 'Patient', 2, 1, null, '/medora/home/registration/patient', 1),
+			(200101, 'Patient Registration', 2, 1, 200100, '/medora/home/registration/patient/registration', 1),
+			(200102, 'Patient List', 2, 1, 200100, '/medora/home/registration/patient/list', 2),
 
-			-- schedule
-			(3, 'Schedule Master', 1, 1, null, '/medora/home/administration/schedule-master', 1),
-			(300001, 'Doctor Schedule', 1, 1, 3, '/medora/home/administration/schedule-master/doctor-schedule', 1),
+			-- ── Module 3: Appointment ──
+			(300100, 'Doctor Appointment', 3, 1, null, '/medora/home/appointment/doctor-appointment', 1),
 
-			-- external refer master
-			(5, 'External Refer Master', 1, 1, null, '/medora/home/administration/external-refer-master', 1),
+			-- ── Module 4: Nursing Workbench ──
+			(400100, 'Nursing Workbench', 4, 1, null, '/medora/home/nursing-workbench', 1),
+			(400101, 'Vital', 4, 1, 400100, '/medora/home/nursing-workbench/vital', 1),
+			(400102, 'Allergy', 4, 1, 400100, '/medora/home/nursing-workbench/allergy', 2),
+			(400103, 'Patient Attachment', 4, 1, 400100, '/medora/home/nursing-workbench/patient-attachment', 3),
+			(400104, 'Clinical Document', 4, 1, 400100, '/medora/home/nursing-workbench/clinical-document', 4),
+			(400105, 'Case Sheet', 4, 1, 400100, '/medora/home/nursing-workbench/case-sheet', 5),
+			(400106, 'Order', 4, 1, 400100, '/medora/home/nursing-workbench/order', 6),
+			(400107, 'Nursing Complete', 4, 1, 400100, '/medora/home/nursing-workbench/nursing-complete', 7),
+			(400108, 'Patient Visit History Dashboard', 4, 1, 400100, '/medora/home/nursing-workbench/patient-visit-history-dashboard', 8),
+			(400109, 'Census', 4, 1, 400100, '/medora/home/nursing-workbench/census', 9),
+			(400110, 'Track Board', 4, 1, 400100, '/medora/home/nursing-workbench/track-board', 10),
+			(400111, 'Triage', 4, 1, 400100, '/medora/home/nursing-workbench/triage', 11),
+			(400112, 'Trauma Log', 4, 1, 400100, '/medora/home/nursing-workbench/trauma-log', 12),
+			(400113, 'eMAR', 4, 1, 400100, '/medora/home/nursing-workbench/emar', 13),
+			(400114, 'Care plans', 4, 1, 400100, '/medora/home/nursing-workbench/care-plan', 14),
+			(400115, 'MLC documentation', 4, 1, 400100, '/medora/home/nursing-workbench/mlc-documentation', 15),
 
-			-- user group (per-hospital management)
-			(6, 'User Group', 1, 1, null, '/medora/home/administration/user-group', 4),
+			-- ── Module 6: Consultation ──
+			(600100, 'EMR', 6, 1, null, '/medora/home/consultation/emr', 1),
+			(600200, 'CPOE', 6, 1, null, '/medora/home/consultation/cpoe', 2),
+			(600201, 'Order', 6, 1, 600200, '/medora/home/consultation/cpoe/order', 1),
+			(600202, 'Prescription', 6, 1, 600200, '/medora/home/consultation/cpoe/prescription', 2),
+			(600203, 'Refer', 6, 1, 600200, '/medora/home/consultation/cpoe/refer', 3),
+			(600204, 'Refer Doctor', 6, 1, 600203, '/medora/home/consultation/cpoe/refer/doctor', 1),
+			(600205, 'Referral History', 6, 1, 600203, '/medora/home/consultation/cpoe/refer/history', 2),
+			(600300, 'Results', 6, 1, null, '/medora/home/consultation/results', 3),
+			(600400, 'Discharge Summary', 6, 1, null, '/medora/home/consultation/discharge-summary', 4),
+			(600500, 'Procedures', 6, 1, null, '/medora/home/consultation/procedures', 5),
+			(600600, 'Operative Notes', 6, 1, null, '/medora/home/consultation/operative-notes', 6),
 
-			-- branches (per-hospital; Branch is under Hospital)
-			(7, 'Branches', 1, 1, null, '/medora/home/administration/branches', 5),
+			-- ── Module 7: ADT ──
+			(700100, 'Bed Status', 7, 1, null, '/medora/home/adt/bed-status', 1),
+			(700200, 'Admission', 7, 1, null, '/medora/home/adt/admission', 2),
+			(700201, 'New Admission', 7, 1, 700200, '/medora/home/adt/admission/new', 1),
+			(700202, 'Admission List', 7, 1, 700200, '/medora/home/adt/admission/list', 2),
+			(700203, 'Pending Admissions', 7, 1, 700200, '/medora/home/adt/admission/pending', 3),
+			(700300, 'Booking', 7, 1, null, '/medora/home/adt/booking', 3),
+			(700301, 'New Booking', 7, 1, 700300, '/medora/home/adt/booking/new', 1),
+			(700302, 'Booking List', 7, 1, 700300, '/medora/home/adt/booking/list', 2),
+			(700400, 'Bed Transfer Requisition', 7, 1, null, '/medora/home/adt/bed-transfer-requisition', 4),
+			(700401, 'New Requisition', 7, 1, 700400, '/medora/home/adt/bed-transfer-requisition/new', 1),
+			(700402, 'Requisition List', 7, 1, 700400, '/medora/home/adt/bed-transfer-requisition/list', 2),
 
-			-- category
-			(9, 'Service Order', 1, 1, null, '/medora/home/administration/service-order', 6),
-			(900001, 'Category Master', 1, 1, 9, '/medora/home/administration/service-order/category-master', 1),
-			(900002, 'Service Item Master', 1, 1, 9, '/medora/home/administration/service-order/service-item-master', 3),
-			(900004, 'Sub Category Master', 1, 1, 9, '/medora/home/administration/service-order/sub-category-master', 2),
-			(900005, 'Service Item Tagging', 1, 1, 9, '/medora/home/administration/service-order/service-item-tagging', 4),
+			-- ── Module 8: Billing ──
+			(800100, 'Bill', 8, 1, null, '/medora/home/billing/bill', 1),
+			(800200, 'Advance Deposit', 8, 1, null, '/medora/home/billing/advance-deposit', 2),
 
-			-- Billing Setup module: per-billing-type service item tagging on visit closure.
-			-- ED sub-page is mapped to the ER (emergency) billing type.
-			(730000, 'Billing Setup', 1, 1, null, '/medora/home/administration/billing-setup', 16),
-			(730001, 'OP Billing', 1, 1, 730000, '/medora/home/administration/billing-setup/op-billing', 1),
-			(730002, 'IP Billing', 1, 1, 730000, '/medora/home/administration/billing-setup/ip-billing', 2),
-			(730003, 'ED Billing', 1, 1, 730000, '/medora/home/administration/billing-setup/ed-billing', 3),
+			-- ── Module 9: Inventory Setup ──
+			(900100, 'Stores', 9, 1, null, '/medora/home/inventory-setup/stores', 1),
+			(900200, 'Item Master', 9, 1, null, '/medora/home/inventory-setup/item-master', 2),
+			(900300, 'Pharmacy Generic', 9, 1, null, '/medora/home/inventory-setup/pharmacy-generic', 3),
+			(900400, 'Unit Master', 9, 1, null, '/medora/home/inventory-setup/unit-master', 4),
+			(900500, 'Item Unit Master', 9, 1, null, '/medora/home/inventory-setup/item-unit-master', 5),
+			(900600, 'Supplier Setup', 9, 1, null, '/medora/home/inventory-setup/supplier-setup', 7),
+			(900700, 'Approval Config', 9, 1, null, '/medora/home/inventory-setup/approval-config', 8),
+			(900800, 'Pricing configuration', 9, 1, null, '/medora/home/inventory-setup/pricing-config', 9),
+			(900801, 'Pricing formula templates', 9, 1, 900800, '/medora/home/inventory-setup/pricing-formula-templates', 1),
+			(900900, 'Reorder level', 9, 1, null, '/medora/home/inventory-setup/reorder-level', 11),
+			(901000, 'Stock alerts', 9, 1, null, '/medora/home/inventory-setup/stock-alerts', 12),
+			(901001, 'Policy', 9, 1, 901000, '/medora/home/inventory-setup/stock-alerts/policy', 1),
+			(901002, 'Recipients', 9, 1, 901000, '/medora/home/inventory-setup/stock-alerts/recipients', 2),
 
-			-- document master
-			(10, 'Document Master', 1, 1, null, '/medora/home/administration/document-master', 7),
-			(100007, 'Document Type', 1, 1, 10, '/medora/home/administration/document-master/document-type', 1),
-			(100008, 'Document', 1, 1, 10, '/medora/home/administration/document-master/document', 2),
-			(100009, 'Document Setting', 1, 1, 10, '/medora/home/administration/document-master/document-setting', 3),
-			(100010, 'Master Templates', 1, 1, 10, '/medora/home/administration/document-master/template-library', 4),
-			(100011, 'Hospital Template Access', 1, 1, 10, '/medora/home/administration/document-master/hospital-templates', 5),
+			-- ── Module 10: Inventory ──
+			(1000100, 'Purchase Requisition', 10, 1, null, '/medora/home/inventory/purchase-requisition', 1),
+			(1000200, 'Purchase Order', 10, 1, null, '/medora/home/inventory/purchase-order', 2),
+			(1000300, 'Goods Receipt', 10, 1, null, '/medora/home/inventory/grn', 3),
+			(1000400, 'Stock', 10, 1, null, '/medora/home/inventory/stock', 4),
+			(1000500, 'Department indent', 10, 1, null, '/medora/home/inventory/department-indent', 5),
+			(1000600, 'Department issue', 10, 1, null, '/medora/home/inventory/department-issue', 6),
+			(1000700, 'Receipt from store', 10, 1, null, '/medora/home/inventory/receipt-from-store', 7),
+			(1000800, 'Department consumption', 10, 1, null, '/medora/home/inventory/department-consumption', 8),
+			(1000900, 'Reports', 10, 1, null, '/medora/home/inventory/reports', 9),
+			(1000901, 'Low stock report', 10, 1, 1000900, '/medora/home/inventory/reports/low-stock', 1),
+			(1000902, 'Expired/expiring report', 10, 1, 1000900, '/medora/home/inventory/reports/expired', 2),
+			(1000903, 'Movement log', 10, 1, 1000900, '/medora/home/inventory/reports/movement', 3),
 
-			-- Registration Module
-			-- patient pages
-			(2, 'Patient', 2, 1, null, '/medora/home/registration/patient', 1),
-			(200001, 'Patient Registration', 2, 1, 2, '/medora/home/registration/patient/registration', 1),
-			(200002, 'Patient List', 2, 1, 2, '/medora/home/registration/patient/list', 2),
+			-- ── Module 11: Medication Order ──
+			(1100100, 'Internal Sales', 11, 1, null, '/medora/home/medication-order/internal-sales', 1),
+			(1100200, 'External Sales', 11, 1, null, '/medora/home/medication-order/external-sales', 2),
 
-			-- Appointment Module
-			-- doctor appointments
-			(4, 'Doctor Appointment', 3, 1, null, '/medora/home/appointment/doctor-appointment', 1),
+			-- ── Module 12: Emergency ──
+			(1200100, 'Registration', 12, 1, null, '/medora/home/emergency/admission', 1),
+			(1200101, 'ED Patient Registration', 12, 1, 1200100, '/medora/home/emergency/admission/new', 1),
+			(1200102, 'New patient', 12, 1, 1200100, '/medora/home/emergency/admission/new-patient', 2),
+			(1200200, 'ED Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 2),
 
-			-- Nursing module (one page; shared chart sub-pages for every visit type)
-			(910000, 'Nursing Workbench', 4, 1, null, '/medora/home/nursing-workbench', 1),
-			(800001, 'Vital', 4, 1, 910000, '/medora/home/nursing-workbench/vital', 1),
-			(800002, 'Allergy', 4, 1, 910000, '/medora/home/nursing-workbench/allergy', 2),
-			(800006, 'Patient Attachment', 4, 1, 910000, '/medora/home/nursing-workbench/patient-attachment', 3),
-			(800005, 'Clinical Document', 4, 1, 910000, '/medora/home/nursing-workbench/clinical-document', 4),
-			(800004, 'Case Sheet', 4, 1, 910000, '/medora/home/nursing-workbench/case-sheet', 5),
-			(800007, 'Order', 4, 1, 910000, '/medora/home/nursing-workbench/order', 6),
-			(800003, 'Nursing Complete', 4, 1, 910000, '/medora/home/nursing-workbench/nursing-complete', 7),
-			(800008, 'Patient Visit History Dashboard', 4, 1, 910000, '/medora/home/nursing-workbench/patient-visit-history-dashboard', 8),
-			(1900001, 'Census', 4, 1, 910000, '/medora/home/nursing-workbench/census', 9),
-			(120, 'Track Board', 4, 1, 910000, '/medora/home/nursing-workbench/track-board', 10),
-			(121, 'Triage', 4, 1, 910000, '/medora/home/nursing-workbench/triage', 11),
-			(122, 'Trauma Log', 4, 1, 910000, '/medora/home/nursing-workbench/trauma-log', 12),
-			(362, 'eMAR', 4, 1, 910000, '/medora/home/nursing-workbench/emar', 13),
-			(363, 'Care plans', 4, 1, 910000, '/medora/home/nursing-workbench/care-plan', 14),
-			(800016, 'MLC documentation', 4, 1, 910000, '/medora/home/nursing-workbench/mlc-documentation', 15),
+			-- ── Module 13: Perioperative ──
+			(1300100, 'OT Board', 13, 1, null, '/medora/home/perioperative/ot-board', 1),
+			(1300200, 'Cases', 13, 1, null, '/medora/home/perioperative/cases', 2),
+			(1300300, 'Pre-op Worklist', 13, 1, null, '/medora/home/perioperative/pre-op', 3),
+			(1300400, 'Room Setup', 13, 1, null, '/medora/home/perioperative/room-setup', 4),
+			(1300500, 'Procedure Log', 13, 1, null, '/medora/home/perioperative/procedure-log', 5),
 
-			-- Consultation Module
-			(13, 'EMR', 6, 1, null, '/medora/home/consultation/emr', 1),
-			(1500001, 'CPOE', 6, 1, null, '/medora/home/consultation/cpoe', 2),
-			(11, 'Order', 6, 1, 1500001, '/medora/home/consultation/cpoe/order', 1),
-			(12, 'Prescription', 6, 1, 1500001, '/medora/home/consultation/cpoe/prescription', 2),
-			(14, 'Refer', 6, 1, 1500001, '/medora/home/consultation/cpoe/refer', 3),
-			(1400001, 'Refer Doctor', 6, 1, 14, '/medora/home/consultation/cpoe/refer/doctor', 1),
-			(1400002, 'Referral History', 6, 1, 14, '/medora/home/consultation/cpoe/refer/history', 2),
-			(48, 'Results', 6, 1, null, '/medora/home/consultation/results', 3),
-			(49, 'Discharge Summary', 6, 1, null, '/medora/home/consultation/discharge-summary', 4),
-			(50, 'Procedures', 6, 1, null, '/medora/home/consultation/procedures', 5),
-			(51, 'Operative Notes', 6, 1, null, '/medora/home/consultation/operative-notes', 6),
+			-- ── Module 14: Obstetrics ──
+			(1400100, 'Labor Board', 14, 1, null, '/medora/home/obstetrics/labor-board', 1),
+			(1400200, 'Partogram', 14, 1, null, '/medora/home/obstetrics/partogram', 2),
 
-			-- Emergency module (12)
-			(123, 'Registration', 12, 1, null, '/medora/home/emergency/admission', 1),
-			(123001, 'ED Patient Registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
-			(123003, 'New patient', 12, 1, 123, '/medora/home/emergency/admission/new-patient', 2),
+			-- ── Module 15: Diagnostics ──
+			(1500100, 'Lab Dashboard', 15, 1, null, '/medora/home/diagnostics/lab/dashboard', 1),
+			(1500200, 'Collection Worklist', 15, 1, null, '/medora/home/diagnostics/lab/collection-worklist', 2),
+			(1500300, 'Lab Receive', 15, 1, null, '/medora/home/diagnostics/lab/receive', 3),
+			(1500400, 'Hematology Worklist', 15, 1, null, '/medora/home/diagnostics/lab/worklist/hematology', 4),
+			(1500500, 'Chemistry Worklist', 15, 1, null, '/medora/home/diagnostics/lab/worklist/chemistry', 5),
+			(1500600, 'Microbiology Worklist', 15, 1, null, '/medora/home/diagnostics/lab/worklist/microbiology', 6),
+			(1500700, 'Lab Results', 15, 1, null, '/medora/home/diagnostics/lab/results', 7),
+			(1500800, 'Critical Callbacks', 15, 1, null, '/medora/home/diagnostics/lab/critical-callback', 8),
+			(1500900, 'Lab Catalog', 15, 1, null, '/medora/home/diagnostics/lab/catalog', 9),
+			(1501000, 'Integration Health', 15, 1, null, '/medora/home/diagnostics/lab/integration', 10)
 
-			-- Perioperative module (13)
-			(130, 'OT Board', 13, 1, null, '/medora/home/perioperative/ot-board', 1),
-			(131, 'Cases', 13, 1, null, '/medora/home/perioperative/cases', 2),
-			(132, 'Pre-op Worklist', 13, 1, null, '/medora/home/perioperative/pre-op', 3),
-			(133, 'Room Setup', 13, 1, null, '/medora/home/perioperative/room-setup', 4),
-			(134, 'Procedure Log', 13, 1, null, '/medora/home/perioperative/procedure-log', 5),
-
-			-- Obstetrics module (14)
-			(140, 'Labor Board', 14, 1, null, '/medora/home/obstetrics/labor-board', 1),
-			(141, 'Partogram', 14, 1, null, '/medora/home/obstetrics/partogram', 2),
-
-			-- Diagnostics module (15)
-			(150, 'Lab Dashboard', 15, 1, null, '/medora/home/diagnostics/lab/dashboard', 1),
-			(151, 'Collection Worklist', 15, 1, null, '/medora/home/diagnostics/lab/collection-worklist', 2),
-			(152, 'Lab Receive', 15, 1, null, '/medora/home/diagnostics/lab/receive', 3),
-			(153, 'Hematology Worklist', 15, 1, null, '/medora/home/diagnostics/lab/worklist/hematology', 4),
-			(154, 'Chemistry Worklist', 15, 1, null, '/medora/home/diagnostics/lab/worklist/chemistry', 5),
-			(155, 'Microbiology Worklist', 15, 1, null, '/medora/home/diagnostics/lab/worklist/microbiology', 6),
-			(156, 'Lab Results', 15, 1, null, '/medora/home/diagnostics/lab/results', 7),
-			(157, 'Critical Callbacks', 15, 1, null, '/medora/home/diagnostics/lab/critical-callback', 8),
-			(158, 'Lab Catalog', 15, 1, null, '/medora/home/diagnostics/lab/catalog', 9),
-			(159, 'Integration Health', 15, 1, null, '/medora/home/diagnostics/lab/integration', 10),
-
-			-- ADT Module (ids 52–55 parents; 530001+/540001+/550001+ children; module 7)
-			(52, 'Bed Status', 7, 1, null, '/medora/home/adt/bed-status', 1),
-			(53, 'Admission', 7, 1, null, '/medora/home/adt/admission', 2),
-			(530001, 'New Admission', 7, 1, 53, '/medora/home/adt/admission/new', 1),
-			(530002, 'Admission List', 7, 1, 53, '/medora/home/adt/admission/list', 2),
-			(530003, 'Pending Admissions', 7, 1, 53, '/medora/home/adt/admission/pending', 3),
-			(54, 'Booking', 7, 1, null, '/medora/home/adt/booking', 3),
-			(540001, 'New Booking', 7, 1, 54, '/medora/home/adt/booking/new', 1),
-			(540002, 'Booking List', 7, 1, 54, '/medora/home/adt/booking/list', 2),
-			(55, 'Bed Transfer Requisition', 7, 1, null, '/medora/home/adt/bed-transfer-requisition', 4),
-			(550001, 'New Requisition', 7, 1, 55, '/medora/home/adt/bed-transfer-requisition/new', 1),
-			(550002, 'Requisition List', 7, 1, 55, '/medora/home/adt/bed-transfer-requisition/list', 2),
-
-			-- Billing module (one Bill page for OP/ER/IP; advance deposit sub-page)
-			(150003, 'Bill', 8, 1, null, '/medora/home/billing/bill', 1),
-			(150002, 'Advance Deposit', 8, 1, 150003, '/medora/home/billing/ip-billing/advance-deposit', 2),
-
-			-- Administration: Financial Year & Prefix Configuration
-			(16, 'Prefix Configuration', 1, 1, null, '/medora/home/administration/prefix-configuration', 9),
-			(17, 'Financial Year', 1, 1, null, '/medora/home/administration/financial-year', 8),
-
-			-- master department catalog; store per branch linked to user group XOR department
-			(18, 'Departments', 1, 1, null, '/medora/home/administration/departments', 10),
-
-			-- IPD masters
-			(45, 'Ward Master', 1, 1, null, '/medora/home/administration/ward-master', 13),
-			(450001, 'Ward Category', 1, 1, 45, '/medora/home/administration/ward-master/ward-category', 1),
-			(450002, 'Ward', 1, 1, 45, '/medora/home/administration/ward-master/ward', 2),
-			(47, 'Room Master', 1, 1, null, '/medora/home/administration/room-master', 14),
-			(470001, 'Room Category', 1, 1, 47, '/medora/home/administration/room-master/room-category', 1),
-			(470002, 'Room', 1, 1, 47, '/medora/home/administration/room-master/room', 2),
-			(46, 'Bed Master', 1, 1, null, '/medora/home/administration/bed-master', 15),
-
-			(35, 'Medication Order Setup', 1, 1, null, '/medora/home/administration/medication-order-setup', 12),
-			(350001, 'Frequency', 1, 1, 35, '/medora/home/administration/medication-order-setup/frequency', 1),
-			(350002, 'Form', 1, 1, 35, '/medora/home/administration/medication-order-setup/form', 2),
-			(350003, 'Route', 1, 1, 35, '/medora/home/administration/medication-order-setup/route', 3),
-			(350004, 'Duration unit', 1, 1, 35, '/medora/home/administration/medication-order-setup/duration', 4),
-			(350005, 'Order type', 1, 1, 35, '/medora/home/administration/medication-order-setup/order-type', 5),
-			(350006, 'Dose unit', 1, 1, 35, '/medora/home/administration/medication-order-setup/dose-unit', 6),
-			(350007, 'Food relation', 1, 1, 35, '/medora/home/administration/medication-order-setup/food-relation', 7),
-
-			-- Inventory Setup Module (main pages; no parent Inventory Setup page)
-			(19, 'Stores', 9, 1, null, '/medora/home/inventory-setup/stores', 1),
-			(20, 'Item Master', 9, 1, null, '/medora/home/inventory-setup/item-master', 2),
-			(21, 'Pharmacy Generic', 9, 1, null, '/medora/home/inventory-setup/pharmacy-generic', 3),
-			(22, 'Unit Master', 9, 1, null, '/medora/home/inventory-setup/unit-master', 4),
-			(23, 'Item Unit Master', 9, 1, null, '/medora/home/inventory-setup/item-unit-master', 5),
-			(25, 'Supplier Setup', 9, 1, null, '/medora/home/inventory-setup/supplier-setup', 7),
-			(26, 'Approval Config', 9, 1, null, '/medora/home/inventory-setup/approval-config', 8),
-			(43, 'Pricing configuration', 9, 1, null, '/medora/home/inventory-setup/pricing-config', 9),
-			(430001, 'Pricing formula templates', 9, 1, null, '/medora/home/inventory-setup/pricing-formula-templates', 10),
-			(32, 'Reorder level', 9, 1, null, '/medora/home/inventory-setup/reorder-level', 11),
-			(42, 'Stock alerts', 9, 1, null, '/medora/home/inventory-setup/stock-alerts', 12),
-			(420001, 'Policy', 9, 1, 42, '/medora/home/inventory-setup/stock-alerts/policy', 1),
-			(420002, 'Recipients', 9, 1, 42, '/medora/home/inventory-setup/stock-alerts/recipients', 2),
-
-			-- Inventory Module (main pages; no parent Inventory page)
-			(27, 'Purchase Requisition', 10, 1, null, '/medora/home/inventory/purchase-requisition', 1),
-			(28, 'Purchase Order', 10, 1, null, '/medora/home/inventory/purchase-order', 2),
-			(29, 'Goods Receipt', 10, 1, null, '/medora/home/inventory/grn', 3),
-			(30, 'Stock', 10, 1, null, '/medora/home/inventory/stock', 4),
-
-			-- Medication Order Module (ids 33-34 from origin/main)
-			(33, 'Internal Sales', 11, 1, null, '/medora/home/medication-order/internal-sales', 1),
-			(34, 'External Sales', 11, 1, null, '/medora/home/medication-order/external-sales', 2),
-
-			-- Inventory: department flows (renumbered 37-40 to avoid collision with medication-order ids)
-			(37, 'Department indent', 10, 1, null, '/medora/home/inventory/department-indent', 5),
-			(38, 'Department issue', 10, 1, null, '/medora/home/inventory/department-issue', 6),
-			(39, 'Receipt from store', 10, 1, null, '/medora/home/inventory/receipt-from-store', 7),
-			(40, 'Department consumption', 10, 1, null, '/medora/home/inventory/department-consumption', 8),
-			(41, 'Reports', 10, 1, null, '/medora/home/inventory/reports', 9),
-			(410001, 'Low stock report', 10, 1, 41, '/medora/home/inventory/reports/low-stock', 1),
-			(410002, 'Expired/expiring report', 10, 1, 41, '/medora/home/inventory/reports/expired', 2),
-			(410003, 'Movement log', 10, 1, 41, '/medora/home/inventory/reports/movement', 3)
-
-		ON CONFLICT (id) DO NOTHING;
-		`);
-	await db.execute(sql`
-		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
-		VALUES (530003, 'Pending Admissions', 7, 1, 53, '/medora/home/adt/admission/pending', 3)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			module_id = EXCLUDED.module_id,
 			status_id = EXCLUDED.status_id,
 			parent_id = EXCLUDED.parent_id,
 			page_url = EXCLUDED.page_url,
-			sequence_no = EXCLUDED.sequence_no;
+			sequence_no = EXCLUDED.sequence_no,
+			updated_at = now();
 		`);
-	await db.execute(sql`
-		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
-		VALUES
-			(123, 'Registration', 12, 1, null, '/medora/home/emergency/admission', 1),
-			(123001, 'ED Patient Registration', 12, 1, 123, '/medora/home/emergency/admission/new', 1),
-			(123003, 'New patient', 12, 1, 123, '/medora/home/emergency/admission/new-patient', 2)
-		ON CONFLICT (id) DO UPDATE SET
-			name = EXCLUDED.name,
-			module_id = EXCLUDED.module_id,
-			status_id = EXCLUDED.status_id,
-			parent_id = EXCLUDED.parent_id,
-			page_url = EXCLUDED.page_url,
-			sequence_no = EXCLUDED.sequence_no;
-		`);
-	await db.execute(sql`
-		INSERT INTO user_group_page (user_group_id, page_id)
-		SELECT ugp.user_group_id, child.page_id
-		FROM user_group_page ugp
-		CROSS JOIN (VALUES (123), (123001), (123003)) AS child(page_id)
-		WHERE ugp.page_id IN (120, 121, 122, 481)
-			AND NOT EXISTS (
-				SELECT 1
-				FROM user_group_page x
-				WHERE x.user_group_id = ugp.user_group_id
-					AND x.page_id = child.page_id
-			);
-		`);
-	await db.execute(sql`
-		INSERT INTO user_group_page (user_group_id, page_id)
-		SELECT ugp.user_group_id, child.page_id
-		FROM user_group_page ugp
-		CROSS JOIN (VALUES (123003)) AS child(page_id)
-		WHERE ugp.page_id IN (123, 123001)
-			AND NOT EXISTS (
-				SELECT 1
-				FROM user_group_page x
-				WHERE x.user_group_id = ugp.user_group_id
-					AND x.page_id = child.page_id
-			);
-		`);
-	await db.execute(sql`
-		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
-		VALUES (123003, 'New patient', 12, 1, 123, '/medora/home/emergency/admission/new-patient', 2)
-		ON CONFLICT (id) DO UPDATE SET
-			name = EXCLUDED.name,
-			module_id = EXCLUDED.module_id,
-			status_id = EXCLUDED.status_id,
-			parent_id = EXCLUDED.parent_id,
-			page_url = EXCLUDED.page_url,
-			sequence_no = EXCLUDED.sequence_no;
-		`);
-	await db.execute(sql`UPDATE page SET name = 'ED Patient Registration', sequence_no = 1 WHERE id = 123001`);
-	await db.execute(sql`
-		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
-		VALUES
-			(124, 'ED Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 5),
-			(454, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19)
-		ON CONFLICT (id) DO UPDATE SET
-			name = EXCLUDED.name,
-			module_id = EXCLUDED.module_id,
-			status_id = EXCLUDED.status_id,
-			parent_id = EXCLUDED.parent_id,
-			page_url = EXCLUDED.page_url,
-			sequence_no = EXCLUDED.sequence_no;
-		`);
-	await db.execute(sql`
-		INSERT INTO user_group_page (user_group_id, page_id)
-		SELECT ugp.user_group_id, child.page_id
-		FROM user_group_page ugp
-		CROSS JOIN (
-			VALUES (124), (454)
-		) AS child(page_id)
-		WHERE ugp.page_id IN (45, 46, 47, 120, 121, 122)
-			AND NOT EXISTS (
-				SELECT 1
-				FROM user_group_page x
-				WHERE x.user_group_id = ugp.user_group_id
-					AND x.page_id = child.page_id
-			);
-		`);
-	// Nursing consolidation: one page with shared chart sub-pages. The page rows
-	// are upserted in the main page list above; this block upgrades grants on
-	// existing databases where OPD/IPD/ED were separate page groups.
-	// Shared chart pages: any group with OPD, IPD or ED nursing access keeps
-	// the chart tabs it already had, now pointed at the consolidated routes.
-	await db.execute(sql`
-		INSERT INTO user_group_page (user_group_id, page_id)
-		SELECT DISTINCT ugp.user_group_id, child.page_id
-		FROM user_group_page ugp
-		CROSS JOIN (
-			VALUES
-				(800001), (800002), (800006), (800005),
-				(800004), (800007), (800003), (800008)
-		) AS child(page_id)
-		WHERE ugp.page_id IN (
-			8, 44, 481, 910000,
-			800001, 800002, 800003, 800004, 800005, 800006, 800007, 800008,
-			1900001, 1900002, 1900003, 1900004, 1900005, 1900006, 1900007, 1900008,
-			120, 121, 122,
-			481002, 481003, 481004, 481005, 481006, 481007, 481008
-		)
-			AND NOT EXISTS (
-				SELECT 1
-				FROM user_group_page x
-				WHERE x.user_group_id = ugp.user_group_id
-					AND x.page_id = child.page_id
-			);
-		`);
-	// IPD census tab for groups that had IPD nursing access.
-	await db.execute(sql`
-		INSERT INTO user_group_page (user_group_id, page_id)
-		SELECT DISTINCT ugp.user_group_id, 1900001
-		FROM user_group_page ugp
-		WHERE ugp.page_id IN (
-				44,
-				1900001, 1900002, 1900003, 1900004,
-				1900005, 1900006, 1900007, 1900008
-			)
-			AND NOT EXISTS (
-				SELECT 1
-				FROM user_group_page x
-				WHERE x.user_group_id = ugp.user_group_id
-					AND x.page_id = 1900001
-			);
-		`);
-	// ED board tabs for groups that had ED nursing access.
-	await db.execute(sql`
-		INSERT INTO user_group_page (user_group_id, page_id)
-		SELECT DISTINCT ugp.user_group_id, child.page_id
-		FROM user_group_page ugp
-		CROSS JOIN (VALUES (120), (121), (122)) AS child(page_id)
-		WHERE ugp.page_id IN (
-				481,
-				120, 121, 122,
-				481002, 481003, 481004, 481005,
-				481006, 481007, 481008
-			)
-			AND NOT EXISTS (
-				SELECT 1
-				FROM user_group_page x
-				WHERE x.user_group_id = ugp.user_group_id
-					AND x.page_id = child.page_id
-			);
-		`);
-	// Drop the retired OPD/IPD/ED page groups and their duplicate children.
-	await db.execute(sql`
-		DELETE FROM user_group_page
-		WHERE page_id IN (
-			8, 44, 481,
-			1900002, 1900003, 1900004, 1900005,
-			1900006, 1900007, 1900008,
-			481002, 481003, 481004, 481005,
-			481006, 481007, 481008
-		);
-		`);
-	await db.execute(sql`
-		DELETE FROM page
-		WHERE id IN (
-			8, 44, 481,
-			1900002, 1900003, 1900004, 1900005,
-			1900006, 1900007, 1900008,
-			481002, 481003, 481004, 481005,
-			481006, 481007, 481008
-		);
-		`);
-	await db.execute(sql`UPDATE page SET sequence_no = 2 WHERE id = 124`);
-	// Billing consolidation: one Bill page (OP/ER/IP); retire separate OP/IP/ER nav pages.
-	await db.execute(sql`
-		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
-		VALUES
-			(150003, 'Bill', 8, 1, null, '/medora/home/billing/bill', 1),
-			(150002, 'Advance Deposit', 8, 1, 150003, '/medora/home/billing/ip-billing/advance-deposit', 2)
-		ON CONFLICT (id) DO UPDATE SET
-			name = EXCLUDED.name,
-			module_id = EXCLUDED.module_id,
-			status_id = EXCLUDED.status_id,
-			parent_id = EXCLUDED.parent_id,
-			page_url = EXCLUDED.page_url,
-			sequence_no = EXCLUDED.sequence_no;
-		`);
-	await db.execute(sql`
-		UPDATE module
-		SET module_url = '/medora/home/billing/bill', updated_at = now()
-		WHERE id = 8;
-		`);
-	await db.execute(sql`
-		INSERT INTO user_group_page (user_group_id, page_id)
-		SELECT DISTINCT ugp.user_group_id, child.page_id
-		FROM user_group_page ugp
-		CROSS JOIN (VALUES (150003), (150002)) AS child(page_id)
-		WHERE ugp.page_id IN (15, 150001, 150003, 150004, 150002)
-			AND NOT EXISTS (
-				SELECT 1
-				FROM user_group_page x
-				WHERE x.user_group_id = ugp.user_group_id
-					AND x.page_id = child.page_id
-			);
-		`);
-	await db.execute(sql`
-		DELETE FROM user_group_page
-		WHERE page_id IN (15, 150001, 150004);
-		`);
-	await db.execute(sql`
-		DELETE FROM page
-		WHERE id IN (15, 150001, 150004);
-		`);
-	await db.execute(sql`
-		INSERT INTO user_group_page (user_group_id, page_id)
-		SELECT ugp.user_group_id, 125
-		FROM user_group_page ugp
-		WHERE ugp.page_id IN (123, 120, 121, 122, 124, 125)
-			AND NOT EXISTS (
-				SELECT 1 FROM user_group_page x
-				WHERE x.user_group_id = ugp.user_group_id AND x.page_id = 125
-			);
-		`);
-	// Administration: Ward / Room / Bed Master cover ER (retire separate ER * Master nav).
-	const retiredErMasterPageIds = [
-		451, 451001, 451002, 452, 452001, 452002, 453
+
+	// Retired nav page ids from older seeds/migrations (drop grants, then rows).
+	const retiredPageIds = [
+		1, 2, 8, 44, 481, 15, 150000, 150001, 150002, 150003, 150004,
+		810001, 810002, 800000, 800001, 801000,
+		451, 451001, 451002, 452, 452001, 452002, 453,
+		1900002, 1900003, 1900004, 1900005, 1900006, 1900007, 1900008,
+		481002, 481003, 481004, 481005, 481006, 481007, 481008
 	];
-	await db.execute(sql`
-		INSERT INTO user_group_page (user_group_id, page_id)
-		SELECT DISTINCT ugp.user_group_id, child.page_id
-		FROM user_group_page ugp
-		CROSS JOIN (
-			VALUES (45), (450001), (450002), (47), (470001), (470002), (46)
-		) AS child(page_id)
-		WHERE ugp.page_id IN (${sql.join(
-			retiredErMasterPageIds.map((id) => sql`${id}`),
-			sql`, `
-		)})
-			AND NOT EXISTS (
-				SELECT 1
-				FROM user_group_page x
-				WHERE x.user_group_id = ugp.user_group_id
-					AND x.page_id = child.page_id
-			);
-		`);
 	await db.execute(sql`
 		DELETE FROM user_group_page
 		WHERE page_id IN (${sql.join(
-			retiredErMasterPageIds.map((id) => sql`${id}`),
+			retiredPageIds.map((id) => sql`${id}`),
 			sql`, `
 		)});
-		`);
+	`);
 	await db.execute(sql`
 		DELETE FROM page
 		WHERE id IN (${sql.join(
-			retiredErMasterPageIds.map((id) => sql`${id}`),
+			retiredPageIds.map((id) => sql`${id}`),
 			sql`, `
 		)});
-		`);
-	// Billing Setup module: grant the new pages to user groups that can already
-	// see Service Item Tagging (page 900005), since it is a sibling/extension.
-	await db.execute(sql`
-		INSERT INTO user_group_page (user_group_id, page_id)
-		SELECT DISTINCT ugp.user_group_id, child.page_id
-		FROM user_group_page ugp
-		CROSS JOIN (VALUES (730000), (730001), (730002), (730003)) AS child(page_id)
-		WHERE ugp.page_id = 900005
-			AND NOT EXISTS (
-				SELECT 1
-				FROM user_group_page x
-				WHERE x.user_group_id = ugp.user_group_id
-					AND x.page_id = child.page_id
-			);
 		`);
 	seedLogger.info('Seeded: page');
 
@@ -606,22 +329,7 @@ export async function seedInformationTables() {
 		}
 	}
 
-	// 5. Role (must match RoleEnum / auth-table-seed; do not invent hospital job titles here)
-	await db.execute(sql`
-		INSERT INTO role (id, name, status_id)
-		VALUES
-			(1, 'System Admin', 1),
-			(2, 'Owner', 1),
-			(3, 'Staff', 1),
-			(4, 'Admin Team', 1),
-			(5, 'Patient', 1)
-		ON CONFLICT (id) DO UPDATE SET
-			name = EXCLUDED.name,
-			status_id = EXCLUDED.status_id;
-		`);
-	seedLogger.info('Seeded: role');
-
-	// 6. Status Tagging Type
+	// 5. Status Tagging Type
 	await db.execute(sql`
 		INSERT INTO status_tagging_type (id, name)
 		VALUES
@@ -641,24 +349,12 @@ export async function seedInformationTables() {
 			(14, 'IPD Admission Order'),
 			(15, 'Surgical Case'),
 			(16, 'Clinical Form Instance')
-		ON CONFLICT (id) DO NOTHING;
-		`);
-	// Align Billing type name; drop obsolete IP Billing type if present.
-	await db.execute(sql`
-		UPDATE status_tagging_type SET name = 'Billing' WHERE id = 11
-		`);
-	await db.execute(sql`
-		UPDATE status_tagging_type SET name = 'IPD Bed Booking' WHERE id = 12
-		`);
-	await db.execute(sql`
-		UPDATE status_tagging_type SET name = 'IPD Bed Transfer Requisition' WHERE id = 13
-		`);
-	await db.execute(sql`
-		UPDATE status_tagging_type SET name = 'IPD Admission Order' WHERE id = 14
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name;
 		`);
 	seedLogger.info('Seeded: status tagging type');
 
-	// 7. status_tagging
+	// 6. status_tagging
 	await db.execute(sql`
 		INSERT INTO status_tagging (id, name, code, sequence_no, status_tagging_type_id)
 		VALUES 

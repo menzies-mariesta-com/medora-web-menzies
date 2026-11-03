@@ -26,11 +26,13 @@ export async function GET(event: RequestEvent) {
 		return json(row);
 	}
 
-	const sourceOpdRaw = event.url.searchParams.get('sourceOpdVisitId');
-	if (sourceOpdRaw != null && sourceOpdRaw !== '') {
-		const sourceOpdVisitId = parseUuid(sourceOpdRaw);
-		if (!sourceOpdVisitId) {
-			throw error(400, 'sourceOpdVisitId is invalid');
+	const sourceRaw =
+		event.url.searchParams.get('sourceVisitId') ??
+		event.url.searchParams.get('sourceOpdVisitId');
+	if (sourceRaw != null && sourceRaw !== '') {
+		const sourceVisitId = parseUuid(sourceRaw);
+		if (!sourceVisitId) {
+			throw error(400, 'sourceVisitId is invalid');
 		}
 		const statusRaw = event.url.searchParams.get('statusTaggingId');
 		const statusTaggingId =
@@ -41,9 +43,9 @@ export async function GET(event: RequestEvent) {
 			statusTaggingId === IpdAdmissionOrderStatusTaggingEnum.PENDING
 		) {
 			return json(
-				await admissionOrder.getPendingAdmissionOrderBySourceOpdVisit({
+				await admissionOrder.getPendingAdmissionOrderBySourceVisit({
 					hospitalId,
-					sourceOpdVisitId
+					sourceVisitId
 				})
 			);
 		}
@@ -51,7 +53,7 @@ export async function GET(event: RequestEvent) {
 			hospitalId,
 			page: 1,
 			pageSize: 1,
-			sourceOpdVisitId,
+			sourceVisitId,
 			statusTaggingId: Number.isFinite(statusTaggingId)
 				? statusTaggingId
 				: undefined
@@ -93,7 +95,9 @@ export async function POST(event: RequestEvent) {
 		return json(
 			await admissionOrder.createAdmissionOrder({
 				hospitalId,
-				sourceOpdVisitId: parseUuid(body.sourceOpdVisitId) ?? '',
+				sourceVisitId:
+					parseUuid(body.sourceVisitId ?? body.sourceOpdVisitId) ??
+					'',
 				careLevel: Number(body.careLevel),
 				urgency: Number(body.urgency),
 				preferredWardId:

@@ -337,7 +337,7 @@
 					patientId: patientId.trim(),
 					branchId: branchId.trim(),
 					chiefComplaint: chiefComplaint.trim() || null,
-					sourceOpdVisitId: sourceOpdVisitId
+					sourceVisitId: sourceOpdVisitId
 						? sourceOpdVisitId
 						: null,
 					doctorId: doctorId.trim() || null,

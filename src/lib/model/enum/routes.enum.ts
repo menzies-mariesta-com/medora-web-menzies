@@ -51,6 +51,7 @@ export enum WebRoutesEnum {
 	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_OP = '/medora/home/administration/billing-setup/op-billing',
 	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_IP = '/medora/home/administration/billing-setup/ip-billing',
 	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_ED = '/medora/home/administration/billing-setup/ed-billing',
+	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_SETTINGS = '/medora/home/administration/billing-setup/settings',
 	MEDORA_HOME_REGISTRATION = '/medora/home/registration',
 	MEDORA_HOME_REGISTRATION_PATIENT = '/medora/home/registration/patient',
 	MEDORA_HOME_REGISTRATION_PATIENT_REGISTRATION = '/medora/home/registration/patient/registration',
@@ -101,9 +102,11 @@ export enum WebRoutesEnum {
 	// Billing module (navbar auto-hides like nursing EMR)
 	MEDORA_HOME_BILLING = '/medora/home/billing',
 	MEDORA_HOME_BILLING_BILL = '/medora/home/billing/bill',
+	MEDORA_HOME_BILLING_ADVANCE_DEPOSIT = '/medora/home/billing/advance-deposit',
 	MEDORA_HOME_BILLING_OP_BILLING = '/medora/home/billing/op-billing',
 	MEDORA_HOME_BILLING_IP_BILLING = '/medora/home/billing/ip-billing',
 	MEDORA_HOME_BILLING_IP_BILLING_BILL = '/medora/home/billing/ip-billing/bill',
+	/** @deprecated Use MEDORA_HOME_BILLING_ADVANCE_DEPOSIT */
 	MEDORA_HOME_BILLING_IP_ADVANCE_DEPOSIT = '/medora/home/billing/ip-billing/advance-deposit',
 
 	// Medication Order module (navbar auto-hides like nursing EMR)

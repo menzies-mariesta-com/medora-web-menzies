@@ -1,8 +1,12 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import {
-	getPendingOpBillingServiceDetailRowsForVisit,
-	type OpBillingPendingLineRow
+	getPendingOpBillingServiceDetailRowsForVisit
 } from '$lib/server/medora/observation/observation-emr.server';
+import {
+	dedupePendingBillRows,
+	mergeClinicalAndBillingSetupPendingRows,
+	type PendingBillLineRow
+} from '$lib/server/medora/billing/billing-setup-bill-lines.server';
 import {
 	getOpBillingReadiness,
 	opBillingCloseBlockedMessage
@@ -28,7 +32,7 @@ import {
 	normalizeOpBillingLineWrite
 } from '$lib/server/medora/money-normalize.server';
 
-type PendingDetailRow = OpBillingPendingLineRow;
+type PendingDetailRow = PendingBillLineRow;
 
 type OpBillingWithAuditStaff = OpBillingSchema & {
 	discountedByStaff?: unknown;
@@ -111,24 +115,11 @@ function postActionFromBody(body: unknown): unknown {
 	return (body as { action?: unknown }).action;
 }
 
-/** One row per clinical/pharmacy source id (defensive against race / join fan-out). */
+/** One row per clinical/pharmacy/setup source id (defensive against race / join fan-out). */
 function dedupePendingRows(
 	rows: PendingDetailRow[]
 ): PendingDetailRow[] {
-	const seen = new Set<string>();
-	const out: PendingDetailRow[] = [];
-	for (const r of rows) {
-		const key =
-			r.lineSource === 'medication_order_line'
-				? `med:${r.medicationOrderLineId}`
-				: r.lineSource === 'department_consumption_line'
-					? `dc:${r.departmentConsumptionLineId}`
-					: `svc:${r.id}`;
-		if (seen.has(key)) continue;
-		seen.add(key);
-		out.push(r);
-	}
-	return out;
+	return dedupePendingBillRows(rows);
 }
 
 async function listOpenOpBillings(
@@ -223,10 +214,15 @@ async function syncOpenOpBillingForVisit(opts: {
 	pendingRows: PendingDetailRow[];
 }> {
 	const pendingRows = dedupePendingRows(
-		await getPendingOpBillingServiceDetailRowsForVisit({
-			visitId: opts.visitId,
+		await mergeClinicalAndBillingSetupPendingRows({
 			hospitalId: opts.hospitalId,
-			branchId: opts.branchId
+			visitId: opts.visitId,
+			branchId: opts.branchId,
+			clinicalRows: await getPendingOpBillingServiceDetailRowsForVisit({
+				visitId: opts.visitId,
+				hospitalId: opts.hospitalId,
+				branchId: opts.branchId
+			})
 		})
 	);
 

@@ -439,10 +439,10 @@
 	<div>
 		<h1 class="text-xl font-bold">{pageTitle}</h1>
 		<p class="text-sm opacity-80">
-			Choose a branch, then link service item taggings one at a time for
-			automatic bill lines when a {pageTitle.replace(' Billing', '')} visit is
-			completed. Amounts are maintained under Service Order → Service Item
-			Tagging.
+			Choose a branch, then link service item taggings one at a time. Linked
+			taggings are added to the open bill (op_billing / ip_billing lines) when you
+			load the Bill page for a visit — not as CPOE service orders. Clinical order
+			lines stay separate. Amounts come from Service Order → Service Item Tagging.
 		</p>
 	</div>
 

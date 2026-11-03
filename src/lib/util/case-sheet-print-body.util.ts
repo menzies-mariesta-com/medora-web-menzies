@@ -2,6 +2,7 @@ import {
 	buildCaseSheetOrderFields,
 	buildCaseSheetVitalFields,
 	caseSheetFieldsToDefinitionListHtml,
+	formatCaseSheetOrderRecordTitle,
 	type CaseSheetOrderFieldLabels,
 	type CaseSheetVitalFieldLabels
 } from '$lib/util/case-sheet-record-fields.util';
@@ -54,6 +55,7 @@ type OrderLineRow = {
 	serviceName?: string | null;
 	serviceId?: number | null;
 	subCategoryName?: string | null;
+	categoryName?: string | null;
 	instruction?: string | null;
 	serviceAmount?: unknown;
 	serviceTaxAmount?: unknown;
@@ -101,14 +103,15 @@ export type CaseSheetPrintLabels = {
 	vitalColRbs: string;
 	vitalColDescription: string;
 	vitalColRemark: string;
-	vitalColStatus: string;
 	orderColOrderNo: string;
-	orderColDescription: string;
+	orderColService: string;
 	orderColSubCategory: string;
+	orderColCategory: string;
+	orderColDescription: string;
 	orderColTaxAmount: string;
 	orderColDiscount: string;
 	orderColNursingComplete: string;
-	orderColStatus: string;
+	generatedFooter: string;
 };
 
 export type CaseSheetPrintFormatters = {
@@ -117,8 +120,6 @@ export type CaseSheetPrintFormatters = {
 	formatVital: (value: unknown) => string;
 	formatNumberDisplay: (value: unknown) => string;
 	getVitalDisplayDate: (row: VitalRow) => string | null;
-	vitalStatusLabel: (row: VitalRow) => string;
-	orderStatusLabel: (row: OrderLineRow) => string;
 };
 
 function listSection(
@@ -209,8 +210,7 @@ export function buildCaseSheetPrintBodyHtml(opts: {
 							rbs: labels.vitalColRbs,
 							symptom: labels.vitalColSymptom,
 							description: labels.vitalColDescription,
-							remark: labels.vitalColRemark,
-							status: labels.vitalColStatus
+							remark: labels.vitalColRemark
 						};
 						const fields = buildCaseSheetVitalFields(
 							row as PatientDiagnosisListRow,
@@ -221,8 +221,7 @@ export function buildCaseSheetPrintBodyHtml(opts: {
 								formatVital: fmt.formatVital,
 								formatNumberDisplay: fmt.formatNumberDisplay,
 								getVitalDisplayDate: (r) =>
-									fmt.getVitalDisplayDate(r),
-								statusLabel: (r) => fmt.vitalStatusLabel(r)
+									fmt.getVitalDisplayDate(r)
 							}
 						);
 						const title = escapeHtml(
@@ -239,8 +238,9 @@ export function buildCaseSheetPrintBodyHtml(opts: {
 					.map((row) => {
 						const orderLabels: CaseSheetOrderFieldLabels = {
 							orderNo: labels.orderColOrderNo,
-							service: labels.service,
+							service: labels.orderColService,
 							subCategory: labels.orderColSubCategory,
+							category: labels.orderColCategory,
 							instruction: labels.orderColDescription,
 							serviceAmount: labels.serviceAmount,
 							taxAmount: labels.orderColTaxAmount,
@@ -249,24 +249,25 @@ export function buildCaseSheetPrintBodyHtml(opts: {
 							urgent: labels.urgent,
 							yes: labels.yes,
 							no: labels.no,
-							nursingComplete: labels.orderColNursingComplete,
-							status: labels.orderColStatus
+							nursingComplete: labels.orderColNursingComplete
 						};
 						const fields = buildCaseSheetOrderFields(row, orderLabels, {
 							formatText: fmt.formatText,
 							formatDateTime: fmt.formatDateTime,
-							formatNumberDisplay: fmt.formatNumberDisplay,
-							statusLabel: (r) => fmt.orderStatusLabel(r)
+							formatNumberDisplay: fmt.formatNumberDisplay
 						});
-						const serviceLabel =
-							row.serviceName?.trim() ||
-							(row.serviceId != null
-								? `Service ${row.serviceId}`
-								: '–');
-						const title = `${escapeHtml(fmt.formatText(row.orderNo))} · ${escapeHtml(fmt.formatText(serviceLabel))}`;
+						const title = escapeHtml(
+							formatCaseSheetOrderRecordTitle(row, fmt.formatText)
+						);
 						return `<li class="case-sheet-record"><p class="case-sheet-record-title">${title}</p>${caseSheetFieldsToDefinitionListHtml(fields, escapeHtml)}</li>`;
 					})
 					.join('')}</ol></section>`;
+
+	const generatedAt = new Date().toLocaleString('en-US', {
+		dateStyle: 'short',
+		timeStyle: 'short'
+	});
+	const footer = `<footer class="case-sheet-footer">${escapeHtml(labels.generatedFooter)}: ${escapeHtml(generatedAt)}</footer>`;
 
 	return [
 		chiefComplaint,
@@ -274,6 +275,7 @@ export function buildCaseSheetPrintBodyHtml(opts: {
 		diagnosis,
 		allergies,
 		vitals,
-		orders
+		orders,
+		footer
 	].join('');
 }

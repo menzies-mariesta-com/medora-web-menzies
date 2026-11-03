@@ -84,15 +84,24 @@ export const POST: RequestHandler = async (event) => {
 		)
 	);
 	let subCategoryNameById = new Map<number, string | null>();
+	let categoryNameBySubCategoryId = new Map<number, string | null>();
 	if (subCategoryIds.length > 0) {
 		const subs = await ensureDb()
 			.select({
 				id: table.subCategoryTable.id,
-				name: table.subCategoryTable.subCategoryName
+				name: table.subCategoryTable.subCategoryName,
+				categoryName: table.categoryTable.categoryName
 			})
 			.from(table.subCategoryTable)
+			.leftJoin(
+				table.categoryTable,
+				eq(table.subCategoryTable.categoryId, table.categoryTable.id)
+			)
 			.where(inArray(table.subCategoryTable.id, subCategoryIds));
 		subCategoryNameById = new Map(subs.map((s) => [s.id, s.name]));
+		categoryNameBySubCategoryId = new Map(
+			subs.map((s) => [s.id, s.categoryName ?? null])
+		);
 	}
 
 	return json(
@@ -105,6 +114,11 @@ export const POST: RequestHandler = async (event) => {
 					(l.subCategoryId != null
 						? (subCategoryNameById.get(l.subCategoryId) ?? null)
 						: null),
+				categoryName:
+					l.subCategoryId != null
+						? (categoryNameBySubCategoryId.get(l.subCategoryId) ??
+							null)
+						: null,
 				serviceName: l.serviceNameSnapshot ?? null,
 				orderNo: l.orderNoSnapshot ?? null
 			}))

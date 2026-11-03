@@ -3,26 +3,16 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum, VisitTypeEnum } from '$lib/model/enum/db-link';
 import { BillingSetupCareSettingEnum } from '$lib/model/enum/billing-setup-care-setting.enum';
-import type { ServiceTaggingSchema } from '$lib/server/db/schema-type';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { getActiveBillingSetupTaggingsForCareSetting } from '$lib/server/medora/administration/billing-setup/billing-setup-service-tagging.server';
 import { normalizeMoneyDecimal2dpOrZero } from '$lib/server/medora/money-field.server';
+import { isTaggingEffectiveOnDate } from '$lib/server/medora/billing/service-tagging-effective.server';
 
 function toDateOnly(value: string | null | undefined): string | null {
 	const str = (value ?? '').trim();
 	if (!str) return null;
 	return str.length >= 10 ? str.slice(0, 10) : str;
-}
-
-function isTaggingEffectiveOnDate(
-	tagging: ServiceTaggingSchema,
-	asOfDate: string
-): boolean {
-	const normalized = toDateOnly(asOfDate) ?? asOfDate;
-	const validDate = toDateOnly(tagging.validDate);
-	if (!validDate) return true;
-	return validDate <= normalized;
 }
 
 export function careSettingForVisitTypeId(
@@ -215,4 +205,14 @@ export async function applyBillingAutoTaggingsForVisit(input: {
 		...input,
 		careSetting
 	});
+}
+
+/** @deprecated Billing setup lines are synced on bill load into op/ip_billing_line, not service orders. */
+export async function ensureBillingSetupAutoLinesForVisit(_input: {
+	hospitalId: string;
+	visitId: string;
+	userId: string;
+	closeDate?: string;
+}): Promise<number> {
+	return 0;
 }
