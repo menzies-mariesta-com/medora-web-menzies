@@ -16,13 +16,13 @@ export type CaseSheetVitalFieldLabels = {
 	symptom: string;
 	description: string;
 	remark: string;
-	status: string;
 };
 
 export type CaseSheetOrderFieldLabels = {
 	orderNo: string;
 	service: string;
 	subCategory: string;
+	category: string;
 	instruction: string;
 	serviceAmount: string;
 	taxAmount: string;
@@ -32,7 +32,6 @@ export type CaseSheetOrderFieldLabels = {
 	yes: string;
 	no: string;
 	nursingComplete: string;
-	status: string;
 };
 
 type VitalFormatters = {
@@ -41,7 +40,6 @@ type VitalFormatters = {
 	formatVital: (value: unknown) => string;
 	formatNumberDisplay: (value: unknown) => string;
 	getVitalDisplayDate: (row: PatientDiagnosisListRow) => string | null;
-	statusLabel: (row: PatientDiagnosisListRow) => string;
 };
 
 type OrderRow = {
@@ -49,6 +47,7 @@ type OrderRow = {
 	serviceName?: string | null;
 	serviceId?: number | null;
 	subCategoryName?: string | null;
+	categoryName?: string | null;
 	instruction?: string | null;
 	serviceAmount?: unknown;
 	serviceTaxAmount?: unknown;
@@ -63,8 +62,14 @@ type OrderFormatters = {
 	formatText: (value: string | null | undefined) => string;
 	formatDateTime: (value: string | null | undefined) => string;
 	formatNumberDisplay: (value: unknown) => string;
-	statusLabel: (row: OrderRow) => string;
 };
+
+export function formatCaseSheetOrderRecordTitle(
+	row: Pick<OrderRow, 'orderNo'>,
+	formatText: (value: string | null | undefined) => string
+): string {
+	return formatText(row.orderNo);
+}
 
 export function buildCaseSheetVitalFields(
 	row: PatientDiagnosisListRow,
@@ -89,8 +94,7 @@ export function buildCaseSheetVitalFields(
 			label: labels.description,
 			value: fmt.formatText(row.description)
 		},
-		{ label: labels.remark, value: fmt.formatText(row.remark) },
-		{ label: labels.status, value: fmt.statusLabel(row) }
+		{ label: labels.remark, value: fmt.formatText(row.remark) }
 	];
 }
 
@@ -99,20 +103,25 @@ export function buildCaseSheetOrderFields(
 	labels: CaseSheetOrderFieldLabels,
 	fmt: OrderFormatters
 ): CaseSheetFieldRow[] {
-	const serviceLabel =
-		row.serviceName?.trim() ||
-		(row.serviceId != null ? `Service ${row.serviceId}` : '–');
 	const units =
 		row.serviceUnit != null ? String(row.serviceUnit) : fmt.formatText(null);
 	const urgent = row.isUrgent ? labels.yes : labels.no;
 	const nursingComplete = row.nursingCompleteTime
 		? fmt.formatDateTime(row.nursingCompleteTime)
 		: fmt.formatText(null);
+	const serviceLabel =
+		row.serviceName?.trim() ||
+		(row.serviceId != null ? `Service ${row.serviceId}` : '–');
 
 	return [
+		{ label: labels.service, value: fmt.formatText(serviceLabel) },
 		{
 			label: labels.subCategory,
 			value: fmt.formatText(row.subCategoryName ?? null)
+		},
+		{
+			label: labels.category,
+			value: fmt.formatText(row.categoryName ?? null)
 		},
 		{ label: labels.instruction, value: fmt.formatText(row.instruction) },
 		{
@@ -129,8 +138,7 @@ export function buildCaseSheetOrderFields(
 		},
 		{ label: labels.units, value: units },
 		{ label: labels.urgent, value: urgent },
-		{ label: labels.nursingComplete, value: nursingComplete },
-		{ label: labels.status, value: fmt.statusLabel(row) }
+		{ label: labels.nursingComplete, value: nursingComplete }
 	];
 }
 

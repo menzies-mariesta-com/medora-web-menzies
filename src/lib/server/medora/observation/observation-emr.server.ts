@@ -1435,6 +1435,7 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 		serviceName: string | null;
 		subCategoryId: number | null;
 		subCategoryName: string | null;
+		categoryName: string | null;
 	})[]
 > {
 	const orders = await ensureDb().query.serviceOrderTable.findMany({
@@ -1461,11 +1462,13 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 	}
 
 	let subCategoryNameById = new Map<number, string | null>();
+	let subCategoryIdToCategoryId = new Map<number, number>();
 	if (subCategoryIds.size > 0) {
 		const subCategories = await ensureDb()
 			.select({
 				id: table.subCategoryTable.id,
-				name: table.subCategoryTable.subCategoryName
+				name: table.subCategoryTable.subCategoryName,
+				categoryId: table.subCategoryTable.categoryId
 			})
 			.from(table.subCategoryTable)
 			.where(
@@ -1474,6 +1477,24 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 		subCategoryNameById = new Map(
 			subCategories.map((r) => [r.id, r.name])
 		);
+		subCategoryIdToCategoryId = new Map(
+			subCategories
+				.filter((r) => r.categoryId != null)
+				.map((r) => [r.id, r.categoryId as number])
+		);
+	}
+
+	const categoryIds = new Set(subCategoryIdToCategoryId.values());
+	let categoryNameById = new Map<number, string | null>();
+	if (categoryIds.size > 0) {
+		const categories = await ensureDb()
+			.select({
+				id: table.categoryTable.id,
+				name: table.categoryTable.categoryName
+			})
+			.from(table.categoryTable)
+			.where(inArray(table.categoryTable.id, Array.from(categoryIds)));
+		categoryNameById = new Map(categories.map((r) => [r.id, r.name]));
 	}
 
 	const out: (ServiceOrderDetailSchema & {
@@ -1481,6 +1502,7 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 		serviceName: string | null;
 		subCategoryId: number | null;
 		subCategoryName: string | null;
+		categoryName: string | null;
 	})[] = [];
 
 	for (const ord of orders) {
@@ -1491,12 +1513,21 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 				subCategoryId != null
 					? (subCategoryNameById.get(subCategoryId) ?? null)
 					: null;
+			const categoryId =
+				subCategoryId != null
+					? subCategoryIdToCategoryId.get(subCategoryId)
+					: undefined;
+			const categoryName =
+				categoryId != null
+					? (categoryNameById.get(categoryId) ?? null)
+					: null;
 			out.push({
 				...(detailRow as ServiceOrderDetailSchema),
 				orderNo: ord.orderNo ?? null,
 				serviceName: serviceItem?.serviceName ?? null,
 				subCategoryId,
-				subCategoryName
+				subCategoryName,
+				categoryName
 			});
 		}
 	}
@@ -1645,6 +1676,7 @@ export type OpBillingPendingMedicationLineRow = {
 	serviceName: string | null;
 	subCategoryId: number | null;
 	subCategoryName: string | null;
+	categoryName: string | null;
 	orderNo: string | null;
 	discount: string | null;
 	serviceAmount: string | null;
@@ -1766,12 +1798,24 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 		branchId
 	});
 	let subCategoryName: string | null = null;
+	let categoryName: string | null = null;
 	const [sc] = await ensureDb()
-		.select({ name: table.subCategoryTable.subCategoryName })
+		.select({
+			name: table.subCategoryTable.subCategoryName,
+			categoryId: table.subCategoryTable.categoryId
+		})
 		.from(table.subCategoryTable)
 		.where(eq(table.subCategoryTable.id, svc.subCategoryId))
 		.limit(1);
 	if (sc?.name) subCategoryName = sc.name;
+	if (sc?.categoryId != null) {
+		const [cat] = await ensureDb()
+			.select({ name: table.categoryTable.categoryName })
+			.from(table.categoryTable)
+			.where(eq(table.categoryTable.id, sc.categoryId))
+			.limit(1);
+		if (cat?.name) categoryName = cat.name;
+	}
 
 	const lineIds = rawLines.map((r) => r.id);
 	const allocRows =
@@ -1858,6 +1902,7 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 			serviceName: r.itemName?.trim() || null,
 			subCategoryId: svc.subCategoryId,
 			subCategoryName,
+			categoryName,
 			orderNo: r.batchNo?.trim() || null,
 			discount: null,
 			serviceAmount: toDbMoney2dp(unitPrice ?? '0'),

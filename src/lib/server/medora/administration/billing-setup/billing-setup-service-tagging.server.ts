@@ -4,19 +4,21 @@ import type { SQL } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { BillingSetupCareSettingEnum } from '$lib/model/enum/billing-setup-care-setting.enum';
+import { BillingSetupCareSettingEnum } from '$lib/model/enum/billing-setup-care-setting.enum';
 import type {
 	PaginatedResult,
 	PaginationParams
 } from '$lib/model/type/pagination.type';
 import { normalizePagination } from '$lib/model/type/pagination.type';
-import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
-import { normalizeMoneyDecimal2dpOrNull } from '$lib/server/medora/money-field.server';
 import type {
 	BillingSetupAvailableTaggingRow,
 	BillingSetupServiceTaggingLinkRow
 } from '$lib/model/type/medora/ui-rows.type';
 import type { ServiceTaggingSchema } from '$lib/server/db/schema-type';
+import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import { normalizeMoneyDecimal2dpOrNull } from '$lib/server/medora/money-field.server';
+import { getOrCreateHospitalEdBillingConfig } from '$lib/server/medora/ed/hospital-ed-billing-config.server';
+import { isTaggingEffectiveOnDate } from '$lib/server/medora/billing/service-tagging-effective.server';
 
 export type BillingSetupTaggingQueryFilters = {
 	taggingId?: number | null;
@@ -505,4 +507,38 @@ export async function getActiveBillingSetupTaggingsForCareSetting(input: {
 		.orderBy(asc(table.billingSetupServiceTaggingTable.id));
 
 	return rows;
+}
+
+/**
+ * ER bed auto-charge: prefer ED billing-setup link; fall back to legacy
+ * `hospital_ed_billing_config.er_bed_service_item_id` when no link matches.
+ */
+export async function resolveErBedChargeTaggingForBranch(input: {
+	hospitalId: string;
+	branchId: string;
+	asOfDate?: string;
+}): Promise<ServiceTaggingSchema | null> {
+	const asOf =
+		(input.asOfDate ?? '').trim().slice(0, 10) ||
+		new Date().toISOString().slice(0, 10);
+
+	const linked = await getActiveBillingSetupTaggingsForCareSetting({
+		hospitalId: input.hospitalId,
+		careSetting: BillingSetupCareSettingEnum.ER,
+		branchId: input.branchId
+	});
+	const effective = linked
+		.map((row) => row.tagging)
+		.filter((tagging) => isTaggingEffectiveOnDate(tagging, asOf));
+
+	if (effective.length === 0) return null;
+
+	const config = await getOrCreateHospitalEdBillingConfig(input.hospitalId);
+	const legacyServiceId = config.erBedServiceItemId;
+	if (legacyServiceId != null && legacyServiceId > 0) {
+		const matched = effective.find((t) => t.serviceId === legacyServiceId);
+		if (matched) return matched;
+	}
+
+	return effective[0] ?? null;
 }

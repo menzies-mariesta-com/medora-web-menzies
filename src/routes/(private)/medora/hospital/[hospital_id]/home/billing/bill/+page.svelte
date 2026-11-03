@@ -2,27 +2,23 @@
 	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import LBillingBillPage from '$lib/component/own/local/private/medora/billing/LBillingBillPage.svelte';
+	import LBillingScopePanel from '$lib/component/own/local/private/medora/billing/LBillingScopePanel.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
-	import {
-		billingApiSegmentForVisitType,
-		fetchVisitTypeIdForBilling,
-		type BillingApiSegment
-	} from '$lib/tool/billing/billing-api-segment.util';
+	import { fetchVisitTypeIdForBilling } from '$lib/tool/billing/billing-api-segment.util';
+	import type { OpenBillVisitDetail } from '$lib/tool/billing/billing-open-bills-batch.util.svelte';
 
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 	const visitId = $derived(VisitState.visitId);
 
 	let visitTypeId = $state<number | null>(null);
 	let segmentLoading = $state(false);
-
-	const billingApiSegment = $derived.by((): BillingApiSegment => {
-		if (!visitId) return 'op-billing';
-		if (segmentLoading && visitTypeId == null) return 'op-billing';
-		return billingApiSegmentForVisitType(visitTypeId);
-	});
+	let billingViewAll = $state(false);
+	let openBillDetails = $state<OpenBillVisitDetail[]>([]);
+	let openBillDetailsLoading = $state(false);
+	let openBillsGrandTotal = $state('0');
 
 	const billPageKey = $derived(
-		`${billingApiSegment}:${visitId ?? ''}:${visitTypeId ?? ''}`
+		`${visitId ?? ''}:${visitTypeId ?? ''}:${billingViewAll ? 'all' : 'one'}`
 	);
 
 	$effect(() => {
@@ -51,6 +47,24 @@
 	});
 </script>
 
-{#key billPageKey}
-	<LBillingBillPage {billingApiSegment} />
-{/key}
+{#if segmentLoading && visitId && visitTypeId == null}
+	<p class="text-sm text-base-content/70">Loading visit billing context…</p>
+{:else}
+	<LBillingScopePanel
+		{hospitalId}
+		{visitId}
+		bind:billingViewAll
+		bind:openBillDetails
+		bind:openBillDetailsLoading
+		bind:openBillsGrandTotal
+	/>
+	{#key billPageKey}
+		<LBillingBillPage
+			bind:billingViewAll
+			{visitTypeId}
+		bind:openBillDetails
+		bind:openBillsGrandTotal
+		{openBillDetailsLoading}
+		/>
+	{/key}
+{/if}

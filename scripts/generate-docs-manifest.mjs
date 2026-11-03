@@ -66,7 +66,7 @@ function parsePages(text) {
 	}
 	const extraBlocks = [
 		text.slice(text.indexOf('VALUES (530003,'), text.indexOf('seedLogger.info(\'Seeded: page\')')),
-		text.slice(text.indexOf('VALUES\n\t\t\t(150003,'), text.indexOf('INSERT INTO user_group_page'))
+		text.slice(text.indexOf('VALUES\n\t\t\t(810001,'), text.indexOf('INSERT INTO user_group_page'))
 	];
 	for (const eb of extraBlocks) {
 		while ((m = re.exec(eb)) !== null) {

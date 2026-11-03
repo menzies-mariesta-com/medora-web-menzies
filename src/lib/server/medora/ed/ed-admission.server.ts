@@ -14,6 +14,8 @@ export type RegisterEdArrivalPayload = {
 	branchId: string;
 	chiefComplaint?: string | null;
 	doctorId?: string | null;
+	sourceVisitId?: string | null;
+	/** @deprecated use sourceVisitId */
 	sourceOpdVisitId?: string | null;
 	edTriageLevelId?: number | null;
 	isMlc?: boolean;
@@ -90,8 +92,8 @@ export async function registerEdArrival(
 	}
 	if (!doctorId) throw error(400, 'doctorId is required');
 
-	const sourceRaw = payload.sourceOpdVisitId;
-	const sourceOpdVisitId =
+	const sourceRaw = payload.sourceVisitId ?? payload.sourceOpdVisitId;
+	const sourceVisitId =
 		typeof sourceRaw === 'string' && sourceRaw.trim() !== ''
 			? sourceRaw.trim()
 			: null;
@@ -105,9 +107,7 @@ export async function registerEdArrival(
 		chiefComplaint: payload.chiefComplaint?.trim()
 			? payload.chiefComplaint.trim()
 			: null,
-		...(sourceOpdVisitId != null
-			? { convertFromOpdVisitId: sourceOpdVisitId }
-			: {})
+		...(sourceVisitId != null ? { sourceVisitId } : {})
 	});
 
 	const encounter = await ensureEdEncounter({
