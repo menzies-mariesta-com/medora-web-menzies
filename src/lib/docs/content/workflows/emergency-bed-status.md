@@ -1,6 +1,6 @@
 ---
-title: "ER Bed Status"
-description: "How to use ER Bed Status in Emergency."
+title: "ED Bed Status"
+description: "How to use ED Bed Status in Emergency."
 docType: workflow
 slug: workflows/emergency-bed-status
 pageId: 124
@@ -13,7 +13,7 @@ lastReviewed: "2026-03-21"
 
 ## What you will do
 
-Use **ER Bed Status** in **Emergency** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
+Use **ED Bed Status** in **Emergency** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
 
 ## Before you start
 
@@ -24,7 +24,7 @@ Use **ER Bed Status** in **Emergency** for everyday hospital tasks. A full walkt
 ## Steps
 
 1. Open **Emergency** from the home menu.
-2. Open **ER Bed Status**.
+2. Open **ED Bed Status**.
 3. Follow the on-screen forms and save when you are done.
 
 ## Quick map
@@ -32,7 +32,7 @@ Use **ER Bed Status** in **Emergency** for everyday hospital tasks. A full walkt
 ```mermaid
 flowchart LR
   signIn[Sign in] --> module[Open Emergency]
-  module --> screen[Open ER Bed Status]
+  module --> screen[Open ED Bed Status]
   screen --> done[Finish task]
 ```
 

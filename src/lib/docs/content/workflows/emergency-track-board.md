@@ -5,7 +5,7 @@ docType: workflow
 slug: workflows/emergency-track-board
 pageId: 120
 moduleId: 4
-pageUrl: "/medora/home/nursing-workbench/ed/track-board"
+pageUrl: "/medora/home/nursing-workbench/track-board"
 generated: false
 captureStatus: failed
 capturedAt: "2026-10-18T02:59:11.830Z"
@@ -38,11 +38,11 @@ flowchart LR
 
 ## Walkthrough
 
-_Screenshots could not be captured. Run `npm run db:seed:docs-demo`, start the dev server, then re-run docs capture._
+_Screenshots could not be captured. Run `npm run db:seed:demo:docs`, start the dev server, then re-run docs capture._
 
 ## If something goes wrong
 
-- **Blank screen:** run `npm run db:seed:docs-demo` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
+- **Blank screen:** run `npm run db:seed:demo:docs` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
 - **Cannot save:** check required fields marked with a red star.
 
 ## Legal

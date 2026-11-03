@@ -8,6 +8,10 @@ import type {
 	ExternalReferSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import {
+	activeEntityStatusEq,
+	paginatedEntityStatusEq
+} from '$lib/server/medora/paginated-entity-status-filter.server';
 import type {
 	PaginatedResult,
 	PaginationParams
@@ -44,11 +48,6 @@ export async function getExternalReferPaginated(
 
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
-	const notDeletedCondition = ne(
-		table.externalReferTable.statusId,
-		StatusEnum.DELETED
-	);
-
 	const searchTerm = params.search?.trim();
 	const pattern = searchTerm ? `%${searchTerm}%` : null;
 	const searchCondition =
@@ -61,7 +60,10 @@ export async function getExternalReferPaginated(
 		);
 
 	let whereExpr = and(
-		notDeletedCondition,
+		paginatedEntityStatusEq(
+			table.externalReferTable.statusId,
+			params.statusId
+		),
 		eq(table.externalReferTable.hospitalId, params.hospitalId)
 	);
 	if (searchCondition) whereExpr = and(whereExpr, searchCondition);
@@ -163,13 +165,20 @@ export async function deleteExternalRefer(
 export async function getExternalReferMeta(event: RequestEvent) {
 	requireUser(event);
 	const db = ensureDb();
+	const activeCountry = activeEntityStatusEq(table.countryTable.statusId);
+	const activeTitle = activeEntityStatusEq(table.titleTable.statusId);
+	const activeState = activeEntityStatusEq(table.stateTable.statusId);
+	const activeCity = activeEntityStatusEq(table.cityTable.statusId);
+	const activePostal = activeEntityStatusEq(
+		table.postalCodeTable.statusId
+	);
 	const [countries, titles, states, cities, postalCodes] =
 		await Promise.all([
-			db.select().from(table.countryTable),
-			db.select().from(table.titleTable),
-			db.select().from(table.stateTable),
-			db.select().from(table.cityTable),
-			db.select().from(table.postalCodeTable)
+			db.select().from(table.countryTable).where(activeCountry),
+			db.select().from(table.titleTable).where(activeTitle),
+			db.select().from(table.stateTable).where(activeState),
+			db.select().from(table.cityTable).where(activeCity),
+			db.select().from(table.postalCodeTable).where(activePostal)
 		]);
 	return { countries, titles, states, cities, postalCodes };
 }

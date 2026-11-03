@@ -25,7 +25,6 @@ import {
 	cityTable,
 	countryTable,
 	craftGroupTable,
-	departmentTable,
 	diagnosisTypeTable,
 	formNameTable,
 	genderTable,
@@ -111,19 +110,6 @@ export const craftGroupTableRelations = relations(
 			references: [statusTable.id]
 		}),
 		specializations: many(specializationTable)
-	})
-);
-
-export const departmentTableRelations = relations(
-	departmentTable,
-	({ one, many }) => ({
-		status: one(statusTable, {
-			fields: [departmentTable.statusId],
-			references: [statusTable.id]
-		}),
-		staffDepartments: many(staffDepartmentTable),
-		hospitalDepartments: many(hospitalDepartmentTable),
-		staffs: many(staffTable)
 	})
 );
 
@@ -225,7 +211,7 @@ export const statusTableRelations = relations(
 		genders: many(genderTable),
 		userGroups: many(userGroupTable),
 		hospitals: many(hospitalTable),
-		departments: many(departmentTable),
+		hospitalDepartments: many(hospitalDepartmentTable),
 		staffs: many(staffTable),
 		staffEmploymentTypes: many(staffEmploymentTypeTable),
 		staffShiftTypes: many(staffShiftTypeTable),

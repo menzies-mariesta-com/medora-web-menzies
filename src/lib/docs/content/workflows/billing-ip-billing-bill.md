@@ -3,7 +3,7 @@ title: "Bill"
 description: "Step-by-step guide for Bill in Billing."
 docType: workflow
 slug: workflows/billing-ip-billing-bill
-pageId: 150003
+pageId: 800100
 moduleId: 8
 pageUrl: "/medora/home/billing/ip-billing/bill"
 generated: false
@@ -58,7 +58,7 @@ The screenshot includes the **top bar**, **module strip**, and work area at **19
 ## If something goes wrong
 
 - **Blank clinical screen:** select a patient visit from the visit list, then open this page again.
-- **Blank screen:** run `npm run db:seed:docs-demo` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
+- **Blank screen:** run `npm run db:seed:demo:docs` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
 - **Cannot save:** check required fields marked with a red star.
 
 ## Legal

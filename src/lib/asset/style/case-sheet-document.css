@@ -1,0 +1,160 @@
+.case-sheet-document {
+	max-width: 64rem;
+	margin: 0 auto;
+	padding: 1.75rem 1.5rem 2rem;
+	background: #fff;
+	color: #000;
+	border: 1px solid color-mix(in oklab, currentColor 12%, transparent);
+	border-radius: 0.25rem;
+	font-family: 'Georgia', 'Times New Roman', serif;
+	font-size: 0.95rem;
+	line-height: 1.5;
+}
+
+.case-sheet-header {
+	margin-bottom: 1.5rem;
+	padding-bottom: 1rem;
+	border-bottom: 2px solid color-mix(in oklab, currentColor 18%, transparent);
+}
+
+.case-sheet-title-row {
+	margin: 0 0 0.75rem;
+}
+
+.case-sheet-doc-title {
+	font-size: 1.35rem;
+	font-weight: 700;
+	margin: 0;
+	letter-spacing: 0.02em;
+}
+
+.case-sheet-meta-print,
+.case-sheet-meta,
+.meta.case-sheet-meta-print {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+	gap: 0.65rem 1.25rem;
+	margin: 0 0 0.75rem;
+	font-size: 0.88rem;
+	font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.case-sheet-meta-print dt,
+.case-sheet-meta dt {
+	font-weight: 600;
+	color: color-mix(in oklab, currentColor 55%, transparent);
+	margin: 0;
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+
+.case-sheet-meta-print dd,
+.case-sheet-meta dd {
+	margin: 0.1rem 0 0;
+	font-weight: 500;
+}
+
+.case-sheet-section {
+	margin-top: 1.35rem;
+	break-inside: avoid;
+}
+
+.case-sheet-section h3 {
+	font-size: 1rem;
+	font-weight: 700;
+	margin: 0 0 0.5rem;
+	font-family: ui-sans-serif, system-ui, sans-serif;
+	border-bottom: 1px solid color-mix(in oklab, currentColor 14%, transparent);
+	padding-bottom: 0.25rem;
+}
+
+.case-sheet-list {
+	margin: 0.35rem 0 0;
+	padding-left: 1.35rem;
+}
+
+.case-sheet-list li {
+	margin-bottom: 0.35rem;
+}
+
+.case-sheet-empty {
+	margin: 0.35rem 0 0;
+	font-style: italic;
+	color: color-mix(in oklab, currentColor 50%, transparent);
+}
+
+.case-sheet-muted {
+	color: color-mix(in oklab, currentColor 45%, transparent);
+	font-size: 0.92em;
+}
+
+.case-sheet-records {
+	list-style: none;
+	margin: 0.5rem 0 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.case-sheet-record {
+	border: 1px solid color-mix(in oklab, currentColor 14%, transparent);
+	border-radius: 0.25rem;
+	padding: 0.65rem 0.75rem;
+	font-family: ui-sans-serif, system-ui, sans-serif;
+	font-size: 0.84rem;
+	break-inside: avoid;
+}
+
+.case-sheet-record-title {
+	margin: 0 0 0.45rem;
+	font-weight: 600;
+	font-size: 0.88rem;
+}
+
+.case-sheet-record-dl {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+	gap: 0.45rem 1rem;
+	margin: 0;
+}
+
+.case-sheet-record-dl dt {
+	margin: 0;
+	font-weight: 600;
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: color-mix(in oklab, currentColor 55%, transparent);
+}
+
+.case-sheet-record-dl dd {
+	margin: 0.1rem 0 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.case-sheet-footer {
+	margin-top: 2rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid color-mix(in oklab, currentColor 14%, transparent);
+	font-size: 0.78rem;
+	color: color-mix(in oklab, currentColor 48%, transparent);
+	font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Print / PDF: tighter layout inside document master iframe */
+@media print {
+	.case-sheet-document {
+		border: none;
+		padding: 0;
+		max-width: none;
+	}
+}
+
+.print-document-root .case-sheet-section h3,
+body .case-sheet-section h3 {
+	text-transform: none;
+	letter-spacing: 0.02em;
+}

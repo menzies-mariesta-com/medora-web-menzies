@@ -16,6 +16,6 @@ lastReviewed: "2026-10-18"
 
 ER Billing uses the same `op_billing` storage as OP billing, scoped to **ED visits**.
 
-Bill lines include nursing-complete service orders, medication internal sales, posted department consumption, and auto ER bed service (when configured under Administration → ER Billing Setup).
+Bill lines include nursing-complete service orders, medication internal sales, and auto ER bed service (when configured under Administration → ER Billing Setup).
 
-Close the bill from this page or **Bill clearance** on the registration row before **Discharge**.
+Close the bill from the unified **Bill** page before ED discharge (Nursing Workbench / billing flows).

@@ -365,7 +365,8 @@ export const POST: RequestHandler = async (event) => {
 			const visitId = parseUuid(body['visitId']);
 			if (!visitId)
 				throw error(400, 'visitId is required');
-			return json(await obs.signPatientVisitClinical({ visitId }));
+			const signed = await obs.signPatientVisitClinical({ visitId });
+			return json(signed);
 		}
 		case 'visit.unsign': {
 			const visitId = parseUuid(body?.visitId);

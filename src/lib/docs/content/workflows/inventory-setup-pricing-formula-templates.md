@@ -5,7 +5,7 @@ docType: workflow
 slug: workflows/inventory-setup-pricing-formula-templates
 pageId: 430001
 moduleId: 9
-pageUrl: "/medora/home/inventory-setup/pricing-formula-templates"
+pageUrl: "/medora/home/inventory-setup/pricing-configuration/formula-templates"
 generated: false
 captureStatus: complete
 capturedAt: "2026-10-18T04:28:12.409Z"
@@ -61,7 +61,7 @@ Click the **edit** (pencil) icon on a row to change an existing record.
 
 ## If something goes wrong
 
-- **Blank screen:** run `npm run db:seed:docs-demo` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
+- **Blank screen:** run `npm run db:seed:demo:docs` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
 - **Cannot save:** check required fields marked with a red star.
 
 ## Legal

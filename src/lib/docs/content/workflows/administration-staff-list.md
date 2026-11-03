@@ -70,7 +70,7 @@ Delete shows a confirmation step. Cancel unless you intend to remove data perman
 
 ## If something goes wrong
 
-- **Blank screen:** run `npm run db:seed:docs-demo` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
+- **Blank screen:** run `npm run db:seed:demo:docs` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
 - **Cannot save:** check required fields marked with a red star.
 
 ## Legal

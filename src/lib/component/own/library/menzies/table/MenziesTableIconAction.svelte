@@ -56,6 +56,8 @@
 		{disabled}
 		{loading}
 		{loadingText}
+		title={tooltipText}
+		aria-label={tooltipText}
 		onClick={onClick}
 	>
 		<span class="menzies-table-icon-action__glyph" aria-hidden="true">

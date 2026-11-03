@@ -16,8 +16,10 @@
 		WebRoutesEnum
 	} from '$lib/model/enum/routes.enum';
 	import type { AdtSourceOpdVisitRow } from '$lib/model/type/medora/ipd/ipd.type';
+	import type { EdTriageLevelRow } from '$lib/model/type/medora/er/er.type';
 	import type { PatientWithRelations } from '$lib/model/type/medora/patient.type';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
+	import type { StaffWithRelations } from '$lib/model/type/medora/staff.type';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -34,6 +36,9 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 	const routerUtil = new RouterUtil();
+
+	/** Sentinel value used by the nav bar for "All Branches". */
+	const BRANCH_ALL_VALUE = '__all__';
 
 	const layoutData = $derived(
 		page.data as {
@@ -61,6 +66,16 @@
 		page.url.searchParams.get('sourceOpdVisitId')?.trim() ?? ''
 	);
 
+	/**
+	 * Branch selected in the nav bar (hospital home layout). `__all__` means
+	 * "All Branches", which cannot be used for a required admission branch.
+	 */
+	const selectedBranchIdFromLayout = $derived(
+		typeof page.data.selectedBranchId === 'string'
+			? page.data.selectedBranchId
+			: null
+	);
+
 	const api = $derived(
 		hospitalId
 			? `/api/medora/hospital/${hospitalId}/home/emergency/admission`
@@ -76,14 +91,30 @@
 			? `/api/medora/hospital/${hospitalId}/home/registration/patient/list`
 			: ''
 	);
+	const triageApi = $derived(
+		hospitalId
+			? `/api/medora/hospital/${hospitalId}/home/administration/er-triage-level?active=1`
+			: ''
+	);
+	const doctorApi = $derived(
+		hospitalId
+			? `/api/medora/hospital/${hospitalId}/home/administration/schedule-master/doctor-schedule`
+			: ''
+	);
 
 	type BranchOpt = { id: string; name: string | null };
 	let branches = $state<BranchOpt[]>([]);
+	let triageLevels = $state<EdTriageLevelRow[]>([]);
 	let sourceOpdVisits = $state<AdtSourceOpdVisitRow[]>([]);
 	let patientId = $state('');
 	let branchId = $state('');
 	let sourceOpdVisitId = $state('');
 	let chiefComplaint = $state('');
+	let doctorId = $state('');
+	let edTriageLevelId = $state('');
+	let isMlc = $state(false);
+	let arrivedAtLocal = $state('');
+	let registrationRemarks = $state('');
 	let isSubmitting = $state(false);
 	let loadingSource = $state(false);
 	let urlPrefillDone = $state(false);
@@ -107,6 +138,46 @@
 			(v) => String(v.visitId) === sourceOpdVisitId
 		) ?? null
 	);
+	const triageOptions = $derived(
+		triageLevels.map((t) => ({
+			value: String(t.id),
+			label: `${t.level} - ${t.name}`
+		}))
+	);
+
+	async function searchDoctors(
+		query: string
+	): Promise<{ label: string; value: string }[]> {
+		if (!doctorApi) return [];
+		const qs = new URLSearchParams({
+			mode: 'doctor.paginated',
+			page: '1',
+			pageSize: String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT),
+			search: query.trim()
+		});
+		const res = await fetch(`${doctorApi}?${qs}`, {
+			credentials: 'include'
+		});
+		if (!res.ok) return [];
+		const result = (await res.json()) as PaginatedResult<
+			StaffWithRelations
+		>;
+		return (result.data ?? []).map((s) => ({
+			label: StringUtil.doctorOptionDisplayName(s),
+			value: String(s.id)
+		}));
+	}
+
+	async function getDoctorLabel(id: string): Promise<string> {
+		if (!doctorApi || !id) return '';
+		const res = await fetch(
+			`${doctorApi}?mode=doctor.byId&id=${encodeURIComponent(id)}`,
+			{ credentials: 'include' }
+		);
+		if (!res.ok) return id;
+		const staff = (await res.json()) as StaffWithRelations | null;
+		return staff ? StringUtil.doctorOptionDisplayName(staff) : id;
+	}
 
 	async function searchPatients(
 		query: string
@@ -148,7 +219,20 @@
 		});
 		if (res.ok) {
 			branches = (await res.json()) as BranchOpt[];
-			if (!branchId && branches[0]?.id) branchId = branches[0].id;
+			if (!branchId) {
+				// Prefer the branch selected in the nav bar; fall back to the
+				// first branch when the nav is on "All Branches" or unset, so the
+				// required Branch field still has a sensible default.
+				const navBranchId =
+					selectedBranchIdFromLayout &&
+					selectedBranchIdFromLayout !== BRANCH_ALL_VALUE
+						? selectedBranchIdFromLayout
+						: null;
+				const navMatch = navBranchId
+					? branches.find((b) => b.id === navBranchId)
+					: undefined;
+				branchId = (navMatch ?? branches[0])?.id ?? '';
+			}
 		}
 	}
 
@@ -219,6 +303,14 @@
 			);
 			return;
 		}
+		if (!doctorId.trim()) {
+			toastService.addToast(
+				msg.ed_admission_select_doctor?.() ??
+					'Select the attending doctor',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
 
 		if (selectedSource?.hasOpenOpBill) {
 			const confirm = await dialogService.open({
@@ -233,6 +325,9 @@
 
 		isSubmitting = true;
 		try {
+			const arrivedIso = arrivedAtLocal
+				? new Date(arrivedAtLocal).toISOString()
+				: null;
 			const res = await fetch(api, {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
@@ -242,9 +337,16 @@
 					patientId: patientId.trim(),
 					branchId: branchId.trim(),
 					chiefComplaint: chiefComplaint.trim() || null,
-					sourceOpdVisitId: sourceOpdVisitId
+					sourceVisitId: sourceOpdVisitId
 						? sourceOpdVisitId
-						: null
+						: null,
+					doctorId: doctorId.trim() || null,
+					edTriageLevelId: edTriageLevelId
+						? Number(edTriageLevelId)
+						: null,
+					isMlc,
+					registrationRemarks: registrationRemarks.trim() || null,
+					arrivedAt: arrivedIso
 				})
 			});
 			if (!res.ok) {
@@ -267,7 +369,7 @@
 				routerUtil.replaceRoute(
 					`${medoraHospitalPageUrl(
 						hospitalId,
-						WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_ED_TRIAGE
+						WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_TRIAGE
 					)}?visitId=${encodeURIComponent(data.visitId)}`
 				);
 			}
@@ -281,8 +383,22 @@
 		}
 	}
 
+	async function loadTriageLevels() {
+		if (!triageApi) return;
+		const res = await fetch(triageApi, { credentials: 'include' });
+		if (res.ok) {
+			triageLevels = (await res.json()) as EdTriageLevelRow[];
+		}
+	}
+
 	lifeCycleUtil.onMount(() => {
+		if (!arrivedAtLocal) {
+			const d = new Date();
+			d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+			arrivedAtLocal = d.toISOString().slice(0, 16);
+		}
 		void loadBranches();
+		void loadTriageLevels();
 	});
 </script>
 
@@ -330,6 +446,7 @@
 								'Select branch'}
 							options={branchOptions}
 							bind:value={branchId}
+							disabled
 						/>
 					</div>
 					{#if sourceOpdVisits.length > 0}
@@ -350,6 +467,34 @@
 							/>
 						</div>
 					{/if}
+					<div>
+						<label class="label-ink mb-1 block text-sm" for="ed-triage">
+							{msg.ed_reg_triage_level_label?.() ?? 'Triage level'}
+						</label>
+						<WashSelect
+							id="ed-triage"
+							bind:value={edTriageLevelId}
+							options={[{ value: '', label: '—' }, ...triageOptions]}
+							disabled={isSubmitting}
+						/>
+					</div>
+					<div class="md:col-span-2">
+						<label class="label-ink mb-1 block text-sm" for="ed-doctor">
+							{msg.ed_reg_doctor_label?.() ?? 'Doctor'}
+							<span
+								class="text-error align-top text-sm leading-none"
+								aria-hidden="true">*</span
+							>
+						</label>
+						<SearchSelect
+							id="ed-doctor"
+							bind:value={doctorId}
+							searchFn={searchDoctors}
+							resolveLabel={getDoctorLabel}
+							disabled={isSubmitting}
+							required
+						/>
+					</div>
 					<div class="md:col-span-2 xl:col-span-3">
 						<label class="label-ink mb-1 block text-sm" for="ed-complaint">
 							{msg.ed_admission_complaint_label?.() ?? 'Chief complaint'}
@@ -360,6 +505,39 @@
 							inputPlaceholderText={msg.ed_admission_complaint_placeholder?.() ??
 								'Optional'}
 						/>
+					</div>
+					<div>
+						<label class="label-ink mb-1 block text-sm" for="ed-arrived">
+							{msg.ed_reg_admission_datetime?.() ?? 'Admission date/time'}
+						</label>
+						<input
+							id="ed-arrived"
+							type="datetime-local"
+							class="input input-bordered w-full cursor-text"
+							bind:value={arrivedAtLocal}
+							disabled={isSubmitting}
+						/>
+					</div>
+					<label class="label cursor-pointer justify-start gap-2 pt-8">
+						<input
+							type="checkbox"
+							class="checkbox checkbox-primary cursor-pointer"
+							bind:checked={isMlc}
+							disabled={isSubmitting}
+						/>
+						<span>{msg.ed_reg_mlc_toggle?.() ?? 'MLC case'}</span>
+					</label>
+					<div class="md:col-span-2 xl:col-span-3">
+						<label class="label-ink mb-1 block text-sm" for="ed-remarks">
+							{msg.ed_reg_remarks_label?.() ?? 'Remarks'}
+						</label>
+						<textarea
+							id="ed-remarks"
+							class="textarea textarea-bordered w-full cursor-text"
+							rows="2"
+							bind:value={registrationRemarks}
+							disabled={isSubmitting}
+						></textarea>
 					</div>
 				</div>
 				<WashCardBodyAction>

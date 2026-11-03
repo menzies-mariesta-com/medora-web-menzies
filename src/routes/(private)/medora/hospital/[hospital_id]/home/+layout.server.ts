@@ -11,6 +11,7 @@ import type { PageWithRelations } from '$lib/model/type/medora/page.type';
 import { and, eq, inArray } from 'drizzle-orm';
 import { listStoresForApprovalConfig } from '$lib/server/medora/inventory/approval-config.server';
 import { getMedoraPagesForNav } from '$lib/server/medora/page-nav-cache.server';
+import { withSectionIndexRedirect } from '$lib/server/medora/nav/medora-section-index-redirect.server';
 import type { Cookies, RequestEvent } from '@sveltejs/kit';
 
 const COOKIE_SELECTED_USER_GROUP_ID = 'heka_selected_user_group_id';
@@ -177,7 +178,7 @@ export const load: LayoutServerLoad = async (event) => {
 				null
 			);
 
-			return {
+			return withSectionIndexRedirect(hospitalId, url.pathname, {
 				pageData: fullPages,
 				currentHospitalName,
 				currentHospitalLogoUrl,
@@ -191,7 +192,7 @@ export const load: LayoutServerLoad = async (event) => {
 				/** All branches the user is allowed to use (this hospital only). For OWNER/SYSTEM_ADMIN = all hospital branches. */
 				allowedBranches: allHospitalBranches,
 				...invNav
-			};
+			});
 		}
 
 		// STAFF: filter by **selected** user group (cookie), enforce access for that group only
@@ -401,7 +402,7 @@ export const load: LayoutServerLoad = async (event) => {
 				selectedBranchId,
 				selectedUserGroupId
 			);
-			return {
+			return withSectionIndexRedirect(hospitalId, url.pathname, {
 				pageData: filtered,
 				currentHospitalName,
 				currentHospitalLogoUrl,
@@ -415,11 +416,11 @@ export const load: LayoutServerLoad = async (event) => {
 				/** All branches the user is allowed to use. For STAFF = branches they are assigned to. */
 				allowedBranches: staffBranchesForNav,
 				...invNav
-			};
+			});
 		}
 
 		// Fallback (e.g. no role or no staff): show all
-		return {
+		return withSectionIndexRedirect(hospitalId, url.pathname, {
 			pageData: fullPages,
 			currentHospitalName,
 			currentHospitalLogoUrl,
@@ -433,7 +434,7 @@ export const load: LayoutServerLoad = async (event) => {
 			allowedBranches: [],
 			inventoryFromStoresForNav: [],
 			selectedInventoryFromStoreId: null
-		};
+		});
 	} catch (err) {
 		// Let SvelteKit redirects/errors bubble up unchanged.
 		const maybe = err as Record<string, unknown>;

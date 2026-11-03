@@ -16,11 +16,13 @@ import {
 } from 'drizzle-orm';
 import {
 	BillingStatusTaggingEnum,
-	InvDepartmentConsumptionStatusTaggingEnum,
+	IpdAdmissionStatusEnum,
 	StaffTypeEnum,
 	StatusEnum,
-	VisitStatusTaggingEnum
+	VisitStatusTaggingEnum,
+	VisitTypeEnum
 } from '$lib/model/enum/db-link';
+import { activeEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import {
 	normalizePagination,
 	type PaginationParams
@@ -67,6 +69,11 @@ import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.serve
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import type { VisitServiceLinePrintRow } from '$lib/util/document-placeholder.util';
 import { formatMoneyAmount } from '$lib/util/number-display.util';
+import {
+	normalizeServiceOrderDetailRead,
+	normalizeServiceOrderDetailWrite,
+	toDbMoney2dp
+} from '$lib/server/medora/money-normalize.server';
 import { computeSalePriceAtTransactionDb } from '$lib/server/medora/inventory/sale-price.server';
 import { INTERNAL_SALES_PRICING_MODULE } from '$lib/model/type/medora/inv-pricing-module.type';
 import { unitSalePriceForOutUnit } from '$lib/tool/inventory/med-order-out-qty.util';
@@ -922,17 +929,44 @@ export async function signPatientVisitClinical(input: {
 	// Delegate to existing logic by reproducing minimal checks.
 	const [cur] = await ensureDb()
 		.select({
-			clinicalSignedAt: table.patientVisitTable.clinicalSignedAt
+			clinicalSignedAt: table.patientVisitTable.clinicalSignedAt,
+			visitTypeId: table.patientVisitTable.visitTypeId
 		})
 		.from(table.patientVisitTable)
 		.where(eq(table.patientVisitTable.id, input.visitId))
 		.limit(1);
 	if (!cur) throw new Error('Visit not found');
+	if (cur.visitTypeId === VisitTypeEnum.IPD) {
+		throw error(
+			409,
+			'IPD visits are closed by discharge, not by clinical sign-off. Complete the discharge workflow instead.'
+		);
+	}
 	if (
 		cur.clinicalSignedAt != null &&
 		String(cur.clinicalSignedAt).trim() !== ''
 	) {
 		throw new Error('This visit is already saved as signed.');
+	}
+	const [activeAdmission] = await ensureDb()
+		.select({ id: table.ipdAdmissionTable.id })
+		.from(table.ipdAdmissionTable)
+		.where(
+			and(
+				eq(table.ipdAdmissionTable.visitId, input.visitId),
+				eq(
+					table.ipdAdmissionTable.admissionStatus,
+					IpdAdmissionStatusEnum.ADMITTED
+				),
+				ne(table.ipdAdmissionTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.limit(1);
+	if (activeAdmission) {
+		throw error(
+			409,
+			'This visit has an active IPD admission. Use the discharge workflow to close it.'
+		);
 	}
 	const [row] = await ensureDb()
 		.update(table.patientVisitTable)
@@ -1085,7 +1119,7 @@ export async function listAllergiesMaster(): Promise<
 	return ensureDb()
 		.select()
 		.from(table.allergyTable)
-		.where(ne(table.allergyTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.allergyTable.statusId))
 		.orderBy(table.allergyTable.id);
 }
 
@@ -1401,6 +1435,7 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 		serviceName: string | null;
 		subCategoryId: number | null;
 		subCategoryName: string | null;
+		categoryName: string | null;
 	})[]
 > {
 	const orders = await ensureDb().query.serviceOrderTable.findMany({
@@ -1427,11 +1462,13 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 	}
 
 	let subCategoryNameById = new Map<number, string | null>();
+	let subCategoryIdToCategoryId = new Map<number, number>();
 	if (subCategoryIds.size > 0) {
 		const subCategories = await ensureDb()
 			.select({
 				id: table.subCategoryTable.id,
-				name: table.subCategoryTable.subCategoryName
+				name: table.subCategoryTable.subCategoryName,
+				categoryId: table.subCategoryTable.categoryId
 			})
 			.from(table.subCategoryTable)
 			.where(
@@ -1440,6 +1477,24 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 		subCategoryNameById = new Map(
 			subCategories.map((r) => [r.id, r.name])
 		);
+		subCategoryIdToCategoryId = new Map(
+			subCategories
+				.filter((r) => r.categoryId != null)
+				.map((r) => [r.id, r.categoryId as number])
+		);
+	}
+
+	const categoryIds = new Set(subCategoryIdToCategoryId.values());
+	let categoryNameById = new Map<number, string | null>();
+	if (categoryIds.size > 0) {
+		const categories = await ensureDb()
+			.select({
+				id: table.categoryTable.id,
+				name: table.categoryTable.categoryName
+			})
+			.from(table.categoryTable)
+			.where(inArray(table.categoryTable.id, Array.from(categoryIds)));
+		categoryNameById = new Map(categories.map((r) => [r.id, r.name]));
 	}
 
 	const out: (ServiceOrderDetailSchema & {
@@ -1447,6 +1502,7 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 		serviceName: string | null;
 		subCategoryId: number | null;
 		subCategoryName: string | null;
+		categoryName: string | null;
 	})[] = [];
 
 	for (const ord of orders) {
@@ -1457,12 +1513,21 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 				subCategoryId != null
 					? (subCategoryNameById.get(subCategoryId) ?? null)
 					: null;
+			const categoryId =
+				subCategoryId != null
+					? subCategoryIdToCategoryId.get(subCategoryId)
+					: undefined;
+			const categoryName =
+				categoryId != null
+					? (categoryNameById.get(categoryId) ?? null)
+					: null;
 			out.push({
 				...(detailRow as ServiceOrderDetailSchema),
 				orderNo: ord.orderNo ?? null,
 				serviceName: serviceItem?.serviceName ?? null,
 				subCategoryId,
-				subCategoryName
+				subCategoryName,
+				categoryName
 			});
 		}
 	}
@@ -1611,22 +1676,7 @@ export type OpBillingPendingMedicationLineRow = {
 	serviceName: string | null;
 	subCategoryId: number | null;
 	subCategoryName: string | null;
-	orderNo: string | null;
-	discount: string | null;
-	serviceAmount: string | null;
-	serviceTaxAmount: string | null;
-	serviceUnit: number | null;
-};
-
-export type OpBillingPendingConsumptionLineRow = {
-	lineSource: 'department_consumption_line';
-	id: number;
-	medicationOrderLineId: null;
-	departmentConsumptionLineId: number;
-	serviceId: number;
-	serviceName: string | null;
-	subCategoryId: number | null;
-	subCategoryName: string | null;
+	categoryName: string | null;
 	orderNo: string | null;
 	discount: string | null;
 	serviceAmount: string | null;
@@ -1636,8 +1686,7 @@ export type OpBillingPendingConsumptionLineRow = {
 
 export type OpBillingPendingLineRow =
 	| OpBillingPendingServiceLineRow
-	| OpBillingPendingMedicationLineRow
-	| OpBillingPendingConsumptionLineRow;
+	| OpBillingPendingMedicationLineRow;
 
 async function getDefaultServiceItemForPharmacyOpBilling(input: {
 	hospitalId: string;
@@ -1749,12 +1798,24 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 		branchId
 	});
 	let subCategoryName: string | null = null;
+	let categoryName: string | null = null;
 	const [sc] = await ensureDb()
-		.select({ name: table.subCategoryTable.subCategoryName })
+		.select({
+			name: table.subCategoryTable.subCategoryName,
+			categoryId: table.subCategoryTable.categoryId
+		})
 		.from(table.subCategoryTable)
 		.where(eq(table.subCategoryTable.id, svc.subCategoryId))
 		.limit(1);
 	if (sc?.name) subCategoryName = sc.name;
+	if (sc?.categoryId != null) {
+		const [cat] = await ensureDb()
+			.select({ name: table.categoryTable.categoryName })
+			.from(table.categoryTable)
+			.where(eq(table.categoryTable.id, sc.categoryId))
+			.limit(1);
+		if (cat?.name) categoryName = cat.name;
+	}
 
 	const lineIds = rawLines.map((r) => r.id);
 	const allocRows =
@@ -1841,9 +1902,10 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 			serviceName: r.itemName?.trim() || null,
 			subCategoryId: svc.subCategoryId,
 			subCategoryName,
+			categoryName,
 			orderNo: r.batchNo?.trim() || null,
 			discount: null,
-			serviceAmount: unitPrice ?? '0',
+			serviceAmount: toDbMoney2dp(unitPrice ?? '0'),
 			serviceTaxAmount: '0',
 			serviceUnit
 		});
@@ -1858,142 +1920,6 @@ function isNursingCompleteTimeSet(
 		nursingCompleteTime != null &&
 		String(nursingCompleteTime).trim() !== ''
 	);
-}
-
-async function getDepartmentConsumptionLineIdsOnClosedOpBillsForVisit(
-	visitId: string
-): Promise<Set<number>> {
-	const rows = await ensureDb()
-		.select({
-			lineId: table.opBillingLineTable.departmentConsumptionLineId
-		})
-		.from(table.opBillingLineTable)
-		.innerJoin(
-			table.opBillingTable,
-			eq(table.opBillingLineTable.opBillingId, table.opBillingTable.id)
-		)
-		.where(
-			and(
-				eq(table.opBillingTable.visitId, visitId),
-				eq(
-					table.opBillingTable.statusTaggingId,
-					BillingStatusTaggingEnum.CLOSED
-				),
-				ne(table.opBillingTable.statusId, StatusEnum.DELETED),
-				isNotNull(table.opBillingLineTable.departmentConsumptionLineId)
-			)
-		);
-	const set = new Set<number>();
-	for (const r of rows) {
-		if (r.lineId != null) set.add(r.lineId);
-	}
-	return set;
-}
-
-async function getPendingDepartmentConsumptionRowsForOpBilling(input: {
-	visitId: string;
-	hospitalId: string;
-	branchId: string;
-}): Promise<OpBillingPendingConsumptionLineRow[]> {
-	const { getOrCreateHospitalEdBillingConfig } = await import(
-		'$lib/server/medora/ed/hospital-ed-billing-config.server'
-	);
-	const config = await getOrCreateHospitalEdBillingConfig(input.hospitalId);
-	const serviceItemId = config.erConsumableServiceItemId;
-	if (serviceItemId == null || serviceItemId <= 0) return [];
-
-	const [svc] = await ensureDb()
-		.select({
-			id: table.serviceItemTable.id,
-			subCategoryId: table.serviceItemTable.subCategoryId
-		})
-		.from(table.serviceItemTable)
-		.where(
-			and(
-				eq(table.serviceItemTable.id, serviceItemId),
-				eq(table.serviceItemTable.hospitalId, input.hospitalId),
-				eq(table.serviceItemTable.statusId, StatusEnum.ACTIVE)
-			)
-		)
-		.limit(1);
-	if (!svc) return [];
-
-	let subCategoryName: string | null = null;
-	if (svc.subCategoryId != null) {
-		const [sc] = await ensureDb()
-			.select({ name: table.subCategoryTable.subCategoryName })
-			.from(table.subCategoryTable)
-			.where(eq(table.subCategoryTable.id, svc.subCategoryId))
-			.limit(1);
-		subCategoryName = sc?.name ?? null;
-	}
-
-	const onClosed = await getDepartmentConsumptionLineIdsOnClosedOpBillsForVisit(
-		input.visitId
-	);
-
-	const raw = await ensureDb()
-		.select({
-			lineId: table.invDepartmentConsumptionLineTable.id,
-			itemName: table.itemMasterTable.itemName,
-			consumptionNo: table.invDepartmentConsumptionTable.consumptionNo,
-			empSalePrice: table.invDepartmentConsumptionLineTable.empSalePrice,
-			quantity: table.invDepartmentConsumptionLineTable.quantity
-		})
-		.from(table.invDepartmentConsumptionLineTable)
-		.innerJoin(
-			table.invDepartmentConsumptionTable,
-			eq(
-				table.invDepartmentConsumptionLineTable.consumptionId,
-				table.invDepartmentConsumptionTable.id
-			)
-		)
-		.innerJoin(
-			table.itemMasterTable,
-			eq(
-				table.invDepartmentConsumptionLineTable.itemId,
-				table.itemMasterTable.id
-			)
-		)
-		.where(
-			and(
-				eq(table.invDepartmentConsumptionTable.visitId, input.visitId),
-				eq(
-					table.invDepartmentConsumptionTable.hospitalId,
-					input.hospitalId
-				),
-				eq(
-					table.invDepartmentConsumptionTable.statusTaggingId,
-					InvDepartmentConsumptionStatusTaggingEnum.POSTED
-				),
-				isNull(table.invDepartmentConsumptionLineTable.deletedAt),
-				isNull(table.invDepartmentConsumptionTable.deletedAt)
-			)
-		)
-		.orderBy(asc(table.invDepartmentConsumptionLineTable.id));
-
-	const out: OpBillingPendingConsumptionLineRow[] = [];
-	for (const r of raw) {
-		if (onClosed.has(r.lineId)) continue;
-		const unitPrice = r.empSalePrice != null ? String(r.empSalePrice) : '0';
-		const qty = Number(r.quantity) > 0 ? Number(r.quantity) : 1;
-		out.push({
-			lineSource: 'department_consumption_line',
-			id: r.lineId,
-			medicationOrderLineId: null,
-			departmentConsumptionLineId: r.lineId,
-			serviceId: svc.id,
-			serviceName: r.itemName?.trim() || null,
-			subCategoryId: svc.subCategoryId,
-			subCategoryName,
-			orderNo: r.consumptionNo?.trim() || null,
-			discount: null,
-			serviceAmount: unitPrice,
-			serviceTaxAmount: '0',
-			serviceUnit: qty
-		});
-	}
-	return out;
 }
 
 /**
@@ -2027,8 +1953,7 @@ export async function getPendingOpBillingServiceDetailRowsForVisit(input: {
 		hospitalId: input.hospitalId,
 		branchId: input.branchId
 	});
-	const dcRows = await getPendingDepartmentConsumptionRowsForOpBilling(input);
-	return [...serviceRows, ...medRows, ...dcRows];
+	return [...serviceRows, ...medRows];
 }
 
 export async function assertServiceOrderDetailNotLockedByClosedOpBill(
@@ -2077,7 +2002,7 @@ export async function getServiceOrderDetailById(input: {
 			)
 		)
 		.limit(1);
-	return row ?? null;
+	return row ? normalizeServiceOrderDetailRead(row) : null;
 }
 
 export async function createServiceOrderDetail(
@@ -2091,7 +2016,7 @@ export async function createServiceOrderDetail(
 	}
 	const [row] = await ensureDb()
 		.insert(table.serviceOrderDetailTable)
-		.values(payload)
+		.values(normalizeServiceOrderDetailWrite(payload))
 		.returning();
 	if (!row) throw new Error('Insert failed');
 	try {
@@ -2102,7 +2027,7 @@ export async function createServiceOrderDetail(
 	} catch {
 		// Lab bridge is best-effort if diagnostics schema is not migrated yet
 	}
-	return row;
+	return normalizeServiceOrderDetailRead(row);
 }
 
 export async function updateServiceOrderDetail(
@@ -2127,11 +2052,11 @@ export async function updateServiceOrderDetail(
 	await assertServiceOrderDetailNotLockedByClosedOpBill(id);
 	const [row] = await ensureDb()
 		.update(table.serviceOrderDetailTable)
-		.set(rest)
+		.set(normalizeServiceOrderDetailWrite(rest))
 		.where(eq(table.serviceOrderDetailTable.id, id))
 		.returning();
 	if (!row) throw new Error('Update failed');
-	return row;
+	return normalizeServiceOrderDetailRead(row);
 }
 
 export async function deleteServiceOrderDetail(input: {

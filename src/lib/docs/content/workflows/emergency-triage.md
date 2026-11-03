@@ -5,7 +5,7 @@ docType: workflow
 slug: workflows/emergency-triage
 pageId: 121
 moduleId: 4
-pageUrl: "/medora/home/nursing-workbench/ed/triage"
+pageUrl: "/medora/home/nursing-workbench/triage"
 generated: false
 captureStatus: complete
 capturedAt: "2026-10-18T03:00:36.751Z"
@@ -56,7 +56,7 @@ The screenshot includes the **top bar**, **module strip**, and work area at **19
 ## If something goes wrong
 
 - **Blank clinical screen:** select a patient visit from the visit list, then open this page again.
-- **Blank screen:** run `npm run db:seed:docs-demo` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
+- **Blank screen:** run `npm run db:seed:demo:docs` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
 - **Cannot save:** check required fields marked with a red star.
 
 ## Legal

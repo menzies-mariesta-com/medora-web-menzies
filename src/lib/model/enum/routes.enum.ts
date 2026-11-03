@@ -45,6 +45,13 @@ export enum WebRoutesEnum {
 	MEDORA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP_ORDER_TYPE = '/medora/home/administration/medication-order-setup/order-type',
 	MEDORA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP_DOSE_UNIT = '/medora/home/administration/medication-order-setup/dose-unit',
 	MEDORA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP_FOOD_RELATION = '/medora/home/administration/medication-order-setup/food-relation',
+	// Billing Setup module (administration): per-billing-type service item tagging.
+	// ED sub-page is mapped to the ER (emergency) billing type.
+	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP = '/medora/home/administration/billing-setup',
+	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_OP = '/medora/home/administration/billing-setup/op-billing',
+	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_IP = '/medora/home/administration/billing-setup/ip-billing',
+	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_ED = '/medora/home/administration/billing-setup/ed-billing',
+	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_SETTINGS = '/medora/home/administration/billing-setup/settings',
 	MEDORA_HOME_REGISTRATION = '/medora/home/registration',
 	MEDORA_HOME_REGISTRATION_PATIENT = '/medora/home/registration/patient',
 	MEDORA_HOME_REGISTRATION_PATIENT_REGISTRATION = '/medora/home/registration/patient/registration',
@@ -52,23 +59,23 @@ export enum WebRoutesEnum {
 	MEDORA_HOME_ACCOUNT = '/medora/home/account',
 	MEDORA_HOME_ECOSYSTEM = '/medora/home/ecosystem',
 
-	// Nursing Workbench module (navbar auto-hides; sub-pages: Vital, Diagnosis)
+	// Nursing Workbench module (one page; shared chart sub-pages for every visit type)
 	MEDORA_HOME_NURSING_WORKBENCH = '/medora/home/nursing-workbench',
-	MEDORA_HOME_NURSING_WORKBENCH_EMR = '/medora/home/nursing-workbench/emr',
-	MEDORA_HOME_NURSING_WORKBENCH_EMR_PATIENT_VISIT_HISTORY_DASHBOARD = '/medora/home/nursing-workbench/emr/patient-visit-history-dashboard',
-	MEDORA_HOME_NURSING_WORKBENCH_EMR_VITAL = '/medora/home/nursing-workbench/emr/vital',
-	MEDORA_HOME_NURSING_WORKBENCH_EMR_DIAGNOSIS = '/medora/home/nursing-workbench/emr/diagnosis',
-	MEDORA_HOME_NURSING_WORKBENCH_ED = '/medora/home/nursing-workbench/ed',
-	MEDORA_HOME_NURSING_WORKBENCH_ED_TRACK_BOARD = '/medora/home/nursing-workbench/ed/track-board',
-	MEDORA_HOME_NURSING_WORKBENCH_ED_VITAL = '/medora/home/nursing-workbench/ed/vital',
-	MEDORA_HOME_NURSING_WORKBENCH_ED_ALLERGY = '/medora/home/nursing-workbench/ed/allergy',
-	MEDORA_HOME_NURSING_WORKBENCH_ED_PATIENT_ATTACHMENT = '/medora/home/nursing-workbench/ed/patient-attachment',
-	MEDORA_HOME_NURSING_WORKBENCH_ED_CLINICAL_DOCUMENT = '/medora/home/nursing-workbench/ed/clinical-document',
-	MEDORA_HOME_NURSING_WORKBENCH_ED_CASE_SHEET = '/medora/home/nursing-workbench/ed/case-sheet',
-	MEDORA_HOME_NURSING_WORKBENCH_ED_ORDER = '/medora/home/nursing-workbench/ed/order',
-	MEDORA_HOME_NURSING_WORKBENCH_ED_NURSING_COMPLETE = '/medora/home/nursing-workbench/ed/nursing-complete',
-	MEDORA_HOME_NURSING_WORKBENCH_ED_TRIAGE = '/medora/home/nursing-workbench/ed/triage',
-	MEDORA_HOME_NURSING_WORKBENCH_ED_TRAUMA_LOG = '/medora/home/nursing-workbench/ed/trauma-log',
+	MEDORA_HOME_NURSING_WORKBENCH_VITAL = '/medora/home/nursing-workbench/vital',
+	MEDORA_HOME_NURSING_WORKBENCH_ALLERGY = '/medora/home/nursing-workbench/allergy',
+	MEDORA_HOME_NURSING_WORKBENCH_PATIENT_ATTACHMENT = '/medora/home/nursing-workbench/patient-attachment',
+	MEDORA_HOME_NURSING_WORKBENCH_CLINICAL_DOCUMENT = '/medora/home/nursing-workbench/clinical-document',
+	MEDORA_HOME_NURSING_WORKBENCH_CASE_SHEET = '/medora/home/nursing-workbench/case-sheet',
+	MEDORA_HOME_NURSING_WORKBENCH_ORDER = '/medora/home/nursing-workbench/order',
+	MEDORA_HOME_NURSING_WORKBENCH_NURSING_COMPLETE = '/medora/home/nursing-workbench/nursing-complete',
+	MEDORA_HOME_NURSING_WORKBENCH_PATIENT_VISIT_HISTORY_DASHBOARD = '/medora/home/nursing-workbench/patient-visit-history-dashboard',
+	MEDORA_HOME_NURSING_WORKBENCH_CENSUS = '/medora/home/nursing-workbench/census',
+	MEDORA_HOME_NURSING_WORKBENCH_TRACK_BOARD = '/medora/home/nursing-workbench/track-board',
+	MEDORA_HOME_NURSING_WORKBENCH_TRIAGE = '/medora/home/nursing-workbench/triage',
+	MEDORA_HOME_NURSING_WORKBENCH_TRAUMA_LOG = '/medora/home/nursing-workbench/trauma-log',
+	MEDORA_HOME_NURSING_WORKBENCH_EMAR = '/medora/home/nursing-workbench/emar',
+	MEDORA_HOME_NURSING_WORKBENCH_CARE_PLAN = '/medora/home/nursing-workbench/care-plan',
+	MEDORA_HOME_NURSING_WORKBENCH_MLC_DOCUMENTATION = '/medora/home/nursing-workbench/mlc-documentation',
 
 	// Consultation module (navbar auto-hides like nursing EMR)
 	MEDORA_HOME_CONSULTATION = '/medora/home/consultation',
@@ -94,9 +101,12 @@ export enum WebRoutesEnum {
 
 	// Billing module (navbar auto-hides like nursing EMR)
 	MEDORA_HOME_BILLING = '/medora/home/billing',
+	MEDORA_HOME_BILLING_BILL = '/medora/home/billing/bill',
+	MEDORA_HOME_BILLING_ADVANCE_DEPOSIT = '/medora/home/billing/advance-deposit',
 	MEDORA_HOME_BILLING_OP_BILLING = '/medora/home/billing/op-billing',
 	MEDORA_HOME_BILLING_IP_BILLING = '/medora/home/billing/ip-billing',
 	MEDORA_HOME_BILLING_IP_BILLING_BILL = '/medora/home/billing/ip-billing/bill',
+	/** @deprecated Use MEDORA_HOME_BILLING_ADVANCE_DEPOSIT */
 	MEDORA_HOME_BILLING_IP_ADVANCE_DEPOSIT = '/medora/home/billing/ip-billing/advance-deposit',
 
 	// Medication Order module (navbar auto-hides like nursing EMR)
@@ -112,18 +122,9 @@ export enum WebRoutesEnum {
 
 	// Emergency module
 	MEDORA_HOME_EMERGENCY = '/medora/home/emergency',
-	/** @deprecated Use MEDORA_HOME_NURSING_WORKBENCH_ED_*; legacy paths redirect. */
-	MEDORA_HOME_EMERGENCY_TRACK_BOARD = '/medora/home/nursing-workbench/ed/track-board',
-	/** @deprecated Use MEDORA_HOME_NURSING_WORKBENCH_ED_TRIAGE; legacy paths redirect. */
-	MEDORA_HOME_EMERGENCY_TRIAGE = '/medora/home/nursing-workbench/ed/triage',
-	/** @deprecated Use MEDORA_HOME_NURSING_WORKBENCH_ED_TRAUMA_LOG; legacy paths redirect. */
-	MEDORA_HOME_EMERGENCY_TRAUMA_LOG = '/medora/home/nursing-workbench/ed/trauma-log',
 	MEDORA_HOME_EMERGENCY_ADMISSION = '/medora/home/emergency/admission',
 	MEDORA_HOME_EMERGENCY_ADMISSION_NEW = '/medora/home/emergency/admission/new',
-	MEDORA_HOME_EMERGENCY_ADMISSION_LIST = '/medora/home/emergency/admission/list',
-	MEDORA_HOME_EMERGENCY_PURCHASE_ITEM = '/medora/home/emergency/purchase-item',
-	MEDORA_HOME_BILLING_ER_BILLING = '/medora/home/billing/er-billing',
-	MEDORA_HOME_ADMINISTRATION_ER_BILLING_SETUP = '/medora/home/administration/er-billing-setup'
+	MEDORA_HOME_BILLING_ER_BILLING = '/medora/home/billing/er-billing'
 }
 
 /** Base path for a hospital's home (modules: administration, appointment, registration). hospitalId is UUID string. */

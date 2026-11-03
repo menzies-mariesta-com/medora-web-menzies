@@ -6,6 +6,7 @@ export type WardCategoryRow = {
 	name: string;
 	code: string | null;
 	wardMarkup: string;
+	isEr?: boolean;
 	statusId: number;
 };
 
@@ -15,6 +16,7 @@ export type RoomCategoryRow = {
 	name: string;
 	code: string | null;
 	roomMarkup: string;
+	isEr?: boolean;
 	statusId: number;
 };
 
@@ -25,6 +27,7 @@ export type WardRow = {
 	wardCategoryId: number;
 	name: string;
 	code: string | null;
+	isEr?: boolean;
 	statusId: number;
 	branchName?: string | null;
 	wardCategoryName?: string | null;
@@ -40,6 +43,7 @@ export type RoomRow = {
 	code: string | null;
 	capacity: number;
 	amenities: string | null;
+	isEr?: boolean;
 	statusId: number;
 	wardName?: string | null;
 	wardCode?: string | null;
@@ -56,6 +60,7 @@ export type BedRow = {
 	code: string | null;
 	basePrice: string;
 	bedStatus: number;
+	isEr?: boolean;
 	statusId: number;
 	roomName?: string | null;
 	roomCode?: string | null;
@@ -102,9 +107,9 @@ export type IpdCensusRow = {
 	admissionStatus: number;
 	otHoldLocation: string | null;
 	dailyTariff?: string | null;
-	/** OPD visit this IPD admission was converted from */
-	sourceOpdVisitId?: string | null;
-	sourceOpdVisitNo?: string | null;
+	/** Prior visit this IPD admission continues from */
+	sourceVisitId?: string | null;
+	sourceVisitNo?: string | null;
 };
 
 /** Unfinished OPD visit eligible as ADT admission source */
@@ -124,10 +129,9 @@ export type AdmitToIpdPayload = {
 	admittingDoctorId?: string | null;
 	reasonNotes?: string | null;
 	branchId: string;
-	/**
-	 * When admitting from OPD: unfinished OPD visit id.
-	 * Softens the new-visit gate for that visit / its open OP bill.
-	 */
+	/** When admitting from a prior visit (e.g. OPD). */
+	sourceVisitId?: string | null;
+	/** @deprecated use sourceVisitId */
 	sourceOpdVisitId?: string | null;
 	/** When fulfilling a doctor admission order. */
 	admissionOrderId?: number | null;
@@ -137,8 +141,8 @@ export type IpdAdmissionOrderRow = {
 	id: number;
 	hospitalId: string;
 	branchId: string;
-	sourceOpdVisitId: string;
-	sourceOpdVisitNo: string | null;
+	sourceVisitId: string;
+	sourceVisitNo: string | null;
 	patientId: string;
 	patientCode: string | null;
 	patientName: string;
@@ -155,7 +159,9 @@ export type IpdAdmissionOrderRow = {
 };
 
 export type CreateIpdAdmissionOrderPayload = {
-	sourceOpdVisitId: string;
+	sourceVisitId: string;
+	/** @deprecated use sourceVisitId */
+	sourceOpdVisitId?: string;
 	careLevel: number;
 	urgency: number;
 	preferredWardId?: number | null;

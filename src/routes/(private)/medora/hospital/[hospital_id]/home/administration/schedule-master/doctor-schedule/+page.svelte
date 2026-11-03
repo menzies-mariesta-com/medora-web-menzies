@@ -655,47 +655,50 @@
 					</div>
 				</div>
 
-				<!-- Schedule Table -->
-				<WashCard className="">
+				<!-- Selected doctor: schedule list card -->
+				<WashCard className="min-w-0 w-full lg:max-w-md">
 					{#if selectedStaff}
-						<WashCardBody className="">
-							<div class="overflow-x-auto lg:-mt-16">
-								<h1
-									class="text-center text-xl font-bold text-primary"
-								>
-									Doctor Scheduled Date
-								</h1>
-								<div class="flex gap-5 text-left">
-									{#if selectedStaffPhotoUrl}
-										<img
-											src={selectedStaffPhotoUrl}
-											alt=""
-											class="h-24 w-24 rounded-full object-cover"
-										/>
-									{:else}
-										<div class="skeleton h-24 w-24 rounded-full"></div>
-									{/if}
-									{#if selectedStaff}
-										<div class="flex flex-col">
-											<h2 class="mt-3 text-lg font-semibold">
-												{StringUtil.fullNameWithTitle(
-													selectedStaff.title?.name,
-													selectedStaff.firstName,
-													selectedStaff.middleName,
-													selectedStaff.lastName
-												)}
-											</h2>
-											<p class="text-sm text-base-content/70">
-												{selectedStaff.specialization?.name ??
-													'No specialization'}
-											</p>
-										</div>
-									{/if}
+						<WashCardBody
+							className="flex flex-col gap-2"
+						>
+							<h2 class="text-xl font-bold text-primary">
+								Doctor Scheduled Date
+							</h2>
+							<div
+								class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5"
+							>
+								{#if selectedStaffPhotoUrl}
+									<img
+										src={selectedStaffPhotoUrl}
+										alt=""
+										class="h-16 w-16 shrink-0 rounded-full object-cover"
+									/>
+								{:else}
+									<div
+										class="skeleton h-16 w-16 shrink-0 rounded-full"
+									></div>
+								{/if}
+								<div class="flex min-w-0 flex-col">
+									<p class="text-lg font-semibold">
+										{StringUtil.fullNameWithTitle(
+											selectedStaff.title?.name,
+											selectedStaff.firstName,
+											selectedStaff.middleName,
+											selectedStaff.lastName
+										)}
+									</p>
+									<p class="text-sm text-base-content/70">
+										{selectedStaff.specialization?.name ??
+											'No specialization'}
+									</p>
 								</div>
-								<div class="max-h-42 overflow-auto">
-									<WashTable
-										className="table table-zebra table-sm text-center"
-									>
+							</div>
+							<div
+								class="doctor-schedule-list-table w-full max-w-full overflow-x-auto"
+							>
+								<WashTable
+									className="table table-zebra table-sm"
+								>
 										<WashTableHeader>
 											<tr>
 												<th>Branch</th>
@@ -726,10 +729,12 @@
 														<td>
 															{group.toDate ?? 'No End Date'}
 														</td>
-														<td class="menzies-table-actions-col">
+														<td
+															class="menzies-table-actions-col relative z-0 overflow-visible px-1 text-center align-middle"
+														>
 															<MenziesTableRowActionGroup>
 																<MenziesTableIconAction
-																	tooltipText="edit data"
+																	tooltipText={m.menzies_table_tooltip_edit()}
 																	color="accent"
 																	onClick={() =>
 																		handleEditGroup(group)}
@@ -739,7 +744,7 @@
 																	{/snippet}
 																</MenziesTableIconAction>
 																<MenziesTableIconAction
-																	tooltipText="inactivate schedule"
+																	tooltipText={m.menzies_table_crud_inactivate_tooltip()}
 																	color="error"
 																	onClick={() =>
 																		handleDeleteSchedule(group)}
@@ -756,7 +761,6 @@
 										</WashTableBody>
 									</WashTable>
 								</div>
-							</div>
 						</WashCardBody>
 					{/if}
 				</WashCard>

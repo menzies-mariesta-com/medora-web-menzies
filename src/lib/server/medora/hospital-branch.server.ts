@@ -13,6 +13,7 @@ import type {
 	PaginationParams
 } from '$lib/model/type/pagination.type';
 import { normalizePagination } from '$lib/model/type/pagination.type';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 async function ensureCanManageHospital(
 	event: RequestEvent,
@@ -79,13 +80,13 @@ export async function getBranchesByHospitalIdPaginated(
 		table.hospitalBranchTable.hospitalId,
 		params.hospitalId
 	);
-	const whereExpr =
-		params?.statusId != null
-			? and(
-					hospitalEq,
-					eq(table.hospitalBranchTable.statusId, params.statusId)
-				)
-			: hospitalEq;
+	const whereExpr = and(
+		hospitalEq,
+		paginatedEntityStatusEq(
+			table.hospitalBranchTable.statusId,
+			params.statusId
+		)
+	);
 
 	const [data, countResult] = await Promise.all([
 		ensureDb()

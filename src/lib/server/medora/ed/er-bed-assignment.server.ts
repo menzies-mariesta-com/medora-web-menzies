@@ -9,7 +9,7 @@ import * as table from '$lib/server/db/schema';
 export function throwErBedRequired(): never {
 	throw error(400, {
 		code: ApiErrorCodeEnum.ER_BED_REQUIRED,
-		message: 'Assign an ER bed before moving to this column.'
+		message: 'Assign an ED bed before moving to this column.'
 	});
 }
 
@@ -38,27 +38,28 @@ async function loadErBedLocation(input: {
 }) {
 	const [row] = await ensureDb()
 		.select({
-			bed: table.erBedTable,
-			erRoomId: table.erRoomTable.id,
-			erWardId: table.erRoomTable.erWardId
+			bed: table.bedTable,
+			erRoomId: table.roomTable.id,
+			erWardId: table.roomTable.wardId
 		})
-		.from(table.erBedTable)
+		.from(table.bedTable)
 		.innerJoin(
-			table.erRoomTable,
-			eq(table.erBedTable.erRoomId, table.erRoomTable.id)
+			table.roomTable,
+			eq(table.bedTable.roomId, table.roomTable.id)
 		)
 		.where(
 			and(
-				eq(table.erBedTable.id, input.erBedId),
-				eq(table.erBedTable.hospitalId, input.hospitalId),
-				eq(table.erBedTable.statusId, StatusEnum.ACTIVE),
-				ne(table.erRoomTable.statusId, StatusEnum.DELETED)
+				eq(table.bedTable.id, input.erBedId),
+				eq(table.bedTable.hospitalId, input.hospitalId),
+				eq(table.bedTable.isEr, true),
+				eq(table.bedTable.statusId, StatusEnum.ACTIVE),
+				ne(table.roomTable.statusId, StatusEnum.DELETED)
 			)
 		)
 		.limit(1);
-	if (!row) throw error(400, 'ER bed not found');
+	if (!row) throw error(400, 'ED bed not found');
 	if (row.bed.bedStatus !== IpdBedStatusEnum.FREE) {
-		throw error(400, 'ER bed is not available');
+		throw error(400, 'ED bed is not available');
 	}
 	return row;
 }
@@ -72,9 +73,9 @@ export async function releaseErBedForEncounter(input: {
 
 	await ensureDb().transaction(async (tx) => {
 		await tx
-			.update(table.erBedTable)
+			.update(table.bedTable)
 			.set({ bedStatus: IpdBedStatusEnum.FREE })
-			.where(eq(table.erBedTable.id, enc.erBedId!));
+			.where(eq(table.bedTable.id, enc.erBedId!));
 		await tx
 			.update(table.edEncounterTable)
 			.set({
@@ -101,15 +102,15 @@ export async function assignErBedToEncounter(input: {
 	return ensureDb().transaction(async (tx) => {
 		if (enc.erBedId && enc.erBedId !== input.erBedId) {
 			await tx
-				.update(table.erBedTable)
+				.update(table.bedTable)
 				.set({ bedStatus: IpdBedStatusEnum.FREE })
-				.where(eq(table.erBedTable.id, enc.erBedId));
+				.where(eq(table.bedTable.id, enc.erBedId));
 		}
 
 		await tx
-			.update(table.erBedTable)
+			.update(table.bedTable)
 			.set({ bedStatus: IpdBedStatusEnum.OCCUPIED })
-			.where(eq(table.erBedTable.id, input.erBedId));
+			.where(eq(table.bedTable.id, input.erBedId));
 
 		const assignedAt = new Date().toISOString();
 		const [updated] = await tx

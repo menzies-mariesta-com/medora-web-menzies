@@ -16,6 +16,9 @@ export function redirectEmergencyToNursingEd(
 	throw redirect(302, url);
 }
 
-export const nursingEdTrackBoardUrl = WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_ED_TRACK_BOARD;
-export const nursingEdTriageUrl = WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_ED_TRIAGE;
-export const nursingEdTraumaLogUrl = WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_ED_TRAUMA_LOG;
+export const nursingEdTrackBoardUrl =
+	WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_TRACK_BOARD;
+export const nursingEdTriageUrl =
+	WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_TRIAGE;
+export const nursingEdTraumaLogUrl =
+	WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_TRAUMA_LOG;

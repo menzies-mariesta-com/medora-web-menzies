@@ -1,7 +1,6 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import {
-	getPendingOpBillingServiceDetailRowsForVisit,
-	type OpBillingPendingLineRow
+	getPendingOpBillingServiceDetailRowsForVisit
 } from '$lib/server/medora/observation/observation-emr.server';
 import {
 	getIpBillingReadiness,
@@ -23,8 +22,17 @@ import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import type { IpBillingSchema } from '$lib/server/db/schema-type';
 import { parseUuid } from '$lib/util/id.util';
+import {
+	dedupePendingBillRows,
+	mergeClinicalAndBillingSetupPendingRows,
+	type PendingBillLineRow
+} from '$lib/server/medora/billing/billing-setup-bill-lines.server';
+import {
+	normalizeIpBillingLineWrite,
+	normalizeOpBillingHeaderWrite
+} from '$lib/server/medora/money-normalize.server';
 
-type PendingDetailRow = OpBillingPendingLineRow;
+type PendingDetailRow = PendingBillLineRow;
 
 type IpBillingWithAuditStaff = IpBillingSchema & {
 	discountedByStaff?: unknown;
@@ -65,7 +73,7 @@ function postActionFromBody(body: unknown): unknown {
 	return (body as { action?: unknown }).action;
 }
 
-async function nextIpBillNo(params: {
+async function nextBillNo(params: {
 	hospitalId: string;
 	branchId: string;
 }): Promise<string> {
@@ -92,7 +100,7 @@ async function nextIpBillNo(params: {
 		hospitalId: params.hospitalId,
 		branchId: params.branchId,
 		financialYearId: financialYear.id,
-		prefixKey: PREFIX_PURPOSE_STORAGE.IP_BILL_NO,
+		prefixKey: PREFIX_PURPOSE_STORAGE.BILL_NO,
 		context: {}
 	});
 }
@@ -184,7 +192,7 @@ async function consolidateOpenIpBillings(opts: {
  * Syncs the single open OP bill for the visit to nursing-complete lines that are
  * not yet on any closed bill. When nothing is pending, the open draft is removed.
  */
-async function syncOpenIpBillingForVisit(opts: {
+export async function syncOpenIpBillingForVisit(opts: {
 	hospitalId: string;
 	visitId: string;
 	branchId: string;
@@ -200,12 +208,18 @@ async function syncOpenIpBillingForVisit(opts: {
 	pendingRows: PendingDetailRow[];
 }> {
 	const db = ensureDb();
-	const pendingRows =
-		await getPendingOpBillingServiceDetailRowsForVisit({
-			visitId: opts.visitId,
+	const pendingRows = dedupePendingBillRows(
+		await mergeClinicalAndBillingSetupPendingRows({
 			hospitalId: opts.hospitalId,
-			branchId: opts.branchId
-		});
+			visitId: opts.visitId,
+			branchId: opts.branchId,
+			clinicalRows: await getPendingOpBillingServiceDetailRowsForVisit({
+				visitId: opts.visitId,
+				hospitalId: opts.hospitalId,
+				branchId: opts.branchId
+			})
+		})
+	);
 
 	let openBill = await consolidateOpenIpBillings({
 		visitId: opts.visitId,
@@ -298,7 +312,7 @@ async function syncOpenIpBillingForVisit(opts: {
 				r.lineSource === 'medication_order_line'
 					? r.medicationOrderLineId
 					: null;
-			return {
+			return normalizeIpBillingLineWrite({
 				ipBillingId: billingId,
 				lineIndex: idx + 1,
 				serviceOrderDetailId,
@@ -312,25 +326,27 @@ async function syncOpenIpBillingForVisit(opts: {
 				serviceAmount: r.serviceAmount ?? null,
 				serviceTaxAmount: r.serviceTaxAmount ?? null,
 				serviceUnit: r.serviceUnit ?? null,
-				lineTotal: computeLineTotal(r).toFixed(2),
+				lineTotal: computeLineTotal(r),
 				createdAt: opts.nowIso,
 				updatedAt: opts.nowIso,
 				createdBy: opts.userId,
 				updatedBy: opts.userId
-			};
+			});
 		})
 	);
 
 	await db
 		.update(table.ipBillingTable)
-		.set({
-			branchId: opts.branchId,
-			linesSubtotal: linesSubtotal.toFixed(2),
-			discountAmount: discountAmount.toFixed(2),
-			totalAmount: totalAmount.toFixed(2),
-			updatedAt: opts.nowIso,
-			updatedBy: opts.userId
-		})
+		.set(
+			normalizeOpBillingHeaderWrite({
+				branchId: opts.branchId,
+				linesSubtotal,
+				discountAmount,
+				totalAmount,
+				updatedAt: opts.nowIso,
+				updatedBy: opts.userId
+			})
+		)
 		.where(eq(table.ipBillingTable.id, billingId));
 
 	const billingRow = (await db.query.ipBillingTable.findFirst({
@@ -516,6 +532,11 @@ export const GET: RequestHandler = async (event) => {
 			advanceTotal,
 			advanceCredit,
 			balanceDue,
+			payableAmount: balanceDue,
+			advanceRefundDue:
+				advanceTotal > advanceCredit
+					? Math.round((advanceTotal - advanceCredit) * 100) / 100
+					: 0,
 			admissionId: admissionForDeposit?.id ?? null
 		},
 		{ status: 200 }
@@ -601,7 +622,7 @@ export const POST: RequestHandler = async (event) => {
 
 		let billNo = sync.billingRow.billNo?.trim() || null;
 		if (!billNo) {
-			billNo = await nextIpBillNo({
+			billNo = await nextBillNo({
 				hospitalId,
 				branchId: visitRow.branchId!
 			});

@@ -20,6 +20,10 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
+	import {
+		activeInactiveEntityStatusColumn,
+		appendEntityStatusIdSearchParam
+	} from '$lib/tool/menzies/menzies-table-entity-status.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -78,6 +82,7 @@
 				sp.set('staffName', tableFilters.name.trim());
 			if (tableFilters.phonePrimary?.trim())
 				sp.set('staffPhonePrimary', tableFilters.phonePrimary.trim());
+			appendEntityStatusIdSearchParam(sp, tableFilters);
 			if (forceRefresh) sp.set('_t', String(Date.now()));
 
 			const res = await fetch(
@@ -333,14 +338,9 @@
 			field: 'gender.name',
 			filterable: false
 		},
-		{
-			id: 'status',
-			header: m.status(),
-			widthClass: 'w-32 min-w-[8rem]',
-			defaultFilterValue: 'Active',
-			field: 'status.name',
-			filterable: false
-		},
+		activeInactiveEntityStatusColumn<StaffWithRelations>({
+			header: m.status()
+		}),
 		{
 			id: 'createdAt',
 			header: m.created_at(),

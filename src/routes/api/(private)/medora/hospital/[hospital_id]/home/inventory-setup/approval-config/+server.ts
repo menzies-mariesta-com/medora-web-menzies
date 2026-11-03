@@ -1,15 +1,15 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import {
-	deleteApprovalLevel,
-	listApprovalLevelsForStore,
+	getStaffApprovalMatrix,
 	listStoresForApprovalConfig,
-	upsertApprovalLevel
+	saveStaffApprovalMatrix
 } from '$lib/server/medora/inventory/approval-config.server';
 import {
 	isInvApprovalModule,
 	type InvApprovalModule
 } from '$lib/model/type/medora/inv-approval.type';
+import type { InvApprovalStaffMatrixCell } from '$lib/model/type/medora/inv-approval-config.type';
 
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
@@ -18,71 +18,54 @@ export const GET: RequestHandler = async (event) => {
 		const data = await listStoresForApprovalConfig(event, hospitalId);
 		return json(data);
 	}
-	const storeIdStr = event.url.searchParams.get('storeId');
-	const moduleParam = event.url.searchParams.get('module');
-	const module: InvApprovalModule | undefined =
-		moduleParam == null || moduleParam === ''
-			? undefined
-			: isInvApprovalModule(moduleParam)
-				? moduleParam
-				: undefined;
-	if (
-		moduleParam != null &&
-		moduleParam !== '' &&
-		module === undefined
-	) {
-		return json({ error: 'Invalid module' }, { status: 400 });
+	if (mode === 'staffMatrix') {
+		const staffId = (event.url.searchParams.get('staffId') ?? '').trim();
+		if (!staffId) {
+			return json({ error: 'Select a staff member' }, { status: 400 });
+		}
+		const data = await getStaffApprovalMatrix(event, {
+			hospitalId,
+			staffId
+		});
+		return json(data);
 	}
-	if (!storeIdStr) {
-		return json({ error: 'Select a store' }, { status: 400 });
-	}
-	const storeId = Number(storeIdStr);
-	const data = await listApprovalLevelsForStore(event, {
-		hospitalId,
-		storeId,
-		module
-	});
-	return json(data);
+	return json({ error: 'Invalid mode' }, { status: 400 });
 };
 
-export const POST: RequestHandler = async (event) => {
-	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<
-		string,
-		unknown
-	>;
-	const storeId = Number(body.storeId ?? 0);
-	const moduleRaw = String(body.module ?? '');
-	if (!isInvApprovalModule(moduleRaw)) {
-		return json({ error: 'Invalid module' }, { status: 400 });
+function parseMatrixCells(raw: unknown): InvApprovalStaffMatrixCell[] {
+	if (!Array.isArray(raw)) return [];
+	const out: InvApprovalStaffMatrixCell[] = [];
+	for (const item of raw) {
+		if (!item || typeof item !== 'object') continue;
+		const o = item as Record<string, unknown>;
+		const storeId = Number(o.storeId);
+		const moduleRaw = String(o.module ?? '');
+		if (!Number.isFinite(storeId) || storeId < 1) continue;
+		if (!isInvApprovalModule(moduleRaw)) continue;
+		out.push({
+			storeId,
+			module: moduleRaw as InvApprovalModule,
+			canApprove: o.canApprove === true
+		});
 	}
-	const module = moduleRaw;
-	const id = body.id != null ? Number(body.id) : undefined;
-	const assigneeStaffIds = Array.isArray(body.assigneeStaffIds)
-		? (body.assigneeStaffIds as unknown[]).map((x) => String(x))
-		: [];
-	const isRequired =
-		typeof body.isRequired === 'boolean' ? body.isRequired : true;
-	const result = await upsertApprovalLevel(event, {
-		hospitalId,
-		storeId,
-		module,
-		isRequired,
-		id: Number.isFinite(id) ? id : undefined,
-		assigneeStaffIds
-	});
-	return json(result);
-};
+	return out;
+}
 
-export const DELETE: RequestHandler = async (event) => {
+export const PUT: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<
-		string,
-		unknown
-	>;
-	await deleteApprovalLevel(event, {
+	const body = (await event.request.json()) as Record<string, unknown>;
+	const staffId = String(body.staffId ?? '').trim();
+	if (!staffId) {
+		return json({ error: 'Staff is required' }, { status: 400 });
+	}
+	const cells = parseMatrixCells(body.cells);
+	if (cells.length === 0) {
+		return json({ error: 'No permissions to save' }, { status: 400 });
+	}
+	await saveStaffApprovalMatrix(event, {
 		hospitalId,
-		levelId: Number(body.levelId ?? 0)
+		staffId,
+		cells
 	});
 	return json({ ok: true });
 };

@@ -1,0 +1,5 @@
+/* Wash typefaces for bootstrap loader — npm run sync:bootstrap-wash-theme */
+@font-face{font-family:'Maple Mono';font-style:normal;font-weight:500;font-display:block;src:url('/fonts/wash/maple-mono-latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'Maple Mono';font-style:normal;font-weight:600;font-display:block;src:url('/fonts/wash/maple-mono-latin-600-normal.woff2') format('woff2')}
+@font-face{font-family:'Maple Mono';font-style:normal;font-weight:700;font-display:block;src:url('/fonts/wash/maple-mono-latin-700-normal.woff2') format('woff2')}
+html[data-font='maple-mono'],html[data-font='maple-mono'][data-theme],html[data-font='fraunces'],html[data-font='fraunces'][data-theme]{--font-sans:'Maple Mono',ui-monospace,monospace;--font-mono:'Maple Mono',ui-monospace,monospace}

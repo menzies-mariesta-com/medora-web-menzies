@@ -1,6 +1,6 @@
 ---
-title: "ER Billing Setup"
-description: "How to use ER Billing Setup in Administration."
+title: "ED billing setup"
+description: "How to use ED billing setup in Administration."
 docType: workflow
 slug: workflows/administration-er-billing-setup
 pageId: 455
@@ -13,7 +13,7 @@ lastReviewed: "2026-03-21"
 
 ## What you will do
 
-Use **ER Billing Setup** in **Administration** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
+Use **ED billing setup** in **Administration** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
 
 ## Before you start
 
@@ -24,7 +24,7 @@ Use **ER Billing Setup** in **Administration** for everyday hospital tasks. A fu
 ## Steps
 
 1. Open **Administration** from the home menu.
-2. Open **ER Billing Setup**.
+2. Open **ED billing setup**.
 3. Follow the on-screen forms and save when you are done.
 
 ## Quick map
@@ -32,7 +32,7 @@ Use **ER Billing Setup** in **Administration** for everyday hospital tasks. A fu
 ```mermaid
 flowchart LR
   signIn[Sign in] --> module[Open Administration]
-  module --> screen[Open ER Billing Setup]
+  module --> screen[Open ED billing setup]
   screen --> done[Finish task]
 ```
 

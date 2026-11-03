@@ -71,10 +71,85 @@
 			})();
 		</script>
 
+		<link rel="stylesheet" href="/medora-bootstrap-wash-theme.css" />
+		<link rel="stylesheet" href="/medora-bootstrap-font.css" />
+		<link rel="stylesheet" href="/medora-bootstrap-loading.css" />
+		<link
+			rel="preload"
+			href="/fonts/wash/maple-mono-latin-700-normal.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin=""
+		/>
+		<link
+			rel="preload"
+			href="/fonts/wash/maple-mono-latin-500-normal.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin=""
+		/>
+
 		%sveltekit.head%
 	</head>
 
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
+		<script>
+			(function () {
+				function usesBootstrapLoader(path) {
+					if (path === '/auth' || path.indexOf('/auth/') === 0)
+						return true;
+					if (path === '/medora' || path.indexOf('/medora/') === 0)
+						return true;
+					if (
+						path === '/onboarding' ||
+						path.indexOf('/onboarding/') === 0
+					)
+						return true;
+					return false;
+				}
+				if (!usesBootstrapLoader(window.location.pathname)) return;
+
+				var root = document.createElement('div');
+				root.id = 'medora-app-bootstrap-loader';
+				root.setAttribute('role', 'status');
+				root.setAttribute('aria-live', 'polite');
+				root.setAttribute('aria-busy', 'true');
+				root.innerHTML =
+					'<div class="medora-bootstrap-loader-inner">' +
+					'<div class="studio-load-stroke" aria-hidden="true">' +
+					'<span class="studio-load-stroke__mark"></span>' +
+					'</div>' +
+					'<div class="medora-bootstrap-brand-row">' +
+					'<img class="medora-bootstrap-mark" src="/medora-logo.svg" alt="" width="40" height="40" decoding="async" />' +
+					'<p class="studio-load-ink__word">Medora Menzies</p>' +
+					'</div>' +
+					'</div>';
+				var rootStyle = getComputedStyle(document.documentElement);
+				var washVars = [
+					'--color-base-100',
+					'--color-base-200',
+					'--color-base-content',
+					'--color-primary',
+					'--color-primary-content',
+					'--color-secondary',
+					'--color-accent',
+					'--wash-a',
+					'--wash-b',
+					'--wash-c',
+					'--ink-muted',
+					'--ink-border',
+					'--radius-box',
+					'--size-selector'
+				];
+				for (var i = 0; i < washVars.length; i++) {
+					root.style.setProperty(
+						washVars[i],
+						rootStyle.getPropertyValue(washVars[i])
+					);
+				}
+				document.body.appendChild(root);
+			})();
+		</script>
 	</body>
 </html>

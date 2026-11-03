@@ -46,8 +46,10 @@ export async function createAdmissionOrder(
 	payload: CreateIpdAdmissionOrderPayload & { hospitalId: string }
 ): Promise<IpdAdmissionOrderRow> {
 	const db = ensureDb();
-	const sourceOpdVisitId = String(payload.sourceOpdVisitId ?? '').trim();
-	if (!sourceOpdVisitId) {
+	const sourceVisitId = String(
+		payload.sourceVisitId ?? payload.sourceOpdVisitId ?? ''
+	).trim();
+	if (!sourceVisitId) {
 		throw error(400, 'Select the OPD visit to admit from');
 	}
 	const branchId = String(payload.branchId ?? '').trim();
@@ -84,7 +86,7 @@ export async function createAdmissionOrder(
 		.from(table.patientVisitTable)
 		.where(
 			and(
-				eq(table.patientVisitTable.id, sourceOpdVisitId),
+				eq(table.patientVisitTable.id, sourceVisitId),
 				eq(table.patientVisitTable.hospitalId, payload.hospitalId),
 				ne(table.patientVisitTable.statusId, StatusEnum.DELETED)
 			)
@@ -102,7 +104,7 @@ export async function createAdmissionOrder(
 			and(
 				eq(table.ipdAdmissionOrderTable.hospitalId, payload.hospitalId),
 				eq(
-					table.ipdAdmissionOrderTable.sourceOpdVisitId,
+					table.ipdAdmissionOrderTable.sourceVisitId,
 					visit.id
 				),
 				eq(
@@ -134,7 +136,7 @@ export async function createAdmissionOrder(
 			.values({
 				hospitalId: payload.hospitalId,
 				branchId: visit.branchId || branchId,
-				sourceOpdVisitId: visit.id,
+				sourceVisitId: visit.id,
 				patientId: visit.patientId,
 				orderingDoctorId: payload.orderingDoctorId ?? null,
 				careLevel,
@@ -163,18 +165,29 @@ export async function createAdmissionOrder(
 	}
 }
 
-export async function getPendingAdmissionOrderBySourceOpdVisit(input: {
+export async function getPendingAdmissionOrderBySourceVisit(input: {
 	hospitalId: string;
-	sourceOpdVisitId: string;
+	sourceVisitId: string;
 }): Promise<IpdAdmissionOrderRow | null> {
 	const rows = await listAdmissionOrdersPaginated({
 		hospitalId: input.hospitalId,
 		page: 1,
 		pageSize: 1,
-		sourceOpdVisitId: input.sourceOpdVisitId,
+		sourceVisitId: input.sourceVisitId,
 		statusTaggingId: IpdAdmissionOrderStatusTaggingEnum.PENDING
 	});
 	return rows.data[0] ?? null;
+}
+
+/** @deprecated use getPendingAdmissionOrderBySourceVisit */
+export async function getPendingAdmissionOrderBySourceOpdVisit(input: {
+	hospitalId: string;
+	sourceOpdVisitId: string;
+}): Promise<IpdAdmissionOrderRow | null> {
+	return getPendingAdmissionOrderBySourceVisit({
+		hospitalId: input.hospitalId,
+		sourceVisitId: input.sourceOpdVisitId
+	});
 }
 
 export async function getAdmissionOrderById(input: {
@@ -196,6 +209,8 @@ export async function listAdmissionOrdersPaginated(
 		search?: string;
 		statusTaggingId?: number;
 		id?: number;
+		sourceVisitId?: string;
+		/** @deprecated use sourceVisitId */
 		sourceOpdVisitId?: string;
 	}
 ): Promise<PaginatedResult<IpdAdmissionOrderRow>> {
@@ -207,15 +222,14 @@ export async function listAdmissionOrdersPaginated(
 	if (typeof params.id === 'number') {
 		conditions.push(eq(table.ipdAdmissionOrderTable.id, params.id));
 	}
-	if (
-		typeof params.sourceOpdVisitId === 'number' &&
-		Boolean(params.sourceOpdVisitId) &&
-		params.sourceOpdVisitId > 0
-	) {
+	const sourceVisitId = (
+		params.sourceVisitId ?? params.sourceOpdVisitId
+	)?.trim();
+	if (sourceVisitId) {
 		conditions.push(
 			eq(
-				table.ipdAdmissionOrderTable.sourceOpdVisitId,
-				params.sourceOpdVisitId
+				table.ipdAdmissionOrderTable.sourceVisitId,
+				sourceVisitId
 			)
 		);
 	}
@@ -247,8 +261,8 @@ export async function listAdmissionOrdersPaginated(
 				id: table.ipdAdmissionOrderTable.id,
 				hospitalId: table.ipdAdmissionOrderTable.hospitalId,
 				branchId: table.ipdAdmissionOrderTable.branchId,
-				sourceOpdVisitId: table.ipdAdmissionOrderTable.sourceOpdVisitId,
-				sourceOpdVisitNo: table.patientVisitTable.visitNo,
+				sourceVisitId: table.ipdAdmissionOrderTable.sourceVisitId,
+				sourceVisitNo: table.patientVisitTable.visitNo,
 				patientId: table.ipdAdmissionOrderTable.patientId,
 				patientCode: table.patientTable.code,
 				patientFirst: table.patientTable.firstName,
@@ -271,7 +285,7 @@ export async function listAdmissionOrdersPaginated(
 			.innerJoin(
 				table.patientVisitTable,
 				eq(
-					table.ipdAdmissionOrderTable.sourceOpdVisitId,
+					table.ipdAdmissionOrderTable.sourceVisitId,
 					table.patientVisitTable.id
 				)
 			)
@@ -303,7 +317,7 @@ export async function listAdmissionOrdersPaginated(
 			.innerJoin(
 				table.patientVisitTable,
 				eq(
-					table.ipdAdmissionOrderTable.sourceOpdVisitId,
+					table.ipdAdmissionOrderTable.sourceVisitId,
 					table.patientVisitTable.id
 				)
 			)
@@ -319,8 +333,8 @@ export async function listAdmissionOrdersPaginated(
 			id: r.id,
 			hospitalId: r.hospitalId,
 			branchId: r.branchId,
-			sourceOpdVisitId: r.sourceOpdVisitId,
-			sourceOpdVisitNo: r.sourceOpdVisitNo,
+			sourceVisitId: r.sourceVisitId,
+			sourceVisitNo: r.sourceVisitNo,
 			patientId: r.patientId,
 			patientCode: r.patientCode,
 			patientName: patientDisplayName(r),
