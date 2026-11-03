@@ -26,7 +26,54 @@ export type OpBillingPrintLabels = {
 	grandTotal: string;
 	discount: string;
 	netTotal: string;
+	advanceDeposit?: string;
+	appliedToBill?: string;
+	refundDue?: string;
+	balanceDue?: string;
 };
+
+function depositFooterHtml(opts: {
+	advanceCollected: number;
+	advanceApplied: number;
+	refundDue: number;
+	balanceDue: number;
+	labels: OpBillingPrintLabels;
+	formatMoney: (amount: number) => string;
+}): string {
+	if (opts.advanceCollected <= 0) return '';
+	const collectedLabel = escapeHtml(
+		opts.labels.advanceDeposit ?? 'Advance deposit (collected)'
+	);
+	const appliedLabel = escapeHtml(
+		opts.labels.appliedToBill ?? 'Applied to bill'
+	);
+	const refundLabel = escapeHtml(opts.labels.refundDue ?? 'Refund due');
+	const balanceLabel = escapeHtml(opts.labels.balanceDue ?? 'Balance due');
+
+	const refundRow =
+		opts.refundDue > 0
+			? `<div class="grand-row">
+          <span>${refundLabel}</span>
+          <span class="grand-amt">${opts.formatMoney(opts.refundDue)}</span>
+        </div>`
+			: '';
+
+	return `<div class="grand grand--stack">
+        <div class="grand-row">
+          <span>${collectedLabel}</span>
+          <span class="grand-amt">${opts.formatMoney(opts.advanceCollected)}</span>
+        </div>
+        <div class="grand-row">
+          <span>${appliedLabel}</span>
+          <span class="grand-disc">−${opts.formatMoney(opts.advanceApplied)}</span>
+        </div>
+        ${refundRow}
+        <div class="grand-row grand-row--net">
+          <span>${balanceLabel}</span>
+          <span class="grand-amt">${opts.formatMoney(opts.balanceDue)}</span>
+        </div>
+      </div>`;
+}
 
 export function buildOpBillingPrintBodyHtml(opts: {
 	groups: OpBillingPrintGroup[];
@@ -34,6 +81,12 @@ export function buildOpBillingPrintBodyHtml(opts: {
 	discountValue: number;
 	netTotal: number;
 	hasDiscount: boolean;
+	/** Full advance collected (IP). */
+	advanceDepositCollected?: number;
+	/** Portion applied to this bill. */
+	advanceAppliedToBill?: number;
+	advanceRefundDue?: number;
+	balanceDue?: number;
 	labels: OpBillingPrintLabels;
 	formatMoney: (amount: number) => string;
 }): string {
@@ -81,6 +134,36 @@ export function buildOpBillingPrintBodyHtml(opts: {
 	const effectiveGrandTotal = opts.hasDiscount
 		? opts.netTotal
 		: opts.grandTotal;
+	const advanceCollected =
+		Number(opts.advanceDepositCollected ?? 0) || 0;
+	const advanceApplied =
+		opts.advanceAppliedToBill != null &&
+		Number.isFinite(opts.advanceAppliedToBill)
+			? opts.advanceAppliedToBill
+			: advanceCollected > 0
+				? Math.min(advanceCollected, effectiveGrandTotal)
+				: 0;
+	const refundDue =
+		opts.advanceRefundDue != null && Number.isFinite(opts.advanceRefundDue)
+			? Math.max(0, opts.advanceRefundDue)
+			: Math.max(0, advanceCollected - advanceApplied);
+	const balanceDue =
+		opts.balanceDue != null && Number.isFinite(opts.balanceDue)
+			? opts.balanceDue
+			: advanceCollected > 0
+				? Math.max(0, effectiveGrandTotal - advanceApplied)
+				: effectiveGrandTotal;
+	const depositBlock =
+		advanceCollected > 0
+			? depositFooterHtml({
+					advanceCollected,
+					advanceApplied,
+					refundDue,
+					balanceDue,
+					labels: opts.labels,
+					formatMoney: opts.formatMoney
+				})
+			: '';
 
 	if (opts.hasDiscount) {
 		return `${rowsHtml}<div class="grand grand--stack">
@@ -96,16 +179,17 @@ export function buildOpBillingPrintBodyHtml(opts: {
           <span>${netLabel}</span>
           <span class="grand-amt">${opts.formatMoney(effectiveGrandTotal)}</span>
         </div>
-      </div>`;
+      </div>${depositBlock}`;
 	}
 
 	return `${rowsHtml}<div class="grand">
         <span>${totalLabel}</span>
         <span class="grand-amt">${opts.formatMoney(effectiveGrandTotal)}</span>
-      </div>`;
+      </div>${depositBlock}`;
 }
 
-export function buildCombinedOpenBillsPrintBodyHtml(opts: {
+/** One print job: full bill per visit, page break between visits (no combined total). */
+export function buildMultiVisitBillsPrintBodyHtml(opts: {
 	visits: Array<{
 		visitLabel: string;
 		groups: OpBillingPrintGroup[];
@@ -113,51 +197,36 @@ export function buildCombinedOpenBillsPrintBodyHtml(opts: {
 		discountValue: number;
 		netTotal: number;
 		hasDiscount: boolean;
+		advanceDepositCollected?: number;
+		advanceAppliedToBill?: number;
+		advanceRefundDue?: number;
+		balanceDue?: number;
 	}>;
-	combinedGrandTotal: number;
-	combinedDiscount: number;
-	combinedNetTotal: number;
-	combinedHasDiscount: boolean;
-	labels: OpBillingPrintLabels & { allVisitsTotal: string };
+	labels: OpBillingPrintLabels;
 	formatMoney: (amount: number) => string;
 }): string {
-	const visitSections = opts.visits
-		.map((v) => {
+	return opts.visits
+		.map((v, i) => {
 			const inner = buildOpBillingPrintBodyHtml({
 				groups: v.groups,
 				grandTotal: v.grandTotal,
 				discountValue: v.discountValue,
 				netTotal: v.netTotal,
 				hasDiscount: v.hasDiscount,
+				advanceDepositCollected: v.advanceDepositCollected,
+				advanceAppliedToBill: v.advanceAppliedToBill,
+				advanceRefundDue: v.advanceRefundDue,
+				balanceDue: v.balanceDue,
 				labels: opts.labels,
 				formatMoney: opts.formatMoney
 			});
-			return `<div class="visit-block" style="page-break-inside: avoid; margin-bottom: 1.25rem;"><h2 class="visit-title" style="font-size: 1rem; margin: 0 0 0.5rem;">${escapeHtml(v.visitLabel)}</h2>${inner}</div>`;
+			const breakAfter =
+				i < opts.visits.length - 1
+					? ' style="page-break-after: always;"'
+					: '';
+			return `<div class="visit-block"${breakAfter}><h2 class="visit-title" style="font-size: 1rem; margin: 0 0 0.5rem;">${escapeHtml(v.visitLabel)}</h2>${inner}</div>`;
 		})
 		.join('');
-
-	const allLabel = escapeHtml(opts.labels.allVisitsTotal);
-	if (opts.combinedHasDiscount) {
-		return `${visitSections}<div class="grand grand--stack grand--combined">
-        <div class="grand-row">
-          <span>${allLabel}</span>
-          <span class="grand-amt grand-amt--strike">${opts.formatMoney(opts.combinedGrandTotal)}</span>
-        </div>
-        <div class="grand-row">
-          <span>${escapeHtml(opts.labels.discount)}</span>
-          <span class="grand-disc">-${opts.formatMoney(opts.combinedDiscount)}</span>
-        </div>
-        <div class="grand-row grand-row--net">
-          <span>${escapeHtml(opts.labels.netTotal)}</span>
-          <span class="grand-amt">${opts.formatMoney(opts.combinedNetTotal)}</span>
-        </div>
-      </div>`;
-	}
-
-	return `${visitSections}<div class="grand grand--combined">
-        <span>${allLabel}</span>
-        <span class="grand-amt">${opts.formatMoney(opts.combinedNetTotal)}</span>
-      </div>`;
 }
 
 export type MedOrderReceiptPrintLine = {

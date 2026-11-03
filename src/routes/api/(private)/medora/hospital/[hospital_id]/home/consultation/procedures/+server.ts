@@ -2,12 +2,19 @@ import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { requireClinicalStaff } from '$lib/server/medora/clinical/clinical-authority.server';
 import * as procedure from '$lib/server/medora/clinical/procedure.server';
+import { parseUuid } from '$lib/util/id.util';
 
-function id(value: unknown, name: string): number {
+function positiveInt(value: unknown, name: string): number {
 	const parsed = Number(value);
 	if (!Number.isFinite(parsed) || parsed <= 0)
 		throw error(400, `${name} is required`);
 	return parsed;
+}
+
+function requireVisitId(value: unknown): string {
+	const visitId = parseUuid(value);
+	if (!visitId) throw error(400, 'visitId is required');
+	return visitId;
 }
 
 export async function GET(event: RequestEvent) {
@@ -16,7 +23,7 @@ export async function GET(event: RequestEvent) {
 	return json(
 		await procedure.listClinicalProcedures({
 			hospitalId,
-			visitId: id(event.url.searchParams.get('visitId'), 'visitId')
+			visitId: requireVisitId(event.url.searchParams.get('visitId'))
 		})
 	);
 }
@@ -31,16 +38,16 @@ export async function POST(event: RequestEvent) {
 	>;
 	if (body.action === 'delete') {
 		await procedure.deleteClinicalProcedure({
-			id: id(body.id, 'id'),
+			id: positiveInt(body.id, 'id'),
 			hospitalId
 		});
 		return json({ ok: true });
 	}
 	return json(
 		await procedure.saveClinicalProcedure({
-			id: body.id ? id(body.id, 'id') : undefined,
+			id: body.id ? positiveInt(body.id, 'id') : undefined,
 			hospitalId,
-			visitId: id(body.visitId, 'visitId'),
+			visitId: requireVisitId(body.visitId),
 			procedureType: String(body.procedureType ?? '').trim(),
 			notes: String(body.notes ?? ''),
 			performedAt: body.performedAt ? String(body.performedAt) : null,

@@ -10,6 +10,7 @@ import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.serve
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { assertPatientCanOpenNewVisit } from '$lib/server/medora/patient-visit/assert-patient-can-open-new-visit.server';
 import { assertValidSourceVisit } from '$lib/server/medora/billing/visit-lineage.server';
+import { withRowInsertAudit } from '$lib/server/db';
 import { and, eq, sql } from 'drizzle-orm';
 
 /** Database or transaction executor (tx is cast to this shape by callers). */
@@ -138,7 +139,8 @@ type PatientVisitCreatePayload = Omit<
  */
 export async function createPatientVisitRecord(
 	payload: PatientVisitCreatePayload,
-	db: VisitDb = ensureDb()
+	db: VisitDb = ensureDb(),
+	auditUserId?: string | null
 ): Promise<PatientVisitSchema> {
 	const branchId = payload.branchId ?? null;
 	if (!branchId) {
@@ -197,13 +199,17 @@ export async function createPatientVisitRecord(
 	const statusTaggingId =
 		payload.statusTaggingId ?? visitStatusTagging.openId;
 
-	const values: PatientVisitSchemaInsert = {
-		...insertPayload,
-		branchId,
-		visitNo,
-		statusTaggingId,
-		...(sourceVisitId != null ? { sourceVisitId } : {})
-	};
+	const values: PatientVisitSchemaInsert = withRowInsertAudit(
+		table.patientVisitTable,
+		{
+			...insertPayload,
+			branchId,
+			visitNo,
+			statusTaggingId,
+			...(sourceVisitId != null ? { sourceVisitId } : {})
+		},
+		auditUserId
+	);
 
 	const [row] = await db
 		.insert(table.patientVisitTable)
@@ -219,5 +225,6 @@ export async function createPatientVisitInHospital(
 	payload: PatientVisitCreatePayload
 ): Promise<PatientVisitSchema> {
 	await ensureCanAccessHospital(event, payload.hospitalId);
-	return createPatientVisitRecord(payload);
+	const auditUserId = event.locals.user?.id ?? null;
+	return createPatientVisitRecord(payload, ensureDb(), auditUserId);
 }

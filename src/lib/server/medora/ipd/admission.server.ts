@@ -387,7 +387,8 @@ export async function admitVisitToIpd(
 				doctorId: admittingDoctorId,
 				...(sourceVisitId != null ? { sourceVisitId } : {})
 			},
-			tx as unknown as ReturnType<typeof ensureDb>
+			tx as unknown as ReturnType<typeof ensureDb>,
+			event.locals.user?.id ?? null
 		);
 
 		const [admission] = await tx

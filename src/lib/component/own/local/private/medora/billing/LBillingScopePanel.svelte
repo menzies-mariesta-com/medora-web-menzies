@@ -7,6 +7,7 @@
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import {
 		fetchAllOpenBillVisitDetails,
+		sumPayableOpenBillDetails,
 		type OpenBillVisitDetail
 	} from '$lib/tool/billing/billing-open-bills-batch.util.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -94,6 +95,7 @@
 				rows,
 				otherGroupLabel: otherGroupLabel
 			});
+			openBillsGrandTotal = sumPayableOpenBillDetails(openBillDetails);
 		} catch (e) {
 			openBillDetails = [];
 			batchError =
@@ -243,14 +245,8 @@
 				</tbody>
 				{#if showMultiVisitFooter}
 					<tfoot>
-						<tr class="font-semibold">
-							<td colspan="2">
-								{msg.billing_scope_grand_total?.() ??
-									'Total (all visits)'}
-							</td>
-							<td class="text-right font-mono tabular-nums">
-								{formatMoneyAmount(context.openBillsGrandTotal)}
-							</td>
+						<tr>
+							<td colspan="3"></td>
 							<td class="text-right">
 								<WashButton
 									className={billingViewAll

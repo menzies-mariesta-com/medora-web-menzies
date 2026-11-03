@@ -1,12 +1,12 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as summary from '$lib/server/medora/clinical/discharge-summary.server';
+import { parseUuid } from '$lib/util/id.util';
 
-function visitId(value: unknown): number {
-	const id = Number(value);
-	if (!Number.isFinite(id) || id <= 0)
-		throw error(400, 'visitId is required');
-	return id;
+function requireVisitId(value: unknown): string {
+	const visitId = parseUuid(value);
+	if (!visitId) throw error(400, 'visitId is required');
+	return visitId;
 }
 
 export async function GET(event: RequestEvent) {
@@ -15,7 +15,7 @@ export async function GET(event: RequestEvent) {
 	return json(
 		await summary.getDischargeSummary({
 			hospitalId,
-			visitId: visitId(event.url.searchParams.get('visitId'))
+			visitId: requireVisitId(event.url.searchParams.get('visitId'))
 		})
 	);
 }
@@ -27,7 +27,7 @@ export async function POST(event: RequestEvent) {
 		string,
 		unknown
 	>;
-	const input = { hospitalId, visitId: visitId(body.visitId) };
+	const input = { hospitalId, visitId: requireVisitId(body.visitId) };
 	if (body.action === 'sign') {
 		return json(await summary.signDischargeSummary(event, input));
 	}

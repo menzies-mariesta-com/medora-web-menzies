@@ -3,7 +3,7 @@
 	import LucideStrikeThrough from '$lib/component/own/library/lucide/LucideStrikeThrough.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
-	import { BillingStatusTaggingEnum } from '$lib/model/enum/db-link';
+	import { BillingStatusTaggingEnum, VisitTypeEnum } from '$lib/model/enum/db-link';
 	import {
 		billingLineTotal,
 		type OpenBillVisitDetail
@@ -16,8 +16,6 @@
 	let {
 		hospitalId,
 		details = [],
-		grandTotalLabel,
-		openBillsGrandTotal,
 		currentVisitId = '',
 		embedded = false,
 		onSelectVisit,
@@ -25,17 +23,11 @@
 	}: {
 		hospitalId: string;
 		details: OpenBillVisitDetail[];
-		grandTotalLabel: string;
-		openBillsGrandTotal: string;
 		currentVisitId?: string;
 		embedded?: boolean;
 		onSelectVisit: (visitId: string) => void;
 		onOpenDiscount: (visitId: string) => void;
 	} = $props();
-
-	const combinedNetTotal = $derived(
-		details.reduce((sum, d) => sum + d.netTotal, 0)
-	);
 
 	function lineKey(line: OpenBillVisitDetail['groups'][0]['lines'][0]): string {
 		if (line.lineSource === 'billing_setup') {
@@ -165,6 +157,49 @@
 						</div>
 					</div>
 
+					{#if detail.row.visitTypeId === VisitTypeEnum.IPD && detail.advanceTotal > 0}
+						<div
+							class="mt-2 flex items-center justify-between gap-3 text-sm"
+						>
+							<span class="text-base-content/70"
+								>Advance deposit (collected)</span
+							>
+							<span class="font-mono tabular-nums"
+								>{formatMoneyAmount(detail.advanceTotal)}</span
+							>
+						</div>
+						<div
+							class="mt-1 flex items-center justify-between gap-3 text-sm"
+						>
+							<span class="text-base-content/70"
+								>Applied to bill</span
+							>
+							<span class="font-mono tabular-nums"
+								>− {formatMoneyAmount(detail.advanceCredit)}</span
+							>
+						</div>
+						{#if detail.advanceRefundDue > 0}
+							<div
+								class="mt-1 flex items-center justify-between gap-3 text-sm font-semibold text-success"
+							>
+								<span>Refund due</span>
+								<span class="font-mono tabular-nums"
+									>{formatMoneyAmount(
+										detail.advanceRefundDue
+									)}</span
+								>
+							</div>
+						{/if}
+						<div
+							class="mt-1 flex items-center justify-between gap-3 text-sm font-semibold"
+						>
+							<span>Balance due</span>
+							<span class="font-mono tabular-nums"
+								>{formatMoneyAmount(detail.payableAmount)}</span
+							>
+						</div>
+					{/if}
+
 					<div
 						class="mt-3 rounded-box divide-y divide-base-300 border border-base-300"
 					>
@@ -219,16 +254,5 @@
 				{/if}
 			</section>
 		{/each}
-	</div>
-
-	<div
-		class="mt-4 flex items-center justify-between gap-3 border-t border-base-300 pt-3 text-sm font-semibold"
-	>
-		<span>{grandTotalLabel}</span>
-		<span class="font-mono tabular-nums"
-			>{formatMoneyAmount(
-				embedded ? combinedNetTotal : openBillsGrandTotal
-			)}</span
-		>
 	</div>
 </div>

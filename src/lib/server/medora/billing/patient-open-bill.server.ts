@@ -3,6 +3,11 @@ import {
 	StatusEnum
 } from '$lib/model/enum/db-link';
 import type { PatientOpenBillRow } from '$lib/model/type/medora/billing-context.type';
+import { sumIpAdvanceDepositsForVisits } from '$lib/server/medora/billing/ip-advance-deposit.server';
+import {
+	ipPayableFromNetAndDeposit,
+	parseMoney
+} from '$lib/tool/billing/billing-visit-totals.util';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { and, eq, inArray, ne } from 'drizzle-orm';
@@ -143,6 +148,25 @@ export async function listPatientOpenBills(input: {
 		const nb = b.visitNo ?? '';
 		return na.localeCompare(nb) || a.visitId.localeCompare(b.visitId);
 	});
+
+	const ipVisitIds = rows
+		.filter((r) => r.billKind === 'ip')
+		.map((r) => r.visitId);
+	if (ipVisitIds.length > 0) {
+		const deposits = await sumIpAdvanceDepositsForVisits({
+			hospitalId: input.hospitalId,
+			visitIds: ipVisitIds
+		});
+		for (const row of rows) {
+			if (row.billKind !== 'ip') continue;
+			const net = parseMoney(row.draftTotal) ?? 0;
+			const deposit = deposits.get(row.visitId) ?? 0;
+			row.draftTotal = ipPayableFromNetAndDeposit(net, deposit).toFixed(
+				2
+			);
+		}
+	}
+
 	return rows;
 }
 

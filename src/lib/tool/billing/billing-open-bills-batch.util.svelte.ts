@@ -1,4 +1,3 @@
-import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.enum';
 import {
 	BillingStatusTaggingEnum,
 	VisitTypeEnum
@@ -7,16 +6,18 @@ import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant
 import type { PatientOpenBillRow } from '$lib/model/type/medora/billing-context.type';
 import type {
 	OpBillingLine,
-	OpBillingMeta,
 	OpBillingVisitLinesGetResponse,
 	OpBillingVisitSummary
 } from '$lib/model/type/medora/op-billing.type';
 import { formatBillingCategorySubCategoryHeading } from '$lib/util/billing-group-heading.util';
 import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
 import {
-	buildCombinedOpenBillsPrintBodyHtml,
-	buildOpBillingPrintBodyHtml
+	buildMultiVisitBillsPrintBodyHtml
 } from '$lib/util/op-billing-print-table.util';
+import {
+	billingLineTotal,
+	resolveVisitBillTotalsFromLinesResponse
+} from '$lib/tool/billing/billing-visit-totals.util';
 import { formatMoneyAmount } from '$lib/util/number-display.util';
 import { sanitizeUserFacingErrorText } from '$lib/util/user-facing-error.util';
 
@@ -37,6 +38,11 @@ export type OpenBillVisitDetail = {
 	discountValue: number;
 	netTotal: number;
 	hasDiscount: boolean;
+	advanceTotal: number;
+	advanceCredit: number;
+	advanceRefundDue: number;
+	balanceDue: number;
+	payableAmount: number;
 };
 
 export type BillingPrintLabels = {
@@ -58,16 +64,13 @@ export type BillingPrintLabels = {
 	thankYou: string;
 	opTitle: string;
 	ipTitle: string;
+	advanceDeposit: string;
+	appliedToBill: string;
+	refundDue: string;
+	balanceDue: string;
 };
 
-export function billingLineTotal(line: OpBillingLine): number {
-	const amount = Number(line.serviceAmount ?? 0) || 0;
-	const tax = Number(line.serviceTaxAmount ?? 0) || 0;
-	const discount = Number(line.discount ?? 0) || 0;
-	const unit =
-		line.serviceUnit && line.serviceUnit > 0 ? line.serviceUnit : 1;
-	return (amount + tax - discount) * unit;
-}
+export { billingLineTotal };
 
 export function groupBillingLines(
 	lines: OpBillingLine[],
@@ -102,61 +105,6 @@ export function groupBillingLines(
 	);
 }
 
-function totalsFromBilling(
-	groups: BillingLineGroup[],
-	billing: OpBillingMeta | null
-): {
-	grandTotal: number;
-	discountValue: number;
-	netTotal: number;
-	hasDiscount: boolean;
-} {
-	const grandTotal = groups.reduce((sum, g) => sum + g.subtotal, 0);
-	if (!billing || grandTotal <= 0) {
-		return {
-			grandTotal,
-			discountValue: 0,
-			netTotal: grandTotal,
-			hasDiscount: false
-		};
-	}
-	const typeId = billing.discountTypeId ?? BillingDiscountTypeEnum.NONE;
-	if (typeId === BillingDiscountTypeEnum.NONE) {
-		return {
-			grandTotal,
-			discountValue: 0,
-			netTotal: grandTotal,
-			hasDiscount: false
-		};
-	}
-	if (typeId === BillingDiscountTypeEnum.PERCENT) {
-		const pct = Math.min(
-			100,
-			Math.max(0, Number(billing.discountPercent ?? 0) || 0)
-		);
-		const discountValue = Math.min(
-			grandTotal,
-			(grandTotal * pct) / 100
-		);
-		return {
-			grandTotal,
-			discountValue,
-			netTotal: Math.max(0, grandTotal - discountValue),
-			hasDiscount: discountValue > 0
-		};
-	}
-	const discountValue = Math.min(
-		grandTotal,
-		Math.max(0, Number(billing.discountAmount ?? 0) || 0)
-	);
-	return {
-		grandTotal,
-		discountValue,
-		netTotal: Math.max(0, grandTotal - discountValue),
-		hasDiscount: discountValue > 0
-	};
-}
-
 function formatPrintDate(iso: string | null | undefined): string {
 	if (!iso) return '—';
 	try {
@@ -187,18 +135,43 @@ export async function fetchVisitLines(
 	return (await res.json()) as OpBillingVisitLinesGetResponse;
 }
 
+export function payableTotalForOpenBillDetail(
+	d: OpenBillVisitDetail
+): number {
+	return d.payableAmount;
+}
+
+export function sumPayableOpenBillDetails(
+	details: OpenBillVisitDetail[]
+): string {
+	let sum = 0;
+	for (const d of details) sum += d.payableAmount;
+	return sum.toFixed(2);
+}
+
 function detailFromRow(
 	row: PatientOpenBillRow,
 	data: OpBillingVisitLinesGetResponse,
 	otherGroupLabel: string
 ): OpenBillVisitDetail {
 	const groups = groupBillingLines(data.items ?? [], otherGroupLabel);
-	const totals = totalsFromBilling(groups, data.billing ?? null);
+	const totals = resolveVisitBillTotalsFromLinesResponse(
+		data,
+		row.visitTypeId ?? null
+	);
 	return {
 		row,
 		data,
 		groups,
-		...totals
+		grandTotal: totals.linesSubtotal,
+		discountValue: totals.discountValue,
+		netTotal: totals.netTotal,
+		hasDiscount: totals.hasDiscount,
+		advanceTotal: totals.advanceTotal,
+		advanceCredit: totals.advanceCredit,
+		advanceRefundDue: totals.advanceRefundDue,
+		balanceDue: totals.balanceDue,
+		payableAmount: totals.payableAmount
 	};
 }
 
@@ -308,21 +281,16 @@ export async function printAllOpenBillsCombined(input: {
 		return { error: 'No billable lines to print.' };
 	}
 
-	let combinedGrand = 0;
-	let combinedDiscount = 0;
-	let combinedNet = 0;
-
 	const visitSections = withLines.map((d) => {
-		combinedGrand += d.grandTotal;
-		combinedDiscount += d.discountValue;
-		combinedNet += d.netTotal;
+		const isIp = d.row.visitTypeId === VisitTypeEnum.IPD;
 		const visitLabel =
 			d.row.visitNo?.trim() ||
 			d.data.visit?.visitNo?.trim() ||
 			d.row.visitId.slice(0, 8);
 		const billRef = d.row.billNo ? ` · ${d.row.billNo}` : '';
+		const kindLabel = isIp ? input.labels.ipTitle : input.labels.opTitle;
 		return {
-			visitLabel: `${visitLabel} (${d.row.billKind.toUpperCase()}${billRef})`,
+			visitLabel: `${kindLabel} — ${visitLabel}${billRef}`,
 			groups: d.groups.map((g) => ({
 				subCategoryName: g.groupHeading,
 				lines: g.lines.map((line) => ({
@@ -335,17 +303,16 @@ export async function printAllOpenBillsCombined(input: {
 			grandTotal: d.grandTotal,
 			discountValue: d.discountValue,
 			netTotal: d.netTotal,
-			hasDiscount: d.hasDiscount
+			hasDiscount: d.hasDiscount,
+			advanceDepositCollected: isIp ? d.advanceTotal : undefined,
+			advanceAppliedToBill: isIp ? d.advanceCredit : undefined,
+			advanceRefundDue: isIp ? d.advanceRefundDue : undefined,
+			balanceDue: isIp ? d.payableAmount : undefined
 		};
 	});
 
-	const combinedHasDiscount = combinedDiscount > 0;
-	const bodyHtml = buildCombinedOpenBillsPrintBodyHtml({
+	const bodyHtml = buildMultiVisitBillsPrintBodyHtml({
 		visits: visitSections,
-		combinedGrandTotal: combinedGrand,
-		combinedDiscount,
-		combinedNetTotal: combinedNet,
-		combinedHasDiscount,
 		labels: {
 			service: input.labels.service,
 			order: input.labels.order,
@@ -354,7 +321,10 @@ export async function printAllOpenBillsCombined(input: {
 			grandTotal: input.labels.grandTotal,
 			discount: input.labels.discount,
 			netTotal: input.labels.netTotal,
-			allVisitsTotal: input.labels.allVisitsTotal
+			advanceDeposit: input.labels.advanceDeposit,
+			appliedToBill: input.labels.appliedToBill,
+			refundDue: input.labels.refundDue,
+			balanceDue: input.labels.balanceDue
 		},
 		formatMoney: formatMoneyAmount
 	});

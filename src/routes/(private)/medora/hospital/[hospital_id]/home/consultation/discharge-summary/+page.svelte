@@ -23,6 +23,7 @@
 		uploadPatientAttachmentPdf
 	} from '$lib/util/html-to-pdf.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { parseUuid } from '$lib/util/id.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import type { VisitLike } from '$lib/util/document-placeholder.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
@@ -31,9 +32,9 @@
 
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 	const visitId = $derived(
-		Number(
-			page.url.searchParams.get('visitId') ?? VisitState.visitId ?? 0
-		)
+		parseUuid(page.url.searchParams.get('visitId') ?? '') ??
+			parseUuid(String(VisitState.visitId ?? '')) ??
+			''
 	);
 
 	let summary = $state<DischargeSummaryRow | null>(null);
