@@ -295,6 +295,48 @@
       "when": 1792900000000,
       "tag": "0041_billing_advance_deposit_sibling_nav",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1793000000000,
+      "tag": "0042_billing_parent_page_nav",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793100000000,
+      "tag": "0043_billing_module_bill_and_advance_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1793200000000,
+      "tag": "0044_page_id_module_convention",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1793300000000,
+      "tag": "0045_billing_lineage_and_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1793400000000,
+      "tag": "0046_drop_ipd_admission_source_opd_visit",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793500000000,
+      "tag": "0047_hospital_billing_setting_audit_columns",
+      "breakpoints": true
     }
   ]
 }

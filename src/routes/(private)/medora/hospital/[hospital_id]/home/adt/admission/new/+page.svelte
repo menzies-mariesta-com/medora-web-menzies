@@ -209,10 +209,10 @@
 			orderLocked = true;
 			patientId = order.patientId;
 			orderingDoctorId = order.orderingDoctorId ?? null;
-			sourceOpdVisitId = String(order.sourceOpdVisitId);
+			sourceOpdVisitId = String(order.sourceVisitId);
 			sourceOpdVisits = [
 				{
-					visitId: order.sourceOpdVisitId,
+					visitId: order.sourceVisitId,
 					visitNo: order.sourceOpdVisitNo,
 					hasOpenOpBill: false
 				}
@@ -298,7 +298,7 @@
 					wardId: Number(wardId),
 					bedId: Number(bedId),
 					reasonNotes: reasonNotes.trim() || null,
-					sourceOpdVisitId: sourceOpdVisitId
+					sourceVisitId: sourceOpdVisitId
 						? sourceOpdVisitId
 						: null,
 					admissionOrderId,

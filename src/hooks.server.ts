@@ -26,10 +26,32 @@ import {
 	isDoctorApiReadOnlyViolation
 } from '$lib/server/medora/doctor-portal/doctor-api-read-only.server';
 
-const NOISE_404_PATHS = new Set(['/favicon.ico', '/robots.txt']);
+const NOISE_404_PATHS = new Set([
+	'/favicon.ico',
+	'/robots.txt',
+	'/json/version'
+]);
+
+/** Non-app URLs probed by IDEs, Docker, crawlers — answer without SvelteKit routing or error logs. */
+function probeResponseForPath(pathname: string): Response | null {
+	switch (pathname) {
+		case '/json/version':
+			return new Response(JSON.stringify({ ok: true, service: 'medora-web' }), {
+				status: 200,
+				headers: { 'content-type': 'application/json; charset=utf-8' }
+			});
+		default:
+			return null;
+	}
+}
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const pathname = event.url.pathname;
+
+	const probe = probeResponseForPath(pathname);
+	if (probe) {
+		return applySecurityHeaders(probe, event);
+	}
 
 	// The patient app is information-only: reject any write outside the
 	// account/infrastructure allowlist before authentication runs.

@@ -105,6 +105,61 @@ export function buildOpBillingPrintBodyHtml(opts: {
       </div>`;
 }
 
+export function buildCombinedOpenBillsPrintBodyHtml(opts: {
+	visits: Array<{
+		visitLabel: string;
+		groups: OpBillingPrintGroup[];
+		grandTotal: number;
+		discountValue: number;
+		netTotal: number;
+		hasDiscount: boolean;
+	}>;
+	combinedGrandTotal: number;
+	combinedDiscount: number;
+	combinedNetTotal: number;
+	combinedHasDiscount: boolean;
+	labels: OpBillingPrintLabels & { allVisitsTotal: string };
+	formatMoney: (amount: number) => string;
+}): string {
+	const visitSections = opts.visits
+		.map((v) => {
+			const inner = buildOpBillingPrintBodyHtml({
+				groups: v.groups,
+				grandTotal: v.grandTotal,
+				discountValue: v.discountValue,
+				netTotal: v.netTotal,
+				hasDiscount: v.hasDiscount,
+				labels: opts.labels,
+				formatMoney: opts.formatMoney
+			});
+			return `<div class="visit-block" style="page-break-inside: avoid; margin-bottom: 1.25rem;"><h2 class="visit-title" style="font-size: 1rem; margin: 0 0 0.5rem;">${escapeHtml(v.visitLabel)}</h2>${inner}</div>`;
+		})
+		.join('');
+
+	const allLabel = escapeHtml(opts.labels.allVisitsTotal);
+	if (opts.combinedHasDiscount) {
+		return `${visitSections}<div class="grand grand--stack grand--combined">
+        <div class="grand-row">
+          <span>${allLabel}</span>
+          <span class="grand-amt grand-amt--strike">${opts.formatMoney(opts.combinedGrandTotal)}</span>
+        </div>
+        <div class="grand-row">
+          <span>${escapeHtml(opts.labels.discount)}</span>
+          <span class="grand-disc">-${opts.formatMoney(opts.combinedDiscount)}</span>
+        </div>
+        <div class="grand-row grand-row--net">
+          <span>${escapeHtml(opts.labels.netTotal)}</span>
+          <span class="grand-amt">${opts.formatMoney(opts.combinedNetTotal)}</span>
+        </div>
+      </div>`;
+	}
+
+	return `${visitSections}<div class="grand grand--combined">
+        <span>${allLabel}</span>
+        <span class="grand-amt">${opts.formatMoney(opts.combinedNetTotal)}</span>
+      </div>`;
+}
+
 export type MedOrderReceiptPrintLine = {
 	itemName?: string | null;
 	qtyOut: string | number;

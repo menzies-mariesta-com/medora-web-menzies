@@ -27,6 +27,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { BedModalState } from '$lib/state/bed-modal.state.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -104,14 +105,17 @@
 			header: 'Base',
 			widthClass: 'w-24 min-w-[5rem]',
 			filterable: false,
-			format: (_v, row) => row.basePrice ?? '0'
+			format: (_v, row) => formatMoneyAmount(row.basePrice ?? 0)
 		},
 		{
 			id: 'dailyTariff',
 			header: 'Daily tariff',
 			widthClass: 'w-28 min-w-[6rem]',
 			filterable: false,
-			format: (_v, row) => row.dailyTariff ?? '—'
+			format: (_v, row) =>
+				row.dailyTariff != null && row.dailyTariff !== ''
+					? formatMoneyAmount(row.dailyTariff)
+					: '—'
 		},
 		{
 			id: 'bedStatus',

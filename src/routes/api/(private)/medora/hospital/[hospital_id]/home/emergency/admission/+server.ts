@@ -40,8 +40,8 @@ export async function POST(event: RequestEvent) {
 		const branchId = String(body.branchId ?? '').trim();
 		if (!patientId) throw error(400, 'patientId is required');
 		if (!branchId) throw error(400, 'branchId is required');
-		const sourceRaw = body.sourceOpdVisitId;
-		const sourceOpdVisitId =
+		const sourceRaw = body.sourceVisitId ?? body.sourceOpdVisitId;
+		const sourceVisitId =
 			sourceRaw != null && String(sourceRaw).trim() !== ''
 				? String(sourceRaw).trim()
 				: null;
@@ -66,7 +66,7 @@ export async function POST(event: RequestEvent) {
 						: null,
 				doctorId:
 					body.doctorId != null ? String(body.doctorId) : null,
-				sourceOpdVisitId,
+				sourceVisitId,
 				edTriageLevelId: Number.isFinite(edTriageLevelId as number)
 					? edTriageLevelId
 					: null,

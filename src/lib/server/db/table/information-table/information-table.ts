@@ -35,6 +35,7 @@ import {
 	YesNoEnum
 } from '../../../../model/enum/db-link';
 import { BillingDiscountTypeEnum } from '../../../../model/enum/billing-discount-type.enum';
+import { BillingVisitOpenModeEnum } from '../../../../model/enum/billing-visit-open-mode.enum';
 import { userTable } from '../auth-table/auth-table';
 import {
 	bloodTypeTable,
@@ -996,6 +997,11 @@ export const patientVisitTable = pgTable('patient_visit', {
 		withTimezone: true,
 		mode: 'string'
 	}),
+	/** Prior visit this encounter continues from (ADT/ED conversion, etc.). */
+	sourceVisitId: uuid('source_visit_id').references(
+		(): AnyPgColumn => patientVisitTable.id,
+		{ onDelete: 'set null' }
+	),
 	...timestamps
 });
 
@@ -1521,6 +1527,18 @@ export const billingSetupServiceTaggingTable = pgTable(
 		)
 	]
 );
+
+/** Per-hospital billing behavior (visit open vs bill closed). */
+export const hospitalBillingSettingTable = pgTable('hospital_billing_setting', {
+	hospitalId: uuid('hospital_id')
+		.primaryKey()
+		.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+	/** {@link BillingVisitOpenModeEnum} */
+	visitOpenMode: integer('visit_open_mode')
+		.notNull()
+		.default(BillingVisitOpenModeEnum.ONE_VISIT_ONE_BILL),
+	...timestamps
+});
 
 export const serviceOrderTable = pgTable('patient_service_order', {
 	id: serial('id').primaryKey(),
@@ -2075,13 +2093,6 @@ export const ipdAdmissionTable = pgTable(
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
 			}),
-		/**
-		 * OPD visit this admission was converted from (nullable for direct/walk-in IPD).
-		 */
-		sourceOpdVisitId: uuid('source_opd_visit_id').references(
-			() => patientVisitTable.id,
-			{ onDelete: 'set null' }
-		),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
@@ -2136,9 +2147,6 @@ export const ipdAdmissionTable = pgTable(
 	},
 	(table) => [
 		index('ipd_admission_visit_id_idx').on(table.visitId),
-		index('ipd_admission_source_opd_visit_id_idx').on(
-			table.sourceOpdVisitId
-		),
 		index('ipd_admission_hospital_id_idx').on(table.hospitalId),
 		index('ipd_admission_ward_id_idx').on(table.wardId),
 		index('ipd_admission_room_id_idx').on(table.roomId),
@@ -2879,7 +2887,7 @@ export const ipdAdmissionOrderTable = pgTable(
 			.references(() => hospitalBranchTable.id, {
 				onDelete: 'cascade'
 			}),
-		sourceOpdVisitId: uuid('source_opd_visit_id')
+		sourceVisitId: uuid('source_visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
@@ -2921,14 +2929,14 @@ export const ipdAdmissionOrderTable = pgTable(
 	(t) => [
 		index('ipd_admission_order_hospital_id_idx').on(t.hospitalId),
 		index('ipd_admission_order_patient_id_idx').on(t.patientId),
-		index('ipd_admission_order_source_opd_visit_id_idx').on(
-			t.sourceOpdVisitId
+		index('ipd_admission_order_source_visit_id_idx').on(
+			t.sourceVisitId
 		),
 		index('ipd_admission_order_status_tagging_id_idx').on(
 			t.statusTaggingId
 		),
-		uniqueIndex('ipd_admission_order_pending_source_opd_uidx')
-			.on(t.sourceOpdVisitId)
+		uniqueIndex('ipd_admission_order_pending_source_visit_uidx')
+			.on(t.sourceVisitId)
 			// Literal 68 = IpdAdmissionOrderStatusTaggingEnum.PENDING
 			.where(sql`${t.statusTaggingId} = 68`)
 	]

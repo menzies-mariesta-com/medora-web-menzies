@@ -40,10 +40,10 @@ import {
 	sql
 } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { assertDischargeSummarySigned } from '$lib/server/medora/clinical/discharge-summary.server';
+import { findActiveAdmissionForSourceVisit } from '$lib/server/medora/billing/visit-lineage.server';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 
-const sourceOpdVisit = alias(table.patientVisitTable, 'source_opd');
+const sourceVisit = alias(table.patientVisitTable, 'source_visit');
 
 type Tx = Parameters<
 	Parameters<ReturnType<typeof ensureDb>['transaction']>[0]
@@ -239,11 +239,12 @@ export async function admitVisitToIpd(
 		throw error(400, 'Bed does not belong to the selected ward');
 	}
 
-	const sourceOpdVisitIdRaw = payload.sourceOpdVisitId;
-	const sourceOpdVisitId =
-		typeof sourceOpdVisitIdRaw === 'string' &&
-		sourceOpdVisitIdRaw.trim() !== ''
-			? sourceOpdVisitIdRaw.trim()
+	const sourceVisitIdRaw =
+		payload.sourceVisitId ?? payload.sourceOpdVisitId;
+	const sourceVisitId =
+		typeof sourceVisitIdRaw === 'string' &&
+		sourceVisitIdRaw.trim() !== ''
+			? sourceVisitIdRaw.trim()
 			: null;
 
 	const orderIdRaw = payload.admissionOrderId;
@@ -254,28 +255,12 @@ export async function admitVisitToIpd(
 			? orderIdRaw
 			: null;
 
-	if (sourceOpdVisitId != null) {
-		const [alreadyLinked] = await db
-			.select({ id: table.ipdAdmissionTable.id })
-			.from(table.ipdAdmissionTable)
-			.where(
-				and(
-					eq(
-						table.ipdAdmissionTable.sourceOpdVisitId,
-						sourceOpdVisitId
-					),
-					eq(
-						table.ipdAdmissionTable.admissionStatus,
-						IpdAdmissionStatusEnum.ADMITTED
-					),
-					ne(table.ipdAdmissionTable.statusId, StatusEnum.DELETED)
-				)
-			)
-			.limit(1);
-		if (alreadyLinked) {
+	if (sourceVisitId != null) {
+		const linked = await findActiveAdmissionForSourceVisit(sourceVisitId, db);
+		if (linked) {
 			throw error(
 				400,
-				'This OPD visit is already linked to an active admission'
+				'This source visit is already linked to an active admission'
 			);
 		}
 	}
@@ -306,13 +291,13 @@ export async function admitVisitToIpd(
 			.limit(1);
 		admittingDoctorId = orderDoc?.orderingDoctorId ?? null;
 	}
-	if (!admittingDoctorId && sourceOpdVisitId != null) {
+	if (!admittingDoctorId && sourceVisitId != null) {
 		const [srcDoc] = await db
 			.select({ doctorId: table.patientVisitTable.doctorId })
 			.from(table.patientVisitTable)
 			.where(
 				and(
-					eq(table.patientVisitTable.id, sourceOpdVisitId),
+					eq(table.patientVisitTable.id, sourceVisitId),
 					eq(table.patientVisitTable.hospitalId, payload.hospitalId)
 				)
 			)
@@ -354,8 +339,8 @@ export async function admitVisitToIpd(
 					id: table.ipdAdmissionOrderTable.id,
 					statusTaggingId:
 						table.ipdAdmissionOrderTable.statusTaggingId,
-					sourceOpdVisitId:
-						table.ipdAdmissionOrderTable.sourceOpdVisitId,
+					sourceVisitId:
+						table.ipdAdmissionOrderTable.sourceVisitId,
 					patientId: table.ipdAdmissionOrderTable.patientId
 				})
 				.from(table.ipdAdmissionOrderTable)
@@ -384,10 +369,10 @@ export async function admitVisitToIpd(
 				throw error(400, 'Admission order patient mismatch');
 			}
 			if (
-				sourceOpdVisitId != null &&
-				order.sourceOpdVisitId !== sourceOpdVisitId
+				sourceVisitId != null &&
+				order.sourceVisitId !== sourceVisitId
 			) {
-				throw error(400, 'Admission order source OPD mismatch');
+				throw error(400, 'Admission order source visit mismatch');
 			}
 		}
 
@@ -400,9 +385,7 @@ export async function admitVisitToIpd(
 				patientId,
 				visitTypeId: VisitTypeEnum.IPD,
 				doctorId: admittingDoctorId,
-				...(sourceOpdVisitId != null
-					? { convertFromOpdVisitId: sourceOpdVisitId }
-					: {})
+				...(sourceVisitId != null ? { sourceVisitId } : {})
 			},
 			tx as unknown as ReturnType<typeof ensureDb>
 		);
@@ -420,8 +403,7 @@ export async function admitVisitToIpd(
 				admittingDoctorId,
 				reasonNotes: payload.reasonNotes ?? null,
 				admittedAt,
-				admissionStatus: IpdAdmissionStatusEnum.ADMITTED,
-				sourceOpdVisitId
+				admissionStatus: IpdAdmissionStatusEnum.ADMITTED
 			})
 			.returning();
 		if (!admission) throw new Error('Admission insert failed');
@@ -455,46 +437,6 @@ export async function admitVisitToIpd(
 					admissionId: admission.id
 				})
 				.where(eq(table.ipdAdmissionOrderTable.id, admissionOrderId));
-		}
-
-		if (sourceOpdVisitId != null) {
-			// Finish the source OPD encounter when nothing is left to settle.
-			// If an OP bill is still open, keep the visit open so billing can find
-			// it; the new-visit guard ignores converted OPD visits either way.
-			const [openOpBill] = await tx
-				.select({ id: table.opBillingTable.id })
-				.from(table.opBillingTable)
-				.where(
-					and(
-						eq(table.opBillingTable.visitId, sourceOpdVisitId),
-						eq(
-							table.opBillingTable.statusTaggingId,
-							BillingStatusTaggingEnum.OPEN
-						),
-						ne(table.opBillingTable.statusId, StatusEnum.DELETED)
-					)
-				)
-				.limit(1);
-			if (!openOpBill) {
-				await tx
-					.update(table.patientVisitTable)
-					.set({
-						statusTaggingId:
-							VisitStatusTaggingEnum.CLOSED_DISCHARGED
-					})
-					.where(
-						and(
-							eq(
-								table.patientVisitTable.id,
-								sourceOpdVisitId
-							),
-							ne(
-								table.patientVisitTable.statusTaggingId,
-								VisitStatusTaggingEnum.CLOSED_DISCHARGED
-							)
-						)
-					);
-			}
 		}
 
 		return admission;
@@ -816,8 +758,8 @@ export async function getIpdCensusPaginated(
 			admissionNo: table.ipdAdmissionTable.admissionNo,
 			visitId: table.ipdAdmissionTable.visitId,
 			visitNo: table.patientVisitTable.visitNo,
-			sourceOpdVisitId: table.ipdAdmissionTable.sourceOpdVisitId,
-			sourceOpdVisitNo: sourceOpdVisit.visitNo,
+			sourceVisitId: table.patientVisitTable.sourceVisitId,
+			sourceVisitNo: sourceVisit.visitNo,
 			patientId: table.patientTable.id,
 			patientCode: table.patientTable.code,
 			patientFirst: table.patientTable.firstName,
@@ -848,11 +790,8 @@ export async function getIpdCensusPaginated(
 			eq(table.ipdAdmissionTable.visitId, table.patientVisitTable.id)
 		)
 		.leftJoin(
-			sourceOpdVisit,
-			eq(
-				table.ipdAdmissionTable.sourceOpdVisitId,
-				sourceOpdVisit.id
-			)
+			sourceVisit,
+			eq(table.patientVisitTable.sourceVisitId, sourceVisit.id)
 		)
 		.innerJoin(
 			table.patientTable,
@@ -920,8 +859,8 @@ export async function getIpdCensusPaginated(
 		admissionNo: r.admissionNo,
 		visitId: r.visitId,
 		visitNo: r.visitNo,
-		sourceOpdVisitId: r.sourceOpdVisitId,
-		sourceOpdVisitNo: r.sourceOpdVisitNo,
+		sourceVisitId: r.sourceVisitId,
+		sourceVisitNo: r.sourceVisitNo,
 		patientId: r.patientId,
 		patientCode: r.patientCode,
 		patientName: [r.patientFirst, r.patientMiddle, r.patientLast]
