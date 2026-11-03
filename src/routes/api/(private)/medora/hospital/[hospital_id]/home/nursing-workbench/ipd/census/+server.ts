@@ -70,7 +70,9 @@ export async function POST(event: RequestEvent) {
 		if (!Number.isFinite(bedId) || bedId <= 0)
 			throw error(400, 'bedId is required');
 		if (!branchId) throw error(400, 'branchId is required');
-		const sourceOpdVisitId = parseUuid(body.sourceOpdVisitId);
+		const sourceVisitId = parseUuid(
+			body.sourceVisitId ?? body.sourceOpdVisitId
+		);
 		const admissionOrderId = Number(body.admissionOrderId);
 		return json(
 			await admission.admitVisitToIpd(event, {
@@ -81,7 +83,7 @@ export async function POST(event: RequestEvent) {
 				wardId: Number.isFinite(wardId as number) ? wardId : undefined,
 				admittingDoctorId: body.admittingDoctorId ?? null,
 				reasonNotes: body.reasonNotes ?? null,
-				sourceOpdVisitId: sourceOpdVisitId ?? null,
+				sourceVisitId: sourceVisitId ?? null,
 				admissionOrderId:
 					Number.isFinite(admissionOrderId) && admissionOrderId > 0
 						? admissionOrderId

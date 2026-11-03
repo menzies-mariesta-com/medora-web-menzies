@@ -9,6 +9,7 @@ import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { assertPatientCanOpenNewVisit } from '$lib/server/medora/patient-visit/assert-patient-can-open-new-visit.server';
+import { assertValidSourceVisit } from '$lib/server/medora/billing/visit-lineage.server';
 import { and, eq, sql } from 'drizzle-orm';
 
 /** Database or transaction executor (tx is cast to this shape by callers). */
@@ -127,8 +128,8 @@ type PatientVisitCreatePayload = Omit<
 > & {
 	branchId?: string | null;
 	hospitalId: string;
-	/** ADT OPD→IPD: allow this unfinished OPD visit + its open OP bill */
-	convertFromOpdVisitId?: string;
+	/** Continuation from a prior visit (ADT / ED conversion). */
+	sourceVisitId?: string;
 };
 
 /**
@@ -156,16 +157,32 @@ export async function createPatientVisitRecord(
 		throw error(400, 'Patient is required to create patient visit');
 	}
 
-	const { convertFromOpdVisitId, ...insertPayload } = payload;
+	const sourceVisitIdRaw =
+		typeof payload.sourceVisitId === 'string'
+			? payload.sourceVisitId.trim()
+			: '';
+	const sourceVisitId = sourceVisitIdRaw !== '' ? sourceVisitIdRaw : undefined;
 
 	await assertPatientCanOpenNewVisit(
 		{
 			hospitalId: payload.hospitalId,
-			patientId: payload.patientId,
-			convertFromOpdVisitId
+			patientId: payload.patientId
 		},
 		db
 	);
+
+	if (sourceVisitId != null) {
+		await assertValidSourceVisit(
+			{
+				hospitalId: payload.hospitalId,
+				patientId: payload.patientId,
+				sourceVisitId
+			},
+			db
+		);
+	}
+
+	const { sourceVisitId: _drop, ...insertPayload } = payload;
 
 	const visitNo = await getNextVisitNo(
 		{
@@ -184,7 +201,8 @@ export async function createPatientVisitRecord(
 		...insertPayload,
 		branchId,
 		visitNo,
-		statusTaggingId
+		statusTaggingId,
+		...(sourceVisitId != null ? { sourceVisitId } : {})
 	};
 
 	const [row] = await db

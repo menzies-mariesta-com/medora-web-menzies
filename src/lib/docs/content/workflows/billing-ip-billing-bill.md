@@ -3,7 +3,7 @@ title: "Bill"
 description: "Step-by-step guide for Bill in Billing."
 docType: workflow
 slug: workflows/billing-ip-billing-bill
-pageId: 150003
+pageId: 810001
 moduleId: 8
 pageUrl: "/medora/home/billing/ip-billing/bill"
 generated: false
