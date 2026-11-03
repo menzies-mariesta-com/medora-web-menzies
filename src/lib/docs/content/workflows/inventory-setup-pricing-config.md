@@ -5,7 +5,7 @@ docType: workflow
 slug: workflows/inventory-setup-pricing-config
 pageId: 43
 moduleId: 9
-pageUrl: "/medora/home/inventory-setup/pricing-config"
+pageUrl: "/medora/home/inventory-setup/pricing-configuration/config"
 generated: false
 captureStatus: complete
 capturedAt: "2026-10-18T04:26:57.914Z"

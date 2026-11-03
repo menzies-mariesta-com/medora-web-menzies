@@ -96,7 +96,6 @@
 	let overviewPageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 
 	let assignmentSectionEl = $state<HTMLElement | null>(null);
-	let showAssignmentPanel = $state(false);
 
 	const branchOptions = $derived(
 		branches.map((b) => ({ label: b.name, value: b.id }))
@@ -303,7 +302,6 @@
 	function configureFromOverview(row: ModulePricingAssignmentOverviewRow) {
 		branchId = row.branchId;
 		activeModule = row.module;
-		showAssignmentPanel = true;
 		assignmentSectionEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	}
 
@@ -360,23 +358,24 @@
 	}
 </script>
 
-<div class="flex flex-col gap-4 p-4">
-	<div>
-		<h1 class="text-xl font-semibold">{m.inv_pricing_config_title()}</h1>
-		{#if currentHospitalName}
-			<p class="mt-1 text-sm opacity-70">
-				{m.inv_pricing_assignment_filter_hospital()}: {currentHospitalName}
-			</p>
-		{/if}
-	</div>
+<div class="flex flex-col gap-6">
+	{#if currentHospitalName}
+		<p class="text-sm opacity-70">
+			{m.inv_pricing_assignment_filter_hospital()}: {currentHospitalName}
+		</p>
+	{/if}
 
-	<div
-		bind:this={assignmentSectionEl}
-		class:hidden={!showAssignmentPanel}
-		class="flex flex-col gap-4"
-	>
+	<div bind:this={assignmentSectionEl} class="flex flex-col gap-4">
 		<WashCard>
 			<WashCardBody className="flex flex-col gap-4">
+				<div class="space-y-1">
+					<h2 class="text-base font-semibold">
+						{m.inv_pricing_assignment_title()}
+					</h2>
+					<p class="text-sm opacity-70">
+						{m.inv_pricing_assignment_subtitle()}
+					</p>
+				</div>
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
@@ -443,12 +442,6 @@
 					</p>
 				{/if}
 
-				{#if !assignment}
-					<p class="text-sm text-warning">
-						{m.inv_pricing_assignment_unassigned_warning()}
-					</p>
-				{/if}
-
 				{#if selectedTemplate}
 					<div class="rounded-md border border-base-300 p-3 text-sm">
 						<p class="mb-2 font-medium">{m.inv_pricing_template_formula()}</p>
@@ -482,6 +475,8 @@
 
 	<div class={TableEnum.HEIGHT}>
 		<MenziesTable
+			title={m.inv_pricing_assignment_overview_title()}
+			description={m.inv_pricing_assignment_overview_subtitle()}
 			rows={overviewRowsForTable}
 					columns={overviewColumns}
 					isLoading={overviewLoading}

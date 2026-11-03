@@ -7,7 +7,6 @@ import type {
 import {
 	medoraHospitalPageUrl,
 } from '$lib/model/enum/routes.enum';
-import { isMedoraSectionIndexRedirectExempt } from '$lib/tool/medora/medora-section-index-redirect-exempt.util';
 
 export type PageTreeItem = MedoraPageRow & { children: PageTreeItem[] };
 
@@ -147,7 +146,6 @@ export function getSectionIndexRedirectTarget(
 	if (!hospitalId) return null;
 	const logicalPath = pathnameForPageMatch();
 	if (normPath(logicalPath) === normPath('/medora/home')) return null;
-	if (isMedoraSectionIndexRedirectExempt(logicalPath)) return null;
 	const subs = getSubPagesForPageUrl(logicalPath);
 	const first = subs[0];
 	if (!first?.pageUrl) return null;

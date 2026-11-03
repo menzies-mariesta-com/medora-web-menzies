@@ -64,10 +64,16 @@ function parsePages(text) {
 			sequenceNo: Number(m[6])
 		});
 	}
-	const extraBlocks = [
-		text.slice(text.indexOf('VALUES (530003,'), text.indexOf('seedLogger.info(\'Seeded: page\')')),
-		text.slice(text.indexOf('VALUES\n\t\t\t(810001,'), text.indexOf('INSERT INTO user_group_page'))
-	];
+	const extraBlocks = [];
+	const scBlock = text.indexOf('VALUES (530003,');
+	if (scBlock >= 0) {
+		extraBlocks.push(
+			text.slice(
+				scBlock,
+				text.indexOf("seedLogger.info('Seeded: page')")
+			)
+		);
+	}
 	for (const eb of extraBlocks) {
 		while ((m = re.exec(eb)) !== null) {
 			const parentId = m[4] === 'null' ? null : Number(m[4]);

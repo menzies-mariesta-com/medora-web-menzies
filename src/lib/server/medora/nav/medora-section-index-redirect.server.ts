@@ -3,7 +3,6 @@ import {
 	medoraHospitalPageUrl,
 	requestPathToDbPageUrl
 } from '$lib/model/enum/routes.enum';
-import { isMedoraSectionIndexRedirectExempt } from '$lib/tool/medora/medora-section-index-redirect-exempt.util';
 
 export type MedoraNavPageRow = {
 	id: number;
@@ -35,7 +34,6 @@ export function medoraSectionIndexRedirectTarget(
 		(p) => normPath(p.pageUrl) === normPath(dbPageUrl)
 	);
 	if (!indexPage) return null;
-	if (isMedoraSectionIndexRedirectExempt(indexPage.pageUrl)) return null;
 
 	const children = pages
 		.filter((p) => p.parentId === indexPage.id)
