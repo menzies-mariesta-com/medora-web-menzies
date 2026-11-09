@@ -301,6 +301,30 @@
 				/>
 			</div>
 			<div class="min-w-0 w-full">
+				<label class="label-ink mb-1 block text-sm" for="adt-room-name"
+					>Room name</label
+				>
+				<WashInputField
+					id="adt-room-name"
+					className="w-full"
+					bind:value={roomFilter}
+					inputPlaceholderText="Room name"
+					oninput={scheduleSearch}
+				/>
+			</div>
+			<div class="min-w-0 w-full">
+				<label class="label-ink mb-1 block text-sm" for="adt-bed-name"
+					>Bed name</label
+				>
+				<WashInputField
+					id="adt-bed-name"
+					className="w-full"
+					bind:value={bedFilter}
+					inputPlaceholderText="Bed name"
+					oninput={scheduleSearch}
+				/>
+			</div>
+			<div class="min-w-0 w-full">
 				<label class="label-ink mb-1 block text-sm" for="adt-bed-status"
 					>Status</label
 				>
@@ -333,30 +357,6 @@
 					className="w-full"
 					bind:value={visitFilter}
 					inputPlaceholderText="Visit name"
-					oninput={scheduleSearch}
-				/>
-			</div>
-			<div class="min-w-0 w-full">
-				<label class="label-ink mb-1 block text-sm" for="adt-bed-name"
-					>Bed name</label
-				>
-				<WashInputField
-					id="adt-bed-name"
-					className="w-full"
-					bind:value={bedFilter}
-					inputPlaceholderText="Bed name"
-					oninput={scheduleSearch}
-				/>
-			</div>
-			<div class="min-w-0 w-full">
-				<label class="label-ink mb-1 block text-sm" for="adt-room-name"
-					>Room name</label
-				>
-				<WashInputField
-					id="adt-room-name"
-					className="w-full"
-					bind:value={roomFilter}
-					inputPlaceholderText="Room name"
 					oninput={scheduleSearch}
 				/>
 			</div>
