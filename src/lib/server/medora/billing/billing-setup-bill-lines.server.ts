@@ -28,9 +28,29 @@ export type OpBillingPendingBillingSetupLineRow = {
 	serviceUnit: number | null;
 };
 
+export type OpBillingPendingAccommodationLineRow = {
+	lineSource: 'ipd_accommodation';
+	/** `ipd_bed_stay_segment.id` */
+	id: number;
+	medicationOrderLineId: null;
+	departmentConsumptionLineId: null;
+	serviceId: number;
+	serviceName: string | null;
+	subCategoryId: number | null;
+	subCategoryName: string | null;
+	categoryName: string | null;
+	orderNo: string | null;
+	discount: string | null;
+	serviceAmount: string | null;
+	serviceTaxAmount: string | null;
+	serviceUnit: number | null;
+	serviceUnitLabel?: string | null;
+};
+
 export type PendingBillLineRow =
 	| OpBillingPendingLineRow
-	| OpBillingPendingBillingSetupLineRow;
+	| OpBillingPendingBillingSetupLineRow
+	| OpBillingPendingAccommodationLineRow;
 
 export function isBillingSetupPendingLine(
 	row: PendingBillLineRow
@@ -51,7 +71,9 @@ export function dedupePendingBillRows(
 					? `med:${r.medicationOrderLineId}`
 					: r.lineSource === 'department_consumption_line'
 						? `dc:${r.departmentConsumptionLineId}`
-						: `svc:${r.id}`;
+						: r.lineSource === 'ipd_accommodation'
+							? `acc:${r.id}`
+							: `svc:${r.id}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
 		out.push(r);

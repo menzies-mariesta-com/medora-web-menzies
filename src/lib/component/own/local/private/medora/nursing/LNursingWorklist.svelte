@@ -23,14 +23,8 @@
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 	import { buildNursingChartUrl } from '$lib/tool/nursing/nursing-worklist.util';
-	import { m } from '$lib/paraglide/messages';
-
-	const msg = m as Record<string, (inputs?: object) => string>;
-
-	function tr(key: string, fallback: string): string {
-		const fn = msg[key];
-		return typeof fn === 'function' ? fn() : fallback;
-	}
+	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
+	import { paraglideMsg } from '$lib/util/paraglide-msg.util';
 
 	const DEFAULT_PAGE_SIZE = 20;
 
@@ -72,18 +66,6 @@
 		return (
 			visitStatusOptions.find((o) => o.value === status)?.label ?? '—'
 		);
-	}
-
-	function formatVisitDate(
-		value: string | Date | null | undefined
-	): string {
-		if (!value) return '—';
-		const date = new Date(value);
-		if (Number.isNaN(date.getTime())) return '—';
-		return date.toLocaleString('en-US', {
-			dateStyle: 'short',
-			timeStyle: 'short'
-		});
 	}
 
 	function getPatientAgeYears(
@@ -184,11 +166,10 @@
 			filterable: true,
 			format: (_value, row) =>
 				row.doctor
-					? StringUtil.fullNameWithTitle(
-							row.doctor.title?.name ?? null,
-							row.doctor.firstName,
-							row.doctor.middleName,
-							row.doctor.lastName
+					? StringUtil.doctorOptionDisplayName(
+							row.doctor as Parameters<
+								typeof StringUtil.doctorOptionDisplayName
+							>[0]
 						)
 					: '—'
 		},
@@ -204,7 +185,8 @@
 			header: 'Visit Date',
 			widthClass: 'w-44 min-w-[11rem]',
 			filterable: false,
-			format: (_value, row) => formatVisitDate(row.createdAt)
+			format: (_value, row) =>
+				formatMenziesTableDateTime(row.createdAt)
 		},
 		{
 			id: 'alert',
@@ -342,10 +324,10 @@
 	>
 		<div class="min-w-0">
 			<h1 class="text-lg font-bold text-primary">
-				{tr('nursing_worklist_title', 'Nursing')}
+				{paraglideMsg('nursing_worklist_title', 'Nursing')}
 			</h1>
 			<p class="text-sm opacity-70">
-				{tr(
+				{paraglideMsg(
 					'nursing_worklist_intro',
 					'Active OPD, IPD and ED patients. Open a patient to chart in the shared nursing chart.'
 				)}
@@ -359,31 +341,31 @@
 						'nursing-workbench/patient-visit-history-dashboard'
 					)}
 			>
-				{tr('nursing_worklist_open_opd', 'Visit history')}
+				{paraglideMsg('nursing_worklist_open_opd', 'Visit history')}
 			</WashButton>
 			<WashButton
 				className="btn-sm btn-outline cursor-pointer"
 				onClick={() => openPath('nursing-workbench/census')}
 			>
-				{tr('nursing_worklist_open_ipd', 'Census')}
+				{paraglideMsg('nursing_worklist_open_ipd', 'Census')}
 			</WashButton>
 			<WashButton
 				className="btn-sm btn-outline cursor-pointer"
 				onClick={() => openPath('nursing-workbench/track-board')}
 			>
-				{tr('nursing_worklist_open_ed', 'Track board')}
+				{paraglideMsg('nursing_worklist_open_ed', 'Track board')}
 			</WashButton>
 			<WashButton
 				className="btn-sm btn-ghost cursor-pointer"
 				onClick={() => openPath('nursing-workbench/emar')}
 			>
-				{tr('nursing_worklist_open_emar', 'eMAR')}
+				{paraglideMsg('nursing_worklist_open_emar', 'eMAR')}
 			</WashButton>
 			<WashButton
 				className="btn-sm btn-ghost cursor-pointer"
 				onClick={() => openPath('nursing-workbench/care-plan')}
 			>
-				{tr('nursing_worklist_open_care_plan', 'Care plans')}
+				{paraglideMsg('nursing_worklist_open_care_plan', 'Care plans')}
 			</WashButton>
 		</div>
 	</div>
@@ -394,7 +376,7 @@
 
 	<div class={TableEnum.HEIGHT}>
 		<MenziesTable
-			title={tr('nursing_worklist_table_title', 'Patient worklist')}
+			title={paraglideMsg('nursing_worklist_table_title', 'Patient worklist')}
 			rows={visits}
 			{columns}
 			masterFilterHospitalId={hospitalId || undefined}

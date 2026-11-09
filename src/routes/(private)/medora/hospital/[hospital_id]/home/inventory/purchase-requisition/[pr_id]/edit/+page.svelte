@@ -18,18 +18,20 @@
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
-	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { InvPrStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import type { PrLineMetricsResponse } from '$lib/model/type/medora/pr-line-metrics.type';
+	import { hydrateInventoryLineItemMeta } from '$lib/tool/inventory/hydrate-inventory-line-item-meta.util';
+	import { searchItemMasterOptions } from '$lib/tool/inventory/item-master-search-select.util';
 	import {
 		tilesFromPrItemMetricsRow,
 		type LineItemMetricTile
 	} from '$lib/tool/inventory/line-item-metric-tiles.util';
 	import { formatPurchaseQtyCellWithIssueEquivalent } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
-const hospitalId = $derived(
+
+	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
 			? page.params.hospital_id
 			: ''
@@ -151,17 +153,7 @@ const hospitalId = $derived(
 	}
 
 	async function searchItemsForPrLine(q: string) {
-		const qEnc = encodeURIComponent(q.trim());
-		const res = await fetch(
-			`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?name=${qEnc}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`
-		);
-		const j = await res.json();
-		return (j.data ?? []).map(
-			(x: { itemName?: string | null; id: number }) => ({
-				label: x.itemName ?? '—',
-				value: String(x.id)
-			})
-		);
+		return searchItemMasterOptions(hospitalId, q);
 	}
 
 	function newLine(): PrLineForm {
@@ -375,34 +367,17 @@ const hospitalId = $derived(
 		line: PrLineForm,
 		itemId: number
 	) {
-		if (!hospitalId) return;
+		const meta = await hydrateInventoryLineItemMeta<IumOpt>({
+			hospitalId,
+			itemId,
+			iumMode: 'allAllowed'
+		});
+		if (!meta) return;
 		line.itemId = itemId;
-		const [detailRes, iumRes] = await Promise.all([
-			fetch(
-				`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?id=${itemId}`,
-				{ method: 'GET' }
-			),
-			fetch(
-				`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?mode=itemUnitMasters`,
-				{ method: 'GET' }
-			)
-		]);
-		const detail = (await detailRes.json()) as {
-			itemName?: string | null;
-			itemUnitMasterIds?: number[];
-			defaultItemUnitMasterId?: number | null;
-		};
-		const itemLabel = detail.itemName ?? '—';
-		line.itemLabel = itemLabel;
-		line.itemSearch = itemLabel;
-		const allIum = (await iumRes.json()) as IumOpt[];
-		const allowed = new Set(detail.itemUnitMasterIds ?? []);
-		line.iumList = allIum.filter((u) => allowed.has(u.id));
-		const def = detail.defaultItemUnitMasterId;
-		line.itemUnitMasterId =
-			def != null && line.iumList.some((u) => u.id === def)
-				? def
-				: (line.iumList[0]?.id ?? null);
+		line.itemLabel = meta.itemLabel;
+		line.itemSearch = meta.itemLabel;
+		line.iumList = meta.iumList;
+		line.itemUnitMasterId = meta.itemUnitMasterId;
 	}
 
 	async function hydrateLineFromPrDetail(

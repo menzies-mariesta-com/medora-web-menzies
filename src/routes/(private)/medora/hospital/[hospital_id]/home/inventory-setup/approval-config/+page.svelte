@@ -227,13 +227,15 @@
 				return (data.data ?? []).map(
 					(s: {
 						id: string;
+						title?: { name?: string | null } | null;
 						firstName?: string | null;
 						middleName?: string | null;
 						lastName?: string | null;
 						code?: string | null;
 					}) => {
 						const name =
-							StringUtil.fullName(
+							StringUtil.fullNameWithTitle(
+								s.title?.name ?? null,
 								s.firstName,
 								s.middleName,
 								s.lastName

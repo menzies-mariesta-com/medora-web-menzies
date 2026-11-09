@@ -22,6 +22,7 @@ export type StockAlertRecipientDto = {
 	storeId: number;
 	storeName: string | null;
 	staffId: string;
+	titleName: string | null;
 	firstName: string | null;
 	middleName: string | null;
 	lastName: string | null;
@@ -163,7 +164,8 @@ async function listStockAlertRecipientsDb(
 			firstName: table.staffTable.firstName,
 			middleName: table.staffTable.middleName,
 			lastName: table.staffTable.lastName,
-			code: table.staffTable.code
+			code: table.staffTable.code,
+			titleName: table.titleTable.name
 		})
 		.from(table.invStockAlertRecipientTable)
 		.innerJoin(
@@ -179,6 +181,10 @@ async function listStockAlertRecipientsDb(
 				table.invStockAlertRecipientTable.staffId,
 				table.staffTable.id
 			)
+		)
+		.leftJoin(
+			table.titleTable,
+			eq(table.staffTable.titleId, table.titleTable.id)
 		)
 		.where(
 			and(
@@ -200,6 +206,7 @@ async function listStockAlertRecipientsDb(
 		firstName: r.firstName,
 		middleName: r.middleName,
 		lastName: r.lastName,
+		titleName: r.titleName,
 		code: r.code,
 		notifyLowStock: r.notifyLowStock,
 		notifyExpired: r.notifyExpired,

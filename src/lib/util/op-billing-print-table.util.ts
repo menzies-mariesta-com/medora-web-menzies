@@ -1,3 +1,10 @@
+import type { OpBillingLine } from '$lib/model/type/medora/op-billing.type';
+import {
+	billingLineQty,
+	billingLineTotal,
+	billingLineUnitPrice
+} from '$lib/tool/billing/billing-visit-totals.util';
+
 function escapeHtml(text: string): string {
 	return text
 		.replace(/&/g, '&amp;')
@@ -9,6 +16,9 @@ function escapeHtml(text: string): string {
 export type OpBillingPrintLine = {
 	serviceName?: string | null;
 	orderNo?: string | null;
+	qty?: number;
+	unitLabel?: string | null;
+	unitPrice?: number;
 	lineTotal: number;
 };
 
@@ -21,6 +31,9 @@ export type OpBillingPrintGroup = {
 export type OpBillingPrintLabels = {
 	service: string;
 	order: string;
+	qty: string;
+	unit: string;
+	unitPrice: string;
 	amount: string;
 	subtotal: string;
 	grandTotal: string;
@@ -31,6 +44,45 @@ export type OpBillingPrintLabels = {
 	refundDue?: string;
 	balanceDue?: string;
 };
+
+export function opBillingLineToPrintLine(line: OpBillingLine): OpBillingPrintLine {
+	return {
+		serviceName: line.serviceName,
+		orderNo: line.orderNo,
+		qty: billingLineQty(line),
+		unitLabel: line.serviceUnitLabel,
+		unitPrice: billingLineUnitPrice(line),
+		lineTotal: billingLineTotal(line)
+	};
+}
+
+/** Shared by the bill UI table and the print table so every line row uses the same columns. */
+export const BILLING_LINE_COLUMN_WIDTH = {
+	service: '40%',
+	qty: '12%',
+	unit: '16%',
+	unitPrice: '16%',
+	amount: '16%'
+} as const;
+
+function billingLineColgroupHtml(): string {
+	const w = BILLING_LINE_COLUMN_WIDTH;
+	return `<colgroup>
+            <col style="width:${w.service}" />
+            <col style="width:${w.qty}" />
+            <col style="width:${w.unit}" />
+            <col style="width:${w.unitPrice}" />
+            <col style="width:${w.amount}" />
+          </colgroup>`;
+}
+
+function serviceCellHtml(line: OpBillingPrintLine, orderLabel: string): string {
+	const name = escapeHtml(line.serviceName ?? 'Service');
+	const order = line.orderNo?.trim()
+		? `<div class="ord-sub">${escapeHtml(orderLabel)}: ${escapeHtml(line.orderNo)}</div>`
+		: '';
+	return `<div class="svc-name">${name}</div>${order}`;
+}
 
 function depositFooterHtml(opts: {
 	advanceCollected: number;
@@ -90,15 +142,18 @@ export function buildOpBillingPrintBodyHtml(opts: {
 	labels: OpBillingPrintLabels;
 	formatMoney: (amount: number) => string;
 }): string {
+	const orderLabel = opts.labels.order;
 	const rowsHtml = opts.groups
 		.map((g) => {
 			const lineRows = g.lines
 				.map(
 					(line) => `
           <tr>
-            <td class="svc">${escapeHtml(line.serviceName ?? 'Service')}</td>
-            <td class="ord">${escapeHtml(line.orderNo ?? '—')}</td>
-            <td class="amt">${opts.formatMoney(line.lineTotal)}</td>
+            <td class="svc">${serviceCellHtml(line, orderLabel)}</td>
+            <td class="qty num">${escapeHtml(String(line.qty ?? 1))}</td>
+            <td class="unit">${escapeHtml(line.unitLabel?.trim() || '—')}</td>
+            <td class="unit-pr num">${opts.formatMoney(line.unitPrice ?? 0)}</td>
+            <td class="amt num">${opts.formatMoney(line.lineTotal)}</td>
           </tr>`
 				)
 				.join('');
@@ -106,11 +161,14 @@ export function buildOpBillingPrintBodyHtml(opts: {
 			return `
         <section class="cat-block">
           <h3 class="cat-title">${escapeHtml(g.subCategoryName)}</h3>
-          <table class="line-table">
+          <table class="line-table billing-line-table">
+            ${billingLineColgroupHtml()}
             <thead>
               <tr>
                 <th>${escapeHtml(opts.labels.service)}</th>
-                <th>${escapeHtml(opts.labels.order)}</th>
+                <th class="num">${escapeHtml(opts.labels.qty)}</th>
+                <th>${escapeHtml(opts.labels.unit)}</th>
+                <th class="num">${escapeHtml(opts.labels.unitPrice)}</th>
                 <th class="num">${escapeHtml(opts.labels.amount)}</th>
               </tr>
             </thead>
@@ -119,7 +177,7 @@ export function buildOpBillingPrintBodyHtml(opts: {
             </tbody>
             <tfoot>
               <tr class="subtotal-row">
-                <td colspan="2">${escapeHtml(opts.labels.subtotal)}</td>
+                <td colspan="4">${escapeHtml(opts.labels.subtotal)}</td>
                 <td class="num">${opts.formatMoney(g.subtotal)}</td>
               </tr>
             </tfoot>

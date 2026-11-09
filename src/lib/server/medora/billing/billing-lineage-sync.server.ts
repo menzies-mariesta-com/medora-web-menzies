@@ -2,8 +2,8 @@ import { StatusEnum, VisitTypeEnum } from '$lib/model/enum/db-link';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { listSourceLinkedVisitIds } from '$lib/server/medora/billing/visit-lineage.server';
-import { syncOpenIpBillingForVisit } from '../../../../routes/api/(private)/medora/hospital/[hospital_id]/home/billing/ip-billing/visit-lines/+server.ts';
-import { syncOpenOpBillingForVisit } from '../../../../routes/api/(private)/medora/hospital/[hospital_id]/home/billing/op-billing/visit-lines/+server.ts';
+import { _syncOpenIpBillingForVisit } from '../../../../routes/api/(private)/medora/hospital/[hospital_id]/home/billing/ip-billing/visit-lines/+server.ts';
+import { _syncOpenOpBillingForVisit } from '../../../../routes/api/(private)/medora/hospital/[hospital_id]/home/billing/op-billing/visit-lines/+server.ts';
 import { and, eq, ne } from 'drizzle-orm';
 
 /** Materialize open draft bills for every visit in the source-visit chain. */
@@ -48,9 +48,9 @@ export async function syncSourceLinkedOpenBills(input: {
 		};
 
 		if (row.visitTypeId === VisitTypeEnum.IPD) {
-			await syncOpenIpBillingForVisit(syncOpts);
+			await _syncOpenIpBillingForVisit(syncOpts);
 		} else {
-			await syncOpenOpBillingForVisit(syncOpts);
+			await _syncOpenOpBillingForVisit(syncOpts);
 		}
 	}
 }

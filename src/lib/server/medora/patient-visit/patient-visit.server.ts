@@ -118,7 +118,7 @@ async function getNextVisitNo(
 		hospitalId,
 		branchId,
 		financialYearId: financialYear.id,
-		prefixKey: PREFIX_PURPOSE_STORAGE.ADMISSION_NO,
+		prefixKey: PREFIX_PURPOSE_STORAGE.VISIT_NO,
 		context: { visitTypeId }
 	});
 }

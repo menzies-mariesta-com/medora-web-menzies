@@ -26,6 +26,7 @@
 	import { parseUuid } from '$lib/util/id.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import type { VisitLike } from '$lib/util/document-placeholder.util';
+	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
@@ -75,6 +76,7 @@
 	const printByName = $derived.by(() => {
 		const s = page.data?.staff as
 			| {
+					title?: { name?: string | null } | null;
 					firstName?: string | null;
 					middleName?: string | null;
 					lastName?: string | null;
@@ -82,10 +84,12 @@
 			| null
 			| undefined;
 		if (s) {
-			const name = [s.firstName, s.middleName, s.lastName]
-				.filter((x) => Boolean(x && String(x).trim()))
-				.join(' ')
-				.trim();
+			const name = StringUtil.fullNameWithTitle(
+				s.title?.name ?? null,
+				s.firstName,
+				s.middleName,
+				s.lastName
+			).trim();
 			if (name) return name;
 		}
 		const u = page.data?.user as
@@ -112,18 +116,6 @@
 	function formatText(value: string | null | undefined): string {
 		if (value == null || value === '') return '-';
 		return String(value);
-	}
-
-	function formatDateTime(value: string | null | undefined): string {
-		if (!value) return '-';
-		try {
-			return new Date(value).toLocaleString('en-US', {
-				dateStyle: 'short',
-				timeStyle: 'short'
-			});
-		} catch {
-			return '-';
-		}
 	}
 
 	async function request(
@@ -204,10 +196,7 @@
 			redFlags
 		});
 
-		const printedAt = new Date().toLocaleString('en-US', {
-			dateStyle: 'short',
-			timeStyle: 'short'
-		});
+		const printedAt = formatMenziesTableDateTime(new Date(), '-');
 
 		return {
 			visit,
@@ -547,9 +536,10 @@
 						<div>
 							<dt>{m.visit_history_visit_label_visit_date()}</dt>
 							<dd
-								>{formatDateTime(
+								>{formatMenziesTableDateTime(
 									(visitRow as { createdAt?: string | null })
-										.createdAt ?? null
+										.createdAt ?? null,
+									'-'
 								)}</dd
 							>
 						</div>
@@ -611,10 +601,7 @@
 
 			<footer class="discharge-footer">
 				{msg.mo_clinical_discharge_generated()}:
-				{new Date().toLocaleString('en-US', {
-					dateStyle: 'short',
-					timeStyle: 'short'
-				})}
+				{formatMenziesTableDateTime(new Date(), '-')}
 			</footer>
 		</article>
 	{/if}

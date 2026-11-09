@@ -205,7 +205,9 @@
 							<div
 								class="flex w-full items-start gap-1 rounded-lg p-0 {selected
 									? 'bg-primary/15'
-									: ''}"
+									: (row as any)._source
+										? 'bg-warning/10'
+										: ''}"
 							>
 								<button
 									type="button"
@@ -425,7 +427,9 @@
 							<div
 								class="flex w-full items-start gap-1 rounded-lg p-0 {selected
 									? 'bg-primary/15'
-									: ''}"
+									: (row as any)._source
+										? 'bg-warning/10'
+										: ''}"
 							>
 								<button
 									type="button"

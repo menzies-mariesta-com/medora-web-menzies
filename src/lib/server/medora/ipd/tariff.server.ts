@@ -3,8 +3,9 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { BedTariffContext } from '$lib/model/type/medora/ipd/ipd.type';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
+import { getTimelineUnitMeta } from '$lib/server/medora/administration/timeline-unit.server';
 
 function money(value: string | number | null | undefined): string {
 	return toDbMoney2dp(value ?? 0);
@@ -19,10 +20,10 @@ function sumMoney(...parts: Array<string | number | null | undefined>): string {
 }
 
 /**
- * Daily tariff from bed base with sequential % markups:
+ * Marked-up price for one base-price unit:
  * base × (1 + roomMarkup%/100) × (1 + wardMarkup%/100)
  */
-export function computeDailyTariff(input: {
+export function computeMarkedUpUnitPrice(input: {
 	bedBasePrice: string | number | null | undefined;
 	roomMarkupPercent: string | number | null | undefined;
 	wardMarkupPercent: string | number | null | undefined;
@@ -38,7 +39,47 @@ export function computeDailyTariff(input: {
 	return money(base * roomFactor * wardFactor);
 }
 
-/** Resolve bed → room → ward and compute daily tariff with % markups. */
+/** @deprecated use computeMarkedUpUnitPrice */
+export function computeDailyTariff(input: {
+	bedBasePrice: string | number | null | undefined;
+	roomMarkupPercent: string | number | null | undefined;
+	wardMarkupPercent: string | number | null | undefined;
+}): string {
+	return computeMarkedUpUnitPrice(input);
+}
+
+/** Calendar-day rate from base price per unit and timeline duration (days). */
+export function computeDailyRate(input: {
+	bedBasePrice: string | number | null | undefined;
+	roomMarkupPercent: string | number | null | undefined;
+	wardMarkupPercent: string | number | null | undefined;
+	timelineDurationDays: number;
+}): string {
+	const unitPrice = computeMarkedUpUnitPrice(input);
+	const duration =
+		input.timelineDurationDays > 0 ? input.timelineDurationDays : 1;
+	return money(Number(unitPrice) / duration);
+}
+
+/** SQL: marked-up base unit price ÷ timeline duration → daily rate. */
+export function bedDailyRateSql(input: {
+	basePrice: typeof table.bedTable.basePrice;
+	roomMarkup: typeof table.roomCategoryTable.roomMarkup;
+	wardMarkup: typeof table.wardCategoryTable.wardMarkup;
+	unitDurationDays: typeof table.unitTable.timelineDurationDays;
+}) {
+	return sql<string>`(
+		coalesce(${input.basePrice}, 0)
+		* (1 + coalesce(${input.roomMarkup}, 0) / 100.0)
+		* (1 + coalesce(${input.wardMarkup}, 0) / 100.0)
+		/ nullif(
+			coalesce(nullif(${input.unitDurationDays}, 0), 1),
+			0
+		)
+	)::text`;
+}
+
+/** Resolve bed → room → ward; daily rate = marked-up base unit price ÷ unit duration. */
 export async function resolveBedTariffContext(input: {
 	hospitalId: string;
 	bedId: number;
@@ -48,6 +89,7 @@ export async function resolveBedTariffContext(input: {
 			bedId: table.bedTable.id,
 			bedName: table.bedTable.name,
 			bedBasePrice: table.bedTable.basePrice,
+			basePriceUnitId: table.bedTable.basePriceUnitId,
 			bedStatusId: table.bedTable.statusId,
 			roomId: table.roomTable.id,
 			roomName: table.roomTable.name,
@@ -109,6 +151,7 @@ export async function resolveBedTariffContext(input: {
 	const bedBasePrice = money(row.bedBasePrice);
 	const roomMarkup = money(row.roomMarkup);
 	const wardMarkup = money(row.wardMarkup);
+	const billingMeta = await getTimelineUnitMeta(row.basePriceUnitId);
 
 	return {
 		bedId: row.bedId,
@@ -121,11 +164,15 @@ export async function resolveBedTariffContext(input: {
 		bedBasePrice,
 		roomMarkup,
 		wardMarkup,
-		dailyTariff: computeDailyTariff({
+		dailyTariff: computeDailyRate({
 			bedBasePrice,
 			roomMarkupPercent: roomMarkup,
-			wardMarkupPercent: wardMarkup
-		})
+			wardMarkupPercent: wardMarkup,
+			timelineDurationDays: billingMeta.durationDays
+		}),
+		basePriceUnitId: billingMeta.id,
+		basePriceUnitName: billingMeta.name,
+		timelineDurationDays: billingMeta.durationDays
 	};
 }
 

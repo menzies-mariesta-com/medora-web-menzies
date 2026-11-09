@@ -230,11 +230,15 @@ function buildSoftDeleteSet(
 	return setValues;
 }
 
-/** Draft bill sync replaces lines via DELETE+INSERT; must not soft-delete tombstones. */
+/** Replace-via-DELETE+INSERT tables; must not soft-delete tombstones. */
 function usesHardDeleteForTable(tableDef: TableLike): boolean {
 	return (
 		tableDef === schema.opBillingLineTable ||
-		tableDef === schema.ipBillingLineTable
+		tableDef === schema.ipBillingLineTable ||
+		tableDef === schema.medicationOrderLineTable ||
+		tableDef === schema.medicationOrderLineAllocationTable ||
+		tableDef === schema.purchaseRequisitionLineTable ||
+		tableDef === schema.clinicalOrderSetLineTable
 	);
 }
 

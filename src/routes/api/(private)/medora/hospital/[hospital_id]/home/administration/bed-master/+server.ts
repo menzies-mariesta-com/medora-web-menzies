@@ -118,6 +118,13 @@ export async function POST(event: RequestEvent) {
 		throw error(400, 'Room is required');
 	const name = String(body.name ?? '').trim();
 	if (!name) throw error(400, 'Bed name is required');
+	const basePriceUnitIdRaw = body.basePriceUnitId;
+	const basePriceUnitId =
+		basePriceUnitIdRaw === undefined
+			? undefined
+			: basePriceUnitIdRaw === null || basePriceUnitIdRaw === ''
+				? null
+				: Number(basePriceUnitIdRaw);
 	return json(
 		await bed.createBed({
 			hospitalId,
@@ -125,6 +132,13 @@ export async function POST(event: RequestEvent) {
 			name,
 			code: body.code ? String(body.code).trim() : null,
 			basePrice: String(body.basePrice ?? '0'),
+			basePriceUnitId:
+				basePriceUnitId !== undefined &&
+				Number.isFinite(basePriceUnitId as number)
+					? (basePriceUnitId as number)
+					: basePriceUnitId === null
+						? null
+						: undefined,
 			bedStatus:
 				typeof body.bedStatus === 'number'
 					? body.bedStatus
@@ -144,6 +158,13 @@ export async function PUT(event: RequestEvent) {
 	const id = Number(body.id);
 	if (!Number.isFinite(id) || id <= 0)
 		throw error(400, 'id is required');
+	const basePriceUnitIdRaw = body.basePriceUnitId;
+	const basePriceUnitId =
+		basePriceUnitIdRaw === undefined
+			? undefined
+			: basePriceUnitIdRaw === null || basePriceUnitIdRaw === ''
+				? null
+				: Number(basePriceUnitIdRaw);
 	return json(
 		await bed.updateBed({
 			id,
@@ -161,6 +182,14 @@ export async function PUT(event: RequestEvent) {
 				body.basePrice !== undefined
 					? String(body.basePrice)
 					: undefined,
+			basePriceUnitId:
+				basePriceUnitId === undefined
+					? undefined
+					: basePriceUnitId === null
+						? null
+						: Number.isFinite(basePriceUnitId as number)
+							? (basePriceUnitId as number)
+							: undefined,
 			bedStatus:
 				body.bedStatus !== undefined
 					? Number(body.bedStatus)

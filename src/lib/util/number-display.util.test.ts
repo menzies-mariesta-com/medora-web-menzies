@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	decimalInputStringFromScale,
 	formatMoneyAmount,
 	formatNumberDisplay,
 	moneyInputStringFromDecimal,
@@ -24,5 +25,10 @@ describe('number-display money decimals', () => {
 		expect(moneyInputStringFromDecimal('10.50000000000000000000')).toBe(
 			'10.5'
 		);
+	});
+
+	it('trims scale-4 policy decimals for inputs', () => {
+		expect(decimalInputStringFromScale('8.0000', 4)).toBe('8');
+		expect(decimalInputStringFromScale('8.2500', 4)).toBe('8.25');
 	});
 });

@@ -63,13 +63,21 @@ export function toFixedDecimalString(
 	return (Math.round(n * 10 ** scale) / 10 ** scale).toFixed(scale);
 }
 
+/** Round to `scale` then strip trailing zeros for form inputs (8.0000 → 8). */
+export function decimalInputStringFromScale(
+	value: NumberDisplayInput,
+	scale: number
+): string {
+	const fixed = toFixedDecimalString(value, scale);
+	if (fixed == null) return '';
+	return fixed.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.0+$/, '');
+}
+
 /** Money fields for inputs (strips trailing zeros after rounding to 2 dp). */
 export function moneyInputStringFromDecimal(
 	value: NumberDisplayInput
 ): string {
-	const fixed = toFixedDecimalString(value, 2);
-	if (fixed == null) return '';
-	return fixed.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.0+$/, '');
+	return decimalInputStringFromScale(value, 2);
 }
 
 /** Money fields for API / DB writes (always 2 decimal places). */

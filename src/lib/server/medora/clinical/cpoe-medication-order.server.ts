@@ -111,7 +111,10 @@ export async function createDraftMedicationOrder(
 		branchId: visit.branchId,
 		financialYearId,
 		prefixKey: PREFIX_PURPOSE_STORAGE.MEDICATION_ORDER_BATCH_NO,
-		context: { visitId: input.visitId }
+		context: {
+			visitTypeId: visit.visitTypeId ?? undefined,
+			visitId: input.visitId
+		}
 	});
 	return db.transaction(async (tx) => {
 		const [batch] = await tx

@@ -59,6 +59,9 @@ export type BedRow = {
 	name: string;
 	code: string | null;
 	basePrice: string;
+	basePriceUnitId?: number | null;
+	basePriceUnitName?: string | null;
+	timelineDurationDays?: string | null;
 	bedStatus: number;
 	isEr?: boolean;
 	statusId: number;
@@ -67,7 +70,7 @@ export type BedRow = {
 	wardId?: number | null;
 	wardName?: string | null;
 	wardCode?: string | null;
-	/** Resolved daily tariff: base × (1+room%/100) × (1+ward%/100). */
+	/** Auto: (base price × markups) ÷ base price unit duration. */
 	dailyTariff?: string | null;
 };
 
@@ -85,6 +88,9 @@ export type BedTariffContext = {
 	/** Ward-category markup percent. */
 	wardMarkup: string;
 	dailyTariff: string;
+	basePriceUnitId: number | null;
+	basePriceUnitName: string;
+	timelineDurationDays: number;
 };
 
 export type IpdCensusRow = {
@@ -215,20 +221,26 @@ export type OtHoldPayload = {
 	otHoldLocation: string | null;
 };
 
+export type AccommodationBillingCareSetting = 'IP' | 'ED';
+
 export type IpdAccommodationBillingPolicyRow = {
 	id: number;
 	hospitalId: string;
+	careSetting: AccommodationBillingCareSetting | string;
 	billingMethod: number;
 	graceMinutes: number;
 	minimumDays: string | null;
 	cutoffTime: string;
+	leastBillDurationHours: string | null;
 	accommodationServiceItemId: number | null;
+	accommodationBillUnitId: number | null;
 	statusId: number;
 };
 
 export type AccommodationChargeLine = {
 	segmentId: number;
 	label: string;
+	/** Billable day-equivalents from accommodation policy. */
 	days: number;
 	dailyTariff: string;
 	amount: string;
@@ -237,4 +249,9 @@ export type AccommodationChargeLine = {
 	wardMarkup: string;
 	startedAt: string;
 	endedAt: string;
+	basePriceUnitLabel: string;
+	/** Qty on bill line (days ÷ timeline duration). */
+	billableUnits: number;
+	/** Unit price on bill line (daily tariff × timeline duration). */
+	unitPrice: string;
 };

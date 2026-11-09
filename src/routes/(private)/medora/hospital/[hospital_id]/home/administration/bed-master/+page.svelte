@@ -102,14 +102,27 @@
 		},
 		{
 			id: 'basePrice',
-			header: 'Base',
-			widthClass: 'w-24 min-w-[5rem]',
+			header: 'Base price',
+			widthClass: 'w-28 min-w-[6rem]',
 			filterable: false,
 			format: (_v, row) => formatMoneyAmount(row.basePrice ?? 0)
 		},
 		{
+			id: 'basePriceUnitId',
+			header: 'Base price unit',
+			widthClass: 'w-36 min-w-[8rem]',
+			filterable: false,
+			format: (_v, row) => {
+				const name = row.basePriceUnitName?.trim();
+				if (name) return name;
+				return row.basePriceUnitId != null
+					? `#${row.basePriceUnitId}`
+					: '—';
+			}
+		},
+		{
 			id: 'dailyTariff',
-			header: 'Daily tariff',
+			header: 'Daily Rate',
 			widthClass: 'w-28 min-w-[6rem]',
 			filterable: false,
 			format: (_v, row) =>

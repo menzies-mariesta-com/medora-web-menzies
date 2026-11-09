@@ -13,17 +13,12 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
+import { and, asc, count, desc, eq, ilike, isNull, ne, sql } from 'drizzle-orm';
+import { isUnitTypeTimeline } from '$lib/server/medora/administration/timeline-unit.server';
 import {
-	and,
-	asc,
-	count,
-	desc,
-	eq,
-	ilike,
-	isNull,
-	ne,
-	sql
-} from 'drizzle-orm';
+	parseTimelineDurationDays,
+	timelineDurationDaysToDbString
+} from '$lib/util/timeline-duration-days.util';
 
 export async function listUnitTypesForUnitMaster() {
 	return ensureDb()
@@ -67,7 +62,9 @@ export async function getUnitsPaginated(
 				createdBy: table.unitTable.createdBy,
 				updatedBy: table.unitTable.updatedBy,
 				deletedBy: table.unitTable.deletedBy,
-				unitTypeName: table.unitTypeTable.name
+				unitTypeName: table.unitTypeTable.name,
+				timelineDurationDays: table.unitTable.timelineDurationDays,
+				unitTypeIsTimeline: table.unitTypeTable.isTimeline
 			})
 			.from(table.unitTable)
 			.leftJoin(
@@ -108,7 +105,9 @@ export async function getUnitByIdForMaster(input: {
 			createdBy: table.unitTable.createdBy,
 			updatedBy: table.unitTable.updatedBy,
 			deletedBy: table.unitTable.deletedBy,
-			unitTypeName: table.unitTypeTable.name
+			unitTypeName: table.unitTypeTable.name,
+			timelineDurationDays: table.unitTable.timelineDurationDays,
+			unitTypeIsTimeline: table.unitTypeTable.isTimeline
 		})
 		.from(table.unitTable)
 		.leftJoin(
@@ -144,17 +143,120 @@ async function assertUniqueUnitName(input: {
 	}
 }
 
+async function resolveTimelineDurationForSave(input: {
+	unitTypeId: number | null | undefined;
+	timelineDurationDays: string | number | null | undefined;
+	existingUnitTypeId?: number | null;
+	existingDuration?: string | null;
+}): Promise<string | null> {
+	const typeId =
+		input.unitTypeId !== undefined
+			? input.unitTypeId
+			: (input.existingUnitTypeId ?? null);
+	const isTimeline = await isUnitTypeTimeline(typeId);
+	if (!isTimeline) {
+		if (
+			input.timelineDurationDays != null &&
+			input.timelineDurationDays !== ''
+		) {
+			throw new Error(
+				'Duration applies only to Timeline unit type.'
+			);
+		}
+		return null;
+	}
+	const raw =
+		input.timelineDurationDays !== undefined
+			? input.timelineDurationDays
+			: input.existingDuration;
+	const parsed = parseTimelineDurationDays(raw);
+	if (parsed == null) {
+		throw new Error(
+			'Duration (hours) is required for Timeline units.'
+		);
+	}
+	return timelineDurationDaysToDbString(parsed)!;
+}
+
+export async function getTimelineUnitsPaginated(
+	params?: PaginationParams & { search?: string }
+): Promise<PaginatedResult<UnitMasterListRow>> {
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
+	const parts = [
+		activeEntityStatusEq(table.unitTable.statusId),
+		eq(table.unitTypeTable.isTimeline, true),
+		activeEntityStatusEq(table.unitTypeTable.statusId)
+	];
+	const search = params?.search?.trim();
+	if (search && search.length > 0) {
+		parts.push(ilike(table.unitTable.name, `%${search}%`));
+	}
+	const whereClause = and(...parts);
+	const [data, countResult] = await Promise.all([
+		ensureDb()
+			.select({
+				id: table.unitTable.id,
+				name: table.unitTable.name,
+				unitTypeId: table.unitTable.unitTypeId,
+				statusId: table.unitTable.statusId,
+				createdAt: table.unitTable.createdAt,
+				updatedAt: table.unitTable.updatedAt,
+				deletedAt: table.unitTable.deletedAt,
+				createdBy: table.unitTable.createdBy,
+				updatedBy: table.unitTable.updatedBy,
+				deletedBy: table.unitTable.deletedBy,
+				unitTypeName: table.unitTypeTable.name,
+				timelineDurationDays: table.unitTable.timelineDurationDays,
+				unitTypeIsTimeline: table.unitTypeTable.isTimeline
+			})
+			.from(table.unitTable)
+			.innerJoin(
+				table.unitTypeTable,
+				eq(table.unitTable.unitTypeId, table.unitTypeTable.id)
+			)
+			.where(whereClause)
+			.orderBy(asc(table.unitTable.name))
+			.limit(limit)
+			.offset(offset),
+		ensureDb()
+			.select({ count: count() })
+			.from(table.unitTable)
+			.innerJoin(
+				table.unitTypeTable,
+				eq(table.unitTable.unitTypeId, table.unitTypeTable.id)
+			)
+			.where(whereClause)
+	]);
+	const total = countResult[0]?.count ?? 0;
+	return {
+		data,
+		total,
+		page,
+		pageSize,
+		totalPages: Math.ceil(total / pageSize) || 1
+	};
+}
+
 export async function createUnit(
-	payload: Pick<UnitSchemaInsert, 'name' | 'unitTypeId' | 'statusId'>
+	payload: Pick<
+		UnitSchemaInsert,
+		'name' | 'unitTypeId' | 'statusId' | 'timelineDurationDays'
+	>
 ): Promise<UnitSchema> {
 	const name = payload.name?.trim();
 	if (!name) throw new Error('Name is required.');
 	await assertUniqueUnitName({ name });
+	const timelineDurationDays = await resolveTimelineDurationForSave({
+		unitTypeId: payload.unitTypeId ?? null,
+		timelineDurationDays: payload.timelineDurationDays
+	});
 	const [row] = await ensureDb()
 		.insert(table.unitTable)
 		.values({
 			name,
 			unitTypeId: payload.unitTypeId ?? null,
+			timelineDurationDays,
 			statusId: payload.statusId ?? StatusEnum.ACTIVE
 		})
 		.returning();
@@ -163,7 +265,10 @@ export async function createUnit(
 }
 
 export async function updateUnit(
-	payload: UnitSchemaUpdate & { id: number }
+	payload: UnitSchemaUpdate & {
+		id: number;
+		timelineDurationDays?: string | number | null;
+	}
 ): Promise<UnitSchema> {
 	const { id, ...rest } = payload;
 	const existing = await ensureDb()
@@ -185,6 +290,18 @@ export async function updateUnit(
 		await assertUniqueUnitName({ name: t, excludeId: id });
 		setPayload = { ...setPayload, name: t };
 	}
+
+	const nextTypeId =
+		rest.unitTypeId !== undefined
+			? rest.unitTypeId
+			: existing[0].unitTypeId;
+	const timelineDurationDays = await resolveTimelineDurationForSave({
+		unitTypeId: nextTypeId,
+		timelineDurationDays: payload.timelineDurationDays,
+		existingUnitTypeId: existing[0].unitTypeId,
+		existingDuration: existing[0].timelineDurationDays
+	});
+	setPayload = { ...setPayload, timelineDurationDays };
 
 	const [row] = await ensureDb()
 		.update(table.unitTable)

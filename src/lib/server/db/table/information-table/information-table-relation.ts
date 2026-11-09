@@ -167,6 +167,10 @@ export const hospitalBillingSettingTableRelations = relations(
 		hospital: one(hospitalTable, {
 			fields: [hospitalBillingSettingTable.hospitalId],
 			references: [hospitalTable.id]
+		}),
+		pharmacyBillingServiceItem: one(serviceItemTable, {
+			fields: [hospitalBillingSettingTable.pharmacyBillingServiceItemId],
+			references: [serviceItemTable.id]
 		})
 	})
 );
@@ -1805,6 +1809,12 @@ export const ipdAccommodationBillingPolicyTableRelations = relations(
 				ipdAccommodationBillingPolicyTable.accommodationServiceItemId
 			],
 			references: [serviceItemTable.id]
+		}),
+		accommodationBillUnit: one(unitTable, {
+			fields: [
+				ipdAccommodationBillingPolicyTable.accommodationBillUnitId
+			],
+			references: [unitTable.id]
 		})
 	})
 );

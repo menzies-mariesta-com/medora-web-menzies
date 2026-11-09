@@ -3,12 +3,14 @@ import { and, eq } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { InvPricingModuleCode } from '$lib/model/type/medora/inv-pricing-module.type';
+import type { SalePriceAtTransactionResult } from '$lib/model/type/medora/patient-charge-pricing.type';
 import type { PricingFormulaTemplateDto } from '$lib/model/type/medora/pricing-formula-template.type';
 import type { SalePriceFormulaIssueResult } from '$lib/model/type/medora/sale-price-formula.type';
 import { computeSalePriceFromFormula } from '$lib/tool/inventory/sale-price-calculator.util';
 import { loadGrnCostContextForLine } from './grn-cost-context.server';
 import { purchaseUnitPriceToIssueUnitPriceString } from './item-unit-inventory.server';
 import { ensureHospitalInventoryAccess } from './inventory-scope.server';
+import { buildPricingInputsSnapshot } from './patient-charge-pricing.server';
 import {
 	getPricingFormulaTemplate,
 	rowToPricingFormulaTemplateDto
@@ -114,7 +116,8 @@ export async function computeSalePriceAtTransactionDb(input: {
 	itemId: number;
 	storeId: number;
 	module: InvPricingModuleCode;
-}): Promise<SalePriceFormulaIssueResult> {
+}): Promise<SalePriceAtTransactionResult> {
+	const pricingComputedAt = new Date().toISOString();
 	const [store] = await ensureDb()
 		.select({
 			branchId: table.storeTable.branchId,
@@ -183,17 +186,30 @@ export async function computeSalePriceAtTransactionDb(input: {
 		batchId: input.batchId,
 		grnLine: grnCostContext.lines[grnCostContext.targetLineIndex],
 		grnCostContext,
-		itemMarkupPercent: item.itemMarkupPercent,
-		storeMarkupPercent: store.storeMarkupPercent,
+		itemMarkupPercent: item.itemMarkupPercent ?? '0',
+		storeMarkupPercent: store.storeMarkupPercent ?? '0',
 		template
 	});
 
-	return toIssueUnitPrices({
+	const issuePrices = await toIssueUnitPrices({
 		hospitalId: input.hospitalId,
 		itemId: input.itemId,
 		purchaseUnitId: grnLine.unitId,
 		unitPricePurchase: purchPrices.unitPricePurchase
 	});
+
+	return {
+		...issuePrices,
+		templateId: template.id,
+		pricingModule: input.module,
+		pricingBatchId: input.batchId,
+		pricingInputsSnapshot: buildPricingInputsSnapshot({
+			template,
+			itemMarkupPercent: item.itemMarkupPercent ?? '0',
+			storeMarkupPercent: store.storeMarkupPercent ?? '0'
+		}),
+		pricingComputedAt
+	};
 }
 
 export async function computeSalePriceAtTransaction(

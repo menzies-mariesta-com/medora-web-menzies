@@ -22,4 +22,6 @@ export type BillingBillContextResponse = {
 
 export type HospitalBillingSettingResponse = {
 	visitOpenMode: BillingVisitOpenModeEnum;
+	pharmacyBillingServiceItemId: number | null;
+	pharmacyBillingServiceName: string | null;
 };
