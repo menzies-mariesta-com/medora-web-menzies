@@ -742,6 +742,11 @@ export async function approveDepartmentConsumption(
 				.update(table.invDepartmentConsumptionLineTable)
 				.set({
 					empSalePrice: prices.unitEmpSalePriceIssue,
+					pricingFormulaTemplateId: prices.templateId,
+					pricingModule: prices.pricingModule,
+					unitEmpSalePriceIssue: prices.unitEmpSalePriceIssue,
+					pricingInputsSnapshot: prices.pricingInputsSnapshot,
+					pricingComputedAt: prices.pricingComputedAt,
 					updatedBy: userId
 				})
 				.where(eq(table.invDepartmentConsumptionLineTable.id, line.id));

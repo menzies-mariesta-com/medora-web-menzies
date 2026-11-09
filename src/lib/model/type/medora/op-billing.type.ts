@@ -58,7 +58,8 @@ export type OpBillingLine = {
 		| 'service_order_detail'
 		| 'medication_order_line'
 		| 'department_consumption_line'
-		| 'billing_setup';
+		| 'billing_setup'
+		| 'ipd_accommodation';
 	serviceId: number;
 	serviceName: string | null;
 	orderNo: string | null;
@@ -69,6 +70,8 @@ export type OpBillingLine = {
 	serviceTaxAmount: string | number | null;
 	discount: string | number | null;
 	serviceUnit: number | null;
+	/** Issue unit name (medication lines); services may omit. */
+	serviceUnitLabel?: string | null;
 };
 
 export type OpBillingVisitLinesGetResponse = {

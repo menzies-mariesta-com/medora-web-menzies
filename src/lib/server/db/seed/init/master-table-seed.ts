@@ -1794,18 +1794,19 @@ export async function seedMasterTables() {
 
 	// 16. Unit types (for categorising units: length, weight, etc.)
 	await db.execute(sql`
-		INSERT INTO unit_type (id, name, status_id)
+		INSERT INTO unit_type (id, name, status_id, is_timeline)
 		VALUES
-			(1, 'Length', 1),
-			(2, 'Weight', 1),
-			(3, 'Pressure', 1),
-			(4, 'Rate', 1),
-			(5, 'Temperature', 1),
-			(6, 'Percentage', 1),
-			(7, 'Respiration', 1),
-			(8, 'Blood sugar', 1),
-			(9, 'Count / Pack', 1),
-			(10, 'Volume', 1)
+			(1, 'Length', 1, false),
+			(2, 'Weight', 1, false),
+			(3, 'Pressure', 1, false),
+			(4, 'Rate', 1, false),
+			(5, 'Temperature', 1, false),
+			(6, 'Percentage', 1, false),
+			(7, 'Respiration', 1, false),
+			(8, 'Blood sugar', 1, false),
+			(9, 'Count / Pack', 1, false),
+			(10, 'Volume', 1, false),
+			(11, 'Timeline', 1, true)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	seedLogger.info('Seeded: unit_type');
@@ -1837,6 +1838,24 @@ export async function seedMasterTables() {
 			(21, 'ml', 10, 1),
 			(22, 'L', 10, 1)
 		ON CONFLICT (id) DO NOTHING;
+	`);
+	await db.execute(sql`
+		INSERT INTO unit (id, name, unit_type_id, status_id, timeline_duration_days)
+		VALUES (23, 'Day', 11, 1, 1)
+		ON CONFLICT (id) DO UPDATE SET
+			unit_type_id = 11,
+			timeline_duration_days = 1,
+			name = EXCLUDED.name;
+	`);
+	await db.execute(sql`
+		SELECT setval(
+			pg_get_serial_sequence('unit', 'id'),
+			GREATEST(COALESCE((SELECT MAX(id) FROM unit), 0), 1)
+		);
+		SELECT setval(
+			pg_get_serial_sequence('unit_type', 'id'),
+			GREATEST(COALESCE((SELECT MAX(id) FROM unit_type), 0), 1)
+		);
 	`);
 	seedLogger.info('Seeded: unit');
 

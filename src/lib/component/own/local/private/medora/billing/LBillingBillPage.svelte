@@ -14,6 +14,7 @@
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideStrikeThrough from '$lib/component/own/library/lucide/LucideStrikeThrough.svelte';
 	import OpBillingReadinessPanel from '$lib/component/own/local/private/medora/billing/OpBillingReadinessPanel.svelte';
+	import BillingBillLineRows from '$lib/component/own/local/private/medora/billing/BillingBillLineRows.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.enum';
 	import {
@@ -30,7 +31,10 @@
 	} from '$lib/model/type/medora/op-billing.type';
 	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
 	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
-	import { buildOpBillingPrintBodyHtml } from '$lib/util/op-billing-print-table.util';
+	import {
+		buildOpBillingPrintBodyHtml,
+		opBillingLineToPrintLine
+	} from '$lib/util/op-billing-print-table.util';
 	import { formatBillingCategorySubCategoryHeading } from '$lib/util/billing-group-heading.util';
 	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { VisitState } from '$lib/state/visit.state.svelte';
@@ -695,11 +699,7 @@
 		const bodyHtml = buildOpBillingPrintBodyHtml({
 			groups: opts.groups.map((g) => ({
 				subCategoryName: g.groupHeading,
-				lines: g.lines.map((line) => ({
-					serviceName: line.serviceName,
-					orderNo: line.orderNo,
-					lineTotal: lineTotal(line)
-				})),
+				lines: g.lines.map((line) => opBillingLineToPrintLine(line)),
 				subtotal: g.subtotal
 			})),
 			grandTotal: opts.grandTotal,
@@ -713,6 +713,9 @@
 			labels: {
 				service: tr(bm('print_service'), 'Service'),
 				order: tr(bm('print_order'), 'Order'),
+				qty: tr(bm('col_qty'), 'Qty'),
+				unit: tr(bm('col_unit'), 'Unit'),
+				unitPrice: tr(bm('col_unit_price'), 'Unit price'),
 				amount: tr(bm('print_amount'), 'Amount'),
 				subtotal: tr(bm('print_subtotal'), 'Subtotal'),
 				grandTotal: tr(
@@ -1040,6 +1043,9 @@
 		return {
 			service: tr(bm('print_service'), 'Service'),
 			order: tr(bm('print_order'), 'Order'),
+			qty: tr(bm('col_qty'), 'Qty'),
+			unit: tr(bm('col_unit'), 'Unit'),
+			unitPrice: tr(bm('col_unit_price'), 'Unit price'),
 			amount: tr(bm('print_amount'), 'Amount'),
 			subtotal: tr(bm('print_subtotal'), 'Subtotal'),
 			grandTotal: tr(bm('print_grand_total'), 'Grand total'),
@@ -1454,37 +1460,32 @@
 									</span>
 								</div>
 								<div class="collapse-content">
-									<ul class="space-y-1 text-sm">
-										{#each group.lines as line (opBillingLineRowKey(line))}
-											<li
-												class="rounded-box flex items-center justify-between gap-3 bg-base-200/40 px-3 py-1.5"
-											>
-												<div class="min-w-0">
-													<p class="truncate font-medium">
-														{line.serviceName ??
-															tr(
-																bm('service_fallback'),
-																'Service'
-															)}
-													</p>
-													<p class="text-xs text-base-content/60">
-														{#if line.orderNo}
-															{tr(
-																bm('order_prefix'),
-																'Order'
-															)}:
-															{line.orderNo}
-														{/if}
-													</p>
-												</div>
-												<div
-													class="text-right font-mono text-sm tabular-nums"
-												>
-													{formatMoneyAmount(lineTotal(line))}
-												</div>
-											</li>
-										{/each}
-									</ul>
+									<BillingBillLineRows
+										lines={group.lines}
+										lineKey={opBillingLineRowKey}
+										serviceFallback={tr(
+											bm('service_fallback'),
+											'Service'
+										)}
+										orderPrefix={tr(
+											bm('order_prefix'),
+											'Order'
+										)}
+										colService={tr(
+											bm('print_service'),
+											'Service'
+										)}
+										colQty={tr(bm('col_qty'), 'Qty')}
+										colUnit={tr(bm('col_unit'), 'Unit')}
+										colUnitPrice={tr(
+											bm('col_unit_price'),
+											'Unit price'
+										)}
+										colAmount={tr(
+											bm('print_amount'),
+											'Amount'
+										)}
+									/>
 								</div>
 							</div>
 						{/each}

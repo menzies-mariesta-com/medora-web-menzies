@@ -12,7 +12,8 @@ import type {
 import { formatBillingCategorySubCategoryHeading } from '$lib/util/billing-group-heading.util';
 import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
 import {
-	buildMultiVisitBillsPrintBodyHtml
+	buildMultiVisitBillsPrintBodyHtml,
+	opBillingLineToPrintLine
 } from '$lib/util/op-billing-print-table.util';
 import {
 	billingLineTotal,
@@ -48,6 +49,9 @@ export type OpenBillVisitDetail = {
 export type BillingPrintLabels = {
 	service: string;
 	order: string;
+	qty: string;
+	unit: string;
+	unitPrice: string;
 	amount: string;
 	subtotal: string;
 	grandTotal: string;
@@ -293,11 +297,7 @@ export async function printAllOpenBillsCombined(input: {
 			visitLabel: `${kindLabel} — ${visitLabel}${billRef}`,
 			groups: d.groups.map((g) => ({
 				subCategoryName: g.groupHeading,
-				lines: g.lines.map((line) => ({
-					serviceName: line.serviceName,
-					orderNo: line.orderNo,
-					lineTotal: billingLineTotal(line)
-				})),
+				lines: g.lines.map((line) => opBillingLineToPrintLine(line)),
 				subtotal: g.subtotal
 			})),
 			grandTotal: d.grandTotal,
@@ -316,6 +316,9 @@ export async function printAllOpenBillsCombined(input: {
 		labels: {
 			service: input.labels.service,
 			order: input.labels.order,
+			qty: input.labels.qty,
+			unit: input.labels.unit,
+			unitPrice: input.labels.unitPrice,
 			amount: input.labels.amount,
 			subtotal: input.labels.subtotal,
 			grandTotal: input.labels.grandTotal,

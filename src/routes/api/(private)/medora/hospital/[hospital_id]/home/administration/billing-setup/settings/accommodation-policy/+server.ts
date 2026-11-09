@@ -4,6 +4,8 @@ import { IpdAccommodationBillingMethodEnum } from '$lib/model/enum/db-link';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import {
 	getOrCreateBillingPolicy,
+	parseAccommodationCareSetting,
+	resolveAccommodationBillUnitLabel,
 	updateBillingPolicy
 } from '$lib/server/medora/ipd/accommodation-billing.server';
 import { ensureDb } from '$lib/server/db';
@@ -18,8 +20,11 @@ function hospitalIdFrom(params: { hospital_id?: string }): string {
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = hospitalIdFrom(event.params);
 	await ensureCanAccessHospital(event, hospitalId);
+	const careSetting = parseAccommodationCareSetting(
+		event.url.searchParams.get('careSetting')
+	);
 
-	const policy = await getOrCreateBillingPolicy({ hospitalId });
+	const policy = await getOrCreateBillingPolicy({ hospitalId, careSetting });
 	let accommodationServiceName: string | null = null;
 	if (policy.accommodationServiceItemId != null) {
 		const [svc] = await ensureDb()
@@ -32,18 +37,26 @@ export const GET: RequestHandler = async (event) => {
 		accommodationServiceName = svc?.name?.trim() ?? null;
 	}
 
+	const accommodationBillUnitName = await resolveAccommodationBillUnitLabel(
+		policy.accommodationBillUnitId
+	);
+
 	return json({
 		policy: {
 			id: policy.id,
 			hospitalId: policy.hospitalId,
+			careSetting: policy.careSetting,
 			billingMethod: policy.billingMethod,
 			graceMinutes: policy.graceMinutes,
 			minimumDays: policy.minimumDays,
 			cutoffTime: policy.cutoffTime,
 			accommodationServiceItemId: policy.accommodationServiceItemId,
+			accommodationBillUnitId: policy.accommodationBillUnitId ?? null,
+			leastBillDurationHours: policy.leastBillDurationHours,
 			statusId: policy.statusId
 		},
-		accommodationServiceName
+		accommodationServiceName,
+		accommodationBillUnitName
 	});
 };
 
@@ -51,6 +64,9 @@ export const PUT: RequestHandler = async (event) => {
 	const hospitalId = hospitalIdFrom(event.params);
 	await ensureCanAccessHospital(event, hospitalId);
 	const body = (await event.request.json()) as Record<string, unknown>;
+	const careSetting = parseAccommodationCareSetting(
+		body.careSetting ?? event.url.searchParams.get('careSetting')
+	);
 
 	const method = Number(body.billingMethod);
 	if (
@@ -67,6 +83,7 @@ export const PUT: RequestHandler = async (event) => {
 
 	const row = await updateBillingPolicy({
 		hospitalId,
+		careSetting,
 		billingMethod: Number.isFinite(method) ? method : undefined,
 		graceMinutes:
 			body.graceMinutes !== undefined
@@ -80,12 +97,26 @@ export const PUT: RequestHandler = async (event) => {
 				: undefined,
 		cutoffTime:
 			body.cutoffTime !== undefined ? String(body.cutoffTime) : undefined,
+		leastBillDurationHours:
+			body.leastBillDurationHours !== undefined
+				? body.leastBillDurationHours === null ||
+					body.leastBillDurationHours === ''
+					? null
+					: String(body.leastBillDurationHours)
+				: undefined,
 		accommodationServiceItemId:
 			body.accommodationServiceItemId !== undefined
 				? body.accommodationServiceItemId === null ||
 					body.accommodationServiceItemId === ''
 					? null
 					: Number(body.accommodationServiceItemId)
+				: undefined,
+		accommodationBillUnitId:
+			body.accommodationBillUnitId !== undefined
+				? body.accommodationBillUnitId === null ||
+					body.accommodationBillUnitId === ''
+					? null
+					: Number(body.accommodationBillUnitId)
 				: undefined
 	});
 

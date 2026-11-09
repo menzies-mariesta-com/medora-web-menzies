@@ -7,24 +7,46 @@
 	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import { IpdAccommodationBillingMethodEnum } from '$lib/model/enum/db-link';
-	import type { IpdAccommodationBillingPolicyRow } from '$lib/model/type/medora/ipd/ipd.type';
-	import { m } from '$lib/paraglide/messages';
+	import type {
+		AccommodationBillingCareSetting,
+		IpdAccommodationBillingPolicyRow
+	} from '$lib/model/type/medora/ipd/ipd.type';
 	import { ToastService } from '$lib/service/toast.service.svelte';
+	import {
+		labelForServiceItemId,
+		searchServiceItemOptions
+	} from '$lib/tool/medora/service-item-search-select.util';
+	import {
+		labelForTimelineUnitId,
+		searchTimelineUnitOptions
+	} from '$lib/tool/medora/timeline-unit-search-select.util';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
+	import { decimalInputStringFromScale } from '$lib/util/number-display.util';
+	import { paraglideMsg } from '$lib/util/paraglide-msg.util';
 	import { sanitizeUserFacingErrorText } from '$lib/util/user-facing-error.util';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 
+	let {
+		careSetting = 'IP' as AccommodationBillingCareSetting
+	}: {
+		careSetting?: AccommodationBillingCareSetting;
+	} = $props();
+
 	const toastService = new ToastService();
 	const saveLock = createActionLock();
-	const msg = m as Record<string, (inputs?: object) => string>;
+	const isEd = $derived(careSetting === 'ED');
+	const billLabel = $derived(isEd ? 'ED' : 'IP');
 
-	function tr(key: string, fallback: string): string {
-		try {
-			const fn = msg[key];
-			return typeof fn === 'function' ? fn() : fallback;
-		} catch {
-			return fallback;
-		}
+	/** Number inputs bind a number; empty stays ''. */
+	function trimmed(value: unknown): string {
+		return value == null ? '' : String(value).trim();
+	}
+
+	function decimalInput(value: unknown): string {
+		return decimalInputStringFromScale(
+			value as string | number | null | undefined,
+			4
+		);
 	}
 
 	const hospitalId = $derived(
@@ -36,7 +58,7 @@
 
 	const apiBase = $derived(
 		hospitalId
-			? `/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/administration/billing-setup/ip-billing/accommodation-policy`
+			? `/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/administration/billing-setup/settings/accommodation-policy?careSetting=${encodeURIComponent(careSetting)}`
 			: ''
 	);
 
@@ -45,27 +67,30 @@
 	let billingMethod = $state(String(IpdAccommodationBillingMethodEnum.BLOCK_24H));
 	let graceMinutes = $state('0');
 	let minimumDays = $state('');
+	let leastBillDurationHours = $state('');
 	let cutoffTime = $state('12:00');
 	let accommodationServiceItemId = $state('');
+	let accommodationBillUnitId = $state('');
+	let billUnitLabelCache = $state('');
 
 	const methodOptions = [
 		{
 			value: String(IpdAccommodationBillingMethodEnum.BLOCK_24H),
-			label: tr(
+			label: paraglideMsg(
 				'ip_billing_setup_accommodation_method_block',
 				'24-hour blocks'
 			)
 		},
 		{
 			value: String(IpdAccommodationBillingMethodEnum.CALENDAR_DAY),
-			label: tr(
+			label: paraglideMsg(
 				'ip_billing_setup_accommodation_method_calendar',
 				'Calendar day (cut-off time)'
 			)
 		},
 		{
 			value: String(IpdAccommodationBillingMethodEnum.PRO_RATA),
-			label: tr(
+			label: paraglideMsg(
 				'ip_billing_setup_accommodation_method_prorata',
 				'Pro-rata (hours ÷ 24)'
 			)
@@ -86,18 +111,20 @@
 				loadError =
 					sanitizeUserFacingErrorText(await res.text(), {
 						status: res.status
-					}) || tr('ip_billing_setup_accommodation_load_failed', 'Failed to load.');
+					}) || paraglideMsg('ip_billing_setup_accommodation_load_failed', 'Failed to load.');
 				return;
 			}
 			const data = (await res.json()) as {
 				policy: IpdAccommodationBillingPolicyRow;
 				accommodationServiceName?: string | null;
+				accommodationBillUnitName?: string | null;
 			};
 			const p = data.policy;
 			billingMethod = String(p.billingMethod);
 			graceMinutes = String(p.graceMinutes ?? 0);
-			minimumDays = p.minimumDays?.trim() ?? '';
-			cutoffTime = p.cutoffTime?.trim() || '12:00';
+			minimumDays = decimalInput(p.minimumDays);
+			leastBillDurationHours = decimalInput(p.leastBillDurationHours);
+			cutoffTime = trimmed(p.cutoffTime) || '12:00';
 			accommodationServiceItemId =
 				p.accommodationServiceItemId != null
 					? String(p.accommodationServiceItemId)
@@ -106,10 +133,15 @@
 				p.accommodationServiceItemId != null &&
 				data.accommodationServiceName
 			) {
-				serviceItemLabelCache = `${data.accommodationServiceName} (#${p.accommodationServiceItemId})`;
+				serviceItemLabelCache = data.accommodationServiceName;
 			}
+			accommodationBillUnitId =
+				p.accommodationBillUnitId != null
+					? String(p.accommodationBillUnitId)
+					: '';
+			billUnitLabelCache = data.accommodationBillUnitName?.trim() ?? '';
 		} catch {
-			loadError = tr(
+			loadError = paraglideMsg(
 				'ip_billing_setup_accommodation_load_failed',
 				'Failed to load accommodation policy.'
 			);
@@ -121,55 +153,31 @@
 	let serviceItemLabelCache = $state('');
 
 	async function searchServiceItems(query: string) {
-		if (!hospitalId) return [];
-		const qs = new URLSearchParams({
-			mode: 'paginated',
-			page: '1',
-			pageSize: '20',
-			serviceName: query.trim()
-		});
-		const res = await fetch(
-			`/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/administration/service-order/service-item-master?${qs}`,
-			{ credentials: 'include' }
-		);
-		if (!res.ok) return [];
-		const pack = (await res.json()) as {
-			data?: Array<{
-				id: number;
-				serviceName: string | null;
-				serviceCode: string | null;
-			}>;
-		};
-		return (pack.data ?? []).map((row) => ({
-			value: String(row.id),
-			label: [row.serviceName, row.serviceCode ? `(${row.serviceCode})` : '']
-				.filter(Boolean)
-				.join(' ')
-		}));
+		return searchServiceItemOptions(hospitalId, query);
 	}
 
 	async function labelForServiceItem(value: string): Promise<string> {
-		if (!value || !hospitalId) return '';
-		if (
-			serviceItemLabelCache &&
-			value === accommodationServiceItemId
-		) {
-			return serviceItemLabelCache;
-		}
-		const qs = new URLSearchParams({
-			mode: 'all',
-			id: value
+		return labelForServiceItemId({
+			hospitalId,
+			value,
+			cached: serviceItemLabelCache
+				? { id: accommodationServiceItemId, label: serviceItemLabelCache }
+				: null
 		});
-		const res = await fetch(
-			`/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/administration/service-order/service-item-master?${qs}`,
-			{ credentials: 'include' }
-		);
-		if (!res.ok) return `#${value}`;
-		const rows = (await res.json()) as Array<{
-			serviceName: string | null;
-		}>;
-		const name = rows[0]?.serviceName?.trim();
-		return name ? `${name} (#${value})` : `#${value}`;
+	}
+
+	async function searchTimelineUnits(query: string) {
+		return searchTimelineUnitOptions(hospitalId, query);
+	}
+
+	async function labelForBillUnit(value: string): Promise<string> {
+		return labelForTimelineUnitId({
+			hospitalId,
+			value,
+			cached: billUnitLabelCache
+				? { id: accommodationBillUnitId, label: billUnitLabelCache }
+				: null
+		});
 	}
 
 	async function savePolicy() {
@@ -180,21 +188,33 @@
 				credentials: 'include',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
+					careSetting,
 					billingMethod: Number(billingMethod),
 					graceMinutes: Number(graceMinutes) || 0,
-					minimumDays: minimumDays.trim() === '' ? null : minimumDays.trim(),
-					cutoffTime: cutoffTime.trim() || '12:00',
-					accommodationServiceItemId:
-						accommodationServiceItemId.trim() === ''
+					minimumDays:
+						decimalInput(minimumDays) === ''
 							? null
-							: Number(accommodationServiceItemId)
+							: decimalInput(minimumDays),
+					leastBillDurationHours:
+						decimalInput(leastBillDurationHours) === ''
+							? null
+							: decimalInput(leastBillDurationHours),
+					cutoffTime: trimmed(cutoffTime) || '12:00',
+					accommodationServiceItemId:
+						trimmed(accommodationServiceItemId) === ''
+							? null
+							: Number(accommodationServiceItemId),
+					accommodationBillUnitId:
+						trimmed(accommodationBillUnitId) === ''
+							? null
+							: Number(accommodationBillUnitId)
 				})
 			});
 			if (!res.ok) {
 				const text = await res.text();
 				toastService.error(
 					sanitizeUserFacingErrorText(text, { status: res.status }) ||
-						tr(
+						paraglideMsg(
 							'ip_billing_setup_accommodation_save_failed',
 							'Save failed.'
 						)
@@ -203,7 +223,7 @@
 			}
 			toastSuccess(
 				toastService,
-				tr(
+				paraglideMsg(
 					'ip_billing_setup_accommodation_saved',
 					'Accommodation billing settings saved.'
 				)
@@ -213,23 +233,34 @@
 
 	$effect(() => {
 		void hospitalId;
+		void careSetting;
 		void loadPolicy();
 	});
 </script>
 
-<WashCard className="mb-6">
+<WashCard className="mt-6">
 	<WashCardBody>
 		<WashCardBodyTitle
-			>{tr(
-				'ip_billing_setup_accommodation_title',
-				'Bed / accommodation charges'
-			)}</WashCardBodyTitle
+			>{isEd
+				? paraglideMsg(
+						'ed_billing_setup_accommodation_title',
+						'ED bed / accommodation charges'
+					)
+				: paraglideMsg(
+						'ip_billing_setup_accommodation_title',
+						'IP bed / accommodation charges'
+					)}</WashCardBodyTitle
 		>
 		<p class="mb-4 text-sm text-base-content/70">
-			{tr(
-				'ip_billing_setup_accommodation_blurb',
-				'Daily rates come from Ward Master (bed base price and room/ward markups). Stay segments are recorded on admit, transfer, and discharge. Choose how stay length converts to billable days and which service item is used when accommodation lines are posted to the IP bill.'
-			)}
+			{isEd
+				? paraglideMsg(
+						'ed_billing_setup_accommodation_blurb',
+						'Rates come from Bed Master (base price and room/ward markups). Choose how ED bed stay length converts to billable time and which service item is used for the ED bed charge.'
+					)
+				: paraglideMsg(
+						'ip_billing_setup_accommodation_blurb',
+						'Rates come from Bed Master (base price and room/ward markups). Map a Timeline unit per bed for bill qty and unit label. Choose how stay length converts to billable days and which service item is used when accommodation lines are posted to the IP bill.'
+					)}
 		</p>
 
 		{#if loading}
@@ -240,7 +271,7 @@
 			<div class="grid gap-4 md:grid-cols-2">
 				<label class="form-control w-full">
 					<span class="label-text mb-1 text-sm"
-						>{tr(
+						>{paraglideMsg(
 							'ip_billing_setup_accommodation_method',
 							'Billing method'
 						)}</span
@@ -254,7 +285,7 @@
 
 				<label class="form-control w-full">
 					<span class="label-text mb-1 text-sm"
-						>{tr(
+						>{paraglideMsg(
 							'ip_billing_setup_accommodation_grace',
 							'Grace period (minutes)'
 						)}</span
@@ -271,7 +302,7 @@
 				{#if showCutoff}
 					<label class="form-control w-full">
 						<span class="label-text mb-1 text-sm"
-							>{tr(
+							>{paraglideMsg(
 								'ip_billing_setup_accommodation_cutoff',
 								'Cut-off time (HH:mm)'
 							)}</span
@@ -286,7 +317,7 @@
 
 				<label class="form-control w-full">
 					<span class="label-text mb-1 text-sm"
-						>{tr(
+						>{paraglideMsg(
 							'ip_billing_setup_accommodation_minimum',
 							'Minimum billable days (optional)'
 						)}</span
@@ -301,16 +332,65 @@
 					/>
 				</label>
 
+				<label class="form-control w-full">
+					<span class="label-text mb-1 text-sm"
+						>{paraglideMsg(
+							'ip_billing_setup_accommodation_least_hours',
+							'Least duration to bill (hours)'
+						)}</span
+					>
+					<input
+						class="input-bordered input w-full"
+						type="number"
+						min="0"
+						step="0.25"
+						placeholder="—"
+						bind:value={leastBillDurationHours}
+					/>
+					<span class="mt-1 text-xs text-base-content/60"
+						>{paraglideMsg(
+							'ip_billing_setup_accommodation_least_hours_hint',
+							'When set, stay length rounds up to this block (e.g. 8 → 4h stay bills 8h; 12h stay bills 16h). Overrides billing method.'
+						)}</span
+					>
+				</label>
+
 				<label class="form-control w-full md:col-span-2">
 					<span class="label-text mb-1 text-sm"
-						>{tr(
+						>{paraglideMsg(
+							'ip_billing_setup_accommodation_bill_unit',
+							'Bill unit'
+						)}</span
+					>
+					<WashSearchSelect
+						className="w-full"
+						placeholder={paraglideMsg(
+							'ip_billing_setup_accommodation_bill_unit_ph',
+							'Search timeline unit…'
+						)}
+						bind:value={accommodationBillUnitId}
+						searchFn={searchTimelineUnits}
+						getLabelForValue={labelForBillUnit}
+						minSearchLength={0}
+					/>
+					<span class="mt-1 text-xs text-base-content/60"
+						>{paraglideMsg(
+							'ip_billing_setup_accommodation_bill_unit_hint',
+							'Unit shown on the bed line. Qty and unit price convert into this unit. Empty uses each bed’s base price unit.'
+						)}</span
+					>
+				</label>
+
+				<label class="form-control w-full md:col-span-2">
+					<span class="label-text mb-1 text-sm"
+						>{paraglideMsg(
 							'ip_billing_setup_accommodation_service',
 							'Accommodation service item'
 						)}</span
 					>
 					<WashSearchSelect
 						className="w-full"
-						placeholder={tr(
+						placeholder={paraglideMsg(
 							'ip_billing_setup_accommodation_service_ph',
 							'Search service item…'
 						)}
@@ -320,9 +400,9 @@
 						minSearchLength={0}
 					/>
 					<span class="mt-1 text-xs text-base-content/60"
-						>{tr(
+						>{paraglideMsg(
 							'ip_billing_setup_accommodation_service_hint',
-							'Required before accommodation charges can be posted to an IP bill.'
+							`Required before accommodation charges can be posted to an ${billLabel} bill.`
 						)}</span
 					>
 				</label>
@@ -334,7 +414,7 @@
 					disabled={saveLock.pending}
 					onClick={() => void savePolicy()}
 				>
-					{tr('ip_billing_setup_accommodation_save', 'Save accommodation settings')}
+					{paraglideMsg('ip_billing_setup_accommodation_save', 'Save accommodation settings')}
 				</WashButton>
 			</div>
 		{/if}

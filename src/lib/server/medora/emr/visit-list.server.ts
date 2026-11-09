@@ -552,7 +552,7 @@ export async function getPatientVisitPaginatedForEmr(
 				hospital: true,
 				branch: true,
 				status: true,
-				doctor: { with: { title: true } }
+				doctor: { with: { title: true, specialization: true } }
 			},
 			orderBy: (t, { desc }) => desc(t.createdAt),
 			limit,

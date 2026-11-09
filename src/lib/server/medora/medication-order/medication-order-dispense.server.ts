@@ -351,20 +351,6 @@ export async function reverseStockForBatch(
 			userId: input.userId
 		});
 	}
-
-	const now = new Date().toISOString();
-	await tx
-		.update(schema.medicationOrderLineAllocationTable)
-		.set({ deletedAt: now, deletedBy: input.userId })
-		.where(
-			and(
-				inArray(
-					schema.medicationOrderLineAllocationTable.lineId,
-					lineIds
-				),
-				isNull(schema.medicationOrderLineAllocationTable.deletedAt)
-			)
-		);
 }
 
 export async function insertMedicationOrderLineWithAllocations(
@@ -384,9 +370,12 @@ export async function insertMedicationOrderLineWithAllocations(
 		line.allocations.find((a) => Number(a.qtyPurchase) > 0) ??
 		line.allocations[0];
 	let unitSalePrice = line.unitSalePrice;
+	let chargeSnapshot: Awaited<
+		ReturnType<typeof computeSalePriceAtTransactionDb>
+	> | null = null;
 	const ium = await getIumFactors(input.hospitalId, line.itemUnitMasterId);
 	if (primaryAlloc) {
-		const computed = await computeSalePriceAtTransactionDb({
+		chargeSnapshot = await computeSalePriceAtTransactionDb({
 			hospitalId: input.hospitalId,
 			batchId: primaryAlloc.batchId,
 			itemId: line.itemMasterId,
@@ -394,7 +383,7 @@ export async function insertMedicationOrderLineWithAllocations(
 			module: input.pricingModule
 		});
 		unitSalePrice = unitSalePriceForOutUnit(
-			computed,
+			chargeSnapshot.unitSalePriceIssue,
 			line.outUnitId,
 			ium
 		);
@@ -422,6 +411,12 @@ export async function insertMedicationOrderLineWithAllocations(
 			qtyOut: line.qtyOut,
 			outUnitId: line.outUnitId,
 			unitSalePrice,
+			pricingFormulaTemplateId: chargeSnapshot?.templateId ?? null,
+			pricingModule: chargeSnapshot?.pricingModule ?? input.pricingModule,
+			pricingBatchId: primaryAlloc?.batchId ?? null,
+			unitSalePriceIssue: chargeSnapshot?.unitSalePriceIssue ?? null,
+			pricingInputsSnapshot: chargeSnapshot?.pricingInputsSnapshot ?? null,
+			pricingComputedAt: chargeSnapshot?.pricingComputedAt ?? null,
 			lineRemarks: null,
 			createdBy: input.userId,
 			updatedBy: input.userId

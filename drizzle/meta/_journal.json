@@ -358,6 +358,69 @@
       "when": 1793800000000,
       "tag": "0050_pricing_configuration_tab_labels",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1793900000000,
+      "tag": "0051_patient_charge_pricing_snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1794000000000,
+      "tag": "0052_hospital_billing_pharmacy_service_item",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1794100000000,
+      "tag": "0053_accommodation_bill_unit",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1794200000000,
+      "tag": "0054_timeline_unit_and_bed_billing_unit",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1794300000000,
+      "tag": "0055_base_price_unit_and_least_bill_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1794400000000,
+      "tag": "0056_ip_billing_line_service_unit_numeric",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1794500000000,
+      "tag": "0057_accommodation_policy_care_setting",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1794600000000,
+      "tag": "0058_unit_id_sequence",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1794700000000,
+      "tag": "0059_reset_stay_segment_base_price_unit",
+      "breakpoints": true
     }
   ]
 }

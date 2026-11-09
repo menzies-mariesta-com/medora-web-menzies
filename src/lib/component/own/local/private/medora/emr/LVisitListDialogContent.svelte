@@ -21,6 +21,7 @@
 		activeInactiveEntityStatusColumn,
 		appendEntityStatusIdSearchParam
 	} from '$lib/tool/menzies/menzies-table-entity-status.util';
+	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 
 	const VISIT_LIST_DEFAULT_PAGE_SIZE = 20;
 
@@ -91,18 +92,6 @@
 			visitStatusFilterOptions.find((o) => o.value === status)?.label ??
 				'—'
 		);
-	}
-
-	function formatVisitDate(value: string | null | undefined): string {
-		if (!value) return '';
-		try {
-			return new Date(value).toLocaleString('en-US', {
-				dateStyle: 'short',
-				timeStyle: 'short'
-			});
-		} catch {
-			return '';
-		}
 	}
 
 	function getPatientAgeYears(
@@ -188,11 +177,10 @@
 			filterable: true,
 			format: (_value, row) =>
 				row.doctor
-					? StringUtil.fullNameWithTitle(
-							row.doctor.title?.name ?? null,
-							row.doctor.firstName,
-							row.doctor.middleName,
-							row.doctor.lastName
+					? StringUtil.doctorOptionDisplayName(
+							row.doctor as Parameters<
+								typeof StringUtil.doctorOptionDisplayName
+							>[0]
 						)
 					: '—'
 		},
@@ -202,8 +190,9 @@
 			widthClass: 'w-40 min-w-[10rem]',
 			filterable: false,
 			format: (_value, row) =>
-				formatVisitDate(
-					(row as any).createdAt as string | null | undefined
+				formatMenziesTableDateTime(
+					(row as any).createdAt as string | null | undefined,
+					''
 				)
 		},
 		{

@@ -512,10 +512,13 @@ export async function saveMedicationOrderBatchExternal(
 	const financialYearId = await getFinancialYearIdToday(hospitalId);
 	const batchNo = await generatePrefix({
 		hospitalId,
-		branchId: null,
+		branchId: st.branchId,
 		financialYearId,
 		prefixKey: PREFIX_PURPOSE_STORAGE.MEDICATION_ORDER_BATCH_NO,
-		context: {}
+		context: {
+			visitTypeId: v.visitTypeId ?? undefined,
+			visitId
+		}
 	});
 
 	return await db.transaction(async (tx) => {

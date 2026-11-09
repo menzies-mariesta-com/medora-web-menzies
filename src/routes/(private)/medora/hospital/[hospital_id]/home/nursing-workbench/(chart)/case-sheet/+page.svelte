@@ -30,6 +30,7 @@
 		htmlStringToPdfBlob,
 		uploadPatientAttachmentPdf
 	} from '$lib/util/html-to-pdf.util';
+	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
@@ -97,18 +98,6 @@
 		return String(value);
 	}
 
-	function formatDateTime(value: string | null | undefined): string {
-		if (!value) return '–';
-		try {
-			return new Date(value).toLocaleString('en-US', {
-				dateStyle: 'short',
-				timeStyle: 'short'
-			});
-		} catch {
-			return '–';
-		}
-	}
-
 	function getVitalDisplayDate(
 		v: PatientDiagnosisListRow
 	): string | null {
@@ -168,7 +157,7 @@
 	function caseSheetFormatters(): CaseSheetPrintFormatters {
 		return {
 			formatText,
-			formatDateTime,
+			formatDateTime: (value) => formatMenziesTableDateTime(value, '–'),
 			formatVital,
 			formatNumberDisplay,
 			getVitalDisplayDate

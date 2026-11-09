@@ -97,11 +97,10 @@
 			(d) => String(d.id) === selectedDoctorId
 		);
 		return doctor
-			? StringUtil.fullNameWithTitle(
-					doctor.title?.name ?? '',
-					doctor.firstName,
-					doctor.middleName,
-					doctor.lastName
+			? StringUtil.doctorOptionDisplayName(
+					doctor as Parameters<
+						typeof StringUtil.doctorOptionDisplayName
+					>[0]
 				)
 			: '';
 	});

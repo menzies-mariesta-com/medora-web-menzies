@@ -24,6 +24,7 @@
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
+	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	type PatientVitalWithVisit = PatientDiagnosisListRow & {
@@ -163,7 +164,10 @@
 		const result = await dialogService.open({
 			title: m.observation_emr_vital_inactivate_title(),
 			message: m.observation_emr_vital_inactivate_message({
-				date: formatDateTime(getVitalDisplayDate(v) ?? null)
+				date: formatMenziesTableDateTime(
+					getVitalDisplayDate(v) ?? null,
+					'–'
+				)
 			}),
 			variant: DialogVariantEnum.CONFIRM
 		});
@@ -300,18 +304,6 @@
 		return String(value);
 	}
 
-	function formatDateTime(value: string | null | undefined): string {
-		if (!value) return '–';
-		try {
-			return new Date(value).toLocaleString('en-US', {
-				dateStyle: 'short',
-				timeStyle: 'short'
-			});
-		} catch {
-			return '–';
-		}
-	}
-
 	/** Prefer vitalDateTime (when vital was taken) over createdAt (when record was saved). */
 	function getVitalDisplayDate(
 		v: PatientVitalWithVisit
@@ -353,7 +345,10 @@
 			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
 			filterable: false,
 			format: (_value, row) =>
-				formatDateTime(getVitalDisplayDate(row) ?? null)
+				formatMenziesTableDateTime(
+					getVitalDisplayDate(row) ?? null,
+					'–'
+				)
 		},
 		{
 			id: 'height',

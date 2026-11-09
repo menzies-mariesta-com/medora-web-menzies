@@ -12,12 +12,23 @@ export function parseMoney(value: unknown): number | null {
 	return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
 }
 
+export function billingLineQty(line: OpBillingLine): number {
+	const unit = line.serviceUnit;
+	if (unit != null && Number.isFinite(Number(unit)) && Number(unit) > 0) {
+		return Number(unit);
+	}
+	return 1;
+}
+
+export function billingLineUnitPrice(line: OpBillingLine): number {
+	return Number(line.serviceAmount ?? 0) || 0;
+}
+
 export function billingLineTotal(line: OpBillingLine): number {
 	const amount = Number(line.serviceAmount ?? 0) || 0;
 	const tax = Number(line.serviceTaxAmount ?? 0) || 0;
 	const discount = Number(line.discount ?? 0) || 0;
-	const unit =
-		line.serviceUnit && line.serviceUnit > 0 ? line.serviceUnit : 1;
+	const unit = billingLineQty(line);
 	return Math.round((amount + tax - discount) * unit * 100) / 100;
 }
 

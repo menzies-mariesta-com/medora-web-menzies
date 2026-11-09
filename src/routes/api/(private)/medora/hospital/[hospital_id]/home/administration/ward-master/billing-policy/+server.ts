@@ -91,6 +91,13 @@ export async function PUT(event: RequestEvent) {
 					? body.accommodationServiceItemId === null
 						? null
 						: Number(body.accommodationServiceItemId)
+					: undefined,
+			accommodationBillUnitId:
+				body.accommodationBillUnitId !== undefined
+					? body.accommodationBillUnitId === null ||
+						body.accommodationBillUnitId === ''
+						? null
+						: Number(body.accommodationBillUnitId)
 					: undefined
 		})
 	);

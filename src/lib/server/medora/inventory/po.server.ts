@@ -130,6 +130,7 @@ export async function listPurchaseOrders(
 	const uCreated = alias(table.userTable, 'po_created_by_user');
 	const uUpdated = alias(table.userTable, 'po_updated_by_user');
 	const uApproved = alias(table.userTable, 'po_approved_by_user');
+	const prFromStore = alias(table.storeTable, 'po_pr_from_store');
 
 	const [data, cnt] = await Promise.all([
 		ensureDb()
@@ -138,6 +139,7 @@ export async function listPurchaseOrders(
 				statusName: table.statusTaggingTable.name,
 				supplierName: table.supplierTable.name,
 				storeName: table.storeTable.storeName,
+				prFromStoreName: prFromStore.storeName,
 				createdByName: uCreated.name,
 				updatedByName: uUpdated.name,
 				approvedByName: uApproved.name
@@ -159,6 +161,20 @@ export async function listPurchaseOrders(
 				eq(
 					table.purchaseOrderTable.supplierId,
 					table.supplierTable.id
+				)
+			)
+			.leftJoin(
+				table.purchaseRequisitionTable,
+				eq(
+					table.purchaseOrderTable.prId,
+					table.purchaseRequisitionTable.id
+				)
+			)
+			.leftJoin(
+				prFromStore,
+				eq(
+					table.purchaseRequisitionTable.fromStoreId,
+					prFromStore.id
 				)
 			)
 			.leftJoin(
@@ -227,6 +243,7 @@ export async function listPurchaseOrders(
 			statusName: r.statusName,
 			supplierName: r.supplierName,
 			storeName: r.storeName,
+			prFromStoreName: r.prFromStoreName ?? null,
 			createdByName: r.createdByName ?? null,
 			updatedByName: r.updatedByName ?? null,
 			approvedByName: r.approvedByName ?? null,
