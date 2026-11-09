@@ -238,12 +238,18 @@ export class StringUtil {
 		return segments.at(-1) ?? '';
 	}
 
+	/** URL segments that must stay fully uppercase in the module-bar locator. */
+	private static readonly SEGMENT_ACRONYMS = new Set(['adt']);
+
 	/**
 	 * Convert single segment → readable label
 	 * example-path → Example Path
 	 * audit_trail → Audit Trail
+	 * adt → ADT
 	 */
 	static segmentToLabel(segment: string): string {
+		const key = segment.trim().toLowerCase();
+		if (StringUtil.SEGMENT_ACRONYMS.has(key)) return key.toUpperCase();
 		return this.titleCase(this.humanize(segment));
 	}
 
