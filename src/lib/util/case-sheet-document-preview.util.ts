@@ -2,6 +2,7 @@ import type { CaseSheetPrintFormatters } from '$lib/util/case-sheet-print-body.u
 import { buildCaseSheetPrintBodyHtml } from '$lib/util/case-sheet-print-body.util';
 import type { CaseSheetPrintLabels } from '$lib/util/case-sheet-print-body.util';
 import type { PrintFromDocumentMasterOptions } from '$lib/util/document-master-print.util.svelte';
+import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 
 export type CaseSheetDocumentData = {
 	chiefComplaintEntries: { id?: number | string; description?: string | null }[];
@@ -54,10 +55,7 @@ export function buildCaseSheetDocumentMasterPrintOptions(input: {
 	PrintFromDocumentMasterOptions,
 	'hospitalId' | 'documentCode' | 'iframeId'
 > {
-	const printedAt = new Date().toLocaleString('en-US', {
-		dateStyle: 'short',
-		timeStyle: 'short'
-	});
+	const printedAt = formatMenziesTableDateTime(new Date());
 
 	return {
 		visit: input.visit,

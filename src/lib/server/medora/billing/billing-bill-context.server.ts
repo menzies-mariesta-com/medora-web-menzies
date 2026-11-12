@@ -5,6 +5,7 @@ import {
 } from '$lib/model/enum/billing-visit-open-mode.enum';
 import type { BillingBillContextResponse } from '$lib/model/type/medora/billing-context.type';
 import { ensureDb } from '$lib/server/db';
+import { syncSourceLinkedOpenBills } from '$lib/server/medora/billing/billing-lineage-sync.server';
 import { getVisitOpenMode } from '$lib/server/medora/billing/hospital-billing-setting.server';
 import {
 	listPatientOpenBills,
@@ -19,6 +20,8 @@ export async function buildBillingBillContext(input: {
 	hospitalId: string;
 	patientId?: string | null;
 	visitId?: string | null;
+	/** When set, syncs open bills for visits linked via `source_visit_id` before listing. */
+	syncActor?: { userId: string; staffId: string | null };
 }): Promise<BillingBillContextResponse> {
 	const hospitalId = input.hospitalId.trim();
 	if (!hospitalId) throw error(400, 'Missing hospital id');
@@ -52,6 +55,15 @@ export async function buildBillingBillContext(input: {
 			openBillsGrandTotal: '0.00',
 			suggestedVisitId: null
 		};
+	}
+
+	if (visitId && input.syncActor) {
+		await syncSourceLinkedOpenBills({
+			hospitalId,
+			visitId,
+			userId: input.syncActor.userId,
+			staffId: input.syncActor.staffId
+		});
 	}
 
 	const openBills = await listPatientOpenBills({

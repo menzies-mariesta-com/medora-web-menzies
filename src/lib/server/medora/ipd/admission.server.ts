@@ -26,7 +26,8 @@ import {
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
-import { resolveBedTariffContext } from '$lib/server/medora/ipd/tariff.server';
+import { resolveBedTariffContext, bedDailyRateSql } from '$lib/server/medora/ipd/tariff.server';
+import { timelineDurationDaysToDbString } from '$lib/util/timeline-duration-days.util';
 import {
 	and,
 	count,
@@ -81,7 +82,7 @@ async function nextAdmissionNo(params: {
 		branchId: params.branchId,
 		financialYearId: financialYear.id,
 		prefixKey: PREFIX_PURPOSE_STORAGE.ADMISSION_NO,
-		context: {}
+		context: { visitTypeId: VisitTypeEnum.IPD }
 	});
 }
 
@@ -127,6 +128,12 @@ async function openStaySegment(
 		roomMarkupSnapshot: input.ctx.roomMarkup,
 		wardMarkupSnapshot: input.ctx.wardMarkup,
 		dailyTariffSnapshot: input.ctx.dailyTariff,
+		basePriceUnitIdSnapshot: input.ctx.basePriceUnitId,
+		basePriceUnitNameSnapshot: input.ctx.basePriceUnitName,
+		timelineDurationDaysSnapshot:
+			timelineDurationDaysToDbString(
+				input.ctx.timelineDurationDays
+			) ?? '1',
 		startedAt: input.startedAt ?? new Date().toISOString()
 	});
 }
@@ -387,7 +394,8 @@ export async function admitVisitToIpd(
 				doctorId: admittingDoctorId,
 				...(sourceVisitId != null ? { sourceVisitId } : {})
 			},
-			tx as unknown as ReturnType<typeof ensureDb>
+			tx as unknown as ReturnType<typeof ensureDb>,
+			event.locals.user?.id ?? null
 		);
 
 		const [admission] = await tx
@@ -456,7 +464,6 @@ export async function transferBed(
 	});
 
 	const movedAt = new Date().toISOString();
-
 	return db.transaction(async (tx) => {
 		// Lock the admission so a concurrent discharge/transfer cannot interleave.
 		const [admission] = await tx
@@ -778,11 +785,12 @@ export async function getIpdCensusPaginated(
 			doctorLast: table.staffTable.lastName,
 			admissionStatus: table.ipdAdmissionTable.admissionStatus,
 			otHoldLocation: table.ipdAdmissionTable.otHoldLocation,
-			dailyTariff: sql<string>`(
-				coalesce(${table.bedTable.basePrice}, 0)
-				* (1 + coalesce(${table.roomCategoryTable.roomMarkup}, 0) / 100.0)
-				* (1 + coalesce(${table.wardCategoryTable.wardMarkup}, 0) / 100.0)
-			)::text`
+			dailyTariff: bedDailyRateSql({
+				basePrice: table.bedTable.basePrice,
+				roomMarkup: table.roomCategoryTable.roomMarkup,
+				wardMarkup: table.wardCategoryTable.wardMarkup,
+				unitDurationDays: table.unitTable.timelineDurationDays
+			})
 		})
 		.from(table.ipdAdmissionTable)
 		.innerJoin(
@@ -822,6 +830,10 @@ export async function getIpdCensusPaginated(
 		.leftJoin(
 			table.bedTable,
 			eq(table.ipdAdmissionTable.bedId, table.bedTable.id)
+		)
+		.leftJoin(
+			table.unitTable,
+			eq(table.bedTable.basePriceUnitId, table.unitTable.id)
 		)
 		.leftJoin(
 			table.staffTable,

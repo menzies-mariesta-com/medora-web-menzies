@@ -3,7 +3,7 @@ title: "Advance Deposit"
 description: "Step-by-step guide for Advance Deposit in Billing."
 docType: workflow
 slug: workflows/billing-ip-billing-advance-deposit
-pageId: 810002
+pageId: 800200
 moduleId: 8
 pageUrl: "/medora/home/billing/ip-billing/advance-deposit"
 generated: false

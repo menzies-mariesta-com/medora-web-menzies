@@ -170,6 +170,7 @@
 			{hospitalId}
 			onVisitSelected={handleVisitSelected}
 			onVisitReset={handleVisitReset}
+			listScope="hospital"
 		/>
 		<div role="tablist" class="emr-subnav-tabs">
 			{#each subPages as sub (sub.id)}
@@ -209,6 +210,7 @@
 			{hospitalId}
 			onVisitSelected={handleVisitSelected}
 			onVisitReset={handleVisitReset}
+			listScope="hospital"
 		/>
 		{#if clinicalVisitReadOnly}
 			<WashAlert

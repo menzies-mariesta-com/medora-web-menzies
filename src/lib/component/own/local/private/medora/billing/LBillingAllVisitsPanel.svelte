@@ -1,11 +1,11 @@
 <script lang="ts">
 	import OpBillingReadinessPanel from '$lib/component/own/local/private/medora/billing/OpBillingReadinessPanel.svelte';
+	import BillingBillLineRows from '$lib/component/own/local/private/medora/billing/BillingBillLineRows.svelte';
 	import LucideStrikeThrough from '$lib/component/own/library/lucide/LucideStrikeThrough.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
-	import { BillingStatusTaggingEnum } from '$lib/model/enum/db-link';
+	import { BillingStatusTaggingEnum, VisitTypeEnum } from '$lib/model/enum/db-link';
 	import {
-		billingLineTotal,
 		type OpenBillVisitDetail
 	} from '$lib/tool/billing/billing-open-bills-batch.util.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -16,8 +16,6 @@
 	let {
 		hospitalId,
 		details = [],
-		grandTotalLabel,
-		openBillsGrandTotal,
 		currentVisitId = '',
 		embedded = false,
 		onSelectVisit,
@@ -25,17 +23,11 @@
 	}: {
 		hospitalId: string;
 		details: OpenBillVisitDetail[];
-		grandTotalLabel: string;
-		openBillsGrandTotal: string;
 		currentVisitId?: string;
 		embedded?: boolean;
 		onSelectVisit: (visitId: string) => void;
 		onOpenDiscount: (visitId: string) => void;
 	} = $props();
-
-	const combinedNetTotal = $derived(
-		details.reduce((sum, d) => sum + d.netTotal, 0)
-	);
 
 	function lineKey(line: OpenBillVisitDetail['groups'][0]['lines'][0]): string {
 		if (line.lineSource === 'billing_setup') {
@@ -64,6 +56,21 @@
 			return msg.op_billing_total_bill?.() ?? 'Total bill';
 		} catch {
 			return 'Total bill';
+		}
+	}
+
+	function billingMsg(
+		visitTypeId: number | null | undefined,
+		key: string,
+		fallback: string
+	): string {
+		const prefix =
+			visitTypeId === VisitTypeEnum.IPD ? 'ip_billing_' : 'op_billing_';
+		try {
+			const fn = msg[`${prefix}${key}`];
+			return typeof fn === 'function' ? fn() : fallback;
+		} catch {
+			return fallback;
 		}
 	}
 </script>
@@ -165,6 +172,49 @@
 						</div>
 					</div>
 
+					{#if detail.row.visitTypeId === VisitTypeEnum.IPD && detail.advanceTotal > 0}
+						<div
+							class="mt-2 flex items-center justify-between gap-3 text-sm"
+						>
+							<span class="text-base-content/70"
+								>Advance deposit (collected)</span
+							>
+							<span class="font-mono tabular-nums"
+								>{formatMoneyAmount(detail.advanceTotal)}</span
+							>
+						</div>
+						<div
+							class="mt-1 flex items-center justify-between gap-3 text-sm"
+						>
+							<span class="text-base-content/70"
+								>Applied to bill</span
+							>
+							<span class="font-mono tabular-nums"
+								>− {formatMoneyAmount(detail.advanceCredit)}</span
+							>
+						</div>
+						{#if detail.advanceRefundDue > 0}
+							<div
+								class="mt-1 flex items-center justify-between gap-3 text-sm font-semibold text-success"
+							>
+								<span>Refund due</span>
+								<span class="font-mono tabular-nums"
+									>{formatMoneyAmount(
+										detail.advanceRefundDue
+									)}</span
+								>
+							</div>
+						{/if}
+						<div
+							class="mt-1 flex items-center justify-between gap-3 text-sm font-semibold"
+						>
+							<span>Balance due</span>
+							<span class="font-mono tabular-nums"
+								>{formatMoneyAmount(detail.payableAmount)}</span
+							>
+						</div>
+					{/if}
+
 					<div
 						class="mt-3 rounded-box divide-y divide-base-300 border border-base-300"
 					>
@@ -183,35 +233,45 @@
 									</span>
 								</div>
 								<div class="collapse-content">
-									<ul class="space-y-1 text-sm">
-										{#each group.lines as line (lineKey(line))}
-											<li
-												class="rounded-box flex items-center justify-between gap-3 bg-base-200/40 px-3 py-1.5"
-											>
-												<div class="min-w-0">
-													<p class="truncate font-medium">
-														{line.serviceName ?? 'Service'}
-													</p>
-													{#if line.orderNo}
-														<p
-															class="text-xs text-base-content/60"
-														>
-															{msg.op_billing_order_prefix?.() ??
-																'Order'}
-															: {line.orderNo}
-														</p>
-													{/if}
-												</div>
-												<div
-													class="text-right font-mono text-sm tabular-nums"
-												>
-													{formatMoneyAmount(
-														billingLineTotal(line)
-													)}
-												</div>
-											</li>
-										{/each}
-									</ul>
+									<BillingBillLineRows
+										lines={group.lines}
+										{lineKey}
+										serviceFallback={billingMsg(
+											detail.row.visitTypeId,
+											'service_fallback',
+											'Service'
+										)}
+										orderPrefix={billingMsg(
+											detail.row.visitTypeId,
+											'order_prefix',
+											'Order'
+										)}
+										colService={billingMsg(
+											detail.row.visitTypeId,
+											'print_service',
+											'Service'
+										)}
+										colQty={billingMsg(
+											detail.row.visitTypeId,
+											'col_qty',
+											'Qty'
+										)}
+										colUnit={billingMsg(
+											detail.row.visitTypeId,
+											'col_unit',
+											'Unit'
+										)}
+										colUnitPrice={billingMsg(
+											detail.row.visitTypeId,
+											'col_unit_price',
+											'Unit price'
+										)}
+										colAmount={billingMsg(
+											detail.row.visitTypeId,
+											'print_amount',
+											'Amount'
+										)}
+									/>
 								</div>
 							</div>
 						{/each}
@@ -219,16 +279,5 @@
 				{/if}
 			</section>
 		{/each}
-	</div>
-
-	<div
-		class="mt-4 flex items-center justify-between gap-3 border-t border-base-300 pt-3 text-sm font-semibold"
-	>
-		<span>{grandTotalLabel}</span>
-		<span class="font-mono tabular-nums"
-			>{formatMoneyAmount(
-				embedded ? combinedNetTotal : openBillsGrandTotal
-			)}</span
-		>
 	</div>
 </div>

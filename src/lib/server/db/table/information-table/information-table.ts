@@ -23,7 +23,6 @@ import {
 import { uuidV7 } from '../../../../util/id.util';
 import {
 	IpdAdmissionStatusEnum,
-	IpdAccommodationBillingMethodEnum,
 	IpdBedStatusEnum,
 	IpdBedBookingStatusTaggingEnum,
 	IpdBedTransferReqStatusTaggingEnum,
@@ -1537,6 +1536,12 @@ export const hospitalBillingSettingTable = pgTable('hospital_billing_setting', {
 	visitOpenMode: integer('visit_open_mode')
 		.notNull()
 		.default(BillingVisitOpenModeEnum.ONE_VISIT_ONE_BILL),
+	/** Placeholder service item for in-house medication order bill lines (grouping + FK). */
+	pharmacyBillingServiceItemId: integer(
+		'pharmacy_billing_service_item_id'
+	).references(() => serviceItemTable.id, {
+		onDelete: 'set null'
+	}),
 	...timestamps
 });
 
@@ -1750,6 +1755,14 @@ export const opBillingLineTable = pgTable(
 			precision: 14,
 			scale: 2
 		}).notNull(),
+		pricingFormulaTemplateId: integer('pricing_formula_template_id'),
+		pricingModule: varchar('pricing_module', { length: 16 }),
+		pricingBatchId: integer('pricing_batch_id'),
+		unitSalePriceIssue: decimal('unit_sale_price_issue', {
+			precision: 14,
+			scale: 2
+		}),
+		pricingInputsSnapshot: jsonb('pricing_inputs_snapshot'),
 		...timestamps
 	},
 	(table) => [
@@ -2060,6 +2073,11 @@ export const bedTable = pgTable(
 		})
 			.notNull()
 			.default('0'),
+		/** Base price unit (Timeline); daily rate = marked-up base ÷ duration. */
+		basePriceUnitId: integer('base_price_unit_id').references(
+			() => unitTable.id,
+			{ onDelete: 'set null' }
+		),
 		/** {@link IpdBedStatusEnum} */
 		bedStatus: integer('bed_status')
 			.notNull()
@@ -2268,6 +2286,14 @@ export const ipdBedStaySegmentTable = pgTable(
 		})
 			.notNull()
 			.default('0'),
+		basePriceUnitIdSnapshot: integer('base_price_unit_id_snapshot'),
+		basePriceUnitNameSnapshot: varchar('base_price_unit_name_snapshot', {
+			length: 512
+		}),
+		timelineDurationDaysSnapshot: decimal(
+			'timeline_duration_days_snapshot',
+			{ precision: 18, scale: 6 }
+		),
 		startedAt: timestamp('started_at', {
 			withTimezone: true,
 			mode: 'string'
@@ -2298,41 +2324,38 @@ export const ipdBedStaySegmentTable = pgTable(
 );
 
 /**
- * Hospital policy for how stay segments convert to accommodation charges.
- * One row per hospital (upserted on first use).
+ * Hospital policy for how stay length converts to accommodation charges.
+ * One row per hospital + care setting (IP / ED); upserted on first use.
  */
-export const ipdAccommodationBillingPolicyTable = pgTable(
-	'ipd_accommodation_billing_policy',
+export const accommodationBillingPolicyTable = pgTable(
+	'accommodation_billing_policy',
 	{
 		id: serial('id').primaryKey(),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		/** {@link IpdAccommodationBillingMethodEnum} */
-		billingMethod: integer('billing_method')
+		/** IP or ED (same policy shape for both care settings). */
+		careSetting: varchar('care_setting', { length: 8 })
 			.notNull()
-			.default(IpdAccommodationBillingMethodEnum.BLOCK_24H),
-		/** Minutes after cut-off / block end with no extra day (grace). */
-		graceMinutes: integer('grace_minutes').notNull().default(0),
-		/** Minimum billable days (e.g. 0.5); null = no floor. */
-		minimumDays: decimal('minimum_days', {
+			.default('IP'),
+		/** Minimum bill block qty (× accommodation bill unit). */
+		leastBillDuration: decimal('least_bill_duration', {
 			precision: 8,
 			scale: 4
-		}),
-		/**
-		 * Cut-off time for CALENDAR_DAY method as HH:mm (local hospital).
-		 * Default midnight = 00:00.
-		 */
-		cutoffTime: varchar('cutoff_time', { length: 8 })
-			.notNull()
-			.default('00:00'),
+		}).default('1'),
 		/**
 		 * Optional service item used when posting accommodation lines
-		 * into ip_billing_line.
+		 * into ip_billing_line (IP) or ER bed charge (ED).
 		 */
 		accommodationServiceItemId: integer(
 			'accommodation_service_item_id'
 		).references(() => serviceItemTable.id, {
+			onDelete: 'set null'
+		}),
+		/** Timeline unit for least-bill block and IP bill line qty/label. */
+		accommodationBillUnitId: integer(
+			'accommodation_bill_unit_id'
+		).references(() => unitTable.id, {
 			onDelete: 'set null'
 		}),
 		statusId: integer('status_id')
@@ -2342,8 +2365,9 @@ export const ipdAccommodationBillingPolicyTable = pgTable(
 		...timestamps
 	},
 	(table) => [
-		uniqueIndex('ipd_accommodation_billing_policy_hospital_uidx').on(
-			table.hospitalId
+		uniqueIndex('accommodation_billing_policy_hospital_care_uidx').on(
+			table.hospitalId,
+			table.careSetting
 		)
 	]
 );
@@ -2497,15 +2521,31 @@ export const ipBillingLineTable = pgTable(
 			precision: 14,
 			scale: 2
 		}),
-		serviceUnit: integer('service_unit'),
+		/** Base-price-unit qty; fractional (e.g. 8/24 of a Day). */
+		serviceUnit: decimal('service_unit', { precision: 18, scale: 4 }),
 		lineTotal: decimal('line_total', {
 			precision: 14,
 			scale: 2
 		}).notNull(),
+		pricingFormulaTemplateId: integer('pricing_formula_template_id'),
+		pricingModule: varchar('pricing_module', { length: 16 }),
+		pricingBatchId: integer('pricing_batch_id'),
+		unitSalePriceIssue: decimal('unit_sale_price_issue', {
+			precision: 14,
+			scale: 2
+		}),
+		pricingInputsSnapshot: jsonb('pricing_inputs_snapshot'),
+		ipdBedStaySegmentId: integer('ipd_bed_stay_segment_id').references(
+			() => ipdBedStaySegmentTable.id,
+			{ onDelete: 'set null' }
+		),
 		...timestamps
 	},
 	(table) => [
 		index('ip_billing_line_ip_billing_id_idx').on(table.ipBillingId),
+		index('ip_billing_line_ipd_bed_stay_segment_id_idx').on(
+			table.ipdBedStaySegmentId
+		),
 		index('ip_billing_line_service_id_idx').on(table.serviceId),
 		index('ip_billing_line_service_order_detail_id_idx').on(
 			table.serviceOrderDetailId

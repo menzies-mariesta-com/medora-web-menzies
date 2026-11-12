@@ -49,6 +49,11 @@ export const PRINT_DOCUMENT_UTILITY_CSS = `
 	.line-table td { padding: 6px 8px; border: 1px solid #000; }
 	.line-table th.num,
 	.line-table td.amt { text-align: right; }
+	.billing-line-table { table-layout: fixed; width: 100%; }
+	.billing-line-table th,
+	.billing-line-table td { overflow: hidden; overflow-wrap: anywhere; vertical-align: top; }
+	.billing-line-table th.num,
+	.billing-line-table td.num { text-align: right; white-space: nowrap; }
 	.subtotal-row td { font-weight: 600; }
 	.grand {
 		margin-top: 12px;

@@ -2,6 +2,8 @@ import { StatusEnum } from '../../../../model/enum/db-link';
 import { sql } from 'drizzle-orm';
 import {
 	type AnyPgColumn,
+	boolean,
+	decimal,
 	index,
 	integer,
 	pgTable,
@@ -517,6 +519,8 @@ export const unitTypeTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
+		/** When true, units require {@link unitTable.timelineDurationDays}. */
+		isTimeline: boolean('is_timeline').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -538,6 +542,11 @@ export const unitTable = pgTable(
 		unitTypeId: integer('unit_type_id').references(
 			() => unitTypeTable.id
 		),
+		/** Billable length of one timeline unit, stored as days. Unit Master edits hours (24 = 1 day). */
+		timelineDurationDays: decimal('timeline_duration_days', {
+			precision: 18,
+			scale: 6
+		}),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()

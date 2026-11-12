@@ -1354,10 +1354,25 @@ export const invDepartmentConsumptionLineTable = pgTable(
 		batchId: integer('batch_id')
 			.notNull()
 			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
-		/** Per issue unit; snapshot from item_batch at post time. */
+		/** Per issue unit; snapshot at post time. */
 		empSalePrice: decimal('emp_sale_price', {
 			precision: 14,
 			scale: 2
+		}),
+		pricingFormulaTemplateId: integer(
+			'pricing_formula_template_id'
+		).references(() => invPricingFormulaTemplateTable.id, {
+			onDelete: 'restrict'
+		}),
+		pricingModule: varchar('pricing_module', { length: 16 }),
+		unitEmpSalePriceIssue: decimal('unit_emp_sale_price_issue', {
+			precision: 14,
+			scale: 2
+		}),
+		pricingInputsSnapshot: jsonb('pricing_inputs_snapshot'),
+		pricingComputedAt: timestamp('pricing_computed_at', {
+			withTimezone: true,
+			mode: 'string'
 		}),
 		remarks: text('remarks'),
 		...invTimestamps
@@ -1365,6 +1380,9 @@ export const invDepartmentConsumptionLineTable = pgTable(
 	(t) => [
 		index('inv_department_consumption_line_consumption_id_idx').on(
 			t.consumptionId
+		),
+		index('inv_department_consumption_line_pricing_formula_template_id_idx').on(
+			t.pricingFormulaTemplateId
 		)
 	]
 );

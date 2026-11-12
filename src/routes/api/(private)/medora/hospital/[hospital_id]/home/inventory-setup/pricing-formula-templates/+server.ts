@@ -2,14 +2,14 @@ import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import {
 	createPricingFormulaTemplate,
-	deactivatePricingFormulaTemplate,
-	deletePricingFormulaTemplate,
 	duplicatePricingFormulaTemplate,
 	getPricingFormulaTemplate,
 	listPricingFormulaTemplates,
-	updatePricingFormulaTemplate,
 	type PricingFormulaTemplateWriteInput
 } from '$lib/server/medora/inventory/pricing-formula-template.server';
+
+const IMMUTABLE_MSG =
+	'Pricing formula templates are immutable. Duplicate a template to create a new revision.';
 
 function writeInputFromBody(
 	body: Record<string, unknown>
@@ -77,37 +77,10 @@ export const POST: RequestHandler = async (event) => {
 	return json(row);
 };
 
-export const PUT: RequestHandler = async (event) => {
-	const hospitalId = event.params.hospital_id;
-	const action = event.url.searchParams.get('action');
-	const idStr = event.url.searchParams.get('id');
-	const id = Number(idStr);
-	if (!Number.isFinite(id)) throw error(400, 'id required');
-
-	if (action === 'deactivate') {
-		const row = await deactivatePricingFormulaTemplate(event, {
-			hospitalId,
-			id
-		});
-		return json(row);
-	}
-
-	const body = (await event.request
-		.json()
-		.catch(() => null)) as Record<string, unknown> | null;
-	if (!body) throw error(400, 'Invalid JSON');
-	const row = await updatePricingFormulaTemplate(event, {
-		hospitalId,
-		id,
-		...writeInputFromBody(body)
-	});
-	return json(row);
+export const PUT: RequestHandler = async () => {
+	throw error(403, IMMUTABLE_MSG);
 };
 
-export const DELETE: RequestHandler = async (event) => {
-	const hospitalId = event.params.hospital_id;
-	const id = Number(event.url.searchParams.get('id') ?? '0');
-	if (!Number.isFinite(id)) throw error(400, 'id required');
-	await deletePricingFormulaTemplate(event, { hospitalId, id });
-	return json({ ok: true });
+export const DELETE: RequestHandler = async () => {
+	throw error(403, IMMUTABLE_MSG);
 };

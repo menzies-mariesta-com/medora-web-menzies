@@ -207,6 +207,7 @@ export type UnitTypeListRow = PatientRegMasterTimestamps & {
 	id: number;
 	name: string | null;
 	statusId: number;
+	isTimeline?: boolean;
 };
 
 export type UnitListRow = PatientRegMasterTimestamps & {
@@ -214,12 +215,14 @@ export type UnitListRow = PatientRegMasterTimestamps & {
 	name: string | null;
 	unitTypeId: number | null;
 	statusId: number;
+	timelineDurationDays?: string | null;
 	unitType?: UnitTypeListRow | null;
 };
 
 /** Unit master grid row (joined unit type name). */
 export type UnitMasterListRow = UnitListRow & {
 	unitTypeName: string | null;
+	unitTypeIsTimeline?: boolean | null;
 };
 
 /** Purchase/issue unit conversion definition (not tagged to item). */

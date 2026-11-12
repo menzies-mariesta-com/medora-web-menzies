@@ -290,7 +290,7 @@ export function issueQtyStringFromAnyUnit(params: {
 	preferredIumId?: number | null;
 }): string {
 	const q = params.qty;
-	if (!Number.isFinite(q) || q <= 0) return '0.000000';
+	if (!Number.isFinite(q) || q <= 0) return '0';
 	const pfLine = Number(params.lineIum.purchaseConversionFactor);
 	const itfLine = Number(params.lineIum.issueConversionFactor);
 	if (

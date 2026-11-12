@@ -19,6 +19,7 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
+	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const visitIdStr = $derived(
@@ -300,18 +301,6 @@
 		return String(value);
 	}
 
-	function formatDateTime(value: string | null | undefined): string {
-		if (!value) return '–';
-		try {
-			return new Date(value).toLocaleString('en-US', {
-				dateStyle: 'short',
-				timeStyle: 'short'
-			});
-		} catch {
-			return '–';
-		}
-	}
-
 	const statusFilterOptions = [
 		{ label: 'Active', value: String(StatusEnum.ACTIVE) },
 		{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
@@ -387,14 +376,16 @@
 				header: 'Created At',
 				widthClass: 'w-36 min-w-[9rem]',
 				filterable: false,
-				format: (_value, row) => formatDateTime(row.createdAt ?? null)
+				format: (_value, row) =>
+					formatMenziesTableDateTime(row.createdAt ?? null, '–')
 			},
 			{
 				id: 'updatedAt',
 				header: 'Updated At',
 				widthClass: 'w-36 min-w-[9rem]',
 				filterable: false,
-				format: (_value, row) => formatDateTime(row.updatedAt ?? null)
+				format: (_value, row) =>
+					formatMenziesTableDateTime(row.updatedAt ?? null, '–')
 			}
 		];
 </script>

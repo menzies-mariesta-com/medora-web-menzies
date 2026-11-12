@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { and, desc, eq, ilike, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm';
 import {
 	IpdAdmissionStatusEnum,
 	StatusEnum
@@ -167,7 +167,35 @@ export async function resolveAdmissionIdForVisit(input: {
 		)
 		.orderBy(desc(table.ipdAdmissionTable.id))
 		.limit(1);
-	return admission?.id ?? null;
+	if (admission?.id) return admission.id;
+
+	const [fromSourceVisit] = await ensureDb()
+		.select({ id: table.ipdAdmissionTable.id })
+		.from(table.ipdAdmissionTable)
+		.innerJoin(
+			table.patientVisitTable,
+			eq(table.ipdAdmissionTable.visitId, table.patientVisitTable.id)
+		)
+		.where(
+			and(
+				eq(table.patientVisitTable.sourceVisitId, input.visitId),
+				eq(table.ipdAdmissionTable.hospitalId, input.hospitalId),
+				ne(table.ipdAdmissionTable.statusId, StatusEnum.DELETED),
+				or(
+					eq(
+						table.ipdAdmissionTable.admissionStatus,
+						IpdAdmissionStatusEnum.ADMITTED
+					),
+					eq(
+						table.ipdAdmissionTable.admissionStatus,
+						IpdAdmissionStatusEnum.DISCHARGED
+					)
+				)
+			)
+		)
+		.orderBy(desc(table.ipdAdmissionTable.id))
+		.limit(1);
+	return fromSourceVisit?.id ?? null;
 }
 
 export async function createIpAdvanceDeposit(
@@ -271,11 +299,27 @@ export async function listIpAdvanceDeposits(input: {
 		);
 	}
 	if (
-		typeof input.visitId === 'number' &&
-		Boolean(input.visitId) &&
-		input.Boolean(visitId)
+		typeof input.visitId === 'string' &&
+		input.visitId.trim() !== ''
 	) {
-		conditions.push(eq(table.ipAdvanceDepositTable.visitId, input.visitId));
+		const visitId = input.visitId.trim();
+		const resolvedAdmissionId = await resolveAdmissionIdForVisit({
+			hospitalId: input.hospitalId,
+			visitId
+		});
+		if (resolvedAdmissionId != null) {
+			conditions.push(
+				or(
+					eq(table.ipAdvanceDepositTable.visitId, visitId),
+					eq(
+						table.ipAdvanceDepositTable.admissionId,
+						resolvedAdmissionId
+					)
+				)!
+			);
+		} else {
+			conditions.push(eq(table.ipAdvanceDepositTable.visitId, visitId));
+		}
 	}
 	const search = input.search?.trim();
 	if (search) {
@@ -380,4 +424,39 @@ export async function sumIpAdvanceDepositsForVisit(input: {
 			)
 		);
 	return Math.round(Number(row?.total ?? 0) * 100) / 100;
+}
+
+/** Batch deposit totals for billing scope (visit_id → sum). */
+export async function sumIpAdvanceDepositsForVisits(input: {
+	hospitalId: string;
+	visitIds: string[];
+}): Promise<Map<string, number>> {
+	const ids = [...new Set(input.visitIds.filter(Boolean))];
+	const out = new Map<string, number>();
+	if (!ids.length) return out;
+
+	const rows = await ensureDb()
+		.select({
+			visitId: table.ipAdvanceDepositTable.visitId,
+			total: sql<string>`coalesce(sum(${table.ipAdvanceDepositTable.amount}), 0)::text`
+		})
+		.from(table.ipAdvanceDepositTable)
+		.where(
+			and(
+				eq(table.ipAdvanceDepositTable.hospitalId, input.hospitalId),
+				inArray(table.ipAdvanceDepositTable.visitId, ids),
+				ne(table.ipAdvanceDepositTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.groupBy(table.ipAdvanceDepositTable.visitId);
+
+	for (const r of rows) {
+		if (r.visitId) {
+			out.set(
+				r.visitId,
+				Math.round(Number(r.total ?? 0) * 100) / 100
+			);
+		}
+	}
+	return out;
 }

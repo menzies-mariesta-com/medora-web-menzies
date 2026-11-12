@@ -20,8 +20,8 @@
 	import { purchaseQtyToIssueQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
+	import { searchItemMasterOptions } from '$lib/tool/inventory/item-master-search-select.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const toast = new ToastService();
@@ -130,17 +130,7 @@
 	});
 
 	async function searchItems(q: string) {
-		const qEnc = encodeURIComponent(q.trim());
-		const res = await fetch(
-			`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?name=${qEnc}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`
-		);
-		const j = await res.json();
-		return (j.data ?? []).map(
-			(x: { itemName?: string | null; id: number }) => ({
-				label: x.itemName ?? '—',
-				value: String(x.id)
-			})
-		);
+		return searchItemMasterOptions(hospitalId, q);
 	}
 
 	async function openCreateLine() {

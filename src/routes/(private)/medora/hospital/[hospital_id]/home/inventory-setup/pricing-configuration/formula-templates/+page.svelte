@@ -10,6 +10,10 @@
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
+	import LucideCopy from '$lib/component/own/library/lucide/LucideCopy.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -42,7 +46,7 @@
 	let isLoading = $state(false);
 	let saving = $state(false);
 	let showForm = $state(false);
-	let editingId = $state<number | null>(null);
+	let formFromDuplicate = $state(false);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 
@@ -153,7 +157,6 @@
 	});
 
 	function resetForm() {
-		editingId = null;
 		name = '';
 		description = '';
 		mslMarkupPercentStr = '0';
@@ -164,9 +167,14 @@
 		includeStoreMarkup = true;
 	}
 
-	function loadTemplateIntoForm(row: PricingFormulaTemplateDto) {
-		editingId = row.id;
-		name = row.name;
+	function openCreateForm() {
+		resetForm();
+		formFromDuplicate = false;
+		showForm = true;
+	}
+
+	function populateFormFromTemplate(row: PricingFormulaTemplateListRow) {
+		name = `Copy of ${row.name}`;
 		description = row.description ?? '';
 		mslMarkupPercentStr = row.mslMarkupPercent;
 		includeDiscount = row.includeDiscount;
@@ -174,6 +182,11 @@
 		includeFreeQty = row.includeFreeQty;
 		includeItemMarkup = row.includeItemMarkup;
 		includeStoreMarkup = row.includeStoreMarkup;
+	}
+
+	function openDuplicateForm(row: PricingFormulaTemplateListRow) {
+		populateFormFromTemplate(row);
+		formFromDuplicate = true;
 		showForm = true;
 	}
 
@@ -231,10 +244,8 @@
 
 		saving = true;
 		try {
-			const url =
-				editingId != null ? `${apiBase}?id=${editingId}` : apiBase;
-			const res = await fetch(url, {
-				method: editingId != null ? 'PUT' : 'POST',
+			const res = await fetch(apiBase, {
+				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify(payload)
@@ -248,6 +259,7 @@
 				StatusColorEnum.SUCCESS
 			);
 			showForm = false;
+			formFromDuplicate = false;
 			resetForm();
 			await loadTemplates();
 		} catch (err) {
@@ -269,50 +281,15 @@
 		});
 	}
 
-	async function handleDelete(row: PricingFormulaTemplateListRow) {
-		if (!apiBase) return;
-		if (row.assignmentCount > 0) {
-			toastService.addToast(
-				m.inv_pricing_template_in_use_warning({
-					count: String(row.assignmentCount)
-				}),
-				StatusColorEnum.ERROR
-			);
-			return;
-		}
-		const result = await dialogService.open({
-			title: m.menzies_table_tooltip_delete(),
-			message: row.name,
-			variant: DialogVariantEnum.CONFIRM
-		});
-		if (!result.confirmed) return;
-		try {
-			const res = await fetch(`${apiBase}?id=${row.id}`, {
-				method: 'DELETE',
-				credentials: 'include'
-			});
-			if (!res.ok) throw new Error(`Delete failed (${res.status})`);
-			toastService.addToast(
-				m.inv_pricing_template_deleted(),
-				StatusColorEnum.SUCCESS
-			);
-			await loadTemplates();
-		} catch (err) {
-			toastService.addToast(
-				err instanceof Error ? err.message : m.delete_failed(),
-				StatusColorEnum.ERROR
-			);
-		}
-	}
 </script>
 
-<div class="flex flex-col gap-4 p-4">
+<div class="flex flex-col gap-6">
 	{#if showForm}
 		<WashCard>
 			<WashCardBody>
 				<h2 class="mb-4 text-lg font-medium">
-					{editingId != null
-						? m.inv_pricing_template_edit()
+					{formFromDuplicate
+						? m.inv_pricing_template_duplicate_form_title()
 						: m.inv_pricing_template_create()}
 				</h2>
 				<form
@@ -381,6 +358,7 @@
 							className="btn-ghost"
 							onClick={() => {
 								showForm = false;
+								formFromDuplicate = false;
 								resetForm();
 							}}
 						>
@@ -399,32 +377,53 @@
 		</WashCard>
 	{/if}
 
+	<div class="space-y-1">
+		<h2 class="text-base font-semibold">{m.inv_pricing_template_title()}</h2>
+		<p class="text-sm opacity-70">{m.inv_pricing_template_subtitle()}</p>
+	</div>
+
 	<div class={TableEnum.HEIGHT}>
 		<MenziesTable
-			title={m.inv_pricing_template_title()}
+			title=""
+			description=""
 			showAddButton={true}
 			addLabel={m.inv_pricing_template_create()}
-			onAdd={() => {
-				resetForm();
-				showForm = true;
-			}}
+			onAdd={openCreateForm}
 			rows={allTemplates}
-					columns={templateColumns}
-					{isLoading}
-					bind:pageSize={pageSizeStr}
-					bind:currentPage
-					showRefreshButton={true}
-					refreshTooltip={m.refresh_data()}
-					emptyMessage="—"
-					showRowActions={true}
-					actionsVariant="crud"
-					enableColumnFilters={false}
-					crudDeleteDisabled={(row) =>
-						(row as PricingFormulaTemplateListRow).isSystemDefault}
-					on:refresh={() => loadTemplates()}
-					on:view={(e) => void openView(e.detail)}
-					on:edit={(e) => loadTemplateIntoForm(e.detail)}
-					on:delete={(e) => void handleDelete(e.detail)}
-		/>
+			columns={templateColumns}
+			{isLoading}
+			bind:pageSize={pageSizeStr}
+			bind:currentPage
+			showRefreshButton={true}
+			refreshTooltip={m.refresh_data()}
+			emptyMessage="—"
+			showRowActions={true}
+			actionsVariant="none"
+			enableColumnFilters={false}
+			on:refresh={() => loadTemplates()}
+		>
+			{#snippet rowActions(row)}
+				<MenziesTableRowActionGroup>
+					<MenziesTableIconAction
+						tooltipText={m.menzies_table_tooltip_view()}
+						color="primary"
+						onClick={() => void openView(row)}
+					>
+						{#snippet icon()}
+							<LucideEye className="size-3.5" />
+						{/snippet}
+					</MenziesTableIconAction>
+					<MenziesTableIconAction
+						tooltipText={m.inv_pricing_template_duplicate()}
+						color="secondary"
+						onClick={() => openDuplicateForm(row)}
+					>
+						{#snippet icon()}
+							<LucideCopy className="size-3.5" />
+						{/snippet}
+					</MenziesTableIconAction>
+				</MenziesTableRowActionGroup>
+			{/snippet}
+		</MenziesTable>
 	</div>
 </div>

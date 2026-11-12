@@ -1,5 +1,6 @@
 <script lang="ts">
-	
+	import { tick } from 'svelte';
+
 import type {
 		MedoraPageModuleRow,
 		MedoraPageRow
