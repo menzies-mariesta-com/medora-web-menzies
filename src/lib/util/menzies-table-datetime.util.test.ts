@@ -5,6 +5,8 @@ describe('formatMenziesTableDateTime', () => {
 	it('returns em dash for empty values', () => {
 		expect(formatMenziesTableDateTime(null)).toBe('—');
 		expect(formatMenziesTableDateTime('')).toBe('—');
+		expect(formatMenziesTableDateTime(null, '–')).toBe('–');
+		expect(formatMenziesTableDateTime('', '')).toBe('');
 	});
 
 	it('formats valid ISO timestamps with short date and time', () => {

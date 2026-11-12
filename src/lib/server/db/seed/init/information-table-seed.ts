@@ -1,0 +1,779 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
+import { seedLogger } from '$lib/logger';
+import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
+import {
+	CLINICAL_FORM_SEED_ROWS,
+	buildClinicalFormDocumentText
+} from '$lib/util/clinical-form-print-body.util';
+import {
+	importWhoIcdSystems,
+	isWhoIcdSeedSkipped,
+	WhoIcdCredentialsError
+} from '$lib/server/medora/clinical/who-icd-import.server';
+
+const client = neon(ensureDatabaseUrl());
+const db = drizzle(client);
+
+/**
+ * Seed static information / reference data for init (modules, pages, status tagging,
+ * document templates, allergy lookup, ED triage levels per hospital).
+ *
+ * Run after master-table-seed. Inserts in FK-safe order.
+ *
+ * Does **not** seed demo patients, staff, service items, inventory, ER demo beds, or
+ * transactional visits — use scripts under `src/lib/server/db/seed/demo/` (`pnpm db:seed:demo:*`).
+ *
+ * **ICD-10 / ICD-11:** imports the full WHO coded catalogues via the ICD-API
+ * (`WHO_ICD_CLIENT_ID` + `WHO_ICD_CLIENT_SECRET` required). Set
+ * `WHO_ICD_SKIP_SEED=1` only to skip (catalogue will not be complete).
+ * Same importer as `pnpm db:import:icd` and admin Reseed.
+ *
+ * Per-hospital **`item_master`** catalog rows are **not** seeded here (created via the app).
+ * Migration **`0074_item_master_drop_barcode_batch_required`** removes legacy **`barcode`** /
+ * **`is_batch_required`** columns; no seed SQL references those columns.
+ *
+ * Also applies inventory approval DDL (module CHECK + active unique on
+ * `inv_approval_level`) so environments that use `pnpm db:seed` without a full
+ * `db:migrate` run still match drizzle 0039–0041 for approval config.
+ *
+ * Also rewrites legacy `/heka/` module/page URLs to `/medora/` on every seed run
+ * (seed uses ON CONFLICT DO NOTHING for those rows, so inserts alone would not update).
+ *
+ * npx tsx src/lib/server/db/seed/init/information-table-seed.ts
+ */
+export async function seedInformationTables() {
+	seedLogger.info('Seeding information tables...');
+
+	// Rebrand path rewrite for seed/db:push workflows (no drizzle migrate required).
+	// Existing rows keep /heka/... until this runs; new INSERTs below already use /medora/...
+	await db.execute(sql`
+		UPDATE module
+		SET module_url = REPLACE(module_url, '/heka/', '/medora/')
+		WHERE module_url LIKE '/heka/%';
+	`);
+	await db.execute(sql`
+		UPDATE page
+		SET page_url = REPLACE(page_url, '/heka/', '/medora/')
+		WHERE page_url LIKE '/heka/%';
+	`);
+	seedLogger.info('Rewrote module/page URLs: /heka/ → /medora/');
+
+	// 1. Modules (depends: status)
+	// image_url = Lucide kebab-case name (Menzies Design / Wash DynamicIcon naming).
+	await db.execute(sql`
+		INSERT INTO module (id, name, sequence_no, status_id, module_url, image_url)
+		VALUES
+			(1, 'Administration', 1, 1, '/medora/home/administration', 'user-cog'),
+			(2, 'Registration', 2, 1, '/medora/home/registration', 'users-round'),
+			(3, 'Appointment', 3, 1, '/medora/home/appointment', 'clipboard-clock'),
+			(4, 'Nursing Workbench', 4, 1, '/medora/home/nursing-workbench', 'heart-pulse'),
+			(5, 'Service Item', 5, 1, '/medora/home/service-item', 'clipboard-list'),
+			(6, 'Consultation', 6, 1, '/medora/home/consultation', 'stethoscope'),
+			(7, 'ADT', 7, 1, '/medora/home/adt', 'bed-double'),
+			(8, 'Billing', 8, 1, '/medora/home/billing/bill', 'receipt-text'),
+			(9, 'Inventory Setup', 9, 1, '/medora/home/inventory-setup', 'warehouse'),
+			(10, 'Inventory', 10, 1, '/medora/home/inventory', 'package'),
+			(11, 'Medication Order', 11, 1, '/medora/home/medication-order', 'pill'),
+			(12, 'Emergency', 12, 1, '/medora/home/emergency', 'siren'),
+			(13, 'Perioperative', 13, 1, '/medora/home/perioperative', 'scalpel'),
+			(14, 'Obstetrics', 14, 1, '/medora/home/obstetrics', 'baby'),
+			(15, 'Diagnostics', 15, 1, '/medora/home/diagnostics', 'activity')
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			sequence_no = EXCLUDED.sequence_no,
+			status_id = EXCLUDED.status_id,
+			module_url = EXCLUDED.module_url,
+			image_url = EXCLUDED.image_url,
+			updated_at = now();
+	`);
+	seedLogger.info('Seeded: module');
+
+	// 2. Hospital (depends: status). id is UUID.
+	// await db.execute(sql`
+	// 	INSERT INTO hospital (id, name, code, city_id, state_id, country_id, status_id)
+	// 	VALUES
+	// 		('01900000-0000-7000-8000-000000000001'::uuid, 'Pun Hlaing Hospitals', 'phh', 1, 1, 118, 1)
+	// 	ON CONFLICT (id) DO NOTHING;
+	// `);
+	// seedLogger.info('Seeded: hospital');
+
+	// 2b. Financial year (per hospital) and prefix configuration seeds can be added here later per environment.
+
+	// 3. Page (depends: module, status)
+	// Page ids: top-level page n (1-based) → module×100000 + n×100 (100100, 100200, …); sub-page s (1-based) → parent + s (100101, 100102, …; never parent+0).
+	await db.execute(sql`
+		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
+		VALUES
+			-- ── Module 1: Administration ──
+			(100100, 'Staff', 1, 1, null, '/medora/home/administration/staff', 1),
+			(100101, 'Staff Registration', 1, 1, 100100, '/medora/home/administration/staff/registration', 1),
+			(100102, 'Staff List', 1, 1, 100100, '/medora/home/administration/staff/list', 2),
+			(100200, 'Schedule Master', 1, 1, null, '/medora/home/administration/schedule-master', 1),
+			(100201, 'Doctor Schedule', 1, 1, 100200, '/medora/home/administration/schedule-master/doctor-schedule', 1),
+			(100300, 'External Refer Master', 1, 1, null, '/medora/home/administration/external-refer-master', 1),
+			(100400, 'User Group', 1, 1, null, '/medora/home/administration/user-group', 4),
+			(100500, 'Branches', 1, 1, null, '/medora/home/administration/branches', 5),
+			(100600, 'Service Order', 1, 1, null, '/medora/home/administration/service-order', 6),
+			(100601, 'Category Master', 1, 1, 100600, '/medora/home/administration/service-order/category-master', 1),
+			(100602, 'Sub Category Master', 1, 1, 100600, '/medora/home/administration/service-order/sub-category-master', 2),
+			(100603, 'Service Item Master', 1, 1, 100600, '/medora/home/administration/service-order/service-item-master', 3),
+			(100604, 'Service Item Tagging', 1, 1, 100600, '/medora/home/administration/service-order/service-item-tagging', 4),
+			(100700, 'Document Master', 1, 1, null, '/medora/home/administration/document-master', 7),
+			(100701, 'Document Type', 1, 1, 100700, '/medora/home/administration/document-master/document-type', 1),
+			(100702, 'Document', 1, 1, 100700, '/medora/home/administration/document-master/document', 2),
+			(100703, 'Document Setting', 1, 1, 100700, '/medora/home/administration/document-master/document-setting', 3),
+			(100704, 'Master Templates', 1, 1, 100700, '/medora/home/administration/document-master/template-library', 4),
+			(100705, 'Hospital Template Access', 1, 1, 100700, '/medora/home/administration/document-master/hospital-templates', 5),
+			(100800, 'Financial Year', 1, 1, null, '/medora/home/administration/financial-year', 8),
+			(100900, 'Prefix Configuration', 1, 1, null, '/medora/home/administration/prefix-configuration', 9),
+			(101000, 'Departments', 1, 1, null, '/medora/home/administration/departments', 10),
+			(101100, 'Medication Order Setup', 1, 1, null, '/medora/home/administration/medication-order-setup', 12),
+			(101101, 'Frequency', 1, 1, 101100, '/medora/home/administration/medication-order-setup/frequency', 1),
+			(101102, 'Form', 1, 1, 101100, '/medora/home/administration/medication-order-setup/form', 2),
+			(101103, 'Route', 1, 1, 101100, '/medora/home/administration/medication-order-setup/route', 3),
+			(101104, 'Duration unit', 1, 1, 101100, '/medora/home/administration/medication-order-setup/duration', 4),
+			(101105, 'Order type', 1, 1, 101100, '/medora/home/administration/medication-order-setup/order-type', 5),
+			(101106, 'Dose unit', 1, 1, 101100, '/medora/home/administration/medication-order-setup/dose-unit', 6),
+			(101107, 'Food relation', 1, 1, 101100, '/medora/home/administration/medication-order-setup/food-relation', 7),
+			(101200, 'Ward Master', 1, 1, null, '/medora/home/administration/ward-master', 13),
+			(101201, 'Ward Category', 1, 1, 101200, '/medora/home/administration/ward-master/ward-category', 1),
+			(101202, 'Ward', 1, 1, 101200, '/medora/home/administration/ward-master/ward', 2),
+			(101300, 'Room Master', 1, 1, null, '/medora/home/administration/room-master', 14),
+			(101301, 'Room Category', 1, 1, 101300, '/medora/home/administration/room-master/room-category', 1),
+			(101302, 'Room', 1, 1, 101300, '/medora/home/administration/room-master/room', 2),
+			(101400, 'Bed Master', 1, 1, null, '/medora/home/administration/bed-master', 15),
+			(101500, 'Billing Setup', 1, 1, null, '/medora/home/administration/billing-setup', 16),
+			(101501, 'OP Billing', 1, 1, 101500, '/medora/home/administration/billing-setup/op-billing', 1),
+			(101502, 'IP Billing', 1, 1, 101500, '/medora/home/administration/billing-setup/ip-billing', 2),
+			(101503, 'ED Billing', 1, 1, 101500, '/medora/home/administration/billing-setup/ed-billing', 3),
+			(101504, 'Billing Settings', 1, 1, 101500, '/medora/home/administration/billing-setup/settings', 4),
+			(101600, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
+
+			-- ── Module 2: Registration ──
+			(200100, 'Patient', 2, 1, null, '/medora/home/registration/patient', 1),
+			(200101, 'Patient Registration', 2, 1, 200100, '/medora/home/registration/patient/registration', 1),
+			(200102, 'Patient List', 2, 1, 200100, '/medora/home/registration/patient/list', 2),
+
+			-- ── Module 3: Appointment ──
+			(300100, 'Doctor Appointment', 3, 1, null, '/medora/home/appointment/doctor-appointment', 1),
+
+			-- ── Module 4: Nursing Workbench ──
+			(400100, 'Nursing Workbench', 4, 1, null, '/medora/home/nursing-workbench', 1),
+			(400101, 'Vital', 4, 1, 400100, '/medora/home/nursing-workbench/vital', 1),
+			(400102, 'Allergy', 4, 1, 400100, '/medora/home/nursing-workbench/allergy', 2),
+			(400103, 'Patient Attachment', 4, 1, 400100, '/medora/home/nursing-workbench/patient-attachment', 3),
+			(400104, 'Clinical Document', 4, 1, 400100, '/medora/home/nursing-workbench/clinical-document', 4),
+			(400105, 'Case Sheet', 4, 1, 400100, '/medora/home/nursing-workbench/case-sheet', 5),
+			(400106, 'Order', 4, 1, 400100, '/medora/home/nursing-workbench/order', 6),
+			(400107, 'Nursing Complete', 4, 1, 400100, '/medora/home/nursing-workbench/nursing-complete', 7),
+			(400108, 'Patient Visit History Dashboard', 4, 1, 400100, '/medora/home/nursing-workbench/patient-visit-history-dashboard', 8),
+			(400109, 'Census', 4, 1, 400100, '/medora/home/nursing-workbench/census', 9),
+			(400110, 'Track Board', 4, 1, 400100, '/medora/home/nursing-workbench/track-board', 10),
+			(400111, 'Triage', 4, 1, 400100, '/medora/home/nursing-workbench/triage', 11),
+			(400112, 'Trauma Log', 4, 1, 400100, '/medora/home/nursing-workbench/trauma-log', 12),
+			(400113, 'eMAR', 4, 1, 400100, '/medora/home/nursing-workbench/emar', 13),
+			(400114, 'Care plans', 4, 1, 400100, '/medora/home/nursing-workbench/care-plan', 14),
+			(400115, 'MLC documentation', 4, 1, 400100, '/medora/home/nursing-workbench/mlc-documentation', 15),
+
+			-- ── Module 6: Consultation ──
+			(600100, 'EMR', 6, 1, null, '/medora/home/consultation/emr', 1),
+			(600200, 'CPOE', 6, 1, null, '/medora/home/consultation/cpoe', 2),
+			(600201, 'Order', 6, 1, 600200, '/medora/home/consultation/cpoe/order', 1),
+			(600202, 'Prescription', 6, 1, 600200, '/medora/home/consultation/cpoe/prescription', 2),
+			(600203, 'Refer', 6, 1, 600200, '/medora/home/consultation/cpoe/refer', 3),
+			(600204, 'Refer Doctor', 6, 1, 600203, '/medora/home/consultation/cpoe/refer/doctor', 1),
+			(600205, 'Referral History', 6, 1, 600203, '/medora/home/consultation/cpoe/refer/history', 2),
+			(600300, 'Results', 6, 1, null, '/medora/home/consultation/results', 3),
+			(600400, 'Discharge Summary', 6, 1, null, '/medora/home/consultation/discharge-summary', 4),
+			(600500, 'Procedures', 6, 1, null, '/medora/home/consultation/procedures', 5),
+			(600600, 'Operative Notes', 6, 1, null, '/medora/home/consultation/operative-notes', 6),
+
+			-- ── Module 7: ADT ──
+			(700100, 'Bed Status', 7, 1, null, '/medora/home/adt/bed-status', 1),
+			(700200, 'Admission', 7, 1, null, '/medora/home/adt/admission', 2),
+			(700201, 'New Admission', 7, 1, 700200, '/medora/home/adt/admission/new', 1),
+			(700202, 'Admission List', 7, 1, 700200, '/medora/home/adt/admission/list', 2),
+			(700203, 'Pending Admissions', 7, 1, 700200, '/medora/home/adt/admission/pending', 3),
+			(700300, 'Booking', 7, 1, null, '/medora/home/adt/booking', 3),
+			(700301, 'New Booking', 7, 1, 700300, '/medora/home/adt/booking/new', 1),
+			(700302, 'Booking List', 7, 1, 700300, '/medora/home/adt/booking/list', 2),
+			(700400, 'Bed Transfer Requisition', 7, 1, null, '/medora/home/adt/bed-transfer-requisition', 4),
+			(700401, 'New Requisition', 7, 1, 700400, '/medora/home/adt/bed-transfer-requisition/new', 1),
+			(700402, 'Requisition List', 7, 1, 700400, '/medora/home/adt/bed-transfer-requisition/list', 2),
+
+			-- ── Module 8: Billing ──
+			(800100, 'Bill', 8, 1, null, '/medora/home/billing/bill', 1),
+			(800200, 'Advance Deposit', 8, 1, null, '/medora/home/billing/advance-deposit', 2),
+
+			-- ── Module 9: Inventory Setup ──
+			(900100, 'Stores', 9, 1, null, '/medora/home/inventory-setup/stores', 1),
+			(900200, 'Item Master', 9, 1, null, '/medora/home/inventory-setup/item-master', 2),
+			(900300, 'Pharmacy Generic', 9, 1, null, '/medora/home/inventory-setup/pharmacy-generic', 3),
+			(900400, 'Unit Master', 9, 1, null, '/medora/home/inventory-setup/unit-master', 4),
+			(900500, 'Item Unit Master', 9, 1, null, '/medora/home/inventory-setup/item-unit-master', 5),
+			(900600, 'Supplier Setup', 9, 1, null, '/medora/home/inventory-setup/supplier-setup', 7),
+			(900700, 'Approval Config', 9, 1, null, '/medora/home/inventory-setup/approval-config', 8),
+			(900800, 'Pricing configuration', 9, 1, null, '/medora/home/inventory-setup/pricing-configuration', 9),
+			(900801, 'Assignments', 9, 1, 900800, '/medora/home/inventory-setup/pricing-configuration/config', 1),
+			(900802, 'Formula templates', 9, 1, 900800, '/medora/home/inventory-setup/pricing-configuration/formula-templates', 2),
+			(900900, 'Reorder level', 9, 1, null, '/medora/home/inventory-setup/reorder-level', 11),
+			(901000, 'Stock alerts', 9, 1, null, '/medora/home/inventory-setup/stock-alerts', 12),
+			(901001, 'Policy', 9, 1, 901000, '/medora/home/inventory-setup/stock-alerts/policy', 1),
+			(901002, 'Recipients', 9, 1, 901000, '/medora/home/inventory-setup/stock-alerts/recipients', 2),
+
+			-- ── Module 10: Inventory ──
+			(1000100, 'Purchase Requisition', 10, 1, null, '/medora/home/inventory/purchase-requisition', 1),
+			(1000200, 'Purchase Order', 10, 1, null, '/medora/home/inventory/purchase-order', 2),
+			(1000300, 'Goods Receipt', 10, 1, null, '/medora/home/inventory/grn', 3),
+			(1000400, 'Stock', 10, 1, null, '/medora/home/inventory/stock', 4),
+			(1000500, 'Department indent', 10, 1, null, '/medora/home/inventory/department-indent', 5),
+			(1000600, 'Department issue', 10, 1, null, '/medora/home/inventory/department-issue', 6),
+			(1000700, 'Receipt from store', 10, 1, null, '/medora/home/inventory/receipt-from-store', 7),
+			(1000800, 'Department consumption', 10, 1, null, '/medora/home/inventory/department-consumption', 8),
+			(1000900, 'Reports', 10, 1, null, '/medora/home/inventory/reports', 9),
+			(1000901, 'Low stock report', 10, 1, 1000900, '/medora/home/inventory/reports/low-stock', 1),
+			(1000902, 'Expired/expiring report', 10, 1, 1000900, '/medora/home/inventory/reports/expired', 2),
+			(1000903, 'Movement log', 10, 1, 1000900, '/medora/home/inventory/reports/movement', 3),
+
+			-- ── Module 11: Medication Order ──
+			(1100100, 'Internal Sales', 11, 1, null, '/medora/home/medication-order/internal-sales', 1),
+			(1100200, 'External Sales', 11, 1, null, '/medora/home/medication-order/external-sales', 2),
+
+			-- ── Module 12: Emergency ──
+			(1200100, 'Registration', 12, 1, null, '/medora/home/emergency/admission', 1),
+			(1200101, 'ED Patient Registration', 12, 1, 1200100, '/medora/home/emergency/admission/new', 1),
+			(1200102, 'New patient', 12, 1, 1200100, '/medora/home/emergency/admission/new-patient', 2),
+			(1200200, 'ED Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 2),
+
+			-- ── Module 13: Perioperative ──
+			(1300100, 'OT Board', 13, 1, null, '/medora/home/perioperative/ot-board', 1),
+			(1300200, 'Cases', 13, 1, null, '/medora/home/perioperative/cases', 2),
+			(1300300, 'Pre-op Worklist', 13, 1, null, '/medora/home/perioperative/pre-op', 3),
+			(1300400, 'Room Setup', 13, 1, null, '/medora/home/perioperative/room-setup', 4),
+			(1300500, 'Procedure Log', 13, 1, null, '/medora/home/perioperative/procedure-log', 5),
+
+			-- ── Module 14: Obstetrics ──
+			(1400100, 'Labor Board', 14, 1, null, '/medora/home/obstetrics/labor-board', 1),
+			(1400200, 'Partogram', 14, 1, null, '/medora/home/obstetrics/partogram', 2),
+
+			-- ── Module 15: Diagnostics ──
+			(1500100, 'Lab Dashboard', 15, 1, null, '/medora/home/diagnostics/lab/dashboard', 1),
+			(1500200, 'Collection Worklist', 15, 1, null, '/medora/home/diagnostics/lab/collection-worklist', 2),
+			(1500300, 'Lab Receive', 15, 1, null, '/medora/home/diagnostics/lab/receive', 3),
+			(1500400, 'Hematology Worklist', 15, 1, null, '/medora/home/diagnostics/lab/worklist/hematology', 4),
+			(1500500, 'Chemistry Worklist', 15, 1, null, '/medora/home/diagnostics/lab/worklist/chemistry', 5),
+			(1500600, 'Microbiology Worklist', 15, 1, null, '/medora/home/diagnostics/lab/worklist/microbiology', 6),
+			(1500700, 'Lab Results', 15, 1, null, '/medora/home/diagnostics/lab/results', 7),
+			(1500800, 'Critical Callbacks', 15, 1, null, '/medora/home/diagnostics/lab/critical-callback', 8),
+			(1500900, 'Lab Catalog', 15, 1, null, '/medora/home/diagnostics/lab/catalog', 9),
+			(1501000, 'Integration Health', 15, 1, null, '/medora/home/diagnostics/lab/integration', 10)
+
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			module_id = EXCLUDED.module_id,
+			status_id = EXCLUDED.status_id,
+			parent_id = EXCLUDED.parent_id,
+			page_url = EXCLUDED.page_url,
+			sequence_no = EXCLUDED.sequence_no,
+			updated_at = now();
+		`);
+
+	// Retired nav page ids from older seeds/migrations (drop grants, then rows).
+	const retiredPageIds = [
+		1, 2, 8, 44, 481, 15, 150000, 150001, 150002, 150003, 150004,
+		810001, 810002, 800000, 800001, 801000,
+		451, 451001, 451002, 452, 452001, 452002, 453,
+		1900002, 1900003, 1900004, 1900005, 1900006, 1900007, 1900008,
+		481002, 481003, 481004, 481005, 481006, 481007, 481008
+	];
+	await db.execute(sql`
+		DELETE FROM user_group_page
+		WHERE page_id IN (${sql.join(
+			retiredPageIds.map((id) => sql`${id}`),
+			sql`, `
+		)});
+	`);
+	await db.execute(sql`
+		DELETE FROM page
+		WHERE id IN (${sql.join(
+			retiredPageIds.map((id) => sql`${id}`),
+			sql`, `
+		)});
+		`);
+	seedLogger.info('Seeded: page');
+
+	// Full WHO ICD-10 + ICD-11 (every coded entity). Requires WHO_ICD_* keys.
+	// Set WHO_ICD_SKIP_SEED=1 only for CI/local escape hatches (leaves catalog empty/unchanged).
+	if (isWhoIcdSeedSkipped()) {
+		seedLogger.warn(
+			'Skipped diagnosis_code WHO import (WHO_ICD_SKIP_SEED is set). Catalogue will not be complete.'
+		);
+	} else {
+		try {
+			const icdResult = await importWhoIcdSystems({
+				systems: 'BOTH',
+				notesPrefix: 'Seeded by information-table-seed (WHO ICD-API)',
+				log: (m) => seedLogger.info(m)
+			});
+			seedLogger.info(
+				`Seeded: diagnosis_code (WHO ICD-API) inserted=${icdResult.inserted} updated=${icdResult.updated} total=${icdResult.total}`
+			);
+		} catch (err) {
+			if (err instanceof WhoIcdCredentialsError) {
+				throw new Error(
+					`${err.message} Or set WHO_ICD_SKIP_SEED=1 to skip ICD during information seed (not recommended for real hospitals).`
+				);
+			}
+			throw err;
+		}
+	}
+
+	// 5. Status Tagging Type
+	await db.execute(sql`
+		INSERT INTO status_tagging_type (id, name)
+		VALUES
+			(1, 'Doctor Appointment'),
+			(2, 'Visit'),
+			(3, 'Purchase Requisition'),
+			(4, 'Purchase Order'),
+			(5, 'Goods Receipt'),
+			(6, 'Store Transfer'),
+			(7, 'Stock Issue'),
+			(8, 'Department indent'),
+			(9, 'Department issue'),
+			(10, 'Department consumption'),
+			(11, 'Billing'),
+			(12, 'IPD Bed Booking'),
+			(13, 'IPD Bed Transfer Requisition'),
+			(14, 'IPD Admission Order'),
+			(15, 'Surgical Case'),
+			(16, 'Clinical Form Instance')
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name;
+		`);
+	seedLogger.info('Seeded: status tagging type');
+
+	// 6. status_tagging
+	await db.execute(sql`
+		INSERT INTO status_tagging (id, name, code, sequence_no, status_tagging_type_id)
+		VALUES 
+
+			-- Doctor Appointment Status
+			(1, 'Unconfirmed', 'unconfirmed', 1, 1),
+			(2, 'Confirmed', 'confirmed', 2, 1),
+			(3, 'Check In', 'check_in', 3, 1),
+			(4, 'Cancelled', 'cancel', 4, 1),
+
+			-- Visit Status (order is important): Open → Vital → Seen → Closed / Discharged
+			(5, 'Open', 'open', 1, 2),
+			(6, 'Vital', 'vital', 2, 2),
+			(7, 'Seen', 'seen', 3, 2),
+			(8, 'Closed / Discharged', 'closed_discharged', 4, 2),
+
+			-- Purchase Requisition (ids 9–13; StatusTaggingTypeEnum.INV_PURCHASE_REQUISITION)
+			(9, 'Draft', 'draft', 1, 3),
+			(10, 'Pending', 'pending', 2, 3),
+			(11, 'Approved', 'approved', 3, 3),
+			(12, 'Rejected', 'rejected', 4, 3),
+			(13, 'Sent Back', 'sent_back', 5, 3),
+			(31, 'Cancelled', 'cancelled', 6, 3),
+
+			-- Purchase Order (14–21)
+			(14, 'Draft', 'draft', 1, 4),
+			(15, 'Pending', 'pending', 2, 4),
+			(16, 'Approved', 'approved', 3, 4),
+			(17, 'Rejected', 'rejected', 4, 4),
+			(18, 'Sent Back', 'sent_back', 5, 4),
+			(19, 'Sent To Supplier', 'sent_to_supplier', 6, 4),
+			(20, 'Partially Received', 'partially_received', 7, 4),
+			(21, 'Closed', 'closed', 8, 4),
+
+			-- Goods Receipt (22–24)
+			(22, 'Draft', 'draft', 1, 5),
+			(23, 'Posted', 'posted', 2, 5),
+			(24, 'Cancelled', 'cancelled', 3, 5),
+
+			-- Store Transfer (25–27)
+			(25, 'Draft', 'draft', 1, 6),
+			(26, 'Posted', 'posted', 2, 6),
+			(27, 'Cancelled', 'cancelled', 3, 6),
+
+			-- Stock Issue (28–30)
+			(28, 'Draft', 'draft', 1, 7),
+			(29, 'Posted', 'posted', 2, 7),
+			(30, 'Cancelled', 'cancelled', 3, 7),
+
+			-- Department indent (40–45; type 8 — mirrors drizzle/0039_*_dept_indent.sql; InvDepartmentIndentStatusTaggingEnum)
+			(40, 'Draft', 'draft', 1, 8),
+			(41, 'Pending', 'pending', 2, 8),
+			(42, 'Pending central', 'pending_central', 3, 8),
+			(43, 'Issued', 'issued', 4, 8),
+			(44, 'Received', 'received', 5, 8),
+			(45, 'Cancelled', 'cancelled', 6, 8),
+
+			-- Department issue (46–49; type 9 — drizzle/0048_department_issue_tables_and_status.sql; InvDepartmentIssueStatusTaggingEnum)
+			(46, 'Pending', 'pending', 1, 9),
+			(47, 'Issued', 'issued', 2, 9),
+			(48, 'Received', 'received', 3, 9),
+			(49, 'Cancelled', 'cancelled', 4, 9),
+
+			-- Department consumption (50–53; type 10 — drizzle/0050_inv_department_consumption.sql)
+			(50, 'Draft', 'draft', 1, 10),
+			(51, 'Pending', 'pending', 2, 10),
+			(52, 'Posted', 'posted', 3, 10),
+			(53, 'Cancelled', 'cancelled', 4, 10),
+
+			-- Billing (56–57; type 11 — BillingStatusTaggingEnum; shared by OP + IP)
+			(56, 'Open', 'open', 1, 11),
+			(57, 'Closed', 'closed', 2, 11),
+
+			-- IPD Bed Booking (60–62; type 12 — IpdBedBookingStatusTaggingEnum)
+			(60, 'Booked', 'booked', 1, 12),
+			(61, 'Cancelled', 'cancelled', 2, 12),
+			(62, 'Converted', 'converted', 3, 12),
+
+			-- IPD Bed Transfer Requisition (63–67; type 13 — IpdBedTransferReqStatusTaggingEnum)
+			(63, 'Draft', 'draft', 1, 13),
+			(64, 'Pending', 'pending', 2, 13),
+			(65, 'Approved', 'approved', 3, 13),
+			(66, 'Completed', 'completed', 4, 13),
+			(67, 'Cancelled', 'cancelled', 5, 13),
+
+			-- IPD Admission Order (68–70; type 14 — IpdAdmissionOrderStatusTaggingEnum)
+			(68, 'Pending', 'pending', 1, 14),
+			(69, 'Cancelled', 'cancelled', 2, 14),
+			(70, 'Admitted', 'admitted', 3, 14),
+
+			-- Surgical Case (71-78; type 15)
+			(71, 'Requested', 'requested', 1, 15),
+			(72, 'Scheduled', 'scheduled', 2, 15),
+			(73, 'Pre-op complete', 'pre_op_complete', 3, 15),
+			(74, 'In OR', 'in_or', 4, 15),
+			(75, 'In PACU', 'in_pacu', 5, 15),
+			(76, 'Completed', 'completed', 6, 15),
+			(77, 'Cancelled', 'cancelled', 7, 15),
+			(78, 'Pending reschedule', 'pending_reschedule', 8, 15),
+
+			-- Clinical Form Instance (79-81; type 16)
+			(79, 'Draft', 'draft', 1, 16),
+			(80, 'Complete', 'complete', 2, 16),
+			(81, 'Amended', 'amended', 3, 16)
+
+		ON CONFLICT (id) DO NOTHING;
+		`);
+	// Remap legacy IP-only billing tags (58/59) → shared Billing Open/Closed (56/57).
+	await db.execute(sql`
+		UPDATE ip_billing SET status_tagging_id = 56
+		WHERE status_tagging_id = 58
+		`);
+	await db.execute(sql`
+		UPDATE ip_billing SET status_tagging_id = 57
+		WHERE status_tagging_id = 59
+		`);
+	await db.execute(sql`
+		UPDATE op_billing SET status_tagging_id = 56
+		WHERE status_tagging_id = 58
+		`);
+	await db.execute(sql`
+		UPDATE op_billing SET status_tagging_id = 57
+		WHERE status_tagging_id = 59
+		`);
+	await db.execute(sql`
+		DELETE FROM status_tagging WHERE id IN (58, 59)
+		`);
+	// Align Visit terminal status (Closed / Discharged) for seed-without-migrate DBs.
+	await db.execute(sql`
+		UPDATE patient_visit
+		SET status_tagging_id = 8
+		WHERE status_tagging_id = 55
+		`);
+	await db.execute(sql`
+		UPDATE status_tagging
+		SET name = 'Closed / Discharged',
+			code = 'closed_discharged',
+			sequence_no = 4
+		WHERE id = 8 AND status_tagging_type_id = 2
+		`);
+	await db.execute(sql`
+		DELETE FROM status_tagging
+		WHERE id = 55 AND status_tagging_type_id = 2
+		`);
+	seedLogger.info('Seeded: status tagging');
+
+	// 7b. `inv_approval_level` / `inv_approval_log`: module CHECK + partial unique index
+	// (mirrors `drizzle/manual_inv_approval_module_check.sql` and 0041; no-op on already-migrated DBs)
+	await db.execute(
+		sql`ALTER TABLE "inv_approval_level" DROP CONSTRAINT IF EXISTS "inv_approval_level_module_chk"`
+	);
+	await db.execute(sql`
+		ALTER TABLE "inv_approval_level" ADD CONSTRAINT "inv_approval_level_module_chk" CHECK ("module" IN ('PR', 'PO', 'DI', 'DISS', 'RFS', 'GRN', 'DC'))
+		`);
+	await db.execute(
+		sql`ALTER TABLE "inv_approval_log" DROP CONSTRAINT IF EXISTS "inv_approval_log_module_chk"`
+	);
+	await db.execute(sql`
+		ALTER TABLE "inv_approval_log" ADD CONSTRAINT "inv_approval_log_module_chk" CHECK ("module" IN ('PR', 'PO', 'DI', 'DISS', 'RFS', 'GRN', 'DC'))
+		`);
+	await db.execute(
+		sql`DROP INDEX IF EXISTS "inv_approval_level_store_module_level_uidx"`
+	);
+	await db.execute(
+		sql`DROP INDEX IF EXISTS "inv_approval_level_store_module_level_active_uidx"`
+	);
+	await db.execute(sql`
+		CREATE UNIQUE INDEX "inv_approval_level_store_module_level_active_uidx"
+		ON "inv_approval_level" ("hospital_id", "store_id", "module", "level")
+		WHERE "deleted_at" IS NULL
+	`);
+	seedLogger.info(
+		'Seeded: inv_approval_level schema (module CHECK + active unique index)'
+	);
+
+	// 8. Document types (consent, form, instruction, certificate, help)
+	// Note: column is 'name' in old schema, 'document_type' in new schema after migration
+	await db.execute(sql`
+		INSERT INTO document_type (id, document_type, status_id)
+		VALUES
+			(1, 'Consent', 1),
+			(2, 'Form', 1),
+			(3, 'Instruction', 1),
+			(4, 'Certificate', 1),
+			(5, 'Help', 1),
+			(6, 'Letter', 1),
+			(7, 'Report', 1),
+			(8, 'Finance', 1),
+			(9, 'HR', 1),
+			(10, 'Legal', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	seedLogger.info('Seeded: document_type');
+
+	// 9. Document settings (template configurations)
+	await db.execute(sql`
+		INSERT INTO document_setting (id, name, document_type_id, margin_top, margin_bottom, margin_left, margin_right, padding_top, padding_bottom, padding_left, padding_right, page_size, page_orientation, show_header, show_footer, header_html, footer_html, status_id)
+		VALUES
+			(1, 'OPD Consent Form', 1, 20, 20, 15, 15, 10, 10, 10, 10, 'A4', 'portrait', true, true,
+				'<div style="text-align:center;"><strong>{{hospital.name}}</strong><br/><span style="font-size:12px;">{{hospital.address}}</span></div>',
+				'<div style="text-align:center;font-size:10px;">Page {{page.number}} of {{page.total}} | Printed: {{print.date}} by {{print.by}}</div>',
+				1),
+			(2, 'ED Case Sheet', 2, 15, 15, 10, 10, 5, 5, 5, 5, 'A4', 'portrait', true, true,
+				'<div><strong>{{hospital.name}}</strong> - Emergency Department<br/>Patient: {{patient.name}} | Code: {{patient.code}} | Visit: {{visit.no}}</div>',
+				'<div style="font-size:10px;">Doctor: {{doctor.name}} | Date: {{visit.date}}</div>',
+				1),
+			(3, 'Medical Certificate', 4, 25, 25, 20, 20, 15, 15, 15, 15, 'A4', 'portrait', true, true,
+				'<div style="text-align:center;"><strong>MEDICAL CERTIFICATE</strong><br/>{{hospital.name}}</div>',
+				'<div style="text-align:right;font-size:11px;"><br/>_____________________<br/>{{doctor.name}}<br/>{{doctor.license}}</div>',
+				1),
+			(4, 'Discharge Instructions', 3, 15, 15, 15, 15, 10, 10, 10, 10, 'A4', 'portrait', true, true,
+				'<div><strong>Discharge Instructions</strong><br/>Patient: {{patient.name}} | DOB: {{patient.dob}} | Age/Gender: {{patient.age}}/{{patient.gender}}</div>',
+				'<div style="font-size:10px;">Issued by: {{doctor.name}} on {{visit.date}}</div>',
+				1),
+			(5, 'A4_plain', 2, 10, 10, 10, 10, 5, 5, 5, 5, 'A4', 'portrait', false, false,
+				'',
+				'',
+				1),
+			(6, 'A4_plain (legacy)', 2, 10, 10, 10, 10, 5, 5, 5, 5, 'A4', 'portrait', false, false,
+				'',
+				'',
+				1),
+			(7, 'Label_100x60_plain', 2, 4, 4, 4, 4, 2, 2, 2, 2, '100mm 60mm', 'portrait', false, false,
+				'',
+				'',
+				1),
+			(8, 'A4_plain (legacy)', 2, 10, 10, 10, 10, 5, 5, 5, 5, 'A4', 'portrait', false, false,
+				'',
+				'',
+				1),
+			(9, 'A5_plain', 2, 8, 8, 8, 8, 4, 4, 4, 4, 'A5', 'portrait', false, false,
+				'',
+				'',
+				1)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			document_type_id = EXCLUDED.document_type_id,
+			margin_top = EXCLUDED.margin_top,
+			margin_bottom = EXCLUDED.margin_bottom,
+			margin_left = EXCLUDED.margin_left,
+			margin_right = EXCLUDED.margin_right,
+			padding_top = EXCLUDED.padding_top,
+			padding_bottom = EXCLUDED.padding_bottom,
+			padding_left = EXCLUDED.padding_left,
+			padding_right = EXCLUDED.padding_right,
+			page_size = EXCLUDED.page_size,
+			page_orientation = EXCLUDED.page_orientation,
+			show_header = EXCLUDED.show_header,
+			show_footer = EXCLUDED.show_footer,
+			header_html = EXCLUDED.header_html,
+			footer_html = EXCLUDED.footer_html,
+			status_id = EXCLUDED.status_id;
+	`);
+	seedLogger.info('Seeded: document_setting');
+
+	// 9b. System print documents (codes used across billing, visits, appointments, pharmacy)
+	await db.execute(sql`
+		INSERT INTO document (id, document_type_id, code, document_text, document_number, document_setting_id, status_id)
+		VALUES
+			(
+				90001,
+				2,
+				'NURSING_COMPLETE_PRINT',
+				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>{{hospital.address}}</header><p>Visit <strong>{{visit.no}}</strong> - {{patient.name}} ({{patient.code}})</p>{{visit.service_lines_table}}',
+				'Nursing complete (OP)',
+				5,
+				1
+			),
+			(
+				90002,
+				2,
+				'OP_BILL_PRINT',
+				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>Bill No: {{document.number}} | Date: {{document.date}}<br/>Patient: {{patient.name}} ({{patient.code}})</header><dl class="meta"><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div><div><dt>{{print.label_branch}}</dt><dd>{{visit.department}}</dd></div></dl>{{print.body_html}}',
+				'OP Bill',
+				5,
+				1
+			),
+			(
+				90007,
+				2,
+				'IP_BILL_PRINT',
+				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>IP Bill No: {{document.number}} | Date: {{document.date}}<br/>Patient: {{patient.name}} ({{patient.code}})</header><dl class="meta"><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div><div><dt>{{print.label_branch}}</dt><dd>{{visit.department}}</dd></div></dl>{{print.body_html}}',
+				'IP Bill',
+				5,
+				1
+			),
+			(
+				90003,
+				2,
+				'VISIT_LABEL_PRINT',
+				'<div class="label-header"><img class="label-logo" src="{{hospital.logo}}" alt="" /><h1>{{print.label_heading}}</h1></div><div class="label-rows"><div class="label-row"><div class="pair"><span class="k">{{print.label_patient}}</span><span class="v">{{patient.name}}</span></div><div class="pair right"><span class="k">{{print.label_dob}}</span><span class="v">{{patient.dob}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_patient_code}}</span><span class="v">{{patient.code}}</span></div><div class="pair right"><span class="k">{{print.label_doctor}}</span><span class="v">{{doctor.name}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_visit_no}}</span><span class="v">{{visit.no}}</span></div><div class="pair right"><span class="k">{{print.label_visit_date}}</span><span class="v">{{visit.date}}</span></div></div></div><div class="barcode-wrap"><svg id="visit-label-barcode"></svg></div>',
+				'Visit label',
+				7,
+				1
+			),
+			(
+				90008,
+				2,
+				'IPD_WRISTBAND_PRINT',
+				'<div class="label-header"><img class="label-logo" src="{{hospital.logo}}" alt="" /><h1>IPD Wristband</h1></div><div class="label-rows"><div class="label-row"><div class="pair"><span class="k">{{print.label_patient}}</span><span class="v">{{patient.name}}</span></div><div class="pair right"><span class="k">{{print.label_dob}}</span><span class="v">{{patient.dob}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_patient_code}}</span><span class="v">{{patient.code}}</span></div><div class="pair right"><span class="k">Admission</span><span class="v">{{document.number}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_visit_no}}</span><span class="v">{{visit.no}}</span></div><div class="pair right"><span class="k">Ward / Bed</span><span class="v">{{visit.department}}</span></div></div></div><div class="barcode-wrap"><svg id="visit-label-barcode"></svg></div>',
+				'IPD Wristband',
+				7,
+				1
+			),
+			(
+				90004,
+				2,
+				'APPOINTMENT_SLIP_PRINT',
+				'<div class="appt-header"><img class="logo" src="{{hospital.logo}}" alt="" /><div><h1 class="title">{{print.label_title}}</h1><p class="sub">{{print.label_subtitle}}</p></div></div><table class="appt-table"><tr><td class="label">{{print.label_patient}}</td><td>{{appointment.patient}}</td></tr><tr><td class="label">{{print.label_doctor}}</td><td>{{appointment.doctor}}</td></tr><tr><td class="label">{{print.label_date}}</td><td>{{appointment.date}}</td></tr><tr><td class="label">{{print.label_start_time}}</td><td>{{appointment.start_time}}</td></tr><tr><td class="label">{{print.label_end_time}}</td><td>{{appointment.end_time}}</td></tr></table>',
+				'Appointment slip',
+				5,
+				1
+			),
+			(
+				90005,
+				2,
+				'MED_ORDER_RECEIPT_PRINT',
+				'<h2>{{print.label_title}}</h2><p><strong>{{document.number}}</strong></p><p class="meta-line">{{print.customer}} · {{print.doctor}}</p>{{print.body_html}}',
+				'Medication receipt',
+				9,
+				1
+			),
+			(
+				90006,
+				2,
+				'CASE_SHEET_PRINT',
+				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>{{hospital.address}}</header><h2 class="case-sheet-doc-title">{{print.label_title}}</h2><dl class="meta case-sheet-meta-print"><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div></dl>{{print.body_html}}',
+				'Nursing case sheet',
+				5,
+				1
+			),
+			(
+				90009,
+				2,
+				'DISCHARGE_SUMMARY_PRINT',
+				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>{{hospital.address}}</header><h2 class="case-sheet-doc-title">{{print.label_title}}</h2><dl class="meta case-sheet-meta-print"><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div></dl>{{print.body_html}}',
+				'Discharge summary',
+				5,
+				1
+			)
+		ON CONFLICT (id) DO UPDATE SET
+			document_type_id = EXCLUDED.document_type_id,
+			code = EXCLUDED.code,
+			document_text = EXCLUDED.document_text,
+			document_number = EXCLUDED.document_number,
+			document_setting_id = EXCLUDED.document_setting_id,
+			status_id = EXCLUDED.status_id;
+	`);
+	seedLogger.info('Seeded: document (system print templates)');
+
+	// 9b. Blank clinical forms (pen-fill; EMR clinical document page)
+	const clinicalFormValues = CLINICAL_FORM_SEED_ROWS.map((row) => {
+		const documentText = buildClinicalFormDocumentText(
+			row.code
+		).replace(/'/g, "''");
+		const documentNumber = row.documentNumber.replace(/'/g, "''");
+		return `(${row.id}, ${row.documentTypeId}, '${row.code}', '${documentText}', '${documentNumber}', 5, 1)`;
+	}).join(',\n\t\t\t');
+
+	await db.execute(
+		sql.raw(`
+		INSERT INTO document (id, document_type_id, code, document_text, document_number, document_setting_id, status_id)
+		VALUES
+			${clinicalFormValues}
+		ON CONFLICT (id) DO UPDATE SET
+			document_type_id = EXCLUDED.document_type_id,
+			code = EXCLUDED.code,
+			document_text = EXCLUDED.document_text,
+			document_number = EXCLUDED.document_number,
+			document_setting_id = EXCLUDED.document_setting_id,
+			status_id = EXCLUDED.status_id;
+	`)
+	);
+	seedLogger.info('Seeded: document (clinical blank forms)');
+
+	// Catalog sync is source of truth for CATALOG_* system documents (updates legacy 900xx / 901xx rows).
+	try {
+		const { ensureDocumentCatalogSynced } = await import(
+			'$lib/server/medora/document-master/document-catalog-sync.server'
+		);
+		const { synced } = await ensureDocumentCatalogSynced();
+		seedLogger.info(`Synced document catalog (${synced} templates)`);
+	} catch {
+		seedLogger.info(
+			'Skipped: document catalog sync (tables not present or migration pending)'
+		);
+	}
+
+	// 9. Allergy
+	await db.execute(sql`
+		INSERT INTO allergy (id, name)
+		VALUES
+			(1, 'No Known Allergy')
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	seedLogger.info('Seeded: allergy');
+
+	try {
+		const { seedEdTriageLevelsForHospitals } = await import(
+			'$lib/server/db/seed/init/seed-ed-triage-levels.server'
+		);
+		await seedEdTriageLevelsForHospitals(db);
+	} catch (e) {
+		seedLogger.warn(
+			`Skipped: ed_triage_level (${e instanceof Error ? e.message : String(e)})`
+		);
+	}
+}
+
+seedInformationTables()
+	.then(() => {
+		seedLogger.info('Information table seeding finished');
+		process.exit(0);
+	})
+	.catch((error) => {
+		seedLogger.error(
+			'Error while seeding information tables',
+			error instanceof Error ? error : new Error(String(error))
+		);
+		process.exit(1);
+	});

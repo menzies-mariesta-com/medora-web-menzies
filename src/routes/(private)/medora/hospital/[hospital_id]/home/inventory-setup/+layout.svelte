@@ -19,6 +19,16 @@
 		page.url.searchParams.get('embed') === '1'
 	);
 
+	const pricingSectionUrl =
+		'/medora/home/inventory-setup/pricing-configuration';
+	const useNestedPricingLayout = $derived.by(() => {
+		const p = pathnameForPageMatch().replace(/\/$/, '') || '/';
+		return (
+			p === pricingSectionUrl ||
+			p.startsWith(`${pricingSectionUrl}/`)
+		);
+	});
+
 	function pathMatches(pageUrl: string | null | undefined): boolean {
 		const u = (pageUrl ?? '').replace(/\/$/, '') || '/';
 		return currentPath === u || currentPath.startsWith(u + '/');
@@ -32,7 +42,7 @@
 
 {#if isEmbed}
 	{@render children()}
-{:else if subPages.length > 0}
+{:else if subPages.length > 0 && !useNestedPricingLayout}
 	<div class="staff-subnav-wrapper">
 		<div role="tablist" class="staff-subnav-tabs">
 			{#each subPages as sub (sub.id)}

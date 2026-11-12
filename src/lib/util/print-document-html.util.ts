@@ -4,6 +4,8 @@
  * - pdfRaster: linear layout without fixed positioning (html2canvas-friendly).
  */
 
+import caseSheetDocumentCss from '$lib/asset/style/case-sheet-document.css?raw';
+
 export type PrintDocumentHtmlVariant = 'browser' | 'pdfRaster';
 
 export type PrintDocumentLayoutInput = {
@@ -47,6 +49,11 @@ export const PRINT_DOCUMENT_UTILITY_CSS = `
 	.line-table td { padding: 6px 8px; border: 1px solid #000; }
 	.line-table th.num,
 	.line-table td.amt { text-align: right; }
+	.billing-line-table { table-layout: fixed; width: 100%; }
+	.billing-line-table th,
+	.billing-line-table td { overflow: hidden; overflow-wrap: anywhere; vertical-align: top; }
+	.billing-line-table th.num,
+	.billing-line-table td.num { text-align: right; white-space: nowrap; }
 	.subtotal-row td { font-weight: 600; }
 	.grand {
 		margin-top: 12px;
@@ -139,38 +146,7 @@ export const PRINT_DOCUMENT_UTILITY_CSS = `
 		font-size: 16px;
 		font-weight: 700;
 	}
-	.case-sheet-meta-print { margin-bottom: 12px; }
-	.case-sheet-section { margin-top: 14px; }
-	.case-sheet-section h3 {
-		margin: 0 0 8px;
-		font-size: 11px;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		border-bottom: 1px solid #000;
-		padding-bottom: 4px;
-	}
-	.case-sheet-list { margin: 0; padding-left: 1.25rem; }
-	.case-sheet-list li { margin-bottom: 8px; }
-	.case-sheet-empty {
-		margin: 0;
-		font-size: 10px;
-		font-style: italic;
-	}
-	.case-sheet-audit {
-		margin: 4px 0 0;
-		font-size: 9px;
-	}
-	.case-sheet-muted { font-size: 10px; }
-	.case-sheet-table-wrap { overflow-x: auto; }
-	.case-sheet-table { width: 100%; border-collapse: collapse; font-size: 10px; }
-	.case-sheet-table th,
-	.case-sheet-table td {
-		border: 1px solid #000;
-		padding: 4px 6px;
-		vertical-align: top;
-	}
-	.case-sheet-table th { font-weight: 600; }
+	${caseSheetDocumentCss}
 	.catalog-section-title {
 		margin: 14px 0 8px;
 		font-size: 12px;

@@ -10,6 +10,7 @@ import {
 } from '$lib/model/type/pagination.type';
 import type { AdminStaffListRow } from '$lib/model/type/medora/admin-staff.type';
 import { requireAdminPagePermission } from './admin-permission.server';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 async function assertStaffView(event: RequestEvent) {
 	await requireAdminPagePermission(
@@ -51,51 +52,33 @@ export async function getAdminStaffPaginated(
 		filters.push(ilike(table.userTable.email, `%${emailTerm}%`));
 	}
 
-	const statusId =
-		typeof params.statusId === 'number' && Number.isFinite(params.statusId)
-			? params.statusId
-			: null;
+	const staffStatusEq = paginatedEntityStatusEq(
+		table.staffTable.statusId,
+		params.statusId
+	);
 
-	const whereExpr =
-		statusId != null
-			? and(
-					...filters,
-					eq(table.staffTable.statusId, statusId)
-				)
-			: and(...filters);
+	const whereExpr = and(...filters, staffStatusEq);
 
 	const [userRows, countRows] = await Promise.all([
-		statusId != null
-			? db
-					.select({ user: table.userTable })
-					.from(table.userTable)
-					.innerJoin(
-						table.staffTable,
-						eq(table.staffTable.userId, table.userTable.id)
-					)
-					.where(whereExpr)
-					.limit(limit)
-					.offset(offset)
-					.then((rows) => rows.map((r) => r.user))
-			: db
-					.select()
-					.from(table.userTable)
-					.where(whereExpr)
-					.limit(limit)
-					.offset(offset),
-		statusId != null
-			? db
-					.select({ count: count() })
-					.from(table.userTable)
-					.innerJoin(
-						table.staffTable,
-						eq(table.staffTable.userId, table.userTable.id)
-					)
-					.where(whereExpr)
-			: db
-					.select({ count: count() })
-					.from(table.userTable)
-					.where(whereExpr)
+		db
+			.select({ user: table.userTable })
+			.from(table.userTable)
+			.innerJoin(
+				table.staffTable,
+				eq(table.staffTable.userId, table.userTable.id)
+			)
+			.where(whereExpr)
+			.limit(limit)
+			.offset(offset)
+			.then((rows) => rows.map((r) => r.user)),
+		db
+			.select({ count: count() })
+			.from(table.userTable)
+			.innerJoin(
+				table.staffTable,
+				eq(table.staffTable.userId, table.userTable.id)
+			)
+			.where(whereExpr)
 	]);
 
 	const total = countRows[0]?.count ?? 0;

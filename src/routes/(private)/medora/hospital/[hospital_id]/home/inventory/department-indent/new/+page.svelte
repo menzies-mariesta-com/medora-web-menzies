@@ -16,13 +16,14 @@
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import type { MenziesTableColumn } from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import type { LineItemMetricTile } from '$lib/tool/inventory/line-item-metric-tiles.util';
 	import { fetchStockLabelsForItemsAtStore } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
 	import { formatPurchaseQtyCellWithIssueEquivalent } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
+	import { hydrateInventoryLineItemMeta } from '$lib/tool/inventory/hydrate-inventory-line-item-meta.util';
+	import { searchItemMasterOptions } from '$lib/tool/inventory/item-master-search-select.util';
 	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
 const lifeCycle = new LifeCycleUtil();
 	const toast = new ToastService();
@@ -211,17 +212,7 @@ const lifeCycle = new LifeCycleUtil();
 	}
 
 	async function searchItemsForPrLine(q: string) {
-		if (!hospitalId) return [];
-		const res = await fetch(
-			`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?name=${encodeURIComponent(q.trim())}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`
-		);
-		const j = (await res.json()) as {
-			data: { id: number; itemName: string | null }[];
-		};
-		return (j.data ?? []).map((x) => ({
-			label: x.itemName ?? '—',
-			value: String(x.id)
-		}));
+		return searchItemMasterOptions(hospitalId, q);
 	}
 
 	async function pickDraftItem(itemId: number) {
@@ -234,37 +225,17 @@ const lifeCycle = new LifeCycleUtil();
 		line: PrLineForm,
 		itemId: number
 	) {
-		if (!hospitalId) return;
+		const meta = await hydrateInventoryLineItemMeta<IumOpt>({
+			hospitalId,
+			itemId,
+			iumMode: 'allAllowed'
+		});
+		if (!meta) return;
 		line.itemId = itemId;
-
-		const [detailRes, iumRes] = await Promise.all([
-			fetch(
-				`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?id=${itemId}`,
-				{ method: 'GET' }
-			),
-			fetch(
-				`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?mode=itemUnitMasters`,
-				{ method: 'GET' }
-			)
-		]);
-		const detail = (await detailRes.json()) as {
-			itemName?: string | null;
-			itemUnitMasterIds?: number[];
-			defaultItemUnitMasterId?: number | null;
-		};
-
-		const allIum = (await iumRes.json()) as IumOpt[];
-		const allowed = new Set(detail.itemUnitMasterIds ?? []);
-		line.iumList = allIum.filter((u) => allowed.has(u.id));
-
-		line.itemLabel = detail.itemName ?? '—';
-		line.itemSearch = line.itemLabel;
-
-		const def = detail.defaultItemUnitMasterId;
-		line.itemUnitMasterId =
-			def != null && line.iumList.some((u) => u.id === def)
-				? def
-				: (line.iumList[0]?.id ?? null);
+		line.itemLabel = meta.itemLabel;
+		line.itemSearch = meta.itemLabel;
+		line.iumList = meta.iumList;
+		line.itemUnitMasterId = meta.itemUnitMasterId;
 	}
 
 	function purchaseUnitForLine(line: PrLineForm): number | null {

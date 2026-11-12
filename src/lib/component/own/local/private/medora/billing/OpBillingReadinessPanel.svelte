@@ -58,7 +58,7 @@
 	function goToNursingComplete() {
 		if (!hospitalId || !visitId) return;
 		routerUtil.goToRoute(
-			`/medora/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?visitId=${visitId}`
+			`/medora/hospital/${hospitalId}/home/nursing-workbench/nursing-complete?visitId=${visitId}`
 		);
 	}
 </script>

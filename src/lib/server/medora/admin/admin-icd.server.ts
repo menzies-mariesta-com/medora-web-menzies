@@ -31,6 +31,7 @@ import {
 	type WhoIcdSystem
 } from '$lib/server/medora/clinical/who-icd-import.server';
 import { requireAdminPagePermission } from './admin-permission.server';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 function toIso(value: string | Date | null | undefined): string | null {
 	if (!value) return null;
@@ -98,13 +99,12 @@ export async function getAdminIcdCodesPaginated(
 		filters.push(eq(table.diagnosisCodeTable.system, system));
 	}
 
-	const statusId =
-		typeof params.statusId === 'number' && Number.isFinite(params.statusId)
-			? params.statusId
-			: null;
-	if (statusId != null) {
-		filters.push(eq(table.diagnosisCodeTable.statusId, statusId));
-	}
+	filters.push(
+		paginatedEntityStatusEq(
+			table.diagnosisCodeTable.statusId,
+			params.statusId
+		)
+	);
 
 	const codeTerm = params.code?.trim();
 	if (codeTerm) {

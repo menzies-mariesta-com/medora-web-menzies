@@ -19,6 +19,22 @@ export async function GET(event: RequestEvent) {
 		return json(await um.listUnitTypesForUnitMaster());
 	}
 
+	if (mode === 'timeline') {
+		const page = Number(sp.get('page') ?? '1');
+		const pageSize = Number(sp.get('pageSize') ?? '20');
+		const search = sp.get('search') ?? undefined;
+		return json(
+			await um.getTimelineUnitsPaginated({
+				page,
+				pageSize,
+				search:
+					search != null && search.trim() !== ''
+						? search.trim()
+						: undefined
+			})
+		);
+	}
+
 	const idStr = sp.get('id');
 	if (idStr != null && idStr !== '') {
 		const id = Number(idStr);
@@ -77,12 +93,22 @@ export async function POST(event: RequestEvent) {
 		body.statusId != null && body.statusId !== ''
 			? Number(body.statusId)
 			: undefined;
+	const timelineDurationDays =
+		body.timelineDurationDays !== undefined &&
+		body.timelineDurationDays !== null &&
+		body.timelineDurationDays !== ''
+			? String(body.timelineDurationDays)
+			: body.timelineDurationDays === null ||
+				  body.timelineDurationDays === ''
+				? null
+				: undefined;
 	return json(
 		await um.createUnit({
 			name,
 			unitTypeId: Number.isFinite(unitTypeId as number)
 				? (unitTypeId as number)
 				: null,
+			timelineDurationDays,
 			statusId: Number.isFinite(statusId as number)
 				? statusId
 				: StatusEnum.ACTIVE
@@ -100,6 +126,7 @@ export async function PUT(event: RequestEvent) {
 	const id = Number(body.id);
 	if (!Number.isFinite(id)) throw error(400, 'id is required');
 	const unitTypeIdRaw = body.unitTypeId;
+	const timelineRaw = body.timelineDurationDays;
 	return json(
 		await um.updateUnit({
 			id,
@@ -111,6 +138,12 @@ export async function PUT(event: RequestEvent) {
 					: unitTypeIdRaw != null && unitTypeIdRaw !== ''
 						? Number(unitTypeIdRaw)
 						: null,
+			timelineDurationDays:
+				timelineRaw === undefined
+					? undefined
+					: timelineRaw === null || timelineRaw === ''
+						? null
+						: String(timelineRaw),
 			statusId:
 				body.statusId === undefined
 					? undefined

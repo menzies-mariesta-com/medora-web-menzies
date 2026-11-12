@@ -211,10 +211,20 @@
 				unitSalePrice = '0';
 				return;
 			}
-			unitSalePrice = unitSalePriceForOutUnit(result, outUnitId, {
-				purchaseUnitId: chosenIum.purchaseUnitId,
-				issueUnitId: chosenIum.issueUnitId
-			});
+			const priceIum =
+				resolveMedOrderIumForOutUnit(iumList, outUnitId, null) ??
+				chosenIum;
+			unitSalePrice = unitSalePriceForOutUnit(
+				result.unitSalePriceIssue,
+				outUnitId,
+				{
+					purchaseUnitId: priceIum.purchaseUnitId,
+					issueUnitId: priceIum.issueUnitId,
+					purchaseConversionFactor:
+						priceIum.purchaseConversionFactor,
+					issueConversionFactor: priceIum.issueConversionFactor
+				}
+			);
 		} catch {
 			previewError = true;
 			unitSalePrice = '0';
@@ -230,6 +240,7 @@
 		void batchAllocations;
 		void pricingModule;
 		void outUnitId;
+		void iumList.length;
 		void chosenIum?.id;
 		void refreshUnitSalePricePreview();
 	});

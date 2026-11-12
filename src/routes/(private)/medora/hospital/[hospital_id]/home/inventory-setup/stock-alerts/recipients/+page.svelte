@@ -13,6 +13,7 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { m } from '$lib/paraglide/messages';
+	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import {
@@ -25,6 +26,7 @@
 		storeId: number;
 		storeName: string | null;
 		staffId: string;
+		titleName: string | null;
 		firstName: string | null;
 		middleName: string | null;
 		lastName: string | null;
@@ -58,10 +60,12 @@
 	}
 
 	function staffDisplay(r: RecipientDto): string {
-		const parts = [r.firstName, r.middleName, r.lastName].filter(
-			Boolean
-		);
-		const name = parts.join(' ').trim();
+		const name = StringUtil.fullNameWithTitle(
+			r.titleName,
+			r.firstName,
+			r.middleName,
+			r.lastName
+		).trim();
 		const code = (r.code ?? '').trim();
 		if (name && code) return `${code} — ${name}`;
 		return name || code || r.staffId;
@@ -103,15 +107,22 @@
 		const data = (await res.json()) as {
 			data?: {
 				id?: string;
+				title?: { name?: string | null } | null;
+				titleName?: string | null;
 				firstName?: string | null;
+				middleName?: string | null;
 				lastName?: string | null;
 				code?: string | null;
 			}[];
 		};
 		const rows = data.data ?? [];
 		return rows.map((r) => {
-			const parts = [r.firstName, r.lastName].filter(Boolean);
-			const name = parts.join(' ').trim();
+			const name = StringUtil.fullNameWithTitle(
+				r.titleName ?? r.title?.name ?? null,
+				r.firstName,
+				r.middleName,
+				r.lastName
+			).trim();
 			const code = (r.code ?? '').trim();
 			const label =
 				code && name
@@ -330,10 +341,17 @@
 		</div>
 	{/if}
 
+	<div class="space-y-1">
+		<h2 class="text-base font-semibold">
+			{m.inv_stock_alert_section_recipients()}
+		</h2>
+		<p class="text-sm opacity-70">{m.inv_stock_alert_recipients_hint()}</p>
+	</div>
+
 	<div class={TableEnum.HEIGHT}>
 		<MenziesTable
-			title={m.inv_stock_alert_title()}
-			description={m.inv_stock_alert_subtitle()}
+			title=""
+			description=""
 			showAddButton={true}
 			addLabel={m.inv_stock_alert_add()}
 			addDisabled={bundleLoading || savingAll}

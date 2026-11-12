@@ -11,7 +11,8 @@
  */
 
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { loadEnvFile } from 'node:process';
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
 import {
 	DiagnosisCodingSystemEnum,
@@ -100,10 +101,27 @@ function maxRetries(): number {
 	return Number(process.env.WHO_ICD_FETCH_RETRIES || 5);
 }
 
+/** SvelteKit dev does not mirror all `.env` keys into `process.env`; CLI seeds use `--env-file`. */
+function ensureWhoIcdEnvFromDotenv(): void {
+	if (
+		process.env.WHO_ICD_CLIENT_ID?.trim() &&
+		process.env.WHO_ICD_CLIENT_SECRET?.trim()
+	) {
+		return;
+	}
+	const envPath = resolve(process.cwd(), '.env');
+	if (existsSync(envPath)) {
+		loadEnvFile(envPath);
+	}
+}
+
 export function readWhoIcdCredentials(opts?: {
 	clientId?: string;
 	clientSecret?: string;
 }): { clientId: string; clientSecret: string } {
+	if (!opts?.clientId?.trim() || !opts?.clientSecret?.trim()) {
+		ensureWhoIcdEnvFromDotenv();
+	}
 	const clientId = (opts?.clientId ?? process.env.WHO_ICD_CLIENT_ID ?? '').trim();
 	const clientSecret = (
 		opts?.clientSecret ??
@@ -117,6 +135,7 @@ export function readWhoIcdCredentials(opts?: {
 }
 
 export function isWhoIcdSeedSkipped(): boolean {
+	ensureWhoIcdEnvFromDotenv();
 	const raw = (process.env.WHO_ICD_SKIP_SEED ?? '').trim().toLowerCase();
 	return raw === '1' || raw === 'true' || raw === 'yes';
 }

@@ -145,6 +145,61 @@ ALTER TABLE "discharge_summary" ADD COLUMN IF NOT EXISTS "cosigned_at" timestamp
 --> statement-breakpoint
 ALTER TABLE "discharge_summary" ADD COLUMN IF NOT EXISTS "cosigned_by" uuid;
 --> statement-breakpoint
+-- Fresh DB: master seed runs after migrate; later INSERTs here need status (and document FKs).
+INSERT INTO status (id, name)
+VALUES
+	(1, 'active'),
+	(2, 'inactive'),
+	(3, 'pending'),
+	(4, 'deleted')
+ON CONFLICT (id) DO NOTHING;
+--> statement-breakpoint
+INSERT INTO document_type (id, document_type, status_id)
+VALUES (2, 'Form', 1)
+ON CONFLICT (id) DO NOTHING;
+--> statement-breakpoint
+INSERT INTO document_setting (
+	id,
+	name,
+	document_type_id,
+	margin_top,
+	margin_bottom,
+	margin_left,
+	margin_right,
+	padding_top,
+	padding_bottom,
+	padding_left,
+	padding_right,
+	page_size,
+	page_orientation,
+	show_header,
+	show_footer,
+	header_html,
+	footer_html,
+	status_id
+)
+VALUES (
+	5,
+	'A4_plain',
+	2,
+	10,
+	10,
+	10,
+	10,
+	5,
+	5,
+	5,
+	5,
+	'A4',
+	'portrait',
+	false,
+	false,
+	'',
+	'',
+	1
+)
+ON CONFLICT (id) DO NOTHING;
+--> statement-breakpoint
 INSERT INTO form_name (id, code, name, form_type, status_id)
 VALUES
 	(5, 'hpi', 'History of present illness', 'observation_emr_visit', 1),

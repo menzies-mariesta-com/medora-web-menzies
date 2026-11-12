@@ -1,0 +1,233 @@
+/* Bootstrap loader — Wash tokens: medora-bootstrap-wash-theme.css */
+
+/* Match Wash canvas before app CSS loads (backdrop-filter samples this surface). */
+html {
+	background-color: var(--color-base-100);
+	color: var(--color-base-content);
+	/* Avoid card width jump when app mount adds a document scrollbar during dismiss. */
+	scrollbar-gutter: stable;
+}
+
+html body {
+	background-color: var(--color-base-100);
+}
+
+html[data-theme$='-dark'] {
+	color-scheme: dark;
+}
+
+#medora-app-bootstrap-loader {
+	position: fixed;
+	inset: 0;
+	z-index: 99999;
+	display: grid;
+	place-items: center;
+	pointer-events: none;
+	color: var(--color-base-content);
+	/* Frosted glass over the app (must not use isolation / paper-grain here — breaks backdrop-filter) */
+	background: color-mix(
+		in oklch,
+		var(--color-base-100) 14%,
+		transparent
+	);
+	-webkit-backdrop-filter: blur(14px) saturate(1.04);
+	backdrop-filter: blur(14px) saturate(1.04);
+	/* Opacity only — animating backdrop-filter during dismiss skews/shrinks the card in some engines. */
+	transition:
+		opacity 0.35s ease,
+		visibility 0.35s ease;
+}
+
+html[data-theme$='-dark'] #medora-app-bootstrap-loader {
+	/* Stronger tint — a 10% mix over default white reads as light gray in dark mode */
+	background: color-mix(in oklch, var(--color-base-100) 48%, transparent);
+	-webkit-backdrop-filter: blur(14px) saturate(0.92);
+	backdrop-filter: blur(14px) saturate(0.92);
+}
+
+#medora-app-bootstrap-loader.is-dismissed {
+	opacity: 0;
+	visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	#medora-app-bootstrap-loader {
+		-webkit-backdrop-filter: blur(6px);
+		backdrop-filter: blur(6px);
+	}
+}
+
+#medora-app-bootstrap-loader .medora-bootstrap-loader-inner {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem;
+	box-sizing: border-box;
+	width: 22rem;
+	max-width: calc(100vw - 2rem);
+	padding: 2rem 1rem;
+	text-align: center;
+	border-radius: var(--radius-box, 1rem);
+	border: 1px solid
+		color-mix(in oklch, var(--ink-border, var(--color-base-content)) 60%, transparent);
+	background: color-mix(in oklch, var(--color-base-100) 70%, transparent);
+	box-shadow: 0 8px 28px
+		color-mix(in oklch, var(--color-base-content) 10%, transparent);
+}
+
+html[data-theme$='-dark'] #medora-app-bootstrap-loader .medora-bootstrap-loader-inner {
+	background: color-mix(in oklch, var(--color-base-100) 70%, transparent);
+}
+
+#medora-app-bootstrap-loader .medora-bootstrap-mark {
+	display: block;
+	width: 2.5rem;
+	height: 2.5rem;
+	flex-shrink: 0;
+	border-radius: 22%;
+	object-fit: cover;
+}
+
+#medora-app-bootstrap-loader .medora-bootstrap-brand-row {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem;
+	width: 100%;
+	max-width: 20rem;
+}
+
+/* Wash UI studio loaders (bootstrap subset): stroke sweep + ink soak */
+#medora-app-bootstrap-loader {
+	--ease-absorb: cubic-bezier(0.2, 0.8, 0.2, 1);
+	--brush-opacity: 0.78;
+	--brush-soak-duration: 0.42s;
+	--font-sans: 'Maple Mono', ui-monospace, monospace;
+	--font-mono: 'Maple Mono', ui-monospace, monospace;
+}
+
+#medora-app-bootstrap-loader .studio-load-stroke {
+	position: relative;
+	display: flex;
+	width: 100%;
+	max-width: 20rem;
+	height: 3.5rem;
+	align-items: center;
+	overflow: hidden;
+}
+
+#medora-app-bootstrap-loader .studio-load-stroke__mark {
+	display: block;
+	width: 100%;
+	height: 18px;
+	transform-origin: 0;
+	border-radius: 40%;
+	opacity: var(--brush-opacity, 0.78);
+	filter: blur(calc(38px / 22));
+	background: linear-gradient(
+		90deg,
+		transparent 0%,
+		var(--color-primary) 35%,
+		var(--color-primary) 100%
+	);
+	animation: studio-stroke-sweep 1.6s var(--ease-absorb) infinite;
+}
+
+#medora-app-bootstrap-loader .studio-load-ink__word {
+	margin: 0;
+	flex: 0 1 auto;
+	min-width: 0;
+	font-family: var(--font-sans, 'Maple Mono', ui-monospace, monospace);
+	font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+	font-weight: 700;
+	font-synthesis: none;
+	letter-spacing: -0.025em;
+	line-height: 1.2;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: geometricPrecision;
+	color: transparent;
+	background-image:
+		linear-gradient(
+			to top,
+			color-mix(in oklch, var(--color-primary) 92%, var(--color-secondary)),
+			color-mix(in oklch, var(--color-primary) 78%, var(--color-accent))
+		),
+		linear-gradient(
+			to top,
+			color-mix(in oklch, var(--color-base-content) 34%, transparent),
+			color-mix(in oklch, var(--color-base-content) 34%, transparent)
+		);
+	background-position: bottom, bottom;
+	background-repeat: no-repeat, no-repeat;
+	background-size: 100% 0%, 100% 100%;
+	-webkit-background-clip: text;
+	background-clip: text;
+	contain: layout style;
+	animation: studio-ink-fill
+		calc(2.8s + var(--brush-soak-duration, 0.42s)) var(--ease-absorb) infinite;
+}
+
+#medora-app-bootstrap-loader .label-ink {
+	margin: 0;
+	font-family: var(--font-sans, 'Maple Mono', ui-monospace, monospace);
+	font-size: 0.6875rem;
+	font-weight: 500;
+	font-synthesis: none;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink-muted, color-mix(in oklch, var(--color-base-content) 55%, transparent));
+}
+
+@keyframes studio-stroke-sweep {
+	0% {
+		opacity: 0.2;
+		transform: scaleX(0.06);
+	}
+	42% {
+		opacity: 1;
+		transform: scaleX(1);
+	}
+	58% {
+		opacity: 1;
+		transform: scaleX(1);
+	}
+	100% {
+		opacity: 0.25;
+		transform: scaleX(0.06);
+	}
+}
+
+@keyframes studio-ink-fill {
+	0% {
+		background-size: 100% 0%, 100% 100%;
+	}
+	45% {
+		background-size: 100% 100%, 100% 100%;
+	}
+	55% {
+		background-size: 100% 100%, 100% 100%;
+	}
+	100% {
+		background-size: 100% 0%, 100% 100%;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	#medora-app-bootstrap-loader .studio-load-stroke__mark,
+	#medora-app-bootstrap-loader .studio-load-ink__word {
+		animation: none !important;
+	}
+
+	#medora-app-bootstrap-loader .studio-load-stroke__mark {
+		opacity: var(--brush-opacity, 0.78);
+		transform: scaleX(1);
+	}
+
+	#medora-app-bootstrap-loader .studio-load-ink__word {
+		background-size: 100% 100%, 100% 100%;
+	}
+}

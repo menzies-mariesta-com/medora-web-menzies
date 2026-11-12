@@ -1,8 +1,12 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import {
-	getPendingOpBillingServiceDetailRowsForVisit,
-	type OpBillingPendingLineRow
+	getPendingOpBillingServiceDetailRowsForVisit
 } from '$lib/server/medora/observation/observation-emr.server';
+import {
+	dedupePendingBillRows,
+	mergeClinicalAndBillingSetupPendingRows,
+	type PendingBillLineRow
+} from '$lib/server/medora/billing/billing-setup-bill-lines.server';
 import {
 	getOpBillingReadiness,
 	opBillingCloseBlockedMessage
@@ -18,10 +22,31 @@ import {
 	BillingStatusTaggingEnum,
 	StatusEnum
 } from '$lib/model/enum/db-link';
+import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
+import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import type { OpBillingSchema } from '$lib/server/db/table/information-table/information-table-schema-type';
 import { parseUuid } from '$lib/util/id.util';
+import {
+	normalizeIpBillingLineWrite,
+	normalizeOpBillingHeaderWrite,
+	normalizeOpBillingLineWrite
+} from '$lib/server/medora/money-normalize.server';
+import { patientChargeFieldsForBillingLine } from '$lib/server/medora/inventory/patient-charge-pricing.server';
 
-type PendingDetailRow = OpBillingPendingLineRow;
+type PendingDetailRow = PendingBillLineRow;
+
+function inventoryPricingSnapshotForBillLine(r: PendingDetailRow) {
+	if (r.lineSource !== 'medication_order_line') {
+		return {
+			pricingFormulaTemplateId: null,
+			pricingModule: null,
+			pricingBatchId: null,
+			unitSalePriceIssue: null,
+			pricingInputsSnapshot: null
+		};
+	}
+	return patientChargeFieldsForBillingLine(r);
+}
 
 type OpBillingWithAuditStaff = OpBillingSchema & {
 	discountedByStaff?: unknown;
@@ -41,6 +66,38 @@ type DiscountActionBody = {
  * Visit ids are UUIDs; Postgres advisory locks only accept int keys.
  */
 const OP_BILLING_SYNC_LOCK_CLASS = 87231401;
+
+async function nextBillNo(params: {
+	hospitalId: string;
+	branchId: string;
+}): Promise<string> {
+	const db = ensureDb();
+	const today = new Date().toISOString().slice(0, 10);
+	const [financialYear] = await db
+		.select({ id: table.financialYearTable.id })
+		.from(table.financialYearTable)
+		.where(
+			and(
+				eq(table.financialYearTable.hospitalId, params.hospitalId),
+				sql`${table.financialYearTable.startDate} <= ${today}`,
+				sql`${table.financialYearTable.endDate} >= ${today}`
+			)
+		)
+		.limit(1);
+	if (!financialYear) {
+		throw error(
+			400,
+			'Financial year is not configured for this hospital.'
+		);
+	}
+	return generatePrefix({
+		hospitalId: params.hospitalId,
+		branchId: params.branchId,
+		financialYearId: financialYear.id,
+		prefixKey: PREFIX_PURPOSE_STORAGE.BILL_NO,
+		context: {}
+	});
+}
 
 type Tx = Parameters<
 	Parameters<ReturnType<typeof ensureDb>['transaction']>[0]
@@ -72,24 +129,11 @@ function postActionFromBody(body: unknown): unknown {
 	return (body as { action?: unknown }).action;
 }
 
-/** One row per clinical/pharmacy source id (defensive against race / join fan-out). */
+/** One row per clinical/pharmacy/setup source id (defensive against race / join fan-out). */
 function dedupePendingRows(
 	rows: PendingDetailRow[]
 ): PendingDetailRow[] {
-	const seen = new Set<string>();
-	const out: PendingDetailRow[] = [];
-	for (const r of rows) {
-		const key =
-			r.lineSource === 'medication_order_line'
-				? `med:${r.medicationOrderLineId}`
-				: r.lineSource === 'department_consumption_line'
-					? `dc:${r.departmentConsumptionLineId}`
-					: `svc:${r.id}`;
-		if (seen.has(key)) continue;
-		seen.add(key);
-		out.push(r);
-	}
-	return out;
+	return dedupePendingBillRows(rows);
 }
 
 async function listOpenOpBillings(
@@ -168,7 +212,7 @@ async function consolidateOpenOpBillings(
  * Serialized per visit (advisory xact lock) so concurrent GET/POST cannot
  * interleave delete+insert and duplicate `op_billing_line` rows.
  */
-async function syncOpenOpBillingForVisit(opts: {
+export async function _syncOpenOpBillingForVisit(opts: {
 	hospitalId: string;
 	visitId: string;
 	branchId: string;
@@ -184,10 +228,15 @@ async function syncOpenOpBillingForVisit(opts: {
 	pendingRows: PendingDetailRow[];
 }> {
 	const pendingRows = dedupePendingRows(
-		await getPendingOpBillingServiceDetailRowsForVisit({
-			visitId: opts.visitId,
+		await mergeClinicalAndBillingSetupPendingRows({
 			hospitalId: opts.hospitalId,
-			branchId: opts.branchId
+			visitId: opts.visitId,
+			branchId: opts.branchId,
+			clinicalRows: await getPendingOpBillingServiceDetailRowsForVisit({
+				visitId: opts.visitId,
+				hospitalId: opts.hospitalId,
+				branchId: opts.branchId
+			})
 		})
 	);
 
@@ -289,7 +338,7 @@ async function syncOpenOpBillingForVisit(opts: {
 					r.lineSource === 'department_consumption_line'
 						? r.departmentConsumptionLineId
 						: null;
-				return {
+				return normalizeOpBillingLineWrite({
 					opBillingId: billingId,
 					lineIndex: idx + 1,
 					serviceOrderDetailId,
@@ -304,25 +353,28 @@ async function syncOpenOpBillingForVisit(opts: {
 					serviceAmount: r.serviceAmount ?? null,
 					serviceTaxAmount: r.serviceTaxAmount ?? null,
 					serviceUnit: r.serviceUnit ?? null,
-					lineTotal: computeLineTotal(r).toFixed(2),
+					lineTotal: computeLineTotal(r),
+					...inventoryPricingSnapshotForBillLine(r),
 					createdAt: opts.nowIso,
 					updatedAt: opts.nowIso,
 					createdBy: opts.userId,
 					updatedBy: opts.userId
-				};
+				});
 			})
 		);
 
 		await tx
 			.update(table.opBillingTable)
-			.set({
-				branchId: opts.branchId,
-				linesSubtotal: linesSubtotal.toFixed(2),
-				discountAmount: discountAmount.toFixed(2),
-				totalAmount: totalAmount.toFixed(2),
-				updatedAt: opts.nowIso,
-				updatedBy: opts.userId
-			})
+			.set(
+				normalizeOpBillingHeaderWrite({
+					branchId: opts.branchId,
+					linesSubtotal,
+					discountAmount,
+					totalAmount,
+					updatedAt: opts.nowIso,
+					updatedBy: opts.userId
+				})
+			)
 			.where(eq(table.opBillingTable.id, billingId));
 
 		const billingRow = (await tx.query.opBillingTable.findFirst({
@@ -408,7 +460,7 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	const nowIso = new Date().toISOString();
-	const sync = await syncOpenOpBillingForVisit({
+	const sync = await _syncOpenOpBillingForVisit({
 		hospitalId,
 		visitId,
 		branchId: visitRow.branchId!,
@@ -504,7 +556,7 @@ export const POST: RequestHandler = async (event) => {
 	const isClose = action === 'printed' || action === 'close';
 
 	if (isClose) {
-		const sync = await syncOpenOpBillingForVisit({
+		const sync = await _syncOpenOpBillingForVisit({
 			hospitalId,
 			visitId,
 			branchId: visitRow.branchId!,
@@ -537,10 +589,18 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		const db = ensureDb();
+		let billNo = sync.billingRow.billNo?.trim() || null;
+		if (!billNo) {
+			billNo = await nextBillNo({
+				hospitalId,
+				branchId: visitRow.branchId!
+			});
+		}
 		await db.transaction(async (tx) => {
 			await tx
 				.update(table.opBillingTable)
 				.set({
+					billNo,
 					statusTaggingId: BillingStatusTaggingEnum.CLOSED,
 					updatedAt: nowIso,
 					updatedBy: locals.user.id
@@ -554,14 +614,14 @@ export const POST: RequestHandler = async (event) => {
 				nowIso
 			});
 		});
-		return json({ ok: true });
+		return json({ ok: true, billNo });
 	}
 
 	if (action !== 'discount') {
 		throw error(400, 'Unknown action');
 	}
 
-	const sync = await syncOpenOpBillingForVisit({
+	const sync = await _syncOpenOpBillingForVisit({
 		hospitalId,
 		visitId,
 		branchId: visitRow.branchId!,
@@ -616,16 +676,18 @@ export const POST: RequestHandler = async (event) => {
 	await ensureDb()
 		.update(table.opBillingTable)
 		.set({
-			linesSubtotal: subtotal.toFixed(2),
+			...normalizeOpBillingHeaderWrite({
+				linesSubtotal: subtotal,
+				discountPercent:
+					discountPercent != null ? discountPercent : null,
+				discountAmount,
+				totalAmount,
+				updatedAt: nowIso,
+				updatedBy: locals.user.id
+			}),
 			discountTypeId,
-			discountPercent:
-				discountPercent != null ? discountPercent.toFixed(2) : null,
-			discountAmount: discountAmount.toFixed(2),
-			totalAmount: totalAmount.toFixed(2),
 			discountedByStaffId: staffId,
-			discountedAt: nowIso,
-			updatedAt: nowIso,
-			updatedBy: locals.user.id
+			discountedAt: nowIso
 		})
 		.where(eq(table.opBillingTable.id, sync.billingId));
 

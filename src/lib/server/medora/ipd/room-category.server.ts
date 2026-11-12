@@ -13,15 +13,20 @@ import {
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
 import { and, count, eq, ilike, ne } from 'drizzle-orm';
+import { isErScopeCondition } from '$lib/server/medora/ipd/master-is-er.util';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 export async function getRoomCategoryPaginated(
-	params: PaginationParams & { hospitalId: string }
+	params: PaginationParams & { hospitalId: string; isEr?: boolean }
 ): Promise<PaginatedResult<RoomCategoryRow>> {
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
 	const conditions = [
 		eq(table.roomCategoryTable.hospitalId, params.hospitalId),
-		ne(table.roomCategoryTable.statusId, StatusEnum.DELETED)
+		paginatedEntityStatusEq(
+			table.roomCategoryTable.statusId,
+			params.statusId
+		)
 	];
 	const nameFilter = params?.name?.trim();
 	if (nameFilter) {
@@ -35,11 +40,11 @@ export async function getRoomCategoryPaginated(
 			ilike(table.roomCategoryTable.code, `%${codeFilter}%`)
 		);
 	}
-	if (typeof params?.statusId === 'number') {
-		conditions.push(
-			eq(table.roomCategoryTable.statusId, params.statusId)
-		);
-	}
+	const isErCond = isErScopeCondition(
+		table.roomCategoryTable,
+		params.isEr
+	);
+	if (isErCond) conditions.push(isErCond);
 	const whereClause = and(...conditions);
 	const [data, countResult] = await Promise.all([
 		ensureDb()
@@ -73,16 +78,21 @@ export async function getRoomCategoryPaginated(
 
 export async function listActiveRoomCategories(input: {
 	hospitalId: string;
+	isEr?: boolean;
 }): Promise<RoomCategorySchema[]> {
+	const conditions = [
+		eq(table.roomCategoryTable.hospitalId, input.hospitalId),
+		eq(table.roomCategoryTable.statusId, StatusEnum.ACTIVE)
+	];
+	const isErCond = isErScopeCondition(
+		table.roomCategoryTable,
+		input.isEr
+	);
+	if (isErCond) conditions.push(isErCond);
 	return ensureDb()
 		.select()
 		.from(table.roomCategoryTable)
-		.where(
-			and(
-				eq(table.roomCategoryTable.hospitalId, input.hospitalId),
-				eq(table.roomCategoryTable.statusId, StatusEnum.ACTIVE)
-			)
-		)
+		.where(and(...conditions))
 		.orderBy(table.roomCategoryTable.name);
 }
 
@@ -108,7 +118,8 @@ export async function createRoomCategory(
 		.insert(table.roomCategoryTable)
 		.values({
 			...payload,
-			roomMarkup: String(payload.roomMarkup ?? '0')
+			roomMarkup: String(payload.roomMarkup ?? '0'),
+			isEr: payload.isEr ?? false
 		})
 		.returning();
 	if (!row) throw new Error('Insert failed');

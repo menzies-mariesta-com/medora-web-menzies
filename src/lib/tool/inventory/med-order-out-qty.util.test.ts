@@ -23,21 +23,30 @@ describe('med-order-out-qty', () => {
 		expect(purchaseQtyToOutQtyString('2', 2, ium)).toBe('200');
 	});
 
-	it('picks sale price for out unit', () => {
+	it('picks sale price for out unit from issue price only', () => {
+		expect(unitSalePriceForOutUnit('1.00', 2, ium)).toBe('1.00');
+		expect(unitSalePriceForOutUnit('1.00', 1, ium)).toBe('100.00');
+	});
+
+	it('derives purchase-unit price from issue price × conversion (strip/box)', () => {
+		const stripIum = {
+			purchaseUnitId: 30,
+			issueUnitId: 20,
+			purchaseConversionFactor: '10',
+			issueConversionFactor: '1'
+		};
+		expect(unitSalePriceForOutUnit('1.39', 30, stripIum)).toBe('13.90');
+	});
+
+	it('does not fall back to GRN purchase-unit price when conversion is missing', () => {
 		expect(
-			unitSalePriceForOutUnit(
-				{ unitSalePricePurchase: '100.00', unitSalePriceIssue: '1.00' },
-				1,
-				ium
-			)
-		).toBe('100.00');
-		expect(
-			unitSalePriceForOutUnit(
-				{ unitSalePricePurchase: '100.00', unitSalePriceIssue: '1.00' },
-				2,
-				ium
-			)
-		).toBe('1.00');
+			unitSalePriceForOutUnit('1.00', 1, {
+				purchaseUnitId: 1,
+				issueUnitId: 2,
+				purchaseConversionFactor: '0',
+				issueConversionFactor: '1'
+			})
+		).toBe('0.00');
 	});
 
 	it('totals qty_out × unit_sale_price', () => {

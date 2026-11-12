@@ -64,7 +64,9 @@ export async function createClinicalAlert(input: {
 			message: input.message,
 			title: input.title,
 			visitId: input.visitId ?? null,
-			link: `/medora/hospital/${input.hospitalId}/home/clinical-tasks/alerts`
+			link: input.visitId
+				? `/medora/hospital/${input.hospitalId}/home/observation-emr?visitId=${input.visitId}`
+				: null
 		});
 	}
 	return row;

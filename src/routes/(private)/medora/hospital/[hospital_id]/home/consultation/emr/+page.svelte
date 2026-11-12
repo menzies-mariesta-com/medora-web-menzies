@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { parseUuid } from '$lib/util/id.util';
+	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -98,7 +99,32 @@
 		VisitState.isClinicalVisitReadOnly
 	);
 
+	const sourceVisitId = $derived(
+		visitRow?.sourceVisitId?.trim() || null
+	);
+	const sourceVisitLabel = $derived(
+		sourceVisitId
+			? `${visitRow?.sourceVisit?.visitNo?.trim() || sourceVisitId}${
+					visitRow?.sourceVisit?.doctor
+						? ` · ${StringUtil.doctorOptionDisplayName(
+								visitRow.sourceVisit.doctor as Parameters<
+									typeof StringUtil.doctorOptionDisplayName
+								>[0]
+							)}`
+						: ''
+				}`
+			: null
+	);
+
+	function viewSourceVisit() {
+		if (!hospitalId || !sourceVisitId) return;
+		void goto(
+			`/medora/hospital/${hospitalId}/home/consultation/emr?visitId=${encodeURIComponent(sourceVisitId)}`
+		);
+	}
+
 	let visitRow = $state<PatientVisitRow | null>(null);
+	let includeSourceVisit = $state(false);
 	/** Pending ADT admission order for this OPD visit (blocks re-order). */
 	let pendingAdmissionOrderId = $state<number | null>(null);
 
@@ -152,7 +178,7 @@
 	}
 
 	async function loadAllSpecialtyEntries(
-		vid: number
+		vid: string
 	): Promise<PatientFormEntryWithRelations[]> {
 		const batches = await Promise.all(
 			SPECIALTY_FORM_CODES.map((formCode) =>
@@ -276,18 +302,6 @@
 	function formatVital(value: unknown): string {
 		if (value == null || value === '') return '–';
 		return String(value);
-	}
-
-	function formatDateTime(value: string | null | undefined): string {
-		if (!value) return '–';
-		try {
-			return new Date(value).toLocaleString('en-US', {
-				dateStyle: 'short',
-				timeStyle: 'short'
-			});
-		} catch {
-			return '–';
-		}
 	}
 
 	function getVitalDisplayDate(
@@ -524,6 +538,87 @@
 					}
 				})()
 			]);
+			if (includeSourceVisit && sourceVisitId && v) {
+				try {
+					const sv = sourceVisitId;
+					const srcVitals = (
+						await apiGet<PatientDiagnosisListRow[]>(
+							'vital.listByVisit',
+							{ visitId: sv }
+						)
+					).map((r: any) => ({ ...r, _source: true }));
+					vitals = [...vitals, ...srcVitals];
+					const srcOrders = (
+						await apiGet<OrderDetailVisitRow[]>(
+							'orderLine.list',
+							{ visitId: sv }
+						)
+					).map((r: any) => ({ ...r, _source: true }));
+					orderLines = [
+						...orderLines,
+						...(srcOrders as OrderDetailVisitRow[])
+					];
+					const srcDx = (
+						await apiGet<DiagnosisWithType[]>(
+							'diagnosis.list',
+							{ visitId: sv }
+						)
+					).map((r: any) => ({ ...r, _source: true }));
+					visitDiagnoses = [...visitDiagnoses, ...srcDx];
+					const [srcCc, srcHpi, srcExam] = await Promise.all([
+						apiGet<PatientFormEntryWithRelations[]>(
+							'formEntry.list',
+							{ visitId: sv, formCode: 'chief_complaint' }
+						),
+						apiGet<PatientFormEntryWithRelations[]>(
+							'formEntry.list',
+							{ visitId: sv, formCode: 'hpi' }
+						),
+						apiGet<PatientFormEntryWithRelations[]>(
+							'formEntry.list',
+							{ visitId: sv, formCode: 'physical_exam' }
+						)
+					]);
+					chiefComplaintEntries = [
+						...chiefComplaintEntries,
+						...srcCc.map((r: any) => ({ ...r, _source: true }))
+					];
+					hpiEntries = [
+						...hpiEntries,
+						...srcHpi.map((r: any) => ({ ...r, _source: true }))
+					];
+					physicalExamEntries = [
+						...physicalExamEntries,
+						...srcExam.map((r: any) => ({ ...r, _source: true }))
+					];
+					const srcSpecialty = (
+						await loadAllSpecialtyEntries(sv)
+					).map((r: any) => ({ ...r, _source: true }));
+					specialtyEntries = [
+						...specialtyEntries,
+						...srcSpecialty
+					];
+					const srcPlan = (
+						await apiGet<PlanOfCareListRow[]>(
+							'planOfCare.list',
+							{ visitId: sv }
+						)
+					).map((r: any) => ({ ...r, _source: true }));
+					planOfCareRows = [...planOfCareRows, ...srcPlan];
+					const srcProgress = (
+						await apiGet<ProgressNoteListRow[]>(
+							'progressNote.list',
+							{ visitId: sv }
+						)
+					).map((r: any) => ({ ...r, _source: true }));
+					progressNoteRows = [
+						...progressNoteRows,
+						...srcProgress
+					];
+				} catch {
+					/* source visit data unavailable */
+				}
+			}
 		} finally {
 			isLoadingGrid = false;
 		}
@@ -552,10 +647,21 @@
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
-			vitals = await apiGet<PatientDiagnosisListRow[]>(
+			const current = await apiGet<PatientDiagnosisListRow[]>(
 				'vital.listByVisit',
 				{ visitId: String(visitId) }
 			);
+			if (includeSourceVisit && sourceVisitId) {
+				const src = (
+					await apiGet<PatientDiagnosisListRow[]>(
+						'vital.listByVisit',
+						{ visitId: sourceVisitId }
+					)
+				).map((r: any) => ({ ...r, _source: true }));
+				vitals = [...current, ...src];
+			} else {
+				vitals = current;
+			}
 		} finally {
 			isLoadingGrid = false;
 		}
@@ -565,10 +671,21 @@
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
-			orderLines = await apiGet<OrderDetailVisitRow[]>(
+			const current = await apiGet<OrderDetailVisitRow[]>(
 				'orderLine.list',
 				{ visitId: String(visitId) }
 			);
+			if (includeSourceVisit && sourceVisitId) {
+				const src = (
+					await apiGet<OrderDetailVisitRow[]>(
+						'orderLine.list',
+						{ visitId: sourceVisitId }
+					)
+				).map((r: any) => ({ ...r, _source: true }));
+				orderLines = [...current, ...(src as OrderDetailVisitRow[])];
+			} else {
+				orderLines = current;
+			}
 		} finally {
 			isLoadingGrid = false;
 		}
@@ -578,10 +695,21 @@
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
-			visitDiagnoses = await apiGet<DiagnosisWithType[]>(
+			const current = await apiGet<DiagnosisWithType[]>(
 				'diagnosis.list',
 				{ visitId: String(visitId) }
 			);
+			if (includeSourceVisit && sourceVisitId) {
+				const src = (
+					await apiGet<DiagnosisWithType[]>(
+						'diagnosis.list',
+						{ visitId: sourceVisitId }
+					)
+				).map((r: any) => ({ ...r, _source: true }));
+				visitDiagnoses = [...current, ...src];
+			} else {
+				visitDiagnoses = current;
+			}
 		} finally {
 			isLoadingGrid = false;
 		}
@@ -591,10 +719,21 @@
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
-			planOfCareRows = await apiGet<PlanOfCareListRow[]>(
+			const current = await apiGet<PlanOfCareListRow[]>(
 				'planOfCare.list',
 				{ visitId: String(visitId) }
 			);
+			if (includeSourceVisit && sourceVisitId) {
+				const src = (
+					await apiGet<PlanOfCareListRow[]>(
+						'planOfCare.list',
+						{ visitId: sourceVisitId }
+					)
+				).map((r: any) => ({ ...r, _source: true }));
+				planOfCareRows = [...current, ...src];
+			} else {
+				planOfCareRows = current;
+			}
 		} finally {
 			isLoadingGrid = false;
 		}
@@ -604,10 +743,21 @@
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
-			progressNoteRows = await apiGet<ProgressNoteListRow[]>(
+			const current = await apiGet<ProgressNoteListRow[]>(
 				'progressNote.list',
 				{ visitId: String(visitId) }
 			);
+			if (includeSourceVisit && sourceVisitId) {
+				const src = (
+					await apiGet<ProgressNoteListRow[]>(
+						'progressNote.list',
+						{ visitId: sourceVisitId }
+					)
+				).map((r: any) => ({ ...r, _source: true }));
+				progressNoteRows = [...current, ...src];
+			} else {
+				progressNoteRows = current;
+			}
 		} finally {
 			isLoadingGrid = false;
 		}
@@ -639,10 +789,59 @@
 					),
 					loadAllSpecialtyEntries(visitId)
 				]);
-				chiefComplaintEntries = cc;
-				hpiEntries = hpi;
-				physicalExamEntries = exam;
-				specialtyEntries = specialty;
+				let combinedCc = cc;
+				let combinedHpi = hpi;
+				let combinedExam = exam;
+				let combinedSpecialty = specialty;
+				if (includeSourceVisit && sourceVisitId) {
+					try {
+						const [sCc, sHpi, sExam] = await Promise.all([
+							apiGet<PatientFormEntryWithRelations[]>(
+								'formEntry.list',
+								{
+									visitId: sourceVisitId,
+									formCode: 'chief_complaint'
+								}
+							),
+							apiGet<PatientFormEntryWithRelations[]>(
+								'formEntry.list',
+								{ visitId: sourceVisitId, formCode: 'hpi' }
+							),
+							apiGet<PatientFormEntryWithRelations[]>(
+								'formEntry.list',
+								{
+									visitId: sourceVisitId,
+									formCode: 'physical_exam'
+								}
+							)
+						]);
+						const sSpecialty = (
+							await loadAllSpecialtyEntries(sourceVisitId)
+						).map((r: any) => ({ ...r, _source: true }));
+						combinedCc = [
+							...combinedCc,
+							...sCc.map((r: any) => ({ ...r, _source: true }))
+						];
+						combinedHpi = [
+							...combinedHpi,
+							...sHpi.map((r: any) => ({ ...r, _source: true }))
+						];
+						combinedExam = [
+							...combinedExam,
+							...sExam.map((r: any) => ({ ...r, _source: true }))
+						];
+						combinedSpecialty = [
+							...combinedSpecialty,
+							...sSpecialty
+						];
+					} catch {
+						/* source visit data unavailable */
+					}
+				}
+				chiefComplaintEntries = combinedCc;
+				hpiEntries = combinedHpi;
+				physicalExamEntries = combinedExam;
+				specialtyEntries = combinedSpecialty;
 				if (visitRow?.patientId) {
 					patientConditionEntries = await apiGet<
 						PatientFormEntryWithRelations[]
@@ -657,6 +856,25 @@
 						visitId: String(visitId),
 						formCode: 'patient_condition'
 					});
+				}
+				if (includeSourceVisit && sourceVisitId) {
+					try {
+						const srcCond = (
+							await apiGet<PatientFormEntryWithRelations[]>(
+								'formEntry.list',
+								{
+									visitId: sourceVisitId,
+									formCode: 'patient_condition'
+								}
+							)
+						).map((r: any) => ({ ...r, _source: true }));
+						patientConditionEntries = [
+							...patientConditionEntries,
+							...srcCond
+						];
+					} catch {
+						/* source visit data unavailable */
+					}
 				}
 			} catch {
 				chiefComplaintEntries = [];
@@ -675,8 +893,8 @@
 		if (!visitId) {
 			visitRow = null;
 			pendingAdmissionOrderId = null;
+			includeSourceVisit = false;
 			allergies = [];
-			allergyTotal = 0;
 			allergyCurrentPage = 1;
 			lastAllergiesFetchKey = '';
 			vitals = [];
@@ -1061,7 +1279,10 @@
 		const result = await dialogService.open({
 			title: m.observation_emr_vital_inactivate_title(),
 			message: m.observation_emr_vital_inactivate_message({
-				date: formatDateTime(getVitalDisplayDate(v) ?? null)
+				date: formatMenziesTableDateTime(
+					getVitalDisplayDate(v) ?? null,
+					'–'
+				)
 			}),
 			variant: DialogVariantEnum.CONFIRM
 		});
@@ -1700,6 +1921,19 @@
 				>
 					{msg.observation_emr_nav_plan()}
 				</button>
+				{#if sourceVisitId}
+					<label
+						class="flex items-center gap-2 text-xs font-semibold text-warning"
+					>
+						<input
+							type="checkbox"
+							class="checkbox checkbox-xs checkbox-warning"
+							bind:checked={includeSourceVisit}
+							onchange={() => void refreshAllForVisit()}
+						/>
+						Show source visit data ({sourceVisitLabel})
+					</label>
+				{/if}
 			</nav>
 			{#if !clinicalVisitReadOnly}
 				<div
@@ -1734,15 +1968,17 @@
 							</WashButton>
 						</span>
 					{/if}
-					<WashButton
-						className="btn-primary btn-sm"
-						disabled={isSigningClinical || isLoadingVisit}
-						loading={isSigningClinical}
-						loadingText=""
-						onClick={handleSaveAsSigned}
-					>
-						{m.observation_save_as_signed()}
-					</WashButton>
+					{#if visitRow?.visitTypeId !== VisitTypeEnum.IPD}
+						<WashButton
+							className="btn-primary btn-sm"
+							disabled={isSigningClinical || isLoadingVisit}
+							loading={isSigningClinical}
+							loadingText=""
+							onClick={handleSaveAsSigned}
+						>
+							{m.observation_save_as_signed()}
+						</WashButton>
+					{/if}
 				</div>
 			{/if}
 		</header>
@@ -1924,7 +2160,7 @@
 							{:else}
 								<ul class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto">
 									{#each problemListRows as problem (problem.id)}
-										<li class="rounded-box bg-base-200/60 px-3 py-2 text-sm">
+										<li class="rounded-box px-3 py-2 text-sm {(problem as any)._source ? 'border border-warning bg-warning/10' : 'bg-base-200/60'}">
 											<div class="font-medium">
 												{problem.code
 													? `${problem.code}: `
@@ -1975,12 +2211,15 @@
 						{/snippet}
 						{#each filteredVitals as vital (vital.id)}
 							<div
-								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+								class="rounded-box border px-3 py-2 {(vital as any)._source ? 'border-warning bg-warning/10' : 'border-ink-border/60 bg-base-200/50'}"
 							>
 								<div class="flex items-start justify-between gap-2">
 									<div class="min-w-0 flex-1">
 										<div class="font-medium">
-											{formatDateTime(getVitalDisplayDate(vital))}
+											{formatMenziesTableDateTime(
+												getVitalDisplayDate(vital),
+												'–'
+											)}
 										</div>
 										<div class="text-ink-muted text-xs">
 											{vitalCardSummary(vital)}
@@ -2038,7 +2277,7 @@
 					>
 						{#each hpiEntries as row (row.id)}
 							<div
-								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+								class="rounded-box border px-3 py-2 {(row as any)._source ? 'border-warning bg-warning/10' : 'border-ink-border/60 bg-base-200/50'}"
 							>
 								<div class="flex items-start justify-between gap-2">
 									<div class="min-w-0 flex-1">
@@ -2048,7 +2287,7 @@
 										<div class="text-ink-muted text-xs">
 											{entryStatusLabel(row.statusId)}
 											{#if row.createdAt}
-												 · {formatDateTime(row.createdAt)}{/if}
+												 · {formatMenziesTableDateTime(row.createdAt, '–')}{/if}
 										</div>
 									</div>
 									{@render glanceRowActions(
@@ -2073,7 +2312,7 @@
 					>
 						{#each physicalExamEntries as row (row.id)}
 							<div
-								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+								class="rounded-box border px-3 py-2 {(row as any)._source ? 'border-warning bg-warning/10' : 'border-ink-border/60 bg-base-200/50'}"
 							>
 								<div class="flex items-start justify-between gap-2">
 									<div class="min-w-0 flex-1">
@@ -2083,7 +2322,7 @@
 										<div class="text-ink-muted text-xs">
 											{entryStatusLabel(row.statusId)}
 											{#if row.createdAt}
-												 · {formatDateTime(row.createdAt)}{/if}
+												 · {formatMenziesTableDateTime(row.createdAt, '–')}{/if}
 										</div>
 									</div>
 									{@render glanceRowActions(
@@ -2130,7 +2369,7 @@
 						{/snippet}
 						{#each filteredSpecialtyEntries as row (row.id)}
 							<div
-								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+								class="rounded-box border px-3 py-2 {(row as any)._source ? 'border-warning bg-warning/10' : 'border-ink-border/60 bg-base-200/50'}"
 							>
 								<div class="flex items-start justify-between gap-2">
 									<div class="min-w-0 flex-1">
@@ -2143,7 +2382,7 @@
 										<div class="text-ink-muted text-xs">
 											{entryStatusLabel(row.statusId)}
 											{#if row.createdAt}
-												 · {formatDateTime(row.createdAt)}{/if}
+												 · {formatMenziesTableDateTime(row.createdAt, '–')}{/if}
 										</div>
 									</div>
 									{@render glanceRowActions(
@@ -2186,7 +2425,7 @@
 						{/snippet}
 						{#each filteredDiagnoses as dx (dx.id)}
 							<div
-								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+								class="rounded-box border px-3 py-2 {(dx as any)._source ? 'border-warning bg-warning/10' : 'border-ink-border/60 bg-base-200/50'}"
 							>
 								<div class="flex items-start justify-between gap-2">
 									<div class="min-w-0 flex-1">
@@ -2198,7 +2437,7 @@
 												m.mo_clinical_diagnosis_fallback()}
 											 · {entryStatusLabel(dx.statusId)}
 											{#if dx.createdAt}
-												 · {formatDateTime(dx.createdAt)}{/if}
+												 · {formatMenziesTableDateTime(dx.createdAt, '–')}{/if}
 										</div>
 									</div>
 									{@render glanceRowActions(
@@ -2230,7 +2469,7 @@
 					>
 						{#each filteredPlanOfCare as row (row.id)}
 							<div
-								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+								class="rounded-box border px-3 py-2 {(row as any)._source ? 'border-warning bg-warning/10' : 'border-ink-border/60 bg-base-200/50'}"
 							>
 								<div class="flex items-start justify-between gap-2">
 									<div class="min-w-0 flex-1">
@@ -2240,7 +2479,7 @@
 										<div class="text-ink-muted text-xs">
 											{entryStatusLabel(row.statusId)}
 											{#if row.createdAt}
-												 · {formatDateTime(row.createdAt)}{/if}
+												 · {formatMenziesTableDateTime(row.createdAt, '–')}{/if}
 										</div>
 									</div>
 									{@render glanceRowActions(
@@ -2265,7 +2504,7 @@
 					>
 						{#each filteredProgressNotes as row (row.id)}
 							<div
-								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+								class="rounded-box border px-3 py-2 {(row as any)._source ? 'border-warning bg-warning/10' : 'border-ink-border/60 bg-base-200/50'}"
 							>
 								<div class="flex items-start justify-between gap-2">
 									<div class="min-w-0 flex-1">
@@ -2275,7 +2514,7 @@
 										<div class="text-ink-muted text-xs">
 											{entryStatusLabel(row.statusId)}
 											{#if row.createdAt}
-												 · {formatDateTime(row.createdAt)}{/if}
+												 · {formatMenziesTableDateTime(row.createdAt, '–')}{/if}
 										</div>
 									</div>
 									{@render glanceRowActions(
@@ -2325,7 +2564,7 @@
 						{#each filteredOrderLines as line (line.id)}
 							{@const locked = Boolean(line.lockedByClosedOpBill)}
 							<div
-								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+								class="rounded-box border px-3 py-2 {(line as any)._source ? 'border-warning bg-warning/10' : 'border-ink-border/60 bg-base-200/50'}"
 							>
 								<div class="flex items-start justify-between gap-2">
 									<div class="min-w-0 flex-1">

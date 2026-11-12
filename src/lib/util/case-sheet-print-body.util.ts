@@ -1,3 +1,14 @@
+import {
+	buildCaseSheetOrderFields,
+	buildCaseSheetVitalFields,
+	caseSheetFieldsToDefinitionListHtml,
+	formatCaseSheetOrderRecordTitle,
+	type CaseSheetOrderFieldLabels,
+	type CaseSheetVitalFieldLabels
+} from '$lib/util/case-sheet-record-fields.util';
+import type { PatientDiagnosisListRow } from '$lib/model/type/medora/ui-rows.type';
+import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
+
 function escapeHtml(text: string): string {
 	return text
 		.replace(/&/g, '&amp;')
@@ -6,27 +17,24 @@ function escapeHtml(text: string): string {
 		.replace(/"/g, '&quot;');
 }
 
-type AuditRow = {
+type DiagnosisRow = {
 	id?: number | string;
 	description?: string | null;
-	createdBy?: string | null;
-	updatedBy?: string | null;
-	createdAt?: string | null;
-	updatedAt?: string | null;
-};
-
-type DiagnosisRow = AuditRow & {
 	diagnosisType?: { name?: string | null } | null;
 };
 
-type AllergyRow = AuditRow & {
+type AllergyRow = {
+	id?: number | string;
 	allergy?: { name?: string | null } | null;
 	severity?: { name?: string | null } | null;
 	reaction?: string | null;
 };
 
-type VitalRow = AuditRow & {
+type VitalRow = {
+	id?: number | string;
 	vitalDateTime?: string | null;
+	createdAt?: string | null;
+	statusId?: number | null;
 	height?: unknown;
 	weight?: unknown;
 	bmi?: unknown;
@@ -35,17 +43,33 @@ type VitalRow = AuditRow & {
 	pulse?: unknown;
 	temperature?: unknown;
 	spO2?: unknown;
+	respiration?: unknown;
+	rbs?: unknown;
 	symptom?: unknown;
+	description?: string | null;
+	remark?: string | null;
 };
 
-type OrderLineRow = AuditRow & {
+type OrderLineRow = {
+	id?: number | string;
 	orderNo?: string | null;
 	serviceName?: string | null;
 	serviceId?: number | null;
+	subCategoryName?: string | null;
+	categoryName?: string | null;
 	instruction?: string | null;
 	serviceAmount?: unknown;
+	serviceTaxAmount?: unknown;
+	discount?: string | null;
 	serviceUnit?: number | null;
 	isUrgent?: boolean | null;
+	nursingCompleteTime?: string | null;
+	statusId?: number | null;
+};
+
+type TextRow = {
+	id?: number | string;
+	description?: string | null;
 };
 
 export type CaseSheetPrintLabels = {
@@ -67,9 +91,6 @@ export type CaseSheetPrintLabels = {
 	noEntries: string;
 	yes: string;
 	no: string;
-	enteredBy: string;
-	updatedBy: string;
-	on: string;
 	vitalColDate: string;
 	vitalColHeight: string;
 	vitalColWeight: string;
@@ -79,51 +100,40 @@ export type CaseSheetPrintLabels = {
 	vitalColTemp: string;
 	vitalColSpo2: string;
 	vitalColSymptom: string;
+	vitalColRespiration: string;
+	vitalColRbs: string;
+	vitalColDescription: string;
+	vitalColRemark: string;
 	orderColOrderNo: string;
+	orderColService: string;
+	orderColSubCategory: string;
+	orderColCategory: string;
 	orderColDescription: string;
+	orderColTaxAmount: string;
+	orderColDiscount: string;
+	orderColNursingComplete: string;
+	generatedFooter: string;
 };
 
 export type CaseSheetPrintFormatters = {
 	formatText: (value: string | null | undefined) => string;
 	formatDateTime: (value: string | null | undefined) => string;
-	formatUserName: (userId: string | null | undefined) => string;
 	formatVital: (value: unknown) => string;
 	formatNumberDisplay: (value: unknown) => string;
 	getVitalDisplayDate: (row: VitalRow) => string | null;
 };
 
-function auditLine(
-	row: AuditRow,
-	labels: CaseSheetPrintLabels,
-	fmt: CaseSheetPrintFormatters
-): string {
-	return `<p class="case-sheet-audit">${escapeHtml(labels.enteredBy)} ${escapeHtml(
-		fmt.formatUserName(row.createdBy)
-	)} ${escapeHtml(labels.on)} ${escapeHtml(
-		fmt.formatDateTime(row.createdAt)
-	)} · ${escapeHtml(labels.updatedBy)} ${escapeHtml(
-		fmt.formatUserName(row.updatedBy)
-	)} ${escapeHtml(labels.on)} ${escapeHtml(
-		fmt.formatDateTime(row.updatedAt)
-	)}</p>`;
-}
-
 function listSection(
 	title: string,
 	emptyText: string,
-	items: AuditRow[],
-	renderItem: (row: AuditRow) => string,
-	labels: CaseSheetPrintLabels,
-	fmt: CaseSheetPrintFormatters
+	items: TextRow[],
+	renderItem: (row: TextRow) => string
 ): string {
 	if (items.length === 0) {
 		return `<section class="case-sheet-section"><h3>${escapeHtml(title)}</h3><p class="case-sheet-empty">${escapeHtml(emptyText)}</p></section>`;
 	}
 	const rows = items
-		.map(
-			(row) =>
-				`<li><div>${renderItem(row)}</div>${auditLine(row, labels, fmt)}</li>`
-		)
+		.map((row) => `<li><div>${renderItem(row)}</div></li>`)
 		.join('');
 	return `<section class="case-sheet-section"><h3>${escapeHtml(title)}</h3><ol class="case-sheet-list">${rows}</ol></section>`;
 }
@@ -131,8 +141,8 @@ function listSection(
 export function buildCaseSheetPrintBodyHtml(opts: {
 	labels: CaseSheetPrintLabels;
 	formatters: CaseSheetPrintFormatters;
-	chiefComplaintEntries: AuditRow[];
-	patientConditionEntries: AuditRow[];
+	chiefComplaintEntries: TextRow[];
+	patientConditionEntries: TextRow[];
 	visitDiagnoses: DiagnosisRow[];
 	allergies: AllergyRow[];
 	vitals: VitalRow[];
@@ -144,18 +154,14 @@ export function buildCaseSheetPrintBodyHtml(opts: {
 		labels.chiefComplaint,
 		labels.noEntries,
 		opts.chiefComplaintEntries,
-		(row) => escapeHtml(fmt.formatText(row.description)),
-		labels,
-		fmt
+		(row) => escapeHtml(fmt.formatText(row.description))
 	);
 
 	const patientCondition = listSection(
 		labels.patientCondition,
 		labels.noEntries,
 		opts.patientConditionEntries,
-		(row) => escapeHtml(fmt.formatText(row.description)),
-		labels,
-		fmt
+		(row) => escapeHtml(fmt.formatText(row.description))
 	);
 
 	const diagnosis =
@@ -167,7 +173,7 @@ export function buildCaseSheetPrintBodyHtml(opts: {
 						const typeSuffix = typeName
 							? ` <span class="case-sheet-muted">(${escapeHtml(labels.diagnosisTypeLabel)}: ${escapeHtml(typeName)})</span>`
 							: '';
-						return `<li><div>${escapeHtml(fmt.formatText(row.description))}${typeSuffix}</div>${auditLine(row, labels, fmt)}</li>`;
+						return `<li><div>${escapeHtml(fmt.formatText(row.description))}${typeSuffix}</div></li>`;
 					})
 					.join('')}</ol></section>`;
 
@@ -183,71 +189,83 @@ export function buildCaseSheetPrintBodyHtml(opts: {
 							fmt.formatText(row.severity?.name ?? null)
 						);
 						const reaction = escapeHtml(fmt.formatText(row.reaction));
-						return `<li><div><strong>${name}</strong> ${escapeHtml(labels.allergySeverity)}: ${severity}; ${escapeHtml(labels.allergyReaction)}: ${reaction}</div>${auditLine(row, labels, fmt)}</li>`;
+						return `<li><div><strong>${name}</strong> ${escapeHtml(labels.allergySeverity)}: ${severity}; ${escapeHtml(labels.allergyReaction)}: ${reaction}</div></li>`;
 					})
 					.join('')}</ol></section>`;
 
 	const vitals =
 		opts.vitals.length === 0
 			? `<section class="case-sheet-section"><h3>${escapeHtml(labels.vitals)}</h3><p class="case-sheet-empty">${escapeHtml(labels.noEntries)}</p></section>`
-			: `<section class="case-sheet-section"><h3>${escapeHtml(labels.vitals)}</h3><div class="case-sheet-table-wrap"><table class="case-sheet-table"><thead><tr>
-<th>${escapeHtml(labels.vitalColDate)}</th>
-<th>${escapeHtml(labels.vitalColHeight)}</th>
-<th>${escapeHtml(labels.vitalColWeight)}</th>
-<th>${escapeHtml(labels.vitalColBmi)}</th>
-<th>${escapeHtml(labels.vitalColBp)}</th>
-<th>${escapeHtml(labels.vitalColPulse)}</th>
-<th>${escapeHtml(labels.vitalColTemp)}</th>
-<th>${escapeHtml(labels.vitalColSpo2)}</th>
-<th>${escapeHtml(labels.vitalColSymptom)}</th>
-</tr></thead><tbody>${opts.vitals
-					.map(
-						(row) => `<tr>
-<td>${escapeHtml(fmt.formatDateTime(fmt.getVitalDisplayDate(row)))}</td>
-<td>${escapeHtml(fmt.formatVital(row.height))}</td>
-<td>${escapeHtml(fmt.formatVital(row.weight))}</td>
-<td>${escapeHtml(fmt.formatVital(row.bmi))}</td>
-<td>${escapeHtml(fmt.formatVital(row.bpSystolic))}/${escapeHtml(fmt.formatVital(row.bpDiastolic))}</td>
-<td>${escapeHtml(fmt.formatVital(row.pulse))}</td>
-<td>${escapeHtml(fmt.formatVital(row.temperature))}</td>
-<td>${escapeHtml(fmt.formatVital(row.spO2))}</td>
-<td><div>${escapeHtml(fmt.formatVital(row.symptom))}</div>${auditLine(row, labels, fmt)}</td>
-</tr>`
-					)
-					.join('')}</tbody></table></div></section>`;
+			: `<section class="case-sheet-section"><h3>${escapeHtml(labels.vitals)}</h3><ol class="case-sheet-records">${opts.vitals
+					.map((row) => {
+						const vitalLabels: CaseSheetVitalFieldLabels = {
+							date: labels.vitalColDate,
+							height: labels.vitalColHeight,
+							weight: labels.vitalColWeight,
+							bmi: labels.vitalColBmi,
+							bp: labels.vitalColBp,
+							pulse: labels.vitalColPulse,
+							temp: labels.vitalColTemp,
+							spo2: labels.vitalColSpo2,
+							respiration: labels.vitalColRespiration,
+							rbs: labels.vitalColRbs,
+							symptom: labels.vitalColSymptom,
+							description: labels.vitalColDescription,
+							remark: labels.vitalColRemark
+						};
+						const fields = buildCaseSheetVitalFields(
+							row as PatientDiagnosisListRow,
+							vitalLabels,
+							{
+								formatText: fmt.formatText,
+								formatDateTime: fmt.formatDateTime,
+								formatVital: fmt.formatVital,
+								formatNumberDisplay: fmt.formatNumberDisplay,
+								getVitalDisplayDate: (r) =>
+									fmt.getVitalDisplayDate(r)
+							}
+						);
+						const title = escapeHtml(
+							fmt.formatDateTime(fmt.getVitalDisplayDate(row))
+						);
+						return `<li class="case-sheet-record"><p class="case-sheet-record-title">${title}</p>${caseSheetFieldsToDefinitionListHtml(fields, escapeHtml)}</li>`;
+					})
+					.join('')}</ol></section>`;
 
 	const orders =
 		opts.orderLines.length === 0
 			? `<section class="case-sheet-section"><h3>${escapeHtml(labels.orderHistory)}</h3><p class="case-sheet-empty">${escapeHtml(labels.noEntries)}</p></section>`
-			: `<section class="case-sheet-section"><h3>${escapeHtml(labels.orderHistory)}</h3><div class="case-sheet-table-wrap"><table class="case-sheet-table"><thead><tr>
-<th>${escapeHtml(labels.orderColOrderNo)}</th>
-<th>${escapeHtml(labels.service)}</th>
-<th>${escapeHtml(labels.orderColDescription)}</th>
-<th>${escapeHtml(labels.serviceAmount)}</th>
-<th>${escapeHtml(labels.units)}</th>
-<th>${escapeHtml(labels.urgent)}</th>
-</tr></thead><tbody>${opts.orderLines
+			: `<section class="case-sheet-section"><h3>${escapeHtml(labels.orderHistory)}</h3><ol class="case-sheet-records">${opts.orderLines
 					.map((row) => {
-						const serviceLabel =
-							row.serviceName?.trim() ||
-							(row.serviceId != null
-								? `Service ${row.serviceId}`
-								: '–');
-						const urgent = row.isUrgent ? labels.yes : labels.no;
-						const units =
-							row.serviceUnit != null
-								? String(row.serviceUnit)
-								: '–';
-						return `<tr>
-<td>${escapeHtml(fmt.formatText(row.orderNo))}</td>
-<td>${escapeHtml(fmt.formatText(serviceLabel))}</td>
-<td><div>${escapeHtml(fmt.formatText(row.instruction))}</div>${auditLine(row, labels, fmt)}</td>
-<td>${escapeHtml(fmt.formatNumberDisplay(row.serviceAmount))}</td>
-<td>${escapeHtml(units)}</td>
-<td>${escapeHtml(urgent)}</td>
-</tr>`;
+						const orderLabels: CaseSheetOrderFieldLabels = {
+							orderNo: labels.orderColOrderNo,
+							service: labels.orderColService,
+							subCategory: labels.orderColSubCategory,
+							category: labels.orderColCategory,
+							instruction: labels.orderColDescription,
+							serviceAmount: labels.serviceAmount,
+							taxAmount: labels.orderColTaxAmount,
+							discount: labels.orderColDiscount,
+							units: labels.units,
+							urgent: labels.urgent,
+							yes: labels.yes,
+							no: labels.no,
+							nursingComplete: labels.orderColNursingComplete
+						};
+						const fields = buildCaseSheetOrderFields(row, orderLabels, {
+							formatText: fmt.formatText,
+							formatDateTime: fmt.formatDateTime,
+							formatNumberDisplay: fmt.formatNumberDisplay
+						});
+						const title = escapeHtml(
+							formatCaseSheetOrderRecordTitle(row, fmt.formatText)
+						);
+						return `<li class="case-sheet-record"><p class="case-sheet-record-title">${title}</p>${caseSheetFieldsToDefinitionListHtml(fields, escapeHtml)}</li>`;
 					})
-					.join('')}</tbody></table></div></section>`;
+					.join('')}</ol></section>`;
+
+	const generatedAt = formatMenziesTableDateTime(new Date());
+	const footer = `<footer class="case-sheet-footer">${escapeHtml(labels.generatedFooter)}: ${escapeHtml(generatedAt)}</footer>`;
 
 	return [
 		chiefComplaint,
@@ -255,6 +273,7 @@ export function buildCaseSheetPrintBodyHtml(opts: {
 		diagnosis,
 		allergies,
 		vitals,
-		orders
+		orders,
+		footer
 	].join('');
 }

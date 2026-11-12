@@ -4,7 +4,7 @@
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
@@ -60,12 +60,26 @@
 	let selectedCategoryId = $state<string>('');
 	let selectedSubCategoryId = $state<string>('');
 
+	const categoryOptions = $derived(
+		categories.map((cat) => ({
+			value: String(cat.id),
+			label: cat.categoryName ?? `Category ${cat.id}`
+		}))
+	);
+
 	const filteredSubCategories = $derived.by(() => {
-		if (!selectedCategoryId) return subCategories;
+		if (!selectedCategoryId) return [];
 		const categoryId = Number(selectedCategoryId);
-		if (Number.isNaN(categoryId)) return subCategories;
+		if (Number.isNaN(categoryId)) return [];
 		return subCategories.filter((sc) => sc.categoryId === categoryId);
 	});
+
+	const subCategoryOptions = $derived(
+		filteredSubCategories.map((sc) => ({
+			value: String(sc.id),
+			label: sc.subCategoryName ?? `Sub-category ${sc.id}`
+		}))
+	);
 
 	let formServiceName = $state('');
 	let formServiceCode = $state('');
@@ -202,14 +216,13 @@
 			(a.subCategoryName ?? '').localeCompare(b.subCategoryName ?? '')
 		);
 
-		// Ensure current selection is valid
 		if (
+			selectedSubCategoryId &&
 			!subCategories.find(
 				(s) => String(s.id) === selectedSubCategoryId
-			) &&
-			subCategories.length > 0
+			)
 		) {
-			selectedSubCategoryId = String(subCategories[0].id);
+			selectedSubCategoryId = '';
 		}
 	}
 
@@ -377,10 +390,10 @@
 	function onCategoryChange() {
 		const available = filteredSubCategories;
 		if (
+			selectedSubCategoryId &&
 			!available.find((sc) => String(sc.id) === selectedSubCategoryId)
 		) {
-			selectedSubCategoryId =
-				available.length > 0 ? String(available[0].id) : '';
+			selectedSubCategoryId = '';
 		}
 	}
 
@@ -395,6 +408,8 @@
 		formActive = true;
 		mode = 'create';
 		editingId = null;
+		selectedCategoryId = '';
+		selectedSubCategoryId = '';
 	}
 
 	function startCreate() {
@@ -404,6 +419,9 @@
 	function startEdit(row: ServiceItemListRow) {
 		mode = 'edit';
 		editingId = row.id;
+		const sc = subCategories.find((s) => s.id === row.subCategoryId);
+		selectedCategoryId =
+			sc?.categoryId != null ? String(sc.categoryId) : '';
 		selectedSubCategoryId =
 			row.subCategoryId != null ? String(row.subCategoryId) : '';
 		formServiceName = row.serviceName ?? '';
@@ -607,19 +625,14 @@
 							for="service-item-form-category"
 							>{m.service_item_category_label()}</label
 						>
-						<WashSelect
-							id="service-item-form-category"
-							className="select select-bordered select-sm w-full"
+						<SearchSelect
+							inputId="service-item-form-category"
+							className="input-sm w-full"
+							options={categoryOptions}
+							placeholder={m.service_item_all_categories()}
 							bind:value={selectedCategoryId}
 							onChange={onCategoryChange}
-							optionHeader={m.service_item_all_categories()}
-						>
-							{#each categories as cat (cat.id)}
-								<option value={String(cat.id)}
-									>{cat.categoryName ?? `Category ${cat.id}`}</option
-								>
-							{/each}
-						</WashSelect>
+						/>
 					</div>
 					<div class="flex min-w-52 flex-1 flex-col gap-1">
 						<label
@@ -627,20 +640,15 @@
 							for="service-item-form-subcategory"
 							>{m.service_item_sub_category_label()}</label
 						>
-						<WashSelect
-							id="service-item-form-subcategory"
-							className="select select-bordered select-sm w-full"
+						<SearchSelect
+							inputId="service-item-form-subcategory"
+							className="input-sm w-full"
+							options={subCategoryOptions}
+							placeholder={m.service_item_select_sub_category()}
+							disabled={!selectedCategoryId}
 							bind:value={selectedSubCategoryId}
 							onChange={onSubCategoryChange}
-							optionHeader={m.service_item_select_sub_category()}
-						>
-							{#each filteredSubCategories as sc (sc.id)}
-								<option value={String(sc.id)}
-									>{sc.subCategoryName ??
-										`Sub-category ${sc.id}`}</option
-								>
-							{/each}
-						</WashSelect>
+						/>
 					</div>
 					<div class="flex min-w-52 flex-1 flex-col gap-1">
 						<label

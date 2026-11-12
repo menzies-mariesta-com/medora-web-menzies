@@ -10,6 +10,8 @@ import {
 	type PricingFormulaTemplateListRow
 } from '$lib/model/type/medora/pricing-formula-template.type';
 import { ensureHospitalInventoryAccess } from './inventory-scope.server';
+import { requireMoneyDecimal2dp } from '$lib/server/medora/money-field.server';
+import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
 
 function parseSlotOrder(raw: unknown): PricingFormulaSlot[] {
 	if (!Array.isArray(raw) || raw.length === 0) {
@@ -44,7 +46,7 @@ export function rowToPricingFormulaTemplateDto(
 		includeFreeQty: row.includeFreeQty,
 		includeItemMarkup: row.includeItemMarkup,
 		includeStoreMarkup: row.includeStoreMarkup,
-		mslMarkupPercent: row.mslMarkupPercent,
+		mslMarkupPercent: row.mslMarkupPercent != null ? toDbMoney2dp(row.mslMarkupPercent) : row.mslMarkupPercent,
 		slotOrder: parseSlotOrder(row.slotOrder),
 		isSystemDefault: row.isSystemDefault,
 		statusId: row.statusId
@@ -52,11 +54,17 @@ export function rowToPricingFormulaTemplateDto(
 }
 
 function parseMarkupPercent(raw: string, label: string): string {
-	const n = Number(raw);
-	if (!Number.isFinite(n) || n < 0 || n > 999) {
+	try {
+		const fixed = requireMoneyDecimal2dp(raw, label, {
+			allowNegative: false
+		});
+		if (Number(fixed) > 999) {
+			throw error(400, `Invalid ${label}`);
+		}
+		return fixed;
+	} catch {
 		throw error(400, `Invalid ${label}`);
 	}
-	return n.toFixed(2);
 }
 
 export type PricingFormulaTemplateWriteInput = {
@@ -142,6 +150,23 @@ export async function getPricingFormulaTemplate(
 	return row ? rowToPricingFormulaTemplateDto(row) : null;
 }
 
+export async function getPricingFormulaTemplateByIdDb(
+	hospitalId: string,
+	id: number
+): Promise<PricingFormulaTemplateDto | null> {
+	const [row] = await ensureDb()
+		.select()
+		.from(table.invPricingFormulaTemplateTable)
+		.where(
+			and(
+				eq(table.invPricingFormulaTemplateTable.id, id),
+				eq(table.invPricingFormulaTemplateTable.hospitalId, hospitalId)
+			)
+		)
+		.limit(1);
+	return row ? rowToPricingFormulaTemplateDto(row) : null;
+}
+
 export async function createPricingFormulaTemplate(
 	event: RequestEvent,
 	input: { hospitalId: string } & PricingFormulaTemplateWriteInput
@@ -162,52 +187,16 @@ export async function createPricingFormulaTemplate(
 }
 
 export async function updatePricingFormulaTemplate(
-	event: RequestEvent,
-	input: {
+	_event: RequestEvent,
+	_input: {
 		hospitalId: string;
 		id: number;
 	} & Partial<PricingFormulaTemplateWriteInput>
 ): Promise<PricingFormulaTemplateDto> {
-	await ensureHospitalInventoryAccess(event, input.hospitalId);
-	const existing = await getPricingFormulaTemplate(event, {
-		hospitalId: input.hospitalId,
-		id: input.id
-	});
-	if (!existing) throw error(404, 'Template not found');
-
-	const payload = templateWritePayload({
-		name: input.name ?? existing.name,
-		description:
-			input.description !== undefined
-				? input.description
-				: existing.description,
-		includeDiscount: input.includeDiscount ?? existing.includeDiscount,
-		includeTax: input.includeTax ?? existing.includeTax,
-		includeFreeQty: input.includeFreeQty ?? existing.includeFreeQty,
-		includeItemMarkup:
-			input.includeItemMarkup ?? existing.includeItemMarkup,
-		includeStoreMarkup:
-			input.includeStoreMarkup ?? existing.includeStoreMarkup,
-		mslMarkupPercent:
-			input.mslMarkupPercent ?? existing.mslMarkupPercent,
-		statusId: input.statusId ?? existing.statusId
-	});
-
-	const [row] = await ensureDb()
-		.update(table.invPricingFormulaTemplateTable)
-		.set(payload)
-		.where(
-			and(
-				eq(table.invPricingFormulaTemplateTable.id, input.id),
-				eq(
-					table.invPricingFormulaTemplateTable.hospitalId,
-					input.hospitalId
-				)
-			)
-		)
-		.returning();
-	if (!row) throw error(500, 'Template update failed');
-	return rowToPricingFormulaTemplateDto(row);
+	throw error(
+		403,
+		'Pricing formula templates are immutable. Duplicate a template to create a new revision.'
+	);
 }
 
 export async function duplicatePricingFormulaTemplate(
@@ -244,7 +233,7 @@ export async function duplicatePricingFormulaTemplate(
 			hospitalId: input.hospitalId,
 			name,
 			description: src.description,
-			formulaVersion: src.formulaVersion,
+			formulaVersion: src.formulaVersion + 1,
 			includeDiscount: src.includeDiscount,
 			includeTax: src.includeTax,
 			includeFreeQty: src.includeFreeQty,
@@ -262,50 +251,13 @@ export async function duplicatePricingFormulaTemplate(
 
 export async function deletePricingFormulaTemplate(
 	event: RequestEvent,
-	input: { hospitalId: string; id: number }
+	_input: { hospitalId: string; id: number }
 ): Promise<void> {
-	await ensureHospitalInventoryAccess(event, input.hospitalId);
-	const [row] = await ensureDb()
-		.select({
-			id: table.invPricingFormulaTemplateTable.id,
-			isSystemDefault: table.invPricingFormulaTemplateTable.isSystemDefault
-		})
-		.from(table.invPricingFormulaTemplateTable)
-		.where(
-			and(
-				eq(table.invPricingFormulaTemplateTable.id, input.id),
-				eq(
-					table.invPricingFormulaTemplateTable.hospitalId,
-					input.hospitalId
-				)
-			)
-		)
-		.limit(1);
-	if (!row) throw error(404, 'Template not found');
-	if (row.isSystemDefault) {
-		throw error(400, 'Cannot delete the system default template');
-	}
-
-	const [used] = await ensureDb()
-		.select({ id: table.invModulePricingAssignmentTable.id })
-		.from(table.invModulePricingAssignmentTable)
-		.where(
-			eq(
-				table.invModulePricingAssignmentTable.formulaTemplateId,
-				input.id
-			)
-		)
-		.limit(1);
-	if (used) {
-		throw error(
-			400,
-			'Template is assigned to one or more branch/module scopes'
-		);
-	}
-
-	await ensureDb()
-		.delete(table.invPricingFormulaTemplateTable)
-		.where(eq(table.invPricingFormulaTemplateTable.id, input.id));
+	await ensureHospitalInventoryAccess(event, _input.hospitalId);
+	throw error(
+		403,
+		'Pricing formula templates cannot be deleted. Duplicate a template to create a new revision.'
+	);
 }
 
 export async function deactivatePricingFormulaTemplate(

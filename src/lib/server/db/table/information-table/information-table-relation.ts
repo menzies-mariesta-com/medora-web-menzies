@@ -36,6 +36,8 @@ import {
 	staffDepartmentTable,
 	serviceItemTable,
 	serviceTaggingTable,
+	billingSetupServiceTaggingTable,
+	hospitalBillingSettingTable,
 	storeTable,
 	supportTicketTable,
 	staffDetailTable,
@@ -63,7 +65,7 @@ import {
 	ipdAdmissionTable,
 	ipdBedHistoryTable,
 	ipdBedStaySegmentTable,
-	ipdAccommodationBillingPolicyTable,
+	accommodationBillingPolicyTable,
 	ipBillingTable,
 	ipBillingLineTable
 } from './information-table';
@@ -73,7 +75,6 @@ import {
 	diagnosisTypeTable,
 	formNameTable,
 	countryTable,
-	departmentTable,
 	genderTable,
 	identityTypeTable,
 	maritalStatusTable,
@@ -152,7 +153,25 @@ export const hospitalTableRelations = relations(
 		wardCategories: many(wardCategoryTable),
 		roomCategories: many(roomCategoryTable),
 		rooms: many(roomTable),
-		beds: many(bedTable)
+		beds: many(bedTable),
+		billingSetting: one(hospitalBillingSettingTable, {
+			fields: [hospitalTable.id],
+			references: [hospitalBillingSettingTable.hospitalId]
+		})
+	})
+);
+
+export const hospitalBillingSettingTableRelations = relations(
+	hospitalBillingSettingTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [hospitalBillingSettingTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		pharmacyBillingServiceItem: one(serviceItemTable, {
+			fields: [hospitalBillingSettingTable.pharmacyBillingServiceItemId],
+			references: [serviceItemTable.id]
+		})
 	})
 );
 
@@ -244,15 +263,16 @@ export const prefixCounterTableRelations = relations(
 
 export const hospitalDepartmentTableRelations = relations(
 	hospitalDepartmentTable,
-	({ one }) => ({
+	({ one, many }) => ({
 		hospital: one(hospitalTable, {
 			fields: [hospitalDepartmentTable.hospitalId],
 			references: [hospitalTable.id]
 		}),
-		department: one(departmentTable, {
-			fields: [hospitalDepartmentTable.departmentId],
-			references: [departmentTable.id]
-		})
+		status: one(statusTable, {
+			fields: [hospitalDepartmentTable.statusId],
+			references: [statusTable.id]
+		}),
+		staffDepartments: many(staffDepartmentTable)
 	})
 );
 
@@ -297,9 +317,9 @@ export const staffDepartmentTableRelations = relations(
 			fields: [staffDepartmentTable.staffId],
 			references: [staffTable.id]
 		}),
-		department: one(departmentTable, {
-			fields: [staffDepartmentTable.departmentId],
-			references: [departmentTable.id]
+		hospitalDepartment: one(hospitalDepartmentTable, {
+			fields: [staffDepartmentTable.hospitalDepartmentId],
+			references: [hospitalDepartmentTable.id]
 		})
 	})
 );
@@ -478,6 +498,14 @@ export const patientVisitTableRelations = relations(
 		status: one(statusTable, {
 			fields: [patientVisitTable.statusId],
 			references: [statusTable.id]
+		}),
+		sourceVisit: one(patientVisitTable, {
+			fields: [patientVisitTable.sourceVisitId],
+			references: [patientVisitTable.id],
+			relationName: 'visitSourceChain'
+		}),
+		derivedVisits: many(patientVisitTable, {
+			relationName: 'visitSourceChain'
 		}),
 		diagnoses: many(patientDiagnosisTable),
 		patientDocuments: many(patientDocumentTable),
@@ -1205,7 +1233,7 @@ export const serviceItemTableRelations = relations(
 
 export const serviceTaggingTableRelations = relations(
 	serviceTaggingTable,
-	({ one }) => ({
+	({ one, many }) => ({
 		branch: one(hospitalBranchTable, {
 			fields: [serviceTaggingTable.branchId],
 			references: [hospitalBranchTable.id]
@@ -1216,6 +1244,25 @@ export const serviceTaggingTableRelations = relations(
 		}),
 		status: one(statusTable, {
 			fields: [serviceTaggingTable.statusId],
+			references: [statusTable.id]
+		}),
+		billingSetupLinks: many(billingSetupServiceTaggingTable)
+	})
+);
+
+export const billingSetupServiceTaggingTableRelations = relations(
+	billingSetupServiceTaggingTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [billingSetupServiceTaggingTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		serviceTagging: one(serviceTaggingTable, {
+			fields: [billingSetupServiceTaggingTable.serviceTaggingId],
+			references: [serviceTaggingTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [billingSetupServiceTaggingTable.statusId],
 			references: [statusTable.id]
 		})
 	})
@@ -1750,18 +1797,24 @@ export const ipdBedStaySegmentTableRelations = relations(
 	})
 );
 
-export const ipdAccommodationBillingPolicyTableRelations = relations(
-	ipdAccommodationBillingPolicyTable,
+export const accommodationBillingPolicyTableRelations = relations(
+	accommodationBillingPolicyTable,
 	({ one }) => ({
 		hospital: one(hospitalTable, {
-			fields: [ipdAccommodationBillingPolicyTable.hospitalId],
+			fields: [accommodationBillingPolicyTable.hospitalId],
 			references: [hospitalTable.id]
 		}),
 		accommodationServiceItem: one(serviceItemTable, {
 			fields: [
-				ipdAccommodationBillingPolicyTable.accommodationServiceItemId
+				accommodationBillingPolicyTable.accommodationServiceItemId
 			],
 			references: [serviceItemTable.id]
+		}),
+		accommodationBillUnit: one(unitTable, {
+			fields: [
+				accommodationBillingPolicyTable.accommodationBillUnitId
+			],
+			references: [unitTable.id]
 		})
 	})
 );

@@ -32,6 +32,8 @@
 		orderingDoctorId?: string | null;
 	} = $props();
 
+	const sourceVisitId = $derived(sourceOpdVisitId);
+
 	const toastService = new ToastService();
 	let careLevel = $state(String(IpdAdmissionCareLevelEnum.GENERAL));
 	let urgency = $state(String(IpdAdmissionUrgencyEnum.ROUTINE));
@@ -83,7 +85,7 @@
 					credentials: 'include',
 					body: JSON.stringify({
 						action: 'create',
-						sourceOpdVisitId,
+						sourceVisitId,
 						branchId,
 						careLevel: Number(careLevel),
 						urgency: Number(urgency),

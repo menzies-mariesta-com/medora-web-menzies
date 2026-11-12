@@ -5,7 +5,7 @@ docType: workflow
 slug: workflows/emergency-trauma-log
 pageId: 122
 moduleId: 4
-pageUrl: "/medora/home/nursing-workbench/ed/trauma-log"
+pageUrl: "/medora/home/nursing-workbench/trauma-log"
 generated: false
 captureStatus: failed
 capturedAt: "2026-10-18T03:01:59.696Z"
@@ -39,12 +39,12 @@ flowchart LR
 
 ## Walkthrough
 
-_Screenshots could not be captured. Run `npm run db:seed:docs-demo`, start the dev server, then re-run docs capture._
+_Screenshots could not be captured. Run `npm run db:seed:demo:docs`, start the dev server, then re-run docs capture._
 
 ## If something goes wrong
 
 - **Blank clinical screen:** select a patient visit from the visit list, then open this page again.
-- **Blank screen:** run `npm run db:seed:docs-demo` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
+- **Blank screen:** run `npm run db:seed:demo:docs` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
 - **Cannot save:** check required fields marked with a red star.
 
 ## Legal

@@ -352,7 +352,7 @@
 		}
 
 		const query = `?visitId=${vid}`;
-		const path = `/medora/hospital/${hospitalId}/home/nursing-workbench/emr/case-sheet${query}`;
+		const path = `/medora/hospital/${hospitalId}/home/nursing-workbench/case-sheet${query}`;
 
 		VisitState.visitId = String(vid);
 		routerUtil.goToRoute(path);

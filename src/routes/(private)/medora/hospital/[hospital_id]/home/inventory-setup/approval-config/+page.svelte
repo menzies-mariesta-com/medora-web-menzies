@@ -1,33 +1,30 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import MenziesTable, {
-		type MenziesTableColumn
-	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
-	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
-	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
-	import WashCardBodyAction from '$lib/component/wash/card/body/action/WashCardBodyAction.svelte';
-	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
-	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
+	import WashTable from '$lib/component/wash/table/WashTable.svelte';
+	import WashTableHeader from '$lib/component/wash/table/head/WashTableHeader.svelte';
+	import WashTableBody from '$lib/component/wash/table/body/WashTableBody.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
-	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
+	import {
+		INV_APPROVAL_MODULE_CODES,
+		type InvApprovalModule
+	} from '$lib/model/type/medora/inv-approval.type';
+	import type { InvApprovalStaffMatrixDto } from '$lib/model/type/medora/inv-approval-config.type';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { m } from '$lib/paraglide/messages';
-	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { toastLine } from '$lib/util/toast-copy.util';
-	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import { AppEnum } from '$lib/model/enum/app.enum';
-	import type { InvApprovalModule } from '$lib/model/type/medora/inv-approval.type';
+	import {
+		throwUserFacingHttpError,
+		toUserFacingErrorDetail
+	} from '$lib/util/user-facing-error.util';
 
-	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
+	const saveLock = createActionLock();
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
@@ -35,27 +32,34 @@
 			: ''
 	);
 
-	type AssigneeRow = {
-		id: number;
-		levelId: number;
-		staffId: string;
-		firstName: string | null;
-		middleName: string | null;
-		lastName: string | null;
-		code: string | null;
-	};
+	const apiBase = $derived(
+		hospitalId
+			? `/api/medora/hospital/${hospitalId}/home/inventory-setup/approval-config`
+			: ''
+	);
 
-	type LevelRow = {
-		id: number;
-		storeId: number;
-		module: InvApprovalModule;
-		isRequired: boolean;
-		assignees: AssigneeRow[];
-	};
+	let staffId = $state('');
 
-	let stores = $state<{ id: number; storeName: string | null }[]>([]);
-	let storeId = $state<number | null>(null);
-	let module = $state<InvApprovalModule>('PR');
+	let stores = $state<InvApprovalStaffMatrixDto['stores']>([]);
+	let modules = $state<InvApprovalModule[]>([...INV_APPROVAL_MODULE_CODES]);
+	let canApproveByKey = $state<Record<string, boolean>>({});
+
+	let matrixLoading = $state(false);
+	let loadError = $state<string | null>(null);
+	let storeFilterQuery = $state('');
+
+	const filteredStores = $derived.by(() => {
+		const q = storeFilterQuery.trim().toLowerCase();
+		if (!q) return stores;
+		return stores.filter((s) => {
+			const label = String(s.storeName ?? s.id).toLowerCase();
+			return label.includes(q);
+		});
+	});
+
+	function matrixKey(storeId: number, module: InvApprovalModule): string {
+		return `${storeId}:${module}`;
+	}
 
 	function invApprovalModuleLabel(mod: InvApprovalModule): string {
 		switch (mod) {
@@ -80,405 +84,305 @@
 		}
 	}
 
-	let items = $state<LevelRow[]>([]);
-	let isLoading = $state(false);
-	let viewMode = $state<'list' | 'create' | 'edit'>('list');
-	let editingId = $state<number | null>(null);
-
-	let isRequiredInput = $state(true);
-
-	// Staff assignees state for creation/edit
-	let assigneeStaffs = $state<{ id: string; name: string }[]>([]);
-
-	const saveLock = createActionLock();
-	const deleteLock = createActionLock();
-
-	async function loadStores() {
-		if (!hospitalId) return;
-		const res = await fetch(
-			`/api/medora/hospital/${hospitalId}/home/inventory-setup/approval-config?mode=stores`,
-			{ method: 'GET' }
-		);
-		stores = (await res.json()) as typeof stores;
-		if (stores.length && storeId == null) storeId = stores[0].id;
+	function moduleHeaderShort(mod: InvApprovalModule): string {
+		return mod;
 	}
 
-	async function fetchData() {
-		if (!hospitalId || storeId == null) return;
-		isLoading = true;
+	async function loadMatrix(forStaffId: string) {
+		if (!apiBase || !forStaffId) return;
+		matrixLoading = true;
+		loadError = null;
+		storeFilterQuery = '';
 		try {
 			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/inventory-setup/approval-config?storeId=${storeId}&module=${module}`,
-				{ method: 'GET' }
+				`${apiBase}?mode=staffMatrix&staffId=${encodeURIComponent(forStaffId)}`,
+				{ credentials: 'include', cache: 'no-store' }
 			);
-			items = await res.json();
+			if (!res.ok) await throwUserFacingHttpError(res);
+			const data = (await res.json()) as InvApprovalStaffMatrixDto;
+			stores = data.stores ?? [];
+			modules = data.modules?.length
+				? data.modules
+				: [...INV_APPROVAL_MODULE_CODES];
+			const next: Record<string, boolean> = {};
+			for (const cell of data.cells ?? []) {
+				next[matrixKey(cell.storeId, cell.module)] = cell.canApprove;
+			}
+			canApproveByKey = next;
+		} catch (err) {
+			console.error(err);
+			loadError =
+				toUserFacingErrorDetail(err) ?? m.error_load_failed();
+			stores = [];
+			canApproveByKey = {};
 		} finally {
-			isLoading = false;
+			matrixLoading = false;
 		}
 	}
-
-	lifeCycleUtil.onMount(async () => {
-		await loadStores();
-		fetchData();
-	});
 
 	$effect(() => {
-		if (storeId != null && module) {
-			fetchData();
+		const id = staffId;
+		if (id) {
+			loadMatrix(id);
+		} else {
+			stores = [];
+			canApproveByKey = {};
+			loadError = null;
+			storeFilterQuery = '';
 		}
 	});
 
-	function resetForm() {
-		viewMode = 'list';
-		editingId = null;
-		isRequiredInput = true;
-		assigneeStaffs = [];
+	function setCell(
+		storeId: number,
+		module: InvApprovalModule,
+		checked: boolean
+	) {
+		canApproveByKey = {
+			...canApproveByKey,
+			[matrixKey(storeId, module)]: checked
+		};
 	}
 
-	function startCreate() {
-		resetForm();
-		viewMode = 'create';
-	}
-
-	function startEdit(item: LevelRow) {
-		viewMode = 'edit';
-		editingId = item.id;
-		isRequiredInput = item.isRequired;
-		assigneeStaffs = item.assignees.map((a) => ({
-			id: a.staffId,
-			name:
-				StringUtil.fullName(a.firstName, a.middleName, a.lastName) ||
-				a.staffId
-		}));
-	}
-
-	function addAssignee(staff: { id: string; name: string }) {
-		if (!assigneeStaffs.find((s) => s.id === staff.id)) {
-			assigneeStaffs = [...assigneeStaffs, staff];
+	function setBulkForStores(
+		targetStores: InvApprovalStaffMatrixDto['stores'],
+		checked: boolean
+	) {
+		const next: Record<string, boolean> = { ...canApproveByKey };
+		for (const store of targetStores) {
+			for (const module of modules) {
+				next[matrixKey(store.id, module)] = checked;
+			}
 		}
+		canApproveByKey = next;
 	}
 
-	function removeAssignee(staffId: string) {
-		assigneeStaffs = assigneeStaffs.filter((s) => s.id !== staffId);
+	function selectAllVisible() {
+		setBulkForStores(filteredStores, true);
+	}
+
+	function deselectAllVisible() {
+		setBulkForStores(filteredStores, false);
 	}
 
 	async function handleSave() {
-		if (storeId == null) {
+		if (!apiBase || !staffId) {
 			toastService.addToast(
-				m.toast_field_required(),
-				StatusColorEnum.WARNING,
-				m.entity_store()
+				m.inv_approval_config_select_staff(),
+				StatusColorEnum.WARNING
 			);
 			return;
 		}
-
 		await saveLock.run(async () => {
-			const payload = {
-				storeId,
-				module,
-				isRequired: isRequiredInput,
-				id: editingId != null ? editingId : undefined,
-				assigneeStaffIds: assigneeStaffs.map((s) => s.id)
-			};
-			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/inventory-setup/approval-config`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(payload)
-				}
+			const cells = stores.flatMap((store) =>
+				modules.map((module) => ({
+					storeId: store.id,
+					module,
+					canApprove:
+						canApproveByKey[matrixKey(store.id, module)] ?? false
+				}))
 			);
-			if (!res.ok) {
-				const body = (await res.json().catch(() => ({}))) as {
-					message?: string;
-					error?: string;
-				};
+			try {
+				const res = await fetch(apiBase, {
+					method: 'PUT',
+					credentials: 'include',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ staffId, cells })
+				});
+				if (!res.ok) await throwUserFacingHttpError(res);
 				toastService.addToast(
 					toastLine(
 						m.inv_page_approval_config_title(),
-						m.toast_action_saved_failed()
+						m.toast_action_saved()
 					),
-					StatusColorEnum.ERROR,
-					body.message || body.error || ''
+					StatusColorEnum.SUCCESS
 				);
-				return;
+				await loadMatrix(staffId);
+			} catch (err) {
+				console.error(err);
+				toastService.addErrorToast(m.error_save_failed(), err);
 			}
-			toastService.addToast(
-				toastLine(
-					m.inv_page_approval_config_title(),
-					editingId != null
-						? m.toast_action_updated()
-						: m.toast_action_created()
-				),
-				StatusColorEnum.SUCCESS
-			);
-			resetForm();
-			fetchData();
 		});
 	}
-
-	async function handleDelete(item: LevelRow) {
-		await deleteLock.run(async () => {
-			const result = await dialogService.open({
-				title: 'Delete Approval config',
-				message:
-					'Are you sure you want to delete this approval config?',
-				variant: DialogVariantEnum.CONFIRM
-			});
-			if (!result.confirmed) return;
-			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/inventory-setup/approval-config`,
-				{
-					method: 'DELETE',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ levelId: item.id })
-				}
-			);
-			if (!res.ok) {
-				toastService.addToast(
-					toastLine(
-						m.inv_page_approval_config_title(),
-						m.toast_action_deleted_failed()
-					),
-					StatusColorEnum.ERROR
-				);
-				return;
-			}
-			toastService.addToast(
-				toastLine(
-					m.inv_page_approval_config_title(),
-					m.toast_action_deleted()
-				),
-				StatusColorEnum.SUCCESS
-			);
-			fetchData();
-		});
-	}
-
-	const columns: MenziesTableColumn<LevelRow>[] = [
-		{
-			id: 'isRequired',
-			header: 'Is Required',
-			field: 'isRequired',
-			format: (v, row) => (row.isRequired ? 'Yes' : 'No')
-		},
-		{
-			id: 'assignees',
-			header: 'Assignees',
-			field: 'assignees',
-			format: (v, row) => {
-				return (
-					row.assignees
-						.map(
-							(a) =>
-								StringUtil.fullName(
-									a.firstName,
-									a.middleName,
-									a.lastName
-								) || a.staffId
-						)
-						.join(', ') || '—'
-				);
-			}
-		}
-	];
 </script>
 
-{#if viewMode === 'list'}
-	<div class={TableEnum.HEIGHT}>
-		<MenziesTable
-			title={m.inv_page_approval_config_title()}
-			description={`${m.inv_approval_config_intro()} ${invApprovalModuleLabel(module)}`}
-			showAddButton={true}
-			addLabel="Create"
-			addDisabled={items.length > 0}
-			onAdd={startCreate}
-			{columns}
-			rows={items}
-			{isLoading}
-			showRowActions={true}
-			actionsVariant="none"
+<div class="flex min-h-0 flex-col gap-3">
+	<div class="flex shrink-0 flex-col gap-1 sm:max-w-md">
+		<label class="text-xs opacity-70" for="a11y-approval-staff"
+			>{m.inv_approval_config_staff_label()}</label
 		>
-			{#snippet headerActions()}
-				<div class="form-control w-full max-w-xs">
-					<label for="a11y-page-e19402" class="label py-0">
-						<span class="label-text text-xs">{m.inv_common_store()}</span>
-					</label>
-					<WashSelect
-						className="select-sm"
-						bind:value={storeId}
-						id="a11y-page-e19402"
-					>
-						{#each stores as s (s.id)}
-							<option value={s.id}>{s.storeName ?? s.id}</option>
-						{/each}
-					</WashSelect>
-				</div>
-				<div class="form-control w-full max-w-sm min-w-48">
-					<label for="a11y-page-4f4461" class="label py-0">
-						<span class="label-text text-xs"
-							>{m.inv_approval_config_module_label()}</span
-						>
-					</label>
-					<WashSelect
-						className="select-sm"
-						bind:value={module}
-						id="a11y-page-4f4461"
-					>
-						<option value="PR"
-							>{m.inv_approval_config_module_pr()}</option
-						>
-						<option value="PO"
-							>{m.inv_approval_config_module_po()}</option
-						>
-						<option value="DI"
-							>{m.inv_approval_config_module_di()}</option
-						>
-						<option value="DISS"
-							>{m.inv_approval_config_module_diss()}</option
-						>
-						<option value="RFS"
-							>{m.inv_approval_config_module_rfs()}</option
-						>
-						<option value="GRN"
-							>{m.inv_approval_config_module_grn()}</option
-						>
-						<option value="DC"
-							>{m.inv_approval_config_module_dc()}</option
-						>
-					</WashSelect>
-				</div>
-			{/snippet}
-			{#snippet rowActions(row, rowIndex)}
-				<div data-row-index={rowIndex}>
-					<MenziesTableEditDeleteActions
-						onEdit={() => startEdit(row)}
-						onDelete={() => handleDelete(row)}
-						editTooltip={m.inv_line_items_tooltip_edit()}
-						deleteTooltip={m.inv_line_items_tooltip_delete()}
-					/>
-				</div>
-			{/snippet}
-		</MenziesTable>
+		<SearchSelect
+			inputId="a11y-approval-staff"
+			placeholder={m.inv_approval_config_staff_placeholder()}
+			className="input-sm w-full"
+			bind:value={staffId}
+			searchFn={async (q) => {
+				if (!hospitalId) return [];
+				const qEnc = encodeURIComponent(q.trim());
+				const res = await fetch(
+					`/api/medora/hospital/${hospitalId}/home/administration/staff/list?search=${qEnc}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`,
+					{ credentials: 'include' }
+				);
+				if (!res.ok) return [];
+				const data = await res.json();
+				return (data.data ?? []).map(
+					(s: {
+						id: string;
+						title?: { name?: string | null } | null;
+						firstName?: string | null;
+						middleName?: string | null;
+						lastName?: string | null;
+						code?: string | null;
+					}) => {
+						const name =
+							StringUtil.fullNameWithTitle(
+								s.title?.name ?? null,
+								s.firstName,
+								s.middleName,
+								s.lastName
+							) || s.id;
+						const code = (s.code ?? '').trim();
+						const label =
+							code && name ? `${code} — ${name}` : name || code;
+						return { label, value: s.id };
+					}
+				);
+			}}
+		/>
 	</div>
-{:else}
-	<WashCard>
-		<WashCardBody>
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					handleSave();
-				}}
+
+	<div class={TableEnum.HEIGHT}>
+		<div
+			class="border-base-300 flex h-full min-h-0 flex-col overflow-hidden rounded-box border bg-base-100 shadow-sm"
+		>
+			<div
+				class="border-base-300 shrink-0 border-b px-3 py-2.5"
 			>
-				<fieldset class="m-0 min-w-0 border-0 p-0">
-					<WashCardBodyTitle className="mb-5">
-						{editingId != null
-							? 'Edit Approval config'
-							: 'Create Approval config'}
-					</WashCardBodyTitle>
-				</fieldset>
-				<div
-					class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10"
-				>
-					<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
-						<div
-							class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2"
-						>
-							<div class="flex flex-col gap-4">
-								<div
-									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-								>
-									<label class="shrink-0 sm:w-36" for="a11y-page-7ceaaf">Is Required</label>
-									<div class="flex max-w-80 flex-1 items-center">
-										<WashCheckbox bind:checked={isRequiredInput} id="a11y-page-7ceaaf" />
-									</div>
-								</div>
-							</div>
-							<div class="flex flex-col gap-4">
-								<div
-									class="mb-1 text-sm font-medium text-base-content/70"
-								>
-									Assignees
-								</div>
-								<div class="flex flex-wrap gap-2">
-									{#each assigneeStaffs as s (s.id)}
-										<div class="badge badge-primary badge-outline gap-1.5 py-3 hover:bg-primary/5 transition-colors">
-											<span class="text-xs font-medium">{s.name}</span
-											>
-											<button
-												type="button"
-												class="ml-0.5 transition-colors hover:text-error"
-												onclick={() => removeAssignee(s.id)}
-												aria-label="Remove assignee"
-											>
-												<LucideX className="size-3" />
-											</button>
-										</div>
-									{:else}
-										<div class="text-xs italic opacity-50 mb-1">
-											No assignees added.
-										</div>
-									{/each}
-								</div>
+				<h2 class="text-base font-bold">{m.inv_page_approval_config_title()}</h2>
+				<p class="text-ink-muted mt-0.5 text-xs">
+					{m.inv_approval_config_intro()}
+				</p>
+			</div>
 
-								<div class="mt-2">
-									<label class="text-xs mb-1.5 opacity-70" for="a11y-page-631cc2">Add Assignee</label>
-									<SearchSelect inputId="a11y-page-631cc2"
-										placeholder="Search staff by name or code..."
-										className="input-sm w-full"
-										searchFn={async (q) => {
-											const qEnc = encodeURIComponent(q.trim());
-											const res = await fetch(
-												`/api/medora/hospital/${hospitalId}/home/administration/staff/list?search=${qEnc}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`
-											);
-											const data = await res.json();
-											return (data.data ?? []).map((s: any) => {
-												const name =
-													StringUtil.fullName(
-														s.firstName,
-														s.middleName,
-														s.lastName
-													) || s.id;
-												return {
-													label: name,
-													value: JSON.stringify({ id: s.id, name })
-												};
-											});
-										}}
-										onChange={(v) => {
-											if (v) {
-												try {
-													const staff = JSON.parse(v);
-													addAssignee(staff);
-												} catch (e) {}
-											}
-										}}
-										invalidateKey={viewMode}
-									/>
-								</div>
-							</div>
-						</div>
-					</fieldset>
-				</div>
-
-				<WashCardBodyAction className="mt-6 flex flex-wrap gap-3">
-					<WashButton
-						type="submit"
-						className="btn-wide {editingId != null
-							? 'btn-accent'
-							: 'btn-primary'}"
+			<div class="min-h-0 flex-1 overflow-auto">
+				{#if !staffId}
+					<p class="text-ink-muted p-4 text-sm">
+						{m.inv_approval_config_select_staff()}
+					</p>
+				{:else if matrixLoading}
+					<div class="flex justify-center p-10">
+						<span class="loading loading-spinner loading-lg text-primary"
+						></span>
+					</div>
+				{:else if loadError}
+					<p class="text-error p-4 text-sm">{loadError}</p>
+				{:else if stores.length === 0}
+					<p class="text-ink-muted p-4 text-sm">—</p>
+				{:else}
+					<div
+						class="border-base-300 bg-base-100 sticky top-0 z-20 flex flex-wrap items-end gap-2 border-b px-3 py-2"
 					>
-						{editingId != null ? m.update() : m.create()}
-					</WashButton>
+						<div class="form-control w-full max-w-xs min-w-48">
+							<label class="label py-0" for="a11y-approval-store-filter">
+								<span class="label-text text-xs">{m.inv_common_store()}</span>
+							</label>
+							<input
+								id="a11y-approval-store-filter"
+								type="search"
+								class="input input-bordered input-sm w-full"
+								placeholder={m.inv_approval_config_store_filter_placeholder()}
+								bind:value={storeFilterQuery}
+							/>
+						</div>
+						<WashButton
+							type="button"
+							className="btn-outline btn-sm"
+							disabled={saveLock.pending || filteredStores.length === 0}
+							onClick={selectAllVisible}
+						>
+							{m.inv_approval_config_select_all()}
+						</WashButton>
+						<WashButton
+							type="button"
+							className="btn-outline btn-sm"
+							disabled={saveLock.pending || filteredStores.length === 0}
+							onClick={deselectAllVisible}
+						>
+							{m.inv_approval_config_deselect_all()}
+						</WashButton>
+					</div>
+					{#if filteredStores.length === 0}
+						<p class="text-ink-muted p-4 text-sm">—</p>
+					{:else}
+					<WashTable
+						useRecipe={false}
+						className="table table-zebra w-max min-w-full"
+					>
+						<WashTableHeader className="bg-base-100 sticky top-0 z-10">
+							<tr>
+								<th class="text-left align-middle">
+									<span class="font-bold"
+										>{m.inv_approval_config_matrix_store_col()}</span
+									>
+								</th>
+								{#each modules as mod (mod)}
+									<th
+										class="text-center align-middle whitespace-nowrap px-2"
+										title={invApprovalModuleLabel(mod)}
+									>
+										<span class="text-xs font-bold"
+											>{moduleHeaderShort(mod)}</span
+										>
+									</th>
+								{/each}
+							</tr>
+						</WashTableHeader>
+						<WashTableBody>
+							{#each filteredStores as store (store.id)}
+								<tr>
+									<td class="whitespace-nowrap align-middle text-sm">
+										{store.storeName ?? store.id}
+									</td>
+									{#each modules as mod (mod)}
+										<td class="text-center align-middle">
+											<input
+												type="checkbox"
+												class="checkbox checkbox-sm checkbox-primary"
+												checked={canApproveByKey[
+													matrixKey(store.id, mod)
+												] ?? false}
+												onchange={(e) =>
+													setCell(
+														store.id,
+														mod,
+														e.currentTarget.checked
+													)}
+												aria-label="{store.storeName ?? store.id} — {invApprovalModuleLabel(mod)}"
+											/>
+										</td>
+									{/each}
+								</tr>
+							{/each}
+						</WashTableBody>
+					</WashTable>
+					{/if}
+				{/if}
+			</div>
+
+			{#if staffId && !matrixLoading && stores.length > 0}
+				<div
+					class="border-base-300 flex shrink-0 flex-wrap items-center justify-end gap-2 border-t px-3 py-2.5"
+				>
 					<WashButton
 						type="button"
-						className="btn-outline btn-wide"
-						onClick={resetForm}
+						className="btn-primary"
+						loading={saveLock.pending}
+						disabled={saveLock.pending}
+						onClick={handleSave}
 					>
-						{m.cancel()}
+						{m.save()}
 					</WashButton>
-				</WashCardBodyAction>
-			</form>
-		</WashCardBody>
-	</WashCard>
-{/if}
+				</div>
+			{/if}
+		</div>
+	</div>
+</div>

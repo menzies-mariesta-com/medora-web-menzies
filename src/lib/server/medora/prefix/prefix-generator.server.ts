@@ -1,4 +1,7 @@
-import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
+import {
+	PREFIX_PURPOSE_STORAGE,
+	normalizePrefixStorageKey
+} from '$lib/model/const/prefix-purpose.const';
 import type {
 	GeneratePrefixParams,
 	PrefixFieldPath,
@@ -34,8 +37,8 @@ function defaultFormatSpecForKey(
 		prefixKey === PREFIX_PURPOSE_STORAGE.DEPARTMENT_INDENT_NO ||
 		prefixKey === PREFIX_PURPOSE_STORAGE.DEPARTMENT_ISSUE_NO ||
 		prefixKey === PREFIX_PURPOSE_STORAGE.DEPARTMENT_CONSUMPTION_NO ||
-		prefixKey === PREFIX_PURPOSE_STORAGE.IPD_ADMISSION_NO ||
-		prefixKey === PREFIX_PURPOSE_STORAGE.IP_BILL_NO
+		prefixKey === PREFIX_PURPOSE_STORAGE.BILL_NO ||
+		prefixKey === 'IP_BILL_NO'
 	) {
 		return {
 			parts: [
@@ -51,7 +54,11 @@ function defaultFormatSpecForKey(
 			]
 		};
 	}
-	if (prefixKey === PREFIX_PURPOSE_STORAGE.VISIT_NO) {
+	if (
+		prefixKey === PREFIX_PURPOSE_STORAGE.ADMISSION_NO ||
+		prefixKey === 'VISIT_NO' ||
+		prefixKey === 'IPD_ADMISSION_NO'
+	) {
 		return {
 			parts: [
 				{ type: 'field', path: 'financial_year.code' },
@@ -138,13 +145,14 @@ export async function isPrefixFormatConfigured(
 	prefixKey: string
 ): Promise<boolean> {
 	const db = ensureDb();
+	const key = normalizePrefixStorageKey(prefixKey);
 	const [row] = await db
 		.select({ id: table.prefixFormatTable.id })
 		.from(table.prefixFormatTable)
 		.where(
 			and(
 				eq(table.prefixFormatTable.hospitalId, hospitalId),
-				eq(table.prefixFormatTable.key, prefixKey),
+				eq(table.prefixFormatTable.key, key),
 				isNull(table.prefixFormatTable.deletedAt)
 			)
 		)
@@ -160,6 +168,7 @@ async function loadFormatAndScopeFromDb(
 	scope: PrefixCounterScopeFlags;
 }> {
 	const db = ensureDb();
+	const key = normalizePrefixStorageKey(prefixKey);
 	const [row] = await db
 		.select({
 			format: table.prefixFormatTable.format,
@@ -175,15 +184,15 @@ async function loadFormatAndScopeFromDb(
 		.where(
 			and(
 				eq(table.prefixFormatTable.hospitalId, hospitalId),
-				eq(table.prefixFormatTable.key, prefixKey),
+				eq(table.prefixFormatTable.key, key),
 				isNull(table.prefixFormatTable.deletedAt)
 			)
 		)
 		.limit(1);
 	if (!row?.format) {
 		return {
-			formatSpec: defaultFormatSpecForKey(prefixKey),
-			scope: defaultCounterScopeForPrefixKey(prefixKey)
+			formatSpec: defaultFormatSpecForKey(key),
+			scope: defaultCounterScopeForPrefixKey(key)
 		};
 	}
 	const scope: PrefixCounterScopeFlags = {
@@ -266,17 +275,18 @@ export async function generatePrefix(
 	params: GeneratePrefixParams
 ): Promise<string> {
 	const db = ensureDb();
+	const prefixKey = normalizePrefixStorageKey(params.prefixKey);
 	const visitTypeId = params.context?.visitTypeId ?? null;
 
 	const { formatSpec, scope } = await loadFormatAndScopeFromDb(
 		params.hospitalId,
-		params.prefixKey
+		prefixKey
 	);
 
 	const visitIdCtx = params.context?.visitId;
 	const scopeKey = buildPrefixCounterScopeKey({
 		hospitalId: params.hospitalId,
-		prefixKey: params.prefixKey,
+		prefixKey,
 		branchId: params.branchId ?? null,
 		financialYearId: params.financialYearId ?? null,
 		visitTypeId,
@@ -307,7 +317,7 @@ export async function generatePrefix(
 			branchId: branchIdStored,
 			financialYearId: financialYearIdStored,
 			visitTypeId: visitTypeIdStored,
-			key: params.prefixKey,
+			key: prefixKey,
 			scopeKey,
 			lastNo: 1
 		})

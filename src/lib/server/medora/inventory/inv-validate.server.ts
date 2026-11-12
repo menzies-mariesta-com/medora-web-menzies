@@ -1,4 +1,8 @@
 import { error } from '@sveltejs/kit';
+import {
+	optionalMoneyDecimal2dp,
+	requireMoneyDecimal2dp
+} from '$lib/server/medora/money-field.server';
 
 function asTrimmedString(v: unknown): string {
 	return typeof v === 'string' ? v.trim() : String(v ?? '').trim();
@@ -79,19 +83,11 @@ export function parseNonNegativeIntQty(
 }
 
 /**
- * Money-like numeric string/number with up to 2 decimals.
- * Returns normalized string with exactly 2 decimals.
+ * Money-like numeric string/number normalized to exactly 2 decimals for DB storage.
+ * Accepts longer fractional input; rounds half-up (see `toFixedDecimalString`).
  */
 export function parseMoney2dp(v: unknown, fieldName: string): string {
-	const s = asTrimmedString(v);
-	if (!s) throw error(400, `${fieldName} is required`);
-	if (!/^-?\d+(\.\d{1,2})?$/.test(s)) {
-		throw error(400, `${fieldName} must have up to 2 decimals`);
-	}
-	const n = Number(s);
-	if (!Number.isFinite(n))
-		throw error(400, `${fieldName} is invalid`);
-	return n.toFixed(2);
+	return requireMoneyDecimal2dp(v, fieldName);
 }
 
 /** Like parseMoney2dp, but empty/null becomes null. */
@@ -99,7 +95,5 @@ export function parseOptionalMoney2dp(
 	v: unknown,
 	fieldName: string
 ): string | null {
-	const s = asTrimmedString(v);
-	if (!s) return null;
-	return parseMoney2dp(s, fieldName);
+	return optionalMoneyDecimal2dp(v, fieldName);
 }

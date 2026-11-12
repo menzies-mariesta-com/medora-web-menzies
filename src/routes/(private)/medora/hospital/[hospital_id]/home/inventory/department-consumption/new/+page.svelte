@@ -20,8 +20,8 @@
 	import { purchaseQtyToIssueQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
+	import { searchItemMasterOptions } from '$lib/tool/inventory/item-master-search-select.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const toast = new ToastService();
@@ -30,9 +30,6 @@
 		typeof page.params.hospital_id === 'string'
 			? page.params.hospital_id
 			: ''
-	);
-	const visitIdFromQuery = $derived(
-		page.url.searchParams.get('visitId')?.trim() ?? ''
 	);
 
 	let { data } = $props();
@@ -133,17 +130,7 @@
 	});
 
 	async function searchItems(q: string) {
-		const qEnc = encodeURIComponent(q.trim());
-		const res = await fetch(
-			`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?name=${qEnc}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`
-		);
-		const j = await res.json();
-		return (j.data ?? []).map(
-			(x: { itemName?: string | null; id: number }) => ({
-				label: x.itemName ?? '—',
-				value: String(x.id)
-			})
-		);
+		return searchItemMasterOptions(hospitalId, q);
 	}
 
 	async function openCreateLine() {
@@ -316,10 +303,7 @@
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						storeId,
-						...(visitIdFromQuery ? { visitId: visitIdFromQuery } : {}),
-						remarks: visitIdFromQuery
-							? `ED visit ${visitIdFromQuery}${remarks.trim() ? ` | ${remarks.trim()}` : ''}`
-							: remarks.trim() || null,
+						remarks: remarks.trim() || null,
 						lines: payloadLines
 					})
 				}
@@ -351,11 +335,6 @@
 		<LucideArrowLeft className="mr-1 size-4" />
 	</WashButton>
 	<h1 class="text-xl font-semibold">{m.inv_dc_new_title()}</h1>
-	{#if visitIdFromQuery}
-		<span class="badge badge-outline text-xs">
-			Visit {visitIdFromQuery.slice(0, 8)}…
-		</span>
-	{/if}
 </div>
 
 <WashCard className="mb-4">

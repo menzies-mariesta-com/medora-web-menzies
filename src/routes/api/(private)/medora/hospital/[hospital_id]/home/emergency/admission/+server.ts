@@ -26,33 +26,7 @@ export async function GET(event: RequestEvent) {
 		);
 	}
 
-	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(
-		event.url.searchParams.get('pageSize') ?? '10'
-	);
-	const search = event.url.searchParams.get('search') ?? undefined;
-	const boardColumn =
-		event.url.searchParams.get('boardColumn') ?? undefined;
-
-	const visitId = event.url.searchParams.get('visitId')?.trim();
-	if (visitId) {
-		const detail = await edAdmission.getEdRegistrationByVisitId({
-			hospitalId,
-			visitId
-		});
-		if (!detail) throw error(404, 'Registration not found');
-		return json(detail);
-	}
-
-	return json(
-		await edAdmission.listEdRegistrationsPaginated({
-			hospitalId,
-			page,
-			pageSize,
-			search,
-			boardColumn
-		})
-	);
+	throw error(400, 'Unsupported query');
 }
 
 export async function POST(event: RequestEvent) {
@@ -66,8 +40,8 @@ export async function POST(event: RequestEvent) {
 		const branchId = String(body.branchId ?? '').trim();
 		if (!patientId) throw error(400, 'patientId is required');
 		if (!branchId) throw error(400, 'branchId is required');
-		const sourceRaw = body.sourceOpdVisitId;
-		const sourceOpdVisitId =
+		const sourceRaw = body.sourceVisitId ?? body.sourceOpdVisitId;
+		const sourceVisitId =
 			sourceRaw != null && String(sourceRaw).trim() !== ''
 				? String(sourceRaw).trim()
 				: null;
@@ -92,7 +66,7 @@ export async function POST(event: RequestEvent) {
 						: null,
 				doctorId:
 					body.doctorId != null ? String(body.doctorId) : null,
-				sourceOpdVisitId,
+				sourceVisitId,
 				edTriageLevelId: Number.isFinite(edTriageLevelId as number)
 					? edTriageLevelId
 					: null,
@@ -109,55 +83,4 @@ export async function POST(event: RequestEvent) {
 	}
 
 	throw error(400, 'Unknown action');
-}
-
-export async function PUT(event: RequestEvent) {
-	const hospitalId = hospitalIdFrom(event);
-	await ensureCanAccessHospital(event, hospitalId);
-	const body = (await event.request.json()) as Record<string, unknown>;
-	const visitId = String(body.visitId ?? '').trim();
-	if (!visitId) throw error(400, 'visitId is required');
-	const edTriageLevelIdRaw = body.edTriageLevelId;
-	const edTriageLevelId =
-		edTriageLevelIdRaw !== undefined
-			? Number(edTriageLevelIdRaw)
-			: undefined;
-	await edAdmission.updateEdRegistration({
-		hospitalId,
-		visitId,
-		branchId:
-			body.branchId != null ? String(body.branchId) : undefined,
-		chiefComplaint:
-			body.chiefComplaint !== undefined
-				? body.chiefComplaint != null
-					? String(body.chiefComplaint)
-					: null
-				: undefined,
-		doctorId:
-			body.doctorId !== undefined
-				? body.doctorId != null
-					? String(body.doctorId)
-					: null
-				: undefined,
-		edTriageLevelId:
-			edTriageLevelId !== undefined && Number.isFinite(edTriageLevelId)
-				? edTriageLevelId
-				: edTriageLevelIdRaw === null
-					? null
-					: undefined,
-		isMlc: body.isMlc !== undefined ? Boolean(body.isMlc) : undefined,
-		registrationRemarks:
-			body.registrationRemarks !== undefined
-				? body.registrationRemarks != null
-					? String(body.registrationRemarks)
-					: null
-				: undefined,
-		arrivedAt:
-			body.arrivedAt !== undefined
-				? body.arrivedAt != null
-					? String(body.arrivedAt)
-					: null
-				: undefined
-	});
-	return json({ ok: true });
 }

@@ -1,6 +1,7 @@
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { neonConfig, Pool } from '@neondatabase/serverless';
 import ws from 'ws';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import * as schema from './schema';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
@@ -17,6 +18,10 @@ if (!url && env.NODE_ENV === 'production') {
 
 // ensureDb() returns this singleton every time — no new Pool per call.
 // Use Neon's pooler host (`-pooler`) in DATABASE_URL when possible.
+//
+// Audit columns (created_by, updated_by, deleted_by): use ensureDb() or the
+// exported `db` proxy for all request-time writes. Transaction callbacks are
+// audited. Seeds/scripts use ensureDbUnaudited() or set columns explicitly.
 //
 // `neon()` + drizzle/neon-http does not support interactive transactions; staff registration
 // and other code uses `ensureDb().transaction()`. Pool + drizzle/neon-serverless uses
@@ -39,8 +44,37 @@ if (url) {
 	dbInternal = drizzle(pool, { schema }) as DbInstance;
 }
 
-// Exported for existing imports: `import { db } from '$lib/server/db';`
-export const db = dbInternal;
+/** Request-scoped user id for audit columns (fallback when `getRequestEvent()` is unavailable). */
+const requestAuditUserStorage = new AsyncLocalStorage<string | null>();
+
+/**
+ * Run the rest of a SvelteKit request with a fixed audit user id for all DB writes.
+ * Called from `hooks.server.ts` after `event.locals.user` is populated.
+ */
+export function runWithRequestAuditUser<T>(
+	userId: string | null,
+	fn: () => T
+): T {
+	return requestAuditUserStorage.run(userId, fn);
+}
+
+function getAuditedDbInstance(): DbInstance {
+	if (!dbInternal) {
+		throw new Error('DATABASE_URL is not set');
+	}
+	return withAudit(dbInternal, getRequestUserId());
+}
+
+/** Better Auth adapter + legacy imports; writes use the same audit injection as `ensureDb()`. */
+export const db: DbInstance | null = dbInternal
+	? (new Proxy({} as DbInstance, {
+			get(_target, prop) {
+				const audited = getAuditedDbInstance();
+				const value = Reflect.get(audited as object, prop, audited);
+				return typeof value === 'function' ? value.bind(audited) : value;
+			}
+		}) as DbInstance)
+	: null;
 
 type TableLike = Record<string, unknown>;
 type RowLike = Record<string, unknown>;
@@ -54,11 +88,38 @@ function hasColumn(tableDef: unknown, key: string): boolean {
 }
 
 function getRequestUserId(): string | null {
+	const fromStore = requestAuditUserStorage.getStore();
+	if (fromStore !== undefined) return fromStore;
 	try {
 		return getRequestEvent()?.locals?.user?.id ?? null;
 	} catch {
 		return null;
 	}
+}
+
+/** Current session user for created_by / updated_by / deleted_by injection. */
+export function getRequestAuditUserId(): string | null {
+	return getRequestUserId();
+}
+
+/** Apply insert audit columns when missing (works with audited or raw db/tx). */
+export function withRowInsertAudit<T extends RowLike>(
+	tableDef: unknown,
+	row: T,
+	userId?: string | null
+): T {
+	const uid = userId ?? getRequestUserId();
+	return addInsertAudit(tableDef, row, uid) as T;
+}
+
+/** Apply update audit columns when missing (raw `.set()` or upsert conflict target). */
+export function withRowUpdateAudit<T extends RowLike>(
+	tableDef: unknown,
+	row: T,
+	userId?: string | null
+): T {
+	const uid = userId ?? getRequestUserId();
+	return addUpdateAudit(tableDef, row, uid) as T;
 }
 
 function addInsertAudit(
@@ -169,6 +230,62 @@ function buildSoftDeleteSet(
 	return setValues;
 }
 
+/** Replace-via-DELETE+INSERT tables; must not soft-delete tombstones. */
+function usesHardDeleteForTable(tableDef: TableLike): boolean {
+	return (
+		tableDef === schema.opBillingLineTable ||
+		tableDef === schema.ipBillingLineTable ||
+		tableDef === schema.medicationOrderLineTable ||
+		tableDef === schema.medicationOrderLineAllocationTable ||
+		tableDef === schema.purchaseRequisitionLineTable ||
+		tableDef === schema.clinicalOrderSetLineTable
+	);
+}
+
+function wrapInsertBuilder(
+	tableDef: TableLike,
+	builder: object,
+	userId: string | null
+): object {
+	return new Proxy(builder, {
+		get(builderTarget, builderProp, builderReceiver) {
+			if (builderProp === 'values') {
+				return (values: unknown) => {
+					const next = (
+						builderTarget as {
+							values: (v: unknown) => object;
+						}
+					).values(addInsertAudit(tableDef, values, userId));
+					return wrapInsertBuilder(tableDef, next, userId);
+				};
+			}
+			if (builderProp === 'onConflictDoUpdate') {
+				return (config: unknown) => {
+					if (!isObject(config) || config.set == null) {
+						return (
+							builderTarget as {
+								onConflictDoUpdate: (c: unknown) => unknown;
+							}
+						).onConflictDoUpdate(config);
+					}
+					const next = (
+						builderTarget as {
+							onConflictDoUpdate: (c: unknown) => object;
+						}
+					).onConflictDoUpdate({
+						...config,
+						set: addUpdateAudit(tableDef, config.set, userId)
+					});
+					return typeof next === 'object' && next !== null
+						? wrapInsertBuilder(tableDef, next, userId)
+						: next;
+				};
+			}
+			return Reflect.get(builderTarget, builderProp, builderReceiver);
+		}
+	});
+}
+
 function withAudit(
 	dbInstance: DbInstance,
 	userId: string | null
@@ -180,23 +297,7 @@ function withAudit(
 					const builder = (target as DbInstance).insert(
 						tableDef as never
 					);
-					return new Proxy(builder as object, {
-						get(builderTarget, builderProp, builderReceiver) {
-							if (builderProp === 'values') {
-								return (values: unknown) =>
-									(
-										builderTarget as {
-											values: (v: unknown) => unknown;
-										}
-									).values(addInsertAudit(tableDef, values, userId));
-							}
-							return Reflect.get(
-								builderTarget,
-								builderProp,
-								builderReceiver
-							);
-						}
-					});
+					return wrapInsertBuilder(tableDef, builder as object, userId);
 				};
 			}
 
@@ -229,7 +330,10 @@ function withAudit(
 						tableDef as never
 					);
 					const softDeleteSet = buildSoftDeleteSet(tableDef, userId);
-					if (Object.keys(softDeleteSet).length === 0) {
+					if (
+						Object.keys(softDeleteSet).length === 0 ||
+						usesHardDeleteForTable(tableDef as TableLike)
+					) {
 						return hardDeleteBuilder;
 					}
 
@@ -262,6 +366,32 @@ function withAudit(
 							);
 						}
 					});
+				};
+			}
+
+			if (prop === 'transaction') {
+				const boundTransaction = (
+					target as DbInstance
+				).transaction.bind(target);
+				return (arg1: unknown, arg2?: unknown) => {
+					const wrapCallback = (
+						callback: (tx: DbInstance) => unknown
+					) => {
+						return async (tx: DbInstance) => {
+							const auditedTx = withAudit(tx, userId);
+							return callback(auditedTx);
+						};
+					};
+					if (typeof arg1 === 'function') {
+						return boundTransaction(wrapCallback(arg1 as never));
+					}
+					if (typeof arg2 === 'function') {
+						return boundTransaction(
+							arg1 as never,
+							wrapCallback(arg2 as never)
+						);
+					}
+					return boundTransaction(arg1 as never, arg2 as never);
 				};
 			}
 

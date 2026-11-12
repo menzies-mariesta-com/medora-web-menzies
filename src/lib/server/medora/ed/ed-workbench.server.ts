@@ -125,26 +125,27 @@ async function loadErBedDisplayLabel(input: {
 	if (input.erBedId == null) return null;
 	const [row] = await ensureDb()
 		.select({
-			wardCode: table.erWardTable.code,
-			wardName: table.erWardTable.name,
-			roomCode: table.erRoomTable.code,
-			roomName: table.erRoomTable.name,
-			bedCode: table.erBedTable.code,
-			bedName: table.erBedTable.name
+			wardCode: table.wardTable.code,
+			wardName: table.wardTable.name,
+			roomCode: table.roomTable.code,
+			roomName: table.roomTable.name,
+			bedCode: table.bedTable.code,
+			bedName: table.bedTable.name
 		})
-		.from(table.erBedTable)
+		.from(table.bedTable)
 		.innerJoin(
-			table.erRoomTable,
-			eq(table.erBedTable.erRoomId, table.erRoomTable.id)
+			table.roomTable,
+			eq(table.bedTable.roomId, table.roomTable.id)
 		)
 		.innerJoin(
-			table.erWardTable,
-			eq(table.erRoomTable.erWardId, table.erWardTable.id)
+			table.wardTable,
+			eq(table.roomTable.wardId, table.wardTable.id)
 		)
 		.where(
 			and(
-				eq(table.erBedTable.id, input.erBedId),
-				eq(table.erBedTable.hospitalId, input.hospitalId)
+				eq(table.bedTable.id, input.erBedId),
+				eq(table.bedTable.hospitalId, input.hospitalId),
+				eq(table.bedTable.isEr, true)
 			)
 		)
 		.limit(1);

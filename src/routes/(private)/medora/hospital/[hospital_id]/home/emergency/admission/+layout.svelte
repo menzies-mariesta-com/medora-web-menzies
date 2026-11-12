@@ -14,10 +14,7 @@
 	const subPages = $derived(
 		getEdAdmissionSubPages({
 			erRegistration: m.ed_admission_new_title(),
-			newPatient: msg.ed_admission_tab_new_patient?.() ?? 'New patient',
-			list:
-				msg.ed_admission_tab_registration_list?.() ??
-				'Registration list'
+			newPatient: msg.ed_admission_tab_new_patient?.() ?? 'New patient'
 		})
 	);
 	const currentPath = $derived(

@@ -20,6 +20,10 @@ import {
 } from '$lib/model/type/pagination.type';
 import { and, count, desc, eq, ilike, ne, sql } from 'drizzle-orm';
 import { syncRoomCapacityFromBeds } from '$lib/server/medora/ipd/room.server';
+import { isErScopeCondition } from '$lib/server/medora/ipd/master-is-er.util';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
+import { assertActiveTimelineUnitId } from '$lib/server/medora/administration/timeline-unit.server';
+import { bedDailyRateSql } from '$lib/server/medora/ipd/tariff.server';
 
 async function assertRoomInHospital(input: {
 	hospitalId: string;
@@ -45,13 +49,17 @@ export async function getBedPaginated(
 		wardId?: number;
 		roomId?: number;
 		bedStatus?: number;
+		isEr?: boolean;
 	}
 ): Promise<PaginatedResult<BedRow>> {
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
 	const conditions = [
 		eq(table.bedTable.hospitalId, params.hospitalId),
-		ne(table.bedTable.statusId, StatusEnum.DELETED)
+		paginatedEntityStatusEq(
+			table.bedTable.statusId,
+			params.statusId
+		)
 	];
 	const nameFilter = params?.name?.trim();
 	if (nameFilter) {
@@ -60,9 +68,6 @@ export async function getBedPaginated(
 	const codeFilter = params?.code?.trim();
 	if (codeFilter) {
 		conditions.push(ilike(table.bedTable.code, `%${codeFilter}%`));
-	}
-	if (typeof params?.statusId === 'number') {
-		conditions.push(eq(table.bedTable.statusId, params.statusId));
 	}
 	if (typeof params.roomId === 'number') {
 		conditions.push(eq(table.bedTable.roomId, params.roomId));
@@ -73,6 +78,8 @@ export async function getBedPaginated(
 	if (typeof params.bedStatus === 'number') {
 		conditions.push(eq(table.bedTable.bedStatus, params.bedStatus));
 	}
+	const isErCond = isErScopeCondition(table.bedTable, params.isEr);
+	if (isErCond) conditions.push(isErCond);
 	const whereClause = and(...conditions);
 	const [data, countResult] = await Promise.all([
 		ensureDb()
@@ -83,18 +90,23 @@ export async function getBedPaginated(
 				name: table.bedTable.name,
 				code: table.bedTable.code,
 				basePrice: table.bedTable.basePrice,
+				basePriceUnitId: table.bedTable.basePriceUnitId,
 				bedStatus: table.bedTable.bedStatus,
 				statusId: table.bedTable.statusId,
+				isEr: table.bedTable.isEr,
 				roomName: table.roomTable.name,
 				roomCode: table.roomTable.code,
 				wardId: table.wardTable.id,
 				wardName: table.wardTable.name,
 				wardCode: table.wardTable.code,
-				dailyTariff: sql<string>`(
-					coalesce(${table.bedTable.basePrice}, 0)
-					* (1 + coalesce(${table.roomCategoryTable.roomMarkup}, 0) / 100.0)
-					* (1 + coalesce(${table.wardCategoryTable.wardMarkup}, 0) / 100.0)
-				)::text`
+				dailyTariff: bedDailyRateSql({
+					basePrice: table.bedTable.basePrice,
+					roomMarkup: table.roomCategoryTable.roomMarkup,
+					wardMarkup: table.wardCategoryTable.wardMarkup,
+					unitDurationDays: table.unitTable.timelineDurationDays
+				}),
+				basePriceUnitName: table.unitTable.name,
+				timelineDurationDays: table.unitTable.timelineDurationDays
 			})
 			.from(table.bedTable)
 			.innerJoin(
@@ -118,6 +130,10 @@ export async function getBedPaginated(
 					table.wardTable.wardCategoryId,
 					table.wardCategoryTable.id
 				)
+			)
+			.leftJoin(
+				table.unitTable,
+				eq(table.bedTable.basePriceUnitId, table.unitTable.id)
 			)
 			.where(whereClause)
 			.orderBy(table.bedTable.name)
@@ -146,6 +162,7 @@ export async function listFreeBeds(input: {
 	hospitalId: string;
 	wardId?: number;
 	roomId?: number;
+	isEr?: boolean;
 }): Promise<
 	Array<
 		BedSchema & {
@@ -171,6 +188,8 @@ export async function listFreeBeds(input: {
 	if (typeof input.wardId === 'number') {
 		conditions.push(eq(table.roomTable.wardId, input.wardId));
 	}
+	const isErCond = isErScopeCondition(table.bedTable, input.isEr);
+	if (isErCond) conditions.push(isErCond);
 	const rows = await ensureDb()
 		.select({
 			id: table.bedTable.id,
@@ -190,11 +209,12 @@ export async function listFreeBeds(input: {
 			roomName: table.roomTable.name,
 			wardId: table.wardTable.id,
 			wardName: table.wardTable.name,
-			dailyTariff: sql<string>`(
-				coalesce(${table.bedTable.basePrice}, 0)
-				* (1 + coalesce(${table.roomCategoryTable.roomMarkup}, 0) / 100.0)
-				* (1 + coalesce(${table.wardCategoryTable.wardMarkup}, 0) / 100.0)
-			)::text`
+			dailyTariff: bedDailyRateSql({
+				basePrice: table.bedTable.basePrice,
+				roomMarkup: table.roomCategoryTable.roomMarkup,
+				wardMarkup: table.wardCategoryTable.wardMarkup,
+				unitDurationDays: table.unitTable.timelineDurationDays
+			})
 		})
 		.from(table.bedTable)
 		.innerJoin(
@@ -218,6 +238,10 @@ export async function listFreeBeds(input: {
 				table.wardTable.wardCategoryId,
 				table.wardCategoryTable.id
 			)
+		)
+		.leftJoin(
+			table.unitTable,
+			eq(table.bedTable.basePriceUnitId, table.unitTable.id)
 		)
 		.where(and(...conditions))
 		.orderBy(table.bedTable.name);
@@ -246,12 +270,23 @@ export async function createBed(
 		hospitalId: payload.hospitalId,
 		roomId: payload.roomId
 	});
+	const [roomRow] = await ensureDb()
+		.select({ isEr: table.roomTable.isEr })
+		.from(table.roomTable)
+		.where(eq(table.roomTable.id, payload.roomId))
+		.limit(1);
+	const isEr = payload.isEr ?? roomRow?.isEr ?? false;
+	const basePriceUnitId = await assertActiveTimelineUnitId(
+		payload.basePriceUnitId ?? null
+	);
 	const [row] = await ensureDb()
 		.insert(table.bedTable)
 		.values({
 			...payload,
 			basePrice: String(payload.basePrice ?? '0'),
-			bedStatus: payload.bedStatus ?? IpdBedStatusEnum.FREE
+			basePriceUnitId,
+			bedStatus: payload.bedStatus ?? IpdBedStatusEnum.FREE,
+			isEr
 		})
 		.returning();
 	if (!row) throw new Error('Insert failed');
@@ -266,6 +301,7 @@ export async function updateBed(payload: {
 	name?: string | null;
 	code?: string | null;
 	basePrice?: string | null;
+	basePriceUnitId?: number | null;
 	bedStatus?: number | null;
 	statusId?: number | null;
 }): Promise<BedSchema> {
@@ -289,9 +325,15 @@ export async function updateBed(payload: {
 			roomId: rest.roomId
 		});
 	}
+	let setPayload = { ...rest } as BedSchemaUpdate;
+	if (rest.basePriceUnitId !== undefined) {
+		setPayload.basePriceUnitId = await assertActiveTimelineUnitId(
+			rest.basePriceUnitId
+		);
+	}
 	const [row] = await ensureDb()
 		.update(table.bedTable)
-		.set(rest as BedSchemaUpdate)
+		.set(setPayload)
 		.where(
 			and(
 				eq(table.bedTable.id, id),
@@ -345,8 +387,9 @@ export async function markBedAvailable(input: {
 		throw error(400, 'Cannot mark an occupied bed as available');
 	}
 
-	// Clearance gate: last admission on this bed must be discharged and IP bill closed.
-	const [lastAdmission] = await db
+	if (!bed.isEr) {
+		// Clearance gate: last admission on this bed must be discharged and IP bill closed.
+		const [lastAdmission] = await db
 		.select({
 			id: table.ipdAdmissionTable.id,
 			visitId: table.ipdAdmissionTable.visitId,
@@ -396,6 +439,7 @@ export async function markBedAvailable(input: {
 				'Bed cannot be freed until the IP bill is closed (finance clearance)'
 			);
 		}
+	}
 	}
 
 	const [row] = await db

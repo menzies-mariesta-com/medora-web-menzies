@@ -3,14 +3,13 @@
  */
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { StatusEnum } from '$lib/model/enum/db-link';
-import { ne } from 'drizzle-orm';
+import { activeEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 export async function listGender() {
 	return ensureDb()
 		.select()
 		.from(table.genderTable)
-		.where(ne(table.genderTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.genderTable.statusId))
 		.orderBy(table.genderTable.name);
 }
 
@@ -18,7 +17,7 @@ export async function listMaritalStatus() {
 	return ensureDb()
 		.select()
 		.from(table.maritalStatusTable)
-		.where(ne(table.maritalStatusTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.maritalStatusTable.statusId))
 		.orderBy(table.maritalStatusTable.name);
 }
 
@@ -26,7 +25,7 @@ export async function listTitle() {
 	return ensureDb()
 		.select()
 		.from(table.titleTable)
-		.where(ne(table.titleTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.titleTable.statusId))
 		.orderBy(table.titleTable.name);
 }
 
@@ -34,7 +33,7 @@ export async function listIdentityType() {
 	return ensureDb()
 		.select()
 		.from(table.identityTypeTable)
-		.where(ne(table.identityTypeTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.identityTypeTable.statusId))
 		.orderBy(table.identityTypeTable.name);
 }
 
@@ -42,7 +41,7 @@ export async function listBloodType() {
 	return ensureDb()
 		.select()
 		.from(table.bloodTypeTable)
-		.where(ne(table.bloodTypeTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.bloodTypeTable.statusId))
 		.orderBy(table.bloodTypeTable.name);
 }
 
@@ -50,7 +49,7 @@ export async function listCountry() {
 	return ensureDb()
 		.select()
 		.from(table.countryTable)
-		.where(ne(table.countryTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.countryTable.statusId))
 		.orderBy(table.countryTable.name);
 }
 
@@ -58,7 +57,7 @@ export async function listState() {
 	return ensureDb()
 		.select()
 		.from(table.stateTable)
-		.where(ne(table.stateTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.stateTable.statusId))
 		.orderBy(table.stateTable.name);
 }
 
@@ -66,7 +65,7 @@ export async function listCity() {
 	return ensureDb()
 		.select()
 		.from(table.cityTable)
-		.where(ne(table.cityTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.cityTable.statusId))
 		.orderBy(table.cityTable.name);
 }
 
@@ -74,7 +73,7 @@ export async function listPostalCode() {
 	return ensureDb()
 		.select()
 		.from(table.postalCodeTable)
-		.where(ne(table.postalCodeTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.postalCodeTable.statusId))
 		.orderBy(table.postalCodeTable.value);
 }
 
@@ -82,7 +81,7 @@ export async function listNationality() {
 	return ensureDb()
 		.select()
 		.from(table.nationalityTable)
-		.where(ne(table.nationalityTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.nationalityTable.statusId))
 		.orderBy(table.nationalityTable.name);
 }
 
@@ -90,7 +89,7 @@ export async function listReligion() {
 	return ensureDb()
 		.select()
 		.from(table.religionTable)
-		.where(ne(table.religionTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.religionTable.statusId))
 		.orderBy(table.religionTable.name);
 }
 
@@ -98,6 +97,6 @@ export async function listSeverity() {
 	return ensureDb()
 		.select()
 		.from(table.severityTable)
-		.where(ne(table.severityTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.severityTable.statusId))
 		.orderBy(table.severityTable.name);
 }

@@ -2,7 +2,7 @@ import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { building } from '$app/environment';
 import { eq } from 'drizzle-orm';
 import { auth } from '$lib/auth/server';
-import { ensureDb } from '$lib/server/db';
+import { ensureDb, runWithRequestAuditUser } from '$lib/server/db';
 import { userTable } from '$lib/server/db/table/auth-table/auth-table';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { getStaffByUserIdWithRelationsCached } from '$lib/server/medora/staff-session-cache.server';
@@ -26,10 +26,32 @@ import {
 	isDoctorApiReadOnlyViolation
 } from '$lib/server/medora/doctor-portal/doctor-api-read-only.server';
 
-const NOISE_404_PATHS = new Set(['/favicon.ico', '/robots.txt']);
+const NOISE_404_PATHS = new Set([
+	'/favicon.ico',
+	'/robots.txt',
+	'/json/version'
+]);
+
+/** Non-app URLs probed by IDEs, Docker, crawlers — answer without SvelteKit routing or error logs. */
+function probeResponseForPath(pathname: string): Response | null {
+	switch (pathname) {
+		case '/json/version':
+			return new Response(JSON.stringify({ ok: true, service: 'medora-web' }), {
+				status: 200,
+				headers: { 'content-type': 'application/json; charset=utf-8' }
+			});
+		default:
+			return null;
+	}
+}
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const pathname = event.url.pathname;
+
+	const probe = probeResponseForPath(pathname);
+	if (probe) {
+		return applySecurityHeaders(probe, event);
+	}
 
 	// The patient app is information-only: reject any write outside the
 	// account/infrastructure allowlist before authentication runs.
@@ -156,6 +178,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
+	return runWithRequestAuditUser(event.locals.user?.id ?? null, async () => {
 	const twoFactorGate =
 		rejectMutatingMedoraApiWithoutTwoFactor(event);
 	if (twoFactorGate)
@@ -197,6 +220,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return applyCorsToResponse(response, event.request);
 	}
 	return response;
+	});
 };
 
 export const handleError: HandleServerError = ({

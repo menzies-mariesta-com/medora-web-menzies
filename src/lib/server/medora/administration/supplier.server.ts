@@ -6,6 +6,10 @@ import type {
 	SupplierSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import {
+	activeEntityStatusEq,
+	paginatedEntityStatusEq
+} from '$lib/server/medora/paginated-entity-status-filter.server';
 import type { SupplierListRow } from '$lib/model/type/medora/ui-rows.type';
 import {
 	normalizePagination,
@@ -45,11 +49,12 @@ export async function getSupplierPaginated(
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
 	const parts = [hospitalScope(hospitalId)];
-	if (typeof params?.statusId === 'number') {
-		parts.push(eq(table.supplierTable.statusId, params.statusId));
-	} else {
-		parts.push(eq(table.supplierTable.statusId, StatusEnum.ACTIVE));
-	}
+	parts.push(
+		paginatedEntityStatusEq(
+			table.supplierTable.statusId,
+			params?.statusId
+		)
+	);
 	const search = params?.search?.trim();
 	if (search && search.length > 0) {
 		parts.push(ilike(table.supplierTable.name, `%${search}%`));
@@ -124,7 +129,7 @@ export async function listSuppliersForHospitalPicker(
 		.where(
 			and(
 				hospitalScope(hospitalId),
-				ne(table.supplierTable.statusId, StatusEnum.DELETED)
+				activeEntityStatusEq(table.supplierTable.statusId)
 			)
 		)
 		.orderBy(asc(table.supplierTable.name));

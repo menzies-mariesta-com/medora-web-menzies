@@ -1,6 +1,6 @@
 import type { BrowserContext } from '@playwright/test';
 import { DEFAULT_HOSPITAL_ID } from './constants.ts';
-import { DOCS_DEMO_WARD_STORE_NAME } from '../../src/lib/server/db/seed/inventory-docs-demo-seed.ts';
+import { DOCS_DEMO_WARD_STORE_NAME } from '../../src/lib/server/db/seed/demo/inventory-docs-demo-seed.ts';
 
 /** Inventory list pages that receive into the ward store (receipt from store). */
 export function slugUsesWardReceivingStore(slug: string): boolean {

@@ -13,6 +13,17 @@ export type ObservationEmrPatientVisitRow = {
 	visitTypeId?: number | null;
 	statusTaggingId?: number | null;
 	doctorId?: string | null;
+	sourceVisitId?: string | null;
+	sourceVisit?: {
+		id?: string | number | null;
+		visitNo?: string | null;
+		doctor?: {
+			title?: { name?: string | null } | null;
+			firstName?: string | null;
+			middleName?: string | null;
+			lastName?: string | null;
+		} | null;
+	} | null;
 };
 
 export type ObservationEmrPatientAllergyRow = {

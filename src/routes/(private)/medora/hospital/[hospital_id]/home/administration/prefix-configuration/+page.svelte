@@ -11,6 +11,7 @@
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideMoveUp from '$lib/component/own/library/lucide/LucideMoveUp.svelte';
 	import LucideMoveDown from '$lib/component/own/library/lucide/LucideMoveDown.svelte';
+	import LucideCopy from '$lib/component/own/library/lucide/LucideCopy.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -20,6 +21,7 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import {
 		PREFIX_PURPOSES,
+		normalizePrefixStorageKey,
 		type PrefixPurposeDefinition
 	} from '$lib/model/const/prefix-purpose.const';
 	import { m } from '$lib/paraglide/messages';
@@ -98,9 +100,12 @@
 	function findActiveConfigForKey(
 		storageKey: string
 	): PrefixFormatListRow | null {
+		const normalized = normalizePrefixStorageKey(storageKey);
 		return (
 			items.find(
-				(r) => r.key === storageKey && r.deletedAt == null
+				(r) =>
+					normalizePrefixStorageKey(r.key) === normalized &&
+					r.deletedAt == null
 			) ?? null
 		);
 	}
@@ -125,6 +130,8 @@
 			return m.prefix_configuration_purpose_external_patient();
 		if (p.id === 'visit')
 			return m.prefix_configuration_purpose_visit();
+		if (p.id === 'admission')
+			return m.prefix_configuration_purpose_admission();
 		if (p.id === 'pr') return m.prefix_configuration_purpose_pr();
 		if (p.id === 'po') return m.prefix_configuration_purpose_po();
 		if (p.id === 'di') return m.prefix_configuration_purpose_di();
@@ -135,6 +142,8 @@
 			return m.prefix_configuration_purpose_med_order_batch();
 		if (p.id === 'med_order_receipt')
 			return m.prefix_configuration_purpose_med_order_receipt();
+		if (p.id === 'bill')
+			return m.prefix_configuration_purpose_bill();
 		return m.prefix_configuration_purpose_order();
 	}
 
@@ -147,6 +156,9 @@
 		}
 		if (p.id === 'visit') {
 			return m.prefix_configuration_purpose_visit_help();
+		}
+		if (p.id === 'admission') {
+			return m.prefix_configuration_purpose_admission_help();
 		}
 		if (p.id === 'pr') {
 			return m.prefix_configuration_purpose_pr_help();
@@ -169,6 +181,9 @@
 		if (p.id === 'med_order_receipt') {
 			return m.prefix_configuration_purpose_med_order_receipt_help();
 		}
+		if (p.id === 'bill') {
+			return m.prefix_configuration_purpose_bill_help();
+		}
 		return m.prefix_configuration_purpose_order_help();
 	}
 
@@ -179,6 +194,8 @@
 			return m.prefix_configuration_edit_external_patient_title();
 		if (p.id === 'visit')
 			return m.prefix_configuration_edit_visit_title();
+		if (p.id === 'admission')
+			return m.prefix_configuration_edit_admission_title();
 		if (p.id === 'pr') return m.prefix_configuration_edit_pr_title();
 		if (p.id === 'po') return m.prefix_configuration_edit_po_title();
 		if (p.id === 'di') return m.prefix_configuration_edit_di_title();
@@ -189,6 +206,8 @@
 			return m.prefix_configuration_edit_med_order_batch_title();
 		if (p.id === 'med_order_receipt')
 			return m.prefix_configuration_edit_med_order_receipt_title();
+		if (p.id === 'bill')
+			return m.prefix_configuration_edit_bill_title();
 		return m.prefix_configuration_edit_order_title();
 	}
 
@@ -240,6 +259,16 @@
 		formatParts = [
 			...formatParts,
 			{ id: newPartId(), kind: 'field', path: 'hospital.code' }
+		];
+	}
+
+	function duplicatePart(index: number) {
+		const src = formatParts[index];
+		const copy = { ...src, id: newPartId() } satisfies UiFormatPart;
+		formatParts = [
+			...formatParts.slice(0, index + 1),
+			copy,
+			...formatParts.slice(index + 1)
 		];
 	}
 
@@ -581,18 +610,18 @@
 								</p>
 
 								<ul
-									class="divide-y divide-base-200 rounded-md border border-base-200 bg-base-100"
+									class="divide-y divide-base-200 overflow-x-auto rounded-md border border-base-200 bg-base-100"
 								>
 									{#each formatParts as part, i (part.id)}
 										<li
-											class="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-2 py-1.5 sm:gap-x-2"
+											class="flex w-full items-center gap-x-2 px-2 py-1.5"
 										>
 											<span
 												class="w-5 shrink-0 text-right text-[0.65rem] text-base-content/45 tabular-nums"
 												>{i + 1}</span
 											>
 											<WashSelect
-												className="select h-7 min-h-7 max-w-[7.5rem] shrink-0 select-xs py-0 text-xs"
+												className="select h-7 min-h-7 shrink-0 select-xs py-0 text-xs"
 												value={part.kind}
 												options={[
 													{
@@ -621,7 +650,7 @@
 											/>
 
 											<div
-												class="min-w-0 flex-1 basis-[12rem] sm:basis-0"
+												class="w-full"
 											>
 												{#if part.kind === 'literal'}
 													<WashInputField
@@ -652,7 +681,7 @@
 													/>
 												{:else}
 													<div
-														class="flex flex-wrap items-center gap-x-2 gap-y-0.5"
+														class="flex items-center gap-x-1.5"
 													>
 														<span
 															class="text-[0.65rem] whitespace-nowrap text-base-content/60"
@@ -678,6 +707,14 @@
 											<div
 												class="ml-auto flex shrink-0 items-center gap-0.5"
 											>
+												<button
+													type="button"
+													class="btn h-7 min-h-7 px-1.5 btn-ghost btn-xs"
+													title={m.prefix_configuration_duplicate_part()}
+													onclick={() => duplicatePart(i)}
+												>
+													<LucideCopy className="size-3.5" />
+												</button>
 												<button
 													type="button"
 													class="btn h-7 min-h-7 px-1.5 btn-ghost btn-xs"

@@ -8,14 +8,14 @@ import {
 	isAdminShellRole,
 	permissionAllows
 } from '$lib/server/medora/admin/admin-permission.server';
-import { COOKIE_SESSION_EXTENDED_FOR } from '$lib/server/medora/auth/session-extend.server';
 
 /** SYSTEM_ADMIN or ADMIN_TEAM (with page view) can access /medora/admin/* */
 export const load: LayoutServerLoad = async ({
 	locals,
-	cookies,
-	url
+	url,
+	depends
 }) => {
+	depends('app:session-expiry');
 	if (!locals.user) {
 		const redirectTo = `${url.pathname}${url.search}`;
 		throw redirect(
@@ -64,8 +64,6 @@ export const load: LayoutServerLoad = async ({
 	}
 
 	const sessionId = locals.session?.id ?? null;
-	const extendedFor =
-		cookies.get(COOKIE_SESSION_EXTENDED_FOR) ?? null;
 	return {
 		user: locals.user,
 		staff: locals.staff ?? null,
@@ -74,7 +72,6 @@ export const load: LayoutServerLoad = async ({
 		adminPermissions: permissions,
 		isSystemAdmin: roleId === RoleEnum.SYSTEM_ADMIN,
 		sessionId,
-		sessionExpiresAt: locals.session?.expiresAt ?? null,
-		sessionExtendedOnce: !!sessionId && extendedFor === sessionId
+		sessionExpiresAt: locals.session?.expiresAt ?? null
 	};
 };

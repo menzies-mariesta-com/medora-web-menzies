@@ -3,8 +3,11 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { getOrCreateHospitalEdBillingConfig } from './hospital-ed-billing-config.server';
+import { resolveErBedChargeTaggingForBranch } from '$lib/server/medora/administration/billing-setup/billing-setup-service-tagging.server';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
+import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
+import { normalizeMoneyDecimal2dpOrZero } from '$lib/server/medora/money-field.server';
 
 /**
  * Idempotent: ensures one auto ER bed service line exists for the encounter.
@@ -15,8 +18,6 @@ export async function ensureErBedChargeServiceLine(input: {
 	userId: string;
 }): Promise<number | null> {
 	const config = await getOrCreateHospitalEdBillingConfig(input.hospitalId);
-	const serviceItemId = config.erBedServiceItemId;
-	if (serviceItemId == null || serviceItemId <= 0) return null;
 
 	const enc = await ensureDb().query.edEncounterTable.findFirst({
 		where: (t, { and: a, eq: e }) =>
@@ -42,6 +43,21 @@ export async function ensureErBedChargeServiceLine(input: {
 		.limit(1);
 	if (!visit?.branchId) return null;
 
+	const bedTagging = await resolveErBedChargeTaggingForBranch({
+		hospitalId: input.hospitalId,
+		branchId: visit.branchId
+	});
+
+	let serviceId: number | null = bedTagging?.serviceId ?? null;
+	let serviceAmount = bedTagging?.serviceAmount ?? null;
+	let serviceTaxAmount = bedTagging?.serviceTaxAmount ?? null;
+
+	if (serviceId == null) {
+		const serviceItemId = config.erBedServiceItemId;
+		if (serviceItemId == null || serviceItemId <= 0) return null;
+		serviceId = serviceItemId;
+	}
+
 	const [svc] = await ensureDb()
 		.select({
 			id: table.serviceItemTable.id,
@@ -51,13 +67,20 @@ export async function ensureErBedChargeServiceLine(input: {
 		.from(table.serviceItemTable)
 		.where(
 			and(
-				eq(table.serviceItemTable.id, serviceItemId),
+				eq(table.serviceItemTable.id, serviceId),
 				eq(table.serviceItemTable.hospitalId, input.hospitalId),
 				eq(table.serviceItemTable.statusId, StatusEnum.ACTIVE)
 			)
 		)
 		.limit(1);
 	if (!svc) return null;
+
+	if (serviceAmount == null) {
+		serviceAmount = svc.serviceAmount;
+	}
+	if (serviceTaxAmount == null) {
+		serviceTaxAmount = svc.serviceTaxAmount;
+	}
 
 	const now = new Date();
 	const orderDate = now.toISOString().slice(0, 10);
@@ -122,9 +145,13 @@ export async function ensureErBedChargeServiceLine(input: {
 			.insert(table.serviceOrderDetailTable)
 			.values({
 				serviceOrderId,
-				serviceId: svc.id,
-				serviceAmount: svc.serviceAmount ?? '0',
-				serviceTaxAmount: svc.serviceTaxAmount ?? '0',
+				serviceId,
+				serviceAmount: toDbMoney2dp(
+					normalizeMoneyDecimal2dpOrZero(serviceAmount)
+				),
+				serviceTaxAmount: toDbMoney2dp(
+					normalizeMoneyDecimal2dpOrZero(serviceTaxAmount)
+				),
 				serviceUnit: 1,
 				nursingCompleteTime: nowIso,
 				statusId: StatusEnum.ACTIVE,

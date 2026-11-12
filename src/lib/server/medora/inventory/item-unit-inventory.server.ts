@@ -3,6 +3,7 @@ import { and, eq, isNull, ne } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
+import { activeEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import { freeQtyToPurchaseUnitQty } from '$lib/tool/inventory/grn-free-qty-purchase.util';
 import { purchaseUnitPriceToIssueUnitPriceString as purchaseUnitPriceToIssueUnitPriceStringFromFactors } from '$lib/tool/inventory/purchase-issue-price-convert.util';
 
@@ -127,7 +128,7 @@ export async function resolveItemUnitMasterForItemPurchaseUnit(input: {
 				),
 				isNull(table.itemMasterItemUnitMasterTable.deletedAt),
 				isNull(table.itemUnitMasterTable.deletedAt),
-				ne(table.itemUnitMasterTable.statusId, StatusEnum.DELETED)
+				activeEntityStatusEq(table.itemUnitMasterTable.statusId)
 			)
 		);
 
@@ -187,7 +188,7 @@ export async function listItemUnitMastersForItem(input: {
 				),
 				isNull(table.itemMasterItemUnitMasterTable.deletedAt),
 				isNull(table.itemUnitMasterTable.deletedAt),
-				ne(table.itemUnitMasterTable.statusId, StatusEnum.DELETED)
+				activeEntityStatusEq(table.itemUnitMasterTable.statusId)
 			)
 		);
 	return rows.map((r) => ({
@@ -289,7 +290,7 @@ export function issueQtyStringFromAnyUnit(params: {
 	preferredIumId?: number | null;
 }): string {
 	const q = params.qty;
-	if (!Number.isFinite(q) || q <= 0) return '0.000000';
+	if (!Number.isFinite(q) || q <= 0) return '0';
 	const pfLine = Number(params.lineIum.purchaseConversionFactor);
 	const itfLine = Number(params.lineIum.issueConversionFactor);
 	if (

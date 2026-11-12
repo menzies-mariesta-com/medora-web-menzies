@@ -3,13 +3,13 @@ title: "Advance Deposit"
 description: "Step-by-step guide for Advance Deposit in Billing."
 docType: workflow
 slug: workflows/billing-ip-billing-advance-deposit
-pageId: 150002
+pageId: 800200
 moduleId: 8
 pageUrl: "/medora/home/billing/ip-billing/advance-deposit"
 generated: false
 captureStatus: failed
 capturedAt: "2026-10-18T03:40:11.785Z"
-captureError: "Table finished loading but has no rows (Showing 0 of 0). Run npm run db:seed:docs-demo (includes inventory demo) or check filters/hospital."
+captureError: "Table finished loading but has no rows (Showing 0 of 0). Run npm run db:seed:demo:docs (includes inventory demo) or check filters/hospital."
 sinceVersion: "1.5.0"
 lastReviewed: "2026-10-18"
 ---
@@ -39,12 +39,12 @@ flowchart LR
 
 ## Walkthrough
 
-_Screenshots could not be captured. Run `npm run db:seed:docs-demo`, start the dev server, then re-run docs capture._
+_Screenshots could not be captured. Run `npm run db:seed:demo:docs`, start the dev server, then re-run docs capture._
 
 ## If something goes wrong
 
 - **Blank clinical screen:** select a patient visit from the visit list, then open this page again.
-- **Blank screen:** run `npm run db:seed:docs-demo` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
+- **Blank screen:** run `npm run db:seed:demo:docs` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
 - **Cannot save:** check required fields marked with a red star.
 
 ## Legal

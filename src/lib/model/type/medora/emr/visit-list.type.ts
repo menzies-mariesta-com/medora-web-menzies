@@ -4,10 +4,22 @@ export type VisitStatusCode =
 	| 'seen'
 	| 'closed_discharged';
 
+/**
+ * Filter-only status codes accepted by `visit.list`.
+ * `active` matches every visit that is not Closed / Discharged.
+ */
+export type VisitStatusFilterCode =
+	| VisitStatusCode
+	| 'active'
+	| 'closed'
+	| 'discharged';
+
 export type PatientVisitForEmrList = {
-	id: number;
+	id: string;
 	visitNo: string | null;
 	createdAt?: string | Date | null;
+	statusId?: number | null;
+	status?: { id?: number; name: string | null } | null;
 	visitStatus: VisitStatusCode;
 	visitType: { id: number; name: string | null } | null;
 	hospital: { id: string; name: string | null } | null;
@@ -26,9 +38,16 @@ export type PatientVisitForEmrList = {
 		middleName: string | null;
 		lastName: string | null;
 		dateOfBirth?: string | null;
-		title?: { name: string | null } | null;
-		gender?: { name: string | null } | null;
+		nameMasking?: number | null;
+		title?: { id: number; name: string | null } | null;
+		gender?: { id: number; name: string | null } | null;
 	} | null;
 };
 
 export type VisitTypeOption = { id: number; name: string | null };
+
+/**
+ * `doctor` — EMR/consultation picker (assigned doctor, referrals, ED pool; branch cookie).
+ * `hospital` — nursing/billing picker (all active visits at hospital, any branch).
+ */
+export type EmrVisitListScope = 'doctor' | 'hospital';
