@@ -9,12 +9,13 @@
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+	import { parseUuid } from '$lib/util/id.util';
 
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 	const visitId = $derived(
-		Number(
-			page.url.searchParams.get('visitId') ?? VisitState.visitId ?? 0
-		)
+		parseUuid(page.url.searchParams.get('visitId') ?? '') ??
+			parseUuid(String(VisitState.visitId ?? '')) ??
+			''
 	);
 	const apiBase = $derived(
 		`/api/medora/hospital/${hospitalId}/home/consultation/procedures`

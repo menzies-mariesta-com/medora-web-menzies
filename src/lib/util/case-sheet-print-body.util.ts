@@ -7,6 +7,7 @@ import {
 	type CaseSheetVitalFieldLabels
 } from '$lib/util/case-sheet-record-fields.util';
 import type { PatientDiagnosisListRow } from '$lib/model/type/medora/ui-rows.type';
+import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 
 function escapeHtml(text: string): string {
 	return text
@@ -263,10 +264,7 @@ export function buildCaseSheetPrintBodyHtml(opts: {
 					})
 					.join('')}</ol></section>`;
 
-	const generatedAt = new Date().toLocaleString('en-US', {
-		dateStyle: 'short',
-		timeStyle: 'short'
-	});
+	const generatedAt = formatMenziesTableDateTime(new Date());
 	const footer = `<footer class="case-sheet-footer">${escapeHtml(labels.generatedFooter)}: ${escapeHtml(generatedAt)}</footer>`;
 
 	return [

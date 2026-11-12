@@ -12,8 +12,8 @@ const NURSING_CENSUS_PAGE_ID = 1900001;
 const NURSING_TRACK_BOARD_PAGE_ID = 120;
 /** Retired nursing group pages that must not appear in nav. */
 const RETIRED_NURSING_PAGE_IDS = new Set([8, 44, 481]);
-const BILL_PAGE_ID = 810001;
-const BILL_ADVANCE_PAGE_ID = 810002;
+const BILL_PAGE_ID = 800100;
+const BILL_ADVANCE_PAGE_ID = 800200;
 /** Retired OP/IP/ER billing top-level pages (unified under Bill). */
 const RETIRED_BILLING_PAGE_IDS = new Set([15, 150001, 150004]);
 

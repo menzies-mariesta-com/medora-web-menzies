@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { parseUuid } from '$lib/util/id.util';
 	import { m } from '$lib/paraglide/messages';
+	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import LVisitAlertIndicators from '$lib/component/own/local/private/medora/emr/LVisitAlertIndicators.svelte';
@@ -98,18 +99,6 @@
 		}
 	}
 
-	function formatDateTime(value: string | null | undefined): string {
-		if (!value) return '';
-		try {
-			return new Date(value).toLocaleString('en-US', {
-				dateStyle: 'short',
-				timeStyle: 'short'
-			});
-		} catch {
-			return '';
-		}
-	}
-
 	const patientName = $derived(
 		visit?.patient
 			? StringUtil.patientDisplayName(visit.patient as any)
@@ -122,17 +111,16 @@
 	const visitNo = $derived(visit?.visitNo ?? '');
 	const visitTypeName = $derived(visit?.visitType?.name ?? '');
 	const visitDate = $derived(
-		formatDateTime(visit?.createdAt ?? null)
+		formatMenziesTableDateTime(visit?.createdAt ?? null, '')
 	);
 	const branchName = $derived(visit?.branch?.name ?? '');
 	const hospitalName = $derived(visit?.hospital?.name ?? '');
 	const doctorName = $derived(
 		visit?.doctor
-			? StringUtil.fullNameWithTitle(
-					visit.doctor.title?.name ?? null,
-					visit.doctor.firstName,
-					visit.doctor.middleName,
-					visit.doctor.lastName
+			? StringUtil.doctorOptionDisplayName(
+					visit.doctor as Parameters<
+						typeof StringUtil.doctorOptionDisplayName
+					>[0]
 				)
 			: ''
 	);

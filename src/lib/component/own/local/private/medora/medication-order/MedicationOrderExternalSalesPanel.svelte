@@ -39,11 +39,18 @@
 		applyDraftReservationsToLots
 	} from '$lib/tool/medication-order/med-order-line-inventory.util';
 	import { resolveMedOrderIumForOutUnit } from '$lib/tool/inventory/med-order-out-qty.util';
-	import { formatMedOrderItemSearchLabel } from '$lib/tool/medication-order/format-med-order-item-search-label.util';
 	import {
 		isMedOrderStartBeforeToday,
-		medOrderMinStartDateTimeLocal
+		medOrderMinStartDateTimeLocal,
+		parseDateTimeLocalToIso,
+		toDateTimeLocalValue
 	} from '$lib/tool/medication-order/med-order-start-date.util';
+	import {
+		labelForMedOrderItemId,
+		resolveMedOrderStoreLabel,
+		searchMedOrderItemOptions,
+		searchMedOrderStoreOptions
+	} from '$lib/tool/medication-order/med-order-inventory-search-select.util';
 	import { tick, untrack } from 'svelte';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 	import { VisitState } from '$lib/state/visit.state.svelte';
@@ -61,6 +68,7 @@ const lifeCycleUtil = new LifeCycleUtil();
 	);
 
 	function apiRoot() {
+		if (!hospitalId) return '';
 		return `/api/medora/hospital/${hospitalId}/home/medication-order/external-sales`;
 	}
 
@@ -74,19 +82,6 @@ const lifeCycleUtil = new LifeCycleUtil();
 	let visitId = $state('');
 	let visitNo = $state('');
 	let displayCustomerName = $state('');
-
-	function toDateTimeLocalValue(d: Date): string {
-		const y = d.getFullYear();
-		const mo = String(d.getMonth() + 1).padStart(2, '0');
-		const day = String(d.getDate()).padStart(2, '0');
-		const h = String(d.getHours()).padStart(2, '0');
-		const min = String(d.getMinutes()).padStart(2, '0');
-		return `${y}-${mo}-${day}T${h}:${min}`;
-	}
-
-	function parseDateTimeLocalToIso(s: string): string {
-		return new Date(s).toISOString();
-	}
 
 	let masters = $state<MedicationOrderMastersResponse | null>(null);
 
@@ -268,85 +263,33 @@ const lifeCycleUtil = new LifeCycleUtil();
 		pharmacyGenerics = pack.data ?? [];
 	}
 
-	async function resolveStoreLabelForId(
-		idStr: string
-	): Promise<string> {
-		if (!idStr || !hospitalId) return '';
-		const u = new URL(apiRoot(), window.location.origin);
-		u.searchParams.set('mode', 'stores.search');
-		const res = await fetch(u, { credentials: 'include' });
-		if (!res.ok) return `Store #${idStr}`;
-		const rows = (await res.json()) as {
-			id: number;
-			storeName: string | null;
-		}[];
-		const hit = rows.find((r) => String(r.id) === idStr);
-		return hit
-			? hit.storeName?.trim() || `#${hit.id}`
-			: `Store #${idStr}`;
+	async function resolveStoreLabelForId(idStr: string): Promise<string> {
+		return resolveMedOrderStoreLabel(apiRoot(), idStr);
 	}
 
 	async function searchStoresForSelect(query: string) {
-		if (!hospitalId) return [];
-		const u = new URL(apiRoot(), window.location.origin);
-		u.searchParams.set('mode', 'stores.search');
-		if (query.trim()) u.searchParams.set('name', query.trim());
-		const res = await fetch(u, { credentials: 'include' });
-		if (!res.ok) return [];
-		const rows = (await res.json()) as {
-			id: number;
-			storeName: string | null;
-		}[];
-		return rows.map((s) => ({
-			value: String(s.id),
-			label: s.storeName?.trim() || `Store #${s.id}`
-		}));
+		return searchMedOrderStoreOptions(apiRoot(), query);
 	}
 
 	async function searchItemsFromMaster(query: string) {
-		if (!hospitalId || !storeId) {
-			lastItemSearchRows = [];
-			return [];
-		}
-		const u = new URL(apiRoot(), window.location.origin);
-		u.searchParams.set('mode', 'items.search');
-		u.searchParams.set('storeId', String(storeId));
-		if (query.trim()) u.searchParams.set('search', query.trim());
-		if (pharmacyGenericId) {
-			u.searchParams.set('pharmacyGenericId', pharmacyGenericId);
-		}
-		const res = await fetch(u, { credentials: 'include' });
-		if (!res.ok) {
-			lastItemSearchRows = [];
-			return [];
-		}
-		const rows = (await res.json()) as ItemNamePriceRow[];
+		const { options, rows } = await searchMedOrderItemOptions({
+			apiRoot: apiRoot(),
+			storeId,
+			query,
+			pharmacyGenericId
+		});
 		lastItemSearchRows = rows;
-		return rows.map((it) => ({
-			value: String(it.id),
-			label: formatMedOrderItemSearchLabel(it)
-		}));
+		return options;
 	}
 
-	async function getItemLabelForValue(
-		idStr: string
-	): Promise<string> {
-		if (!idStr) return '';
-		const fromSearch = lastItemSearchRows.find(
-			(r) => String(r.id) === idStr
-		);
-		if (fromSearch) return formatMedOrderItemSearchLabel(fromSearch);
-		if (selectedItem && String(selectedItem.id) === idStr) {
-			return formatMedOrderItemSearchLabel(selectedItem);
-		}
-		if (!hospitalId) return `Item #${idStr}`;
-		const res = await fetch(
-			`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?id=${encodeURIComponent(idStr)}`,
-			{ credentials: 'include' }
-		);
-		if (!res.ok) return `Item #${idStr}`;
-		const d = (await res.json()) as { itemName?: string | null };
-		return d.itemName?.trim() || `Item #${idStr}`;
+	async function getItemLabelForValue(idStr: string) {
+		return labelForMedOrderItemId({
+			hospitalId,
+			idStr,
+			fromSearch:
+				lastItemSearchRows.find((r) => String(r.id) === idStr) ?? null,
+			selectedItem
+		});
 	}
 
 	const draftColumns = $derived.by((): MenziesTableColumn<DraftLine>[] => {

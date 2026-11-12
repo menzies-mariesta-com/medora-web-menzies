@@ -240,10 +240,13 @@ export async function saveMedicationOrderBatch(
 	const financialYearId = await getFinancialYearIdToday(hospitalId);
 	const batchNo = await generatePrefix({
 		hospitalId,
-		branchId: null,
+		branchId: st.branchId,
 		financialYearId,
 		prefixKey: PREFIX_PURPOSE_STORAGE.MEDICATION_ORDER_BATCH_NO,
-		context: {}
+		context: {
+			visitTypeId: v.visitTypeId ?? undefined,
+			visitId
+		}
 	});
 
 	return await db.transaction(async (tx) => {
@@ -647,14 +650,8 @@ export async function updateMedicationOrderBatch(
 		});
 
 		await tx
-			.update(table.medicationOrderLineTable)
-			.set({ deletedAt: new Date().toISOString(), deletedBy: userId })
-			.where(
-				and(
-					eq(table.medicationOrderLineTable.batchId, batchId),
-					isNull(table.medicationOrderLineTable.deletedAt)
-				)
-			);
+			.delete(table.medicationOrderLineTable)
+			.where(eq(table.medicationOrderLineTable.batchId, batchId));
 
 		let lineNo = 1;
 		for (const ln of lines) {
@@ -687,7 +684,6 @@ export async function deleteMedicationOrderBatch(
 	await ensureCanAccessHospital(event, hospitalId);
 	const userId = event.locals.user?.id ?? null;
 	const now = new Date().toISOString();
-	const delLine = { deletedAt: now, deletedBy: userId } as const;
 	const delBatch = { deletedAt: now, deletedBy: userId } as const;
 	const db = ensureDb();
 	const [b] = await db
@@ -709,14 +705,8 @@ export async function deleteMedicationOrderBatch(
 			userId
 		});
 		await tx
-			.update(table.medicationOrderLineTable)
-			.set(delLine)
-			.where(
-				and(
-					eq(table.medicationOrderLineTable.batchId, batchId),
-					isNull(table.medicationOrderLineTable.deletedAt)
-				)
-			);
+			.delete(table.medicationOrderLineTable)
+			.where(eq(table.medicationOrderLineTable.batchId, batchId));
 		await tx
 			.update(table.medicationOrderBatchTable)
 			.set(delBatch)

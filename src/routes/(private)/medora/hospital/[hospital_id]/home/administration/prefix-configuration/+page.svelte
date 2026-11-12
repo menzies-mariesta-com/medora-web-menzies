@@ -128,6 +128,8 @@
 			return m.prefix_configuration_purpose_patient();
 		if (p.id === 'external_patient')
 			return m.prefix_configuration_purpose_external_patient();
+		if (p.id === 'visit')
+			return m.prefix_configuration_purpose_visit();
 		if (p.id === 'admission')
 			return m.prefix_configuration_purpose_admission();
 		if (p.id === 'pr') return m.prefix_configuration_purpose_pr();
@@ -151,6 +153,9 @@
 		}
 		if (p.id === 'external_patient') {
 			return m.prefix_configuration_purpose_external_patient_help();
+		}
+		if (p.id === 'visit') {
+			return m.prefix_configuration_purpose_visit_help();
 		}
 		if (p.id === 'admission') {
 			return m.prefix_configuration_purpose_admission_help();
@@ -187,6 +192,8 @@
 			return m.prefix_configuration_edit_patient_title();
 		if (p.id === 'external_patient')
 			return m.prefix_configuration_edit_external_patient_title();
+		if (p.id === 'visit')
+			return m.prefix_configuration_edit_visit_title();
 		if (p.id === 'admission')
 			return m.prefix_configuration_edit_admission_title();
 		if (p.id === 'pr') return m.prefix_configuration_edit_pr_title();

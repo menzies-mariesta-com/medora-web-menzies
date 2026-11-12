@@ -31,8 +31,36 @@ import {
 	normalizeIpBillingLineWrite,
 	normalizeOpBillingHeaderWrite
 } from '$lib/server/medora/money-normalize.server';
+import { patientChargeFieldsForBillingLine } from '$lib/server/medora/inventory/patient-charge-pricing.server';
 
 type PendingDetailRow = PendingBillLineRow;
+
+function inventoryPricingSnapshotForBillLine(r: PendingDetailRow) {
+	if (r.lineSource === 'ipd_accommodation') {
+		return {
+			pricingFormulaTemplateId: null,
+			pricingModule: null,
+			pricingBatchId: null,
+			unitSalePriceIssue: null,
+			pricingInputsSnapshot: r.pricingInputsSnapshot ?? null,
+			ipdBedStaySegmentId: r.id
+		};
+	}
+	if (r.lineSource !== 'medication_order_line') {
+		return {
+			pricingFormulaTemplateId: null,
+			pricingModule: null,
+			pricingBatchId: null,
+			unitSalePriceIssue: null,
+			pricingInputsSnapshot: null,
+			ipdBedStaySegmentId: null
+		};
+	}
+	return {
+		...patientChargeFieldsForBillingLine(r),
+		ipdBedStaySegmentId: null
+	};
+}
 
 type IpBillingWithAuditStaff = IpBillingSchema & {
 	discountedByStaff?: unknown;
@@ -192,7 +220,7 @@ async function consolidateOpenIpBillings(opts: {
  * Syncs the single open OP bill for the visit to nursing-complete lines that are
  * not yet on any closed bill. When nothing is pending, the open draft is removed.
  */
-async function syncOpenIpBillingForVisit(opts: {
+export async function _syncOpenIpBillingForVisit(opts: {
 	hospitalId: string;
 	visitId: string;
 	branchId: string;
@@ -208,7 +236,7 @@ async function syncOpenIpBillingForVisit(opts: {
 	pendingRows: PendingDetailRow[];
 }> {
 	const db = ensureDb();
-	const pendingRows = dedupePendingBillRows(
+	const basePendingRows = dedupePendingBillRows(
 		await mergeClinicalAndBillingSetupPendingRows({
 			hospitalId: opts.hospitalId,
 			visitId: opts.visitId,
@@ -220,6 +248,116 @@ async function syncOpenIpBillingForVisit(opts: {
 			})
 		})
 	);
+
+	const admissionId = await latestAdmissionIdForVisit(opts.visitId);
+
+	let pendingRows: PendingDetailRow[] = basePendingRows;
+	try {
+		if (admissionId != null) {
+			const {
+				getOrCreateBillingPolicy,
+				computeAccommodationCharges,
+				accommodationChargeToPendingBillFields,
+				accommodationChargePricingAudit
+			} = await import(
+				'$lib/server/medora/ipd/accommodation-billing.server'
+			);
+			const policy = await getOrCreateBillingPolicy({
+				hospitalId: opts.hospitalId,
+				careSetting: 'IP'
+			});
+			const serviceId = policy.accommodationServiceItemId;
+			if (serviceId != null) {
+				const dbx = ensureDb();
+				const [svc] = await dbx
+					.select({
+						id: table.serviceItemTable.id,
+						serviceName: table.serviceItemTable.serviceName,
+						subCategoryId: table.serviceItemTable.subCategoryId
+					})
+					.from(table.serviceItemTable)
+					.where(eq(table.serviceItemTable.id, serviceId))
+					.limit(1);
+				let subCategoryName: string | null = null;
+				let categoryName: string | null = null;
+				if (svc?.subCategoryId != null) {
+					const [sub] = await dbx
+						.select({
+							name: table.subCategoryTable.subCategoryName,
+							categoryId: table.subCategoryTable.categoryId
+						})
+						.from(table.subCategoryTable)
+						.where(
+							eq(
+								table.subCategoryTable.id,
+								svc.subCategoryId
+							)
+						)
+						.limit(1);
+					subCategoryName = sub?.name?.trim() ?? null;
+					if (sub?.categoryId != null) {
+						const [cat] = await dbx
+							.select({
+								name: table.categoryTable.categoryName
+							})
+							.from(table.categoryTable)
+							.where(
+								eq(
+									table.categoryTable.id,
+									sub.categoryId
+								)
+							)
+							.limit(1);
+						categoryName = cat?.name?.trim() ?? null;
+					}
+				}
+				const charges = await computeAccommodationCharges({
+					admissionId,
+					hospitalId: opts.hospitalId
+				});
+				const accRows = charges.map((charge) => {
+					const fields = accommodationChargeToPendingBillFields({
+						charge,
+						serviceItemName:
+							(svc?.serviceName ?? 'Accommodation').trim() ||
+							'Accommodation'
+					});
+					return {
+						lineSource: 'ipd_accommodation' as const,
+						id: charge.segmentId,
+						medicationOrderLineId: null,
+						departmentConsumptionLineId: null,
+						serviceId,
+						serviceName: fields.serviceName,
+						subCategoryId: svc?.subCategoryId ?? null,
+						subCategoryName,
+						categoryName,
+						orderNo: null,
+						pricingInputsSnapshot: accommodationChargePricingAudit({
+							charge,
+							actualHours:
+								charge.actualHours ??
+								0,
+							billableHours:
+								charge.billableHours ??
+								0
+						}),
+						discount: fields.discount,
+						serviceAmount: fields.serviceAmount,
+						serviceTaxAmount: fields.serviceTaxAmount,
+						serviceUnit: fields.serviceUnit,
+						serviceUnitLabel: fields.serviceUnitLabel
+					};
+				});
+				pendingRows = dedupePendingBillRows([
+					...pendingRows,
+					...(accRows as unknown as PendingDetailRow[])
+				]);
+			}
+		}
+	} catch {
+		/* accommodation not configured or unavailable; skip bed fees */
+	}
 
 	let openBill = await consolidateOpenIpBillings({
 		visitId: opts.visitId,
@@ -247,7 +385,6 @@ async function syncOpenIpBillingForVisit(opts: {
 	}
 
 	if (!openBill) {
-		const admissionId = await latestAdmissionIdForVisit(opts.visitId);
 		const [inserted] = await db
 			.insert(table.ipBillingTable)
 			.values({
@@ -327,6 +464,7 @@ async function syncOpenIpBillingForVisit(opts: {
 				serviceTaxAmount: r.serviceTaxAmount ?? null,
 				serviceUnit: r.serviceUnit ?? null,
 				lineTotal: computeLineTotal(r),
+				...inventoryPricingSnapshotForBillLine(r),
 				createdAt: opts.nowIso,
 				updatedAt: opts.nowIso,
 				createdBy: opts.userId,
@@ -443,7 +581,7 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	const nowIso = new Date().toISOString();
-	const sync = await syncOpenIpBillingForVisit({
+	const sync = await _syncOpenIpBillingForVisit({
 		hospitalId,
 		visitId,
 		branchId: visitRow.branchId!,
@@ -532,6 +670,11 @@ export const GET: RequestHandler = async (event) => {
 			advanceTotal,
 			advanceCredit,
 			balanceDue,
+			payableAmount: balanceDue,
+			advanceRefundDue:
+				advanceTotal > advanceCredit
+					? Math.round((advanceTotal - advanceCredit) * 100) / 100
+					: 0,
 			admissionId: admissionForDeposit?.id ?? null
 		},
 		{ status: 200 }
@@ -582,7 +725,7 @@ export const POST: RequestHandler = async (event) => {
 	const isClose = action === 'printed' || action === 'close';
 
 	if (isClose) {
-		const sync = await syncOpenIpBillingForVisit({
+		const sync = await _syncOpenIpBillingForVisit({
 			hospitalId,
 			visitId,
 			branchId: visitRow.branchId!,
@@ -679,7 +822,7 @@ export const POST: RequestHandler = async (event) => {
 		throw error(400, 'Unknown action');
 	}
 
-	const sync = await syncOpenIpBillingForVisit({
+	const sync = await _syncOpenIpBillingForVisit({
 		hospitalId,
 		visitId,
 		branchId: visitRow.branchId!,

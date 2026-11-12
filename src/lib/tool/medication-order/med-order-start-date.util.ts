@@ -15,11 +15,22 @@ export function isMedOrderStartBeforeToday(
 	return st.getTime() < medOrderStartOfLocalDay(now).getTime();
 }
 
-/** Minimum value for Wash datetime pickers (start of today, local `YYYY-MM-DDTHH:mm`). */
-export function medOrderMinStartDateTimeLocal(now: Date = new Date()): string {
-	const d = medOrderStartOfLocalDay(now);
+/** Local `YYYY-MM-DDTHH:mm` for datetime-local inputs. */
+export function toDateTimeLocalValue(d: Date): string {
 	const y = d.getFullYear();
 	const mo = String(d.getMonth() + 1).padStart(2, '0');
 	const day = String(d.getDate()).padStart(2, '0');
-	return `${y}-${mo}-${day}T00:00`;
+	const h = String(d.getHours()).padStart(2, '0');
+	const min = String(d.getMinutes()).padStart(2, '0');
+	return `${y}-${mo}-${day}T${h}:${min}`;
+}
+
+/** datetime-local value → UTC ISO for API/DB writes. */
+export function parseDateTimeLocalToIso(s: string): string {
+	return new Date(s).toISOString();
+}
+
+/** Minimum value for Wash datetime pickers (start of today, local `YYYY-MM-DDTHH:mm`). */
+export function medOrderMinStartDateTimeLocal(now: Date = new Date()): string {
+	return toDateTimeLocalValue(medOrderStartOfLocalDay(now));
 }

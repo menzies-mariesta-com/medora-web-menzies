@@ -18,13 +18,21 @@ export async function GET(event: RequestEvent) {
 		bedStatusRaw != null && bedStatusRaw !== ''
 			? Number(bedStatusRaw)
 			: undefined;
+	const clip = (key: string) => {
+		const value = event.url.searchParams.get(key)?.trim() ?? '';
+		return value ? value.slice(0, 80) : undefined;
+	};
 	return json(
 		await listBedsForAdtStatus({
 			hospitalId,
 			wardId: Number.isFinite(wardId as number) ? wardId : undefined,
 			bedStatus: Number.isFinite(bedStatus as number)
 				? bedStatus
-				: undefined
+				: undefined,
+			patientName: clip('patientName'),
+			visitName: clip('visitName'),
+			bedName: clip('bedName'),
+			roomName: clip('roomName')
 		})
 	);
 }

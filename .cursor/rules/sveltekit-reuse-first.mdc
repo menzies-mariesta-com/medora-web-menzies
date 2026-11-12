@@ -1,0 +1,44 @@
+---
+description: Reuse $lib helpers before adding local functions in Svelte or TypeScript
+globs: "**/*.{svelte,ts}"
+alwaysApply: false
+---
+
+# Reuse and consolidate first
+
+Before writing a helper, handler, formatter, validator, or calculation, search `src/lib/` (util, tool, service, server, model). If a function already does the job, import it. If it is the same logic with a small difference, add a parameter to that function. Do not add a near-copy.
+
+## No local duplicates in routes
+
+Do not declare a helper inside `+page.svelte`, `+page.ts`, `+page.server.ts`, `+layout.svelte`, `+layout.server.ts`, `+server.ts`, or a component when the same logic exists or will be needed in a second file. Move it under `$lib` and import it. Route files stay thin.
+
+## Where new code goes
+
+Do not create `src/lib/utils/`, `src/lib/services/`, `src/lib/api/`, or `src/lib/types/`. This repo already has those roles:
+
+- Pure logic, parsers, formatters → `src/lib/util/`
+- Shared client fetch and domain helpers → `src/lib/tool/` (setup-required helpers → `src/lib/service/`)
+- DB, secrets, authz → `src/lib/server/`
+- Shared JSON and UI types → `src/lib/model/type/`
+- Shared UI → `src/lib/component/`
+
+No barrel `index.ts` unless one already exists for that folder.
+
+## One function, parameters
+
+A second function for a slight variation (empty placeholder, page size, care setting, sales mode, IUM list vs default unit) is a duplicate. Add a parameter.
+
+```ts
+// BAD — local copy in +page.svelte
+function formatDateTime(value: string | null) {
+	if (!value) return '–';
+	return new Date(value).toLocaleString('en-US', {
+		dateStyle: 'short',
+		timeStyle: 'short'
+	});
+}
+
+// GOOD
+import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
+formatMenziesTableDateTime(value, '–');
+```

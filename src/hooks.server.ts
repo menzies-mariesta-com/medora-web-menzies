@@ -2,7 +2,7 @@ import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { building } from '$app/environment';
 import { eq } from 'drizzle-orm';
 import { auth } from '$lib/auth/server';
-import { ensureDb } from '$lib/server/db';
+import { ensureDb, runWithRequestAuditUser } from '$lib/server/db';
 import { userTable } from '$lib/server/db/table/auth-table/auth-table';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { getStaffByUserIdWithRelationsCached } from '$lib/server/medora/staff-session-cache.server';
@@ -178,6 +178,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
+	return runWithRequestAuditUser(event.locals.user?.id ?? null, async () => {
 	const twoFactorGate =
 		rejectMutatingMedoraApiWithoutTwoFactor(event);
 	if (twoFactorGate)
@@ -219,6 +220,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return applyCorsToResponse(response, event.request);
 	}
 	return response;
+	});
 };
 
 export const handleError: HandleServerError = ({

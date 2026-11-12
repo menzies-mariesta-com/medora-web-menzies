@@ -10,17 +10,38 @@ export type MedOrderIumUnitIds = {
 	issueConversionFactor: string;
 };
 
+/**
+ * Sale unit price from formula **issue-unit** price and the order line's
+ * item_unit_master conversion. Does not use GRN purchase-unit sale price.
+ */
 export function unitSalePriceForOutUnit(
-	prices: {
-		unitSalePricePurchase: string;
-		unitSalePriceIssue: string;
-	},
+	unitSalePriceIssue: string | number,
 	outUnitId: number,
-	ium: Pick<MedOrderIumUnitIds, 'purchaseUnitId' | 'issueUnitId'>
+	ium: Pick<
+		MedOrderIumUnitIds,
+		'purchaseUnitId' | 'issueUnitId' | 'purchaseConversionFactor' | 'issueConversionFactor'
+	>
 ): string {
-	if (outUnitId === ium.issueUnitId) return prices.unitSalePriceIssue;
-	if (outUnitId === ium.purchaseUnitId) return prices.unitSalePricePurchase;
-	return prices.unitSalePricePurchase;
+	const issuePrice = Number(unitSalePriceIssue);
+	if (!Number.isFinite(issuePrice) || issuePrice < 0) return '0.00';
+
+	if (outUnitId === ium.issueUnitId) {
+		return issuePrice.toFixed(2);
+	}
+
+	const pf = Number(ium.purchaseConversionFactor);
+	const itf = Number(ium.issueConversionFactor);
+	if (
+		outUnitId === ium.purchaseUnitId &&
+		pf > 0 &&
+		itf > 0 &&
+		Number.isFinite(pf) &&
+		Number.isFinite(itf)
+	) {
+		return (issuePrice * (pf / itf)).toFixed(2);
+	}
+
+	return '0.00';
 }
 
 /** Converts sale qty in `outUnitId` to purchase-unit qty string. */

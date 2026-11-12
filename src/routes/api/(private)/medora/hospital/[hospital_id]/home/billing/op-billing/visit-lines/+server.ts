@@ -31,8 +31,22 @@ import {
 	normalizeOpBillingHeaderWrite,
 	normalizeOpBillingLineWrite
 } from '$lib/server/medora/money-normalize.server';
+import { patientChargeFieldsForBillingLine } from '$lib/server/medora/inventory/patient-charge-pricing.server';
 
 type PendingDetailRow = PendingBillLineRow;
+
+function inventoryPricingSnapshotForBillLine(r: PendingDetailRow) {
+	if (r.lineSource !== 'medication_order_line') {
+		return {
+			pricingFormulaTemplateId: null,
+			pricingModule: null,
+			pricingBatchId: null,
+			unitSalePriceIssue: null,
+			pricingInputsSnapshot: null
+		};
+	}
+	return patientChargeFieldsForBillingLine(r);
+}
 
 type OpBillingWithAuditStaff = OpBillingSchema & {
 	discountedByStaff?: unknown;
@@ -198,7 +212,7 @@ async function consolidateOpenOpBillings(
  * Serialized per visit (advisory xact lock) so concurrent GET/POST cannot
  * interleave delete+insert and duplicate `op_billing_line` rows.
  */
-async function syncOpenOpBillingForVisit(opts: {
+export async function _syncOpenOpBillingForVisit(opts: {
 	hospitalId: string;
 	visitId: string;
 	branchId: string;
@@ -340,6 +354,7 @@ async function syncOpenOpBillingForVisit(opts: {
 					serviceTaxAmount: r.serviceTaxAmount ?? null,
 					serviceUnit: r.serviceUnit ?? null,
 					lineTotal: computeLineTotal(r),
+					...inventoryPricingSnapshotForBillLine(r),
 					createdAt: opts.nowIso,
 					updatedAt: opts.nowIso,
 					createdBy: opts.userId,
@@ -445,7 +460,7 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	const nowIso = new Date().toISOString();
-	const sync = await syncOpenOpBillingForVisit({
+	const sync = await _syncOpenOpBillingForVisit({
 		hospitalId,
 		visitId,
 		branchId: visitRow.branchId!,
@@ -541,7 +556,7 @@ export const POST: RequestHandler = async (event) => {
 	const isClose = action === 'printed' || action === 'close';
 
 	if (isClose) {
-		const sync = await syncOpenOpBillingForVisit({
+		const sync = await _syncOpenOpBillingForVisit({
 			hospitalId,
 			visitId,
 			branchId: visitRow.branchId!,
@@ -606,7 +621,7 @@ export const POST: RequestHandler = async (event) => {
 		throw error(400, 'Unknown action');
 	}
 
-	const sync = await syncOpenOpBillingForVisit({
+	const sync = await _syncOpenOpBillingForVisit({
 		hospitalId,
 		visitId,
 		branchId: visitRow.branchId!,

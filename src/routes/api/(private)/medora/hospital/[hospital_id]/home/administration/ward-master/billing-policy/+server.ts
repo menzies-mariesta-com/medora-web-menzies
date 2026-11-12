@@ -6,7 +6,6 @@ import {
 	computeAccommodationCharges,
 	postAccommodationLinesToIpBill
 } from '$lib/server/medora/ipd/accommodation-billing.server';
-import { IpdAccommodationBillingMethodEnum } from '$lib/model/enum/db-link';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -55,42 +54,28 @@ export async function PUT(event: RequestEvent) {
 		);
 	}
 
-	const method = Number(body.billingMethod);
-	if (
-		method !== undefined &&
-		Number.isFinite(method) &&
-		![
-			IpdAccommodationBillingMethodEnum.BLOCK_24H,
-			IpdAccommodationBillingMethodEnum.CALENDAR_DAY,
-			IpdAccommodationBillingMethodEnum.PRO_RATA
-		].includes(method)
-	) {
-		throw error(400, 'Invalid billing method');
-	}
-
 	return json(
 		await updateBillingPolicy({
 			hospitalId,
-			billingMethod: Number.isFinite(method) ? method : undefined,
-			graceMinutes:
-				body.graceMinutes !== undefined
-					? Number(body.graceMinutes)
-					: undefined,
-			minimumDays:
-				body.minimumDays !== undefined
-					? body.minimumDays === null || body.minimumDays === ''
+			leastBillDuration:
+				body.leastBillDuration !== undefined
+					? body.leastBillDuration === null ||
+						body.leastBillDuration === ''
 						? null
-						: String(body.minimumDays)
-					: undefined,
-			cutoffTime:
-				body.cutoffTime !== undefined
-					? String(body.cutoffTime)
+						: String(body.leastBillDuration)
 					: undefined,
 			accommodationServiceItemId:
 				body.accommodationServiceItemId !== undefined
 					? body.accommodationServiceItemId === null
 						? null
 						: Number(body.accommodationServiceItemId)
+					: undefined,
+			accommodationBillUnitId:
+				body.accommodationBillUnitId !== undefined
+					? body.accommodationBillUnitId === null ||
+						body.accommodationBillUnitId === ''
+						? null
+						: Number(body.accommodationBillUnitId)
 					: undefined
 		})
 	);

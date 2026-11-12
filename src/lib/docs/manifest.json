@@ -1493,7 +1493,7 @@
       "slug": "billing-bill",
       "path": "/docs/workflows/billing-bill",
       "title": "Bill",
-      "pageId": 810001,
+      "pageId": 800100,
       "moduleId": 8,
       "moduleName": "Billing",
       "moduleSlug": "billing-bill",
@@ -1508,7 +1508,7 @@
       "slug": "billing-ip-billing-advance-deposit",
       "path": "/docs/workflows/billing-ip-billing-advance-deposit",
       "title": "Advance Deposit",
-      "pageId": 810002,
+      "pageId": 800200,
       "moduleId": 8,
       "moduleName": "Billing",
       "moduleSlug": "billing-bill",
@@ -2097,8 +2097,8 @@
       "moduleId": 9,
       "moduleName": "Inventory Setup",
       "moduleSlug": "inventory-setup",
-      "pageUrl": "/medora/home/inventory-setup/pricing-config",
-      "capturePageUrl": "/medora/home/inventory-setup/pricing-config",
+      "pageUrl": "/medora/home/inventory-setup/pricing-configuration/config",
+      "capturePageUrl": "/medora/home/inventory-setup/pricing-configuration/config",
       "sectionTitle": null,
       "subTabTitle": null,
       "parentPageTitle": null,
@@ -2112,8 +2112,8 @@
       "moduleId": 9,
       "moduleName": "Inventory Setup",
       "moduleSlug": "inventory-setup",
-      "pageUrl": "/medora/home/inventory-setup/pricing-formula-templates",
-      "capturePageUrl": "/medora/home/inventory-setup/pricing-formula-templates",
+      "pageUrl": "/medora/home/inventory-setup/pricing-configuration/formula-templates",
+      "capturePageUrl": "/medora/home/inventory-setup/pricing-configuration/formula-templates",
       "sectionTitle": null,
       "subTabTitle": null,
       "parentPageTitle": null,
@@ -3551,13 +3551,13 @@
       "title": "Pricing configuration",
       "href": "/docs/workflows/inventory-setup-pricing-config",
       "category": "Workflow",
-      "keywords": "Inventory Setup /medora/home/inventory-setup/pricing-config"
+      "keywords": "Inventory Setup /medora/home/inventory-setup/pricing-configuration/config"
     },
     {
       "title": "Pricing formula templates",
       "href": "/docs/workflows/inventory-setup-pricing-formula-templates",
       "category": "Workflow",
-      "keywords": "Inventory Setup /medora/home/inventory-setup/pricing-formula-templates"
+      "keywords": "Inventory Setup /medora/home/inventory-setup/pricing-configuration/formula-templates"
     },
     {
       "title": "Reorder level",

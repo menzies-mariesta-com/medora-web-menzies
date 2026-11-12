@@ -4,6 +4,7 @@ import {
 	decimal,
 	index,
 	integer,
+	jsonb,
 	pgTable,
 	serial,
 	text,
@@ -24,7 +25,10 @@ import {
 	staffTable,
 	storeTable
 } from './information-table';
-import { itemBatchTable } from './inventory-transaction-table';
+import {
+	itemBatchTable,
+	invPricingFormulaTemplateTable
+} from './inventory-transaction-table';
 
 const medOrderTimestamps = {
 	createdAt: timestamp('created_at', {
@@ -645,10 +649,37 @@ export const medicationOrderLineTable = pgTable(
 			precision: 14,
 			scale: 2
 		}),
+		/** Formula template revision used for {@link unitSalePrice} / {@link unitSalePriceIssue}. */
+		pricingFormulaTemplateId: integer('pricing_formula_template_id').references(
+			() => invPricingFormulaTemplateTable.id,
+			{ onDelete: 'restrict' }
+		),
+		/** `IS` | `ES` | `DC` at charge time. */
+		pricingModule: varchar('pricing_module', { length: 16 }),
+		/** Primary stock batch used for COST slot at charge time. */
+		pricingBatchId: integer('pricing_batch_id').references(
+			() => itemBatchTable.id,
+			{ onDelete: 'restrict' }
+		),
+		/** Patient charge per issue unit (formula anchor). */
+		unitSalePriceIssue: decimal('unit_sale_price_issue', {
+			precision: 14,
+			scale: 2
+		}),
+		pricingInputsSnapshot: jsonb('pricing_inputs_snapshot'),
+		pricingComputedAt: timestamp('pricing_computed_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
 		lineRemarks: text('line_remarks'),
 		...medOrderTimestamps
 	},
-	(t) => [index('medication_order_line_batch_id_idx').on(t.batchId)]
+	(t) => [
+		index('medication_order_line_batch_id_idx').on(t.batchId),
+		index('medication_order_line_pricing_formula_template_id_idx').on(
+			t.pricingFormulaTemplateId
+		)
+	]
 );
 
 export const medicationOrderLineAllocationTable = pgTable(

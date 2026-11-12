@@ -14,6 +14,7 @@
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideStrikeThrough from '$lib/component/own/library/lucide/LucideStrikeThrough.svelte';
 	import OpBillingReadinessPanel from '$lib/component/own/local/private/medora/billing/OpBillingReadinessPanel.svelte';
+	import BillingBillLineRows from '$lib/component/own/local/private/medora/billing/BillingBillLineRows.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.enum';
 	import {
@@ -30,7 +31,10 @@
 	} from '$lib/model/type/medora/op-billing.type';
 	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
 	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
-	import { buildOpBillingPrintBodyHtml } from '$lib/util/op-billing-print-table.util';
+	import {
+		buildOpBillingPrintBodyHtml,
+		opBillingLineToPrintLine
+	} from '$lib/util/op-billing-print-table.util';
 	import { formatBillingCategorySubCategoryHeading } from '$lib/util/billing-group-heading.util';
 	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { VisitState } from '$lib/state/visit.state.svelte';
@@ -41,9 +45,14 @@
 		closeAllOpenBills,
 		fetchAllOpenBillVisitDetails,
 		printAllOpenBillsCombined,
+		sumPayableOpenBillDetails,
 		type BillingPrintLabels,
 		type OpenBillVisitDetail
 	} from '$lib/tool/billing/billing-open-bills-batch.util.svelte';
+	import {
+		resolveVisitBillTotalsFromLinesResponse,
+		type VisitBillTotals
+	} from '$lib/tool/billing/billing-visit-totals.util';
 
 	let {
 		visitTypeId,
@@ -168,6 +177,7 @@
 	let billingReadiness = $state<OpBillingReadiness | null>(null);
 	let advanceTotal = $state(0);
 	let balanceDuePreview = $state(0);
+	let visitBillTotals = $state<VisitBillTotals | null>(null);
 
 	let isDiscountModalOpen = $state(false);
 	let discountType = $state<BillingDiscountTypeEnum>(
@@ -222,9 +232,42 @@
 	);
 
 	const netTotal = $derived.by(() => {
+		if (visitBillTotals) return visitBillTotals.netTotal;
 		const total = Number(grandTotal) || 0;
 		return Math.max(0, total - discountValue);
 	});
+
+	const linesSubtotalDisplay = $derived(
+		visitBillTotals?.linesSubtotal ?? grandTotal
+	);
+	const advanceCreditDisplay = $derived(
+		visitBillTotals?.advanceCredit ??
+			(isIpBilling
+				? Math.min(advanceTotal, Math.max(0, netTotal))
+				: 0)
+	);
+	const advanceCollectedDisplay = $derived(
+		visitBillTotals?.advanceTotal ?? advanceTotal
+	);
+	const advanceAppliedDisplay = $derived(advanceCreditDisplay);
+	const advanceRefundDisplay = $derived(
+		visitBillTotals?.advanceRefundDue ??
+			Math.max(0, advanceCollectedDisplay - advanceAppliedDisplay)
+	);
+	const payableDisplay = $derived(
+		visitBillTotals?.payableAmount ??
+			(isIpBilling && advanceTotal > 0
+				? balanceDuePreview > 0
+					? balanceDuePreview
+					: Math.max(0, netTotal - advanceCreditDisplay)
+				: netTotal)
+	);
+	const hasDiscountDisplay = $derived(
+		visitBillTotals?.hasDiscount ?? hasDiscount
+	);
+	const discountValueDisplay = $derived(
+		visitBillTotals?.discountValue ?? discountValue
+	);
 
 	const discountPreviewNetTotal = $derived.by(() => {
 		const total = Number(discountPreviewBaseTotal) || 0;
@@ -392,6 +435,7 @@
 			billingReadiness = null;
 			advanceTotal = 0;
 			balanceDuePreview = 0;
+			visitBillTotals = null;
 			loadError = '';
 			return;
 		}
@@ -407,6 +451,7 @@
 			billingReadiness = null;
 			advanceTotal = 0;
 			balanceDuePreview = 0;
+			visitBillTotals = null;
 			loadError = '';
 			return;
 		}
@@ -427,6 +472,7 @@
 				billingReadiness = null;
 				advanceTotal = 0;
 				balanceDuePreview = 0;
+				visitBillTotals = null;
 				loadError = tr(
 					bm('load_failed'),
 					'Failed to load billing lines.'
@@ -445,16 +491,20 @@
 			visitSummary = data.visit ?? null;
 			billingMeta = data.billing ?? null;
 			billingReadiness = data.readiness ?? null;
+			const grouped = groupLines(lines);
+			groups = grouped;
+			visitBillTotals = resolveVisitBillTotalsFromLinesResponse(
+				data,
+				visitTypeId ?? null
+			);
+			grandTotal = visitBillTotals.linesSubtotal;
 			if (isIpBilling) {
-				advanceTotal = Number(data.advanceTotal ?? 0) || 0;
-				balanceDuePreview = Number(data.balanceDue ?? 0) || 0;
+				advanceTotal = visitBillTotals.advanceTotal;
+				balanceDuePreview = visitBillTotals.balanceDue;
 			} else {
 				advanceTotal = 0;
 				balanceDuePreview = 0;
 			}
-			const grouped = groupLines(lines);
-			groups = grouped;
-			grandTotal = grouped.reduce((sum, g) => sum + g.subtotal, 0);
 
 			const b = data.billing ?? null;
 			if (
@@ -488,6 +538,7 @@
 			billingReadiness = null;
 			advanceTotal = 0;
 			balanceDuePreview = 0;
+			visitBillTotals = null;
 			loadError = tr(
 				bm('load_failed'),
 				'Failed to load billing lines.'
@@ -637,6 +688,10 @@
 		discountValue: number;
 		netTotal: number;
 		hasDiscount: boolean;
+		advanceDepositCollected?: number;
+		advanceAppliedToBill?: number;
+		advanceRefundDue?: number;
+		balanceDue?: number;
 	}): Promise<void> {
 		if (!opts.groups.length || !hospitalId) return;
 
@@ -644,20 +699,23 @@
 		const bodyHtml = buildOpBillingPrintBodyHtml({
 			groups: opts.groups.map((g) => ({
 				subCategoryName: g.groupHeading,
-				lines: g.lines.map((line) => ({
-					serviceName: line.serviceName,
-					orderNo: line.orderNo,
-					lineTotal: lineTotal(line)
-				})),
+				lines: g.lines.map((line) => opBillingLineToPrintLine(line)),
 				subtotal: g.subtotal
 			})),
 			grandTotal: opts.grandTotal,
 			discountValue: opts.discountValue,
 			netTotal: opts.netTotal,
 			hasDiscount: opts.hasDiscount,
+			advanceDepositCollected: opts.advanceDepositCollected,
+			advanceAppliedToBill: opts.advanceAppliedToBill,
+			advanceRefundDue: opts.advanceRefundDue,
+			balanceDue: opts.balanceDue,
 			labels: {
 				service: tr(bm('print_service'), 'Service'),
 				order: tr(bm('print_order'), 'Order'),
+				qty: tr(bm('col_qty'), 'Qty'),
+				unit: tr(bm('col_unit'), 'Unit'),
+				unitPrice: tr(bm('col_unit_price'), 'Unit price'),
 				amount: tr(bm('print_amount'), 'Amount'),
 				subtotal: tr(bm('print_subtotal'), 'Subtotal'),
 				grandTotal: tr(
@@ -665,7 +723,11 @@
 					'Grand total'
 				),
 				discount: tr(bm('print_discount'), 'Discount'),
-				netTotal: tr(bm('print_net_total'), 'Net total')
+				netTotal: tr(bm('print_net_total'), 'Net total'),
+				advanceDeposit: 'Advance deposit (collected)',
+				appliedToBill: 'Applied to bill',
+				refundDue: 'Refund due',
+				balanceDue: 'Balance due'
 			},
 			formatMoney: formatMoneyAmount
 		});
@@ -725,10 +787,26 @@
 		void printBill({
 			groups,
 			visitSummary,
-			grandTotal,
-			discountValue,
+			grandTotal: linesSubtotalDisplay,
+			discountValue: discountValueDisplay,
 			netTotal,
-			hasDiscount
+			hasDiscount: hasDiscountDisplay,
+			advanceDepositCollected:
+				isIpBilling && advanceCollectedDisplay > 0
+					? advanceCollectedDisplay
+					: undefined,
+			advanceAppliedToBill:
+				isIpBilling && advanceCollectedDisplay > 0
+					? advanceAppliedDisplay
+					: undefined,
+			advanceRefundDue:
+				isIpBilling && advanceRefundDisplay > 0
+					? advanceRefundDisplay
+					: undefined,
+			balanceDue:
+				isIpBilling && advanceCollectedDisplay > 0
+					? payableDisplay
+					: undefined
 		});
 	}
 
@@ -800,6 +878,8 @@
 					linesSubtotal: string | number | null;
 					discountAmount: string | number | null;
 					totalAmount: string | number | null;
+					advanceAppliedAmount?: string | number | null;
+					amountPaid?: string | number | null;
 					createdAt?: string | null;
 					printedAt?: string | null;
 					visit?: {
@@ -848,6 +928,46 @@
 					Math.min(linesSubtotal, Math.max(0, discountAmt))
 			);
 			const hasDisc = discountAmt > 0;
+			let advanceCollected = 0;
+			let advanceApplied = 0;
+			let historyRefundDue = 0;
+			let historyBalanceDue: number | undefined;
+
+			const historyVisitUuid =
+				bill.visit?.id != null
+					? parseUuid(String(bill.visit.id)) ?? ''
+					: parseUuid(visitId) ?? '';
+
+			if (isIpBilling && historyVisitUuid) {
+				const linesRes = await fetch(
+					`${billApiBase}/visit-lines?visitId=${historyVisitUuid}`
+				);
+				if (linesRes.ok) {
+					const linesPayload =
+						(await linesRes.json()) as OpBillingVisitLinesGetResponse;
+					const totals = resolveVisitBillTotalsFromLinesResponse(
+						linesPayload,
+						VisitTypeEnum.IPD
+					);
+					advanceCollected = totals.advanceTotal;
+					advanceApplied = totals.advanceCredit;
+					historyRefundDue = totals.advanceRefundDue;
+					historyBalanceDue = totals.balanceDue;
+				}
+			}
+
+			if (isIpBilling && advanceCollected <= 0) {
+				advanceApplied =
+					bill.advanceAppliedAmount != null
+						? Number(bill.advanceAppliedAmount) || 0
+						: 0;
+				historyBalanceDue =
+					advanceApplied > 0
+						? bill.amountPaid != null
+							? Number(bill.amountPaid) || 0
+							: Math.max(0, net - advanceApplied)
+						: undefined;
+			}
 
 			const v: VisitSummary = {
 				id: bill.visit?.id ?? (parseUuid(visitId) ?? ''),
@@ -873,7 +993,20 @@
 					Math.max(0, discountAmt)
 				),
 				netTotal: net,
-				hasDiscount: hasDisc
+				hasDiscount: hasDisc,
+				advanceDepositCollected:
+					isIpBilling && advanceCollected > 0
+						? advanceCollected
+						: undefined,
+				advanceAppliedToBill:
+					isIpBilling && advanceCollected > 0
+						? advanceApplied
+						: undefined,
+				advanceRefundDue:
+					isIpBilling && historyRefundDue > 0
+						? historyRefundDue
+						: undefined,
+				balanceDue: historyBalanceDue
 			});
 		} catch (err) {
 			console.error(err);
@@ -910,6 +1043,9 @@
 		return {
 			service: tr(bm('print_service'), 'Service'),
 			order: tr(bm('print_order'), 'Order'),
+			qty: tr(bm('col_qty'), 'Qty'),
+			unit: tr(bm('col_unit'), 'Unit'),
+			unitPrice: tr(bm('col_unit_price'), 'Unit price'),
 			amount: tr(bm('print_amount'), 'Amount'),
 			subtotal: tr(bm('print_subtotal'), 'Subtotal'),
 			grandTotal: tr(bm('print_grand_total'), 'Grand total'),
@@ -926,7 +1062,11 @@
 			generated: tr(bm('print_generated'), 'Printed'),
 			thankYou: tr(bm('print_thank_you'), 'Thank you for choosing us.'),
 			opTitle: tr(bm('title'), 'OP Billing'),
-			ipTitle: 'IP Billing'
+			ipTitle: 'IP Billing',
+			advanceDeposit: 'Advance deposit (collected)',
+			appliedToBill: 'Applied to bill',
+			refundDue: 'Refund due',
+			balanceDue: 'Balance due'
 		};
 	}
 
@@ -940,11 +1080,7 @@
 	}
 
 	function syncGrandTotalFromDetails() {
-		let sum = 0;
-		for (const d of openBillDetails) {
-			if (Number.isFinite(d.netTotal)) sum += d.netTotal;
-		}
-		openBillsGrandTotal = sum.toFixed(2);
+		openBillsGrandTotal = sumPayableOpenBillDetails(openBillDetails);
 	}
 
 	async function reloadOpenBillDetails() {
@@ -1163,11 +1299,6 @@
 					embedded
 					{hospitalId}
 					details={openBillDetails}
-					grandTotalLabel={scopeMsg(
-						'billing_scope_grand_total',
-						'Total (all visits)'
-					)}
-					{openBillsGrandTotal}
 					currentVisitId={visitId ?? ''}
 					onSelectVisit={billThisVisitFromAll}
 					onOpenDiscount={openDiscountForVisit}
@@ -1205,11 +1336,11 @@
 						<span>{tr(bm('total_bill'), 'Total bill')}</span>
 						<div class="flex items-center gap-2">
 							<div class="text-right">
-								{#if hasDiscount}
+								{#if hasDiscountDisplay}
 									<div
 										class="text-xs font-medium text-base-content/60 line-through"
 									>
-										{formatMoneyAmount(grandTotal)}
+										{formatMoneyAmount(linesSubtotalDisplay)}
 									</div>
 									<div
 										class="font-mono text-base-content tabular-nums"
@@ -1218,7 +1349,7 @@
 									</div>
 								{:else}
 									<div class="font-mono tabular-nums">
-										{formatMoneyAmount(grandTotal)}
+										{formatMoneyAmount(linesSubtotalDisplay)}
 									</div>
 								{/if}
 							</div>
@@ -1243,25 +1374,49 @@
 						</div>
 					</div>
 
-					{#if isIpBilling && advanceTotal > 0}
+					{#if isIpBilling && advanceCollectedDisplay > 0}
 						<div
 							class="flex items-center justify-between gap-3 text-sm"
 						>
-							<span class="text-base-content/70">Advance deposit</span>
+							<span class="text-base-content/70"
+								>Advance deposit (collected)</span
+							>
 							<span class="font-mono tabular-nums"
-								>− {formatMoneyAmount(advanceTotal)}</span
+								>{formatMoneyAmount(
+									advanceCollectedDisplay
+								)}</span
 							>
 						</div>
+						<div
+							class="flex items-center justify-between gap-3 text-sm"
+						>
+							<span class="text-base-content/70"
+								>Applied to bill</span
+							>
+							<span class="font-mono tabular-nums"
+								>− {formatMoneyAmount(
+									advanceAppliedDisplay
+								)}</span
+							>
+						</div>
+						{#if advanceRefundDisplay > 0}
+							<div
+								class="flex items-center justify-between gap-3 text-sm font-semibold text-success"
+							>
+								<span>Refund due</span>
+								<span class="font-mono tabular-nums"
+									>{formatMoneyAmount(
+										advanceRefundDisplay
+									)}</span
+								>
+							</div>
+						{/if}
 						<div
 							class="flex items-center justify-between gap-3 text-sm font-semibold"
 						>
 							<span>Balance due</span>
 							<span class="font-mono tabular-nums"
-								>{formatMoneyAmount(
-									visitLevelDiscountLocked
-										? balanceDuePreview
-										: Math.max(0, netTotal - advanceTotal)
-								)}</span
+								>{formatMoneyAmount(payableDisplay)}</span
 							>
 						</div>
 					{/if}
@@ -1305,37 +1460,32 @@
 									</span>
 								</div>
 								<div class="collapse-content">
-									<ul class="space-y-1 text-sm">
-										{#each group.lines as line (opBillingLineRowKey(line))}
-											<li
-												class="rounded-box flex items-center justify-between gap-3 bg-base-200/40 px-3 py-1.5"
-											>
-												<div class="min-w-0">
-													<p class="truncate font-medium">
-														{line.serviceName ??
-															tr(
-																bm('service_fallback'),
-																'Service'
-															)}
-													</p>
-													<p class="text-xs text-base-content/60">
-														{#if line.orderNo}
-															{tr(
-																bm('order_prefix'),
-																'Order'
-															)}:
-															{line.orderNo}
-														{/if}
-													</p>
-												</div>
-												<div
-													class="text-right font-mono text-sm tabular-nums"
-												>
-													{formatMoneyAmount(lineTotal(line))}
-												</div>
-											</li>
-										{/each}
-									</ul>
+									<BillingBillLineRows
+										lines={group.lines}
+										lineKey={opBillingLineRowKey}
+										serviceFallback={tr(
+											bm('service_fallback'),
+											'Service'
+										)}
+										orderPrefix={tr(
+											bm('order_prefix'),
+											'Order'
+										)}
+										colService={tr(
+											bm('print_service'),
+											'Service'
+										)}
+										colQty={tr(bm('col_qty'), 'Qty')}
+										colUnit={tr(bm('col_unit'), 'Unit')}
+										colUnitPrice={tr(
+											bm('col_unit_price'),
+											'Unit price'
+										)}
+										colAmount={tr(
+											bm('print_amount'),
+											'Amount'
+										)}
+									/>
 								</div>
 							</div>
 						{/each}
