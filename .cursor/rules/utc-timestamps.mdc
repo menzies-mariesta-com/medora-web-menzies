@@ -1,0 +1,21 @@
+---
+description: Store every database instant as UTC
+alwaysApply: true
+---
+
+# UTC instants
+
+Every instant written to Postgres is **UTC**. Columns are `timestamp(..., { withTimezone: true, mode: 'string' })` (`timestamptz`). `sql\`now()\`` is UTC.
+
+## Write
+
+- Use `toUtcIsoString()` from `$lib/util/utc-instant.util` or `new Date().toISOString()`.
+- A `datetime-local` value is local. Convert with `new Date(localValue).toISOString()` before the API. Do not store the wall-clock string.
+- Date-only fields (`YYYY-MM-DD`) are calendar dates, not instants.
+
+## Read
+
+Drivers often return `2026-11-03 09:25:00` with **no offset**. `new Date(that)` is local and adds +06:30 in Myanmar.
+
+- Duration and comparisons use `parseUtcInstant()` from `$lib/util/utc-instant.util`.
+- UI display may use `toLocaleString`. Do not write that string back to the database.

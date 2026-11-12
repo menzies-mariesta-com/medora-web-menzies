@@ -33,6 +33,7 @@ import {
 } from './inventory-scope.server';
 import type { InvApprovalModule } from './approval-config.server';
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/medora/administration/item-master.server';
+import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
 import { resolveItemUnitMasterForItemPurchaseUnit } from './item-unit-inventory.server';
 
 export async function listPurchaseOrders(
@@ -129,6 +130,7 @@ export async function listPurchaseOrders(
 	const uCreated = alias(table.userTable, 'po_created_by_user');
 	const uUpdated = alias(table.userTable, 'po_updated_by_user');
 	const uApproved = alias(table.userTable, 'po_approved_by_user');
+	const prFromStore = alias(table.storeTable, 'po_pr_from_store');
 
 	const [data, cnt] = await Promise.all([
 		ensureDb()
@@ -137,6 +139,7 @@ export async function listPurchaseOrders(
 				statusName: table.statusTaggingTable.name,
 				supplierName: table.supplierTable.name,
 				storeName: table.storeTable.storeName,
+				prFromStoreName: prFromStore.storeName,
 				createdByName: uCreated.name,
 				updatedByName: uUpdated.name,
 				approvedByName: uApproved.name
@@ -158,6 +161,20 @@ export async function listPurchaseOrders(
 				eq(
 					table.purchaseOrderTable.supplierId,
 					table.supplierTable.id
+				)
+			)
+			.leftJoin(
+				table.purchaseRequisitionTable,
+				eq(
+					table.purchaseOrderTable.prId,
+					table.purchaseRequisitionTable.id
+				)
+			)
+			.leftJoin(
+				prFromStore,
+				eq(
+					table.purchaseRequisitionTable.fromStoreId,
+					prFromStore.id
 				)
 			)
 			.leftJoin(
@@ -226,6 +243,7 @@ export async function listPurchaseOrders(
 			statusName: r.statusName,
 			supplierName: r.supplierName,
 			storeName: r.storeName,
+			prFromStoreName: r.prFromStoreName ?? null,
 			createdByName: r.createdByName ?? null,
 			updatedByName: r.updatedByName ?? null,
 			approvedByName: r.approvedByName ?? null,
@@ -548,7 +566,7 @@ export async function createPurchaseOrder(
 			if (qty > rem)
 				throw error(400, 'Quantity exceeds remaining on PR line');
 
-			const lineTotal = (qty * price).toFixed(2);
+			const lineTotal = toDbMoney2dp(qty * price);
 			total += qty * price;
 
 			lineRows.push({
@@ -573,7 +591,7 @@ export async function createPurchaseOrder(
 				supplierId: input.supplierId,
 				statusTaggingId: InvPoStatusTaggingEnum.PENDING,
 				currentLevel: 1,
-				totalAmount: total.toFixed(2),
+				totalAmount: toDbMoney2dp(total),
 				createdBy: userId,
 				updatedBy: userId
 			})
@@ -733,7 +751,7 @@ export async function createPurchaseOrderDirect(
 			if (!Number.isFinite(price) || price <= 0) {
 				throw error(400, 'Invalid price');
 			}
-			const lineTotal = (qty * price).toFixed(2);
+			const lineTotal = toDbMoney2dp(qty * price);
 			total += qty * price;
 			lineRows.push({
 				prLineId: null,
@@ -757,7 +775,7 @@ export async function createPurchaseOrderDirect(
 				supplierId: input.supplierId,
 				statusTaggingId: InvPoStatusTaggingEnum.PENDING,
 				currentLevel: 1,
-				totalAmount: total.toFixed(2),
+				totalAmount: toDbMoney2dp(total),
 				createdBy: userId,
 				updatedBy: userId
 			})
@@ -857,7 +875,7 @@ export async function approvePurchaseOrder(
 					throw error(400, 'Invalid quantity');
 				if (!Number.isFinite(price) || price < 0)
 					throw error(400, 'Invalid price');
-				const lineTotal = (qty * price).toFixed(2);
+				const lineTotal = toDbMoney2dp(qty * price);
 				total += qty * price;
 				await tx
 					.update(table.purchaseOrderLineTable)
@@ -872,7 +890,7 @@ export async function approvePurchaseOrder(
 			await tx
 				.update(table.purchaseOrderTable)
 				.set({
-					totalAmount: total.toFixed(2),
+					totalAmount: toDbMoney2dp(total),
 					updatedBy: userId
 				})
 				.where(eq(table.purchaseOrderTable.id, input.poId));
@@ -1083,7 +1101,7 @@ export async function closePurchaseOrderLineRemaining(
 		if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
 			throw error(400, 'Invalid unit price');
 		}
-		const newLineTotal = (received * unitPrice).toFixed(2);
+		const newLineTotal = toDbMoney2dp(received * unitPrice);
 
 		await tx
 			.update(table.purchaseOrderLineTable)
@@ -1127,9 +1145,9 @@ export async function closePurchaseOrderLineRemaining(
 				)
 			);
 
-		const nextTotal = poLines
-			.reduce((s, r) => s + (Number(r.lineTotal) || 0), 0)
-			.toFixed(2);
+		const nextTotal = toDbMoney2dp(
+			poLines.reduce((s, r) => s + (Number(r.lineTotal) || 0), 0)
+		);
 
 		const allDone = poLines.every(
 			(r) => Number(r.received) >= Number(r.qty)

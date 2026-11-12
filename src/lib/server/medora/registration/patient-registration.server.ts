@@ -142,9 +142,16 @@ export async function getNextPatientCode(
 		}
 	}
 
+	const selectedBranchRaw =
+		event.cookies.get('heka_selected_branch_id') ?? null;
+	const branchId =
+		selectedBranchRaw && selectedBranchRaw !== '__all__'
+			? selectedBranchRaw
+			: null;
+
 	return generatePrefix({
 		hospitalId,
-		branchId: null,
+		branchId,
 		financialYearId: financialYear.id,
 		prefixKey,
 		context: {}

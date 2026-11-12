@@ -11,27 +11,54 @@ function hospitalIdFrom(event: RequestEvent): string {
 export async function GET(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
-	const admissionId = Number(
-		event.url.searchParams.get('admissionId') ?? ''
-	);
-	const visitId = parseUuid(event.url.searchParams.get('visitId'));
-	if (
-		(!Number.isFinite(admissionId) || admissionId <= 0) &&
-		(!visitId)
-	) {
+
+	const admissionRaw = event.url.searchParams.get('admissionId');
+	const visitRaw = event.url.searchParams.get('visitId');
+	const search = event.url.searchParams.get('search') ?? undefined;
+	const admissionId =
+		admissionRaw != null && admissionRaw !== ''
+			? Number(admissionRaw)
+			: undefined;
+	const visitId =
+		visitRaw != null && visitRaw !== ''
+			? (parseUuid(visitRaw) ?? undefined)
+			: undefined;
+
+	const hasAdmission =
+		typeof admissionId === 'number' &&
+		Number.isFinite(admissionId) &&
+		admissionId > 0;
+	const hasVisit = typeof visitId === 'string' && Boolean(visitId);
+
+	if (!hasAdmission && !hasVisit) {
 		throw error(400, 'visitId or admissionId is required');
 	}
-	return json(
-		await deposit.listIpAdvanceDeposits({
+
+	const rows = await deposit.listIpAdvanceDeposits({
+		hospitalId,
+		admissionId: hasAdmission ? admissionId : undefined,
+		visitId: hasVisit ? visitId : undefined,
+		search
+	});
+
+	let resolvedAdmissionId: number | null = hasAdmission
+		? (admissionId as number)
+		: null;
+	if (resolvedAdmissionId == null && hasVisit) {
+		resolvedAdmissionId = await deposit.resolveAdmissionIdForVisit({
 			hospitalId,
-			admissionId:
-				Number.isFinite(admissionId) && admissionId > 0
-					? admissionId
-					: undefined,
-			visitId:
-				Boolean(visitId) ? visitId : undefined
-		})
-	);
+			visitId: visitId as string
+		});
+	}
+
+	return json({
+		items: rows,
+		admissionId: resolvedAdmissionId,
+		totalAmount: rows.reduce(
+			(sum, r) => sum + (Number(r.amount) || 0),
+			0
+		)
+	});
 }
 
 export async function POST(event: RequestEvent) {

@@ -13,6 +13,7 @@ export type AdtBedStatusRow = {
 	/** When occupied — active admission if any */
 	admissionId?: number | null;
 	visitId?: string | null;
+	visitNo?: string | null;
 	patientName?: string | null;
 };
 

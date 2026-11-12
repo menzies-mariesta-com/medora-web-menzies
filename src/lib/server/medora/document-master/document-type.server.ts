@@ -14,6 +14,7 @@ import type {
 } from '$lib/model/type/pagination.type';
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 function requireUser(event: RequestEvent): void {
 	if (!event.locals?.user) throw error(401, 'Unauthorized');
@@ -46,18 +47,10 @@ export async function getDocumentTypesPaginated(
 
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
-	const notDeletedFilter = ne(
+	const whereExpr = paginatedEntityStatusEq(
 		table.documentTypeTable.statusId,
-		StatusEnum.DELETED
+		params?.statusId
 	);
-	const statusFilter =
-		params?.statusId != null
-			? eq(table.documentTypeTable.statusId, params.statusId)
-			: null;
-	const whereExpr =
-		statusFilter != null
-			? and(notDeletedFilter, statusFilter)
-			: notDeletedFilter;
 
 	const [data, countResult] = await Promise.all([
 		ensureDb()

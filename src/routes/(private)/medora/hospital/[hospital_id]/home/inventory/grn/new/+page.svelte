@@ -156,6 +156,65 @@
 	let invoiceNo = $state('');
 	let invoiceDate = $state('');
 	let invoiceAmount = $state('');
+	let invoiceAmountTouched = $state(false);
+
+	const computedInvoiceAmount = $derived.by(() => {
+		const lines =
+			grnFormMode === 'fromPo' ? lineForms : directLines;
+		let subtotal = 0;
+		let lineDiscountTotal = 0;
+		let lineTaxTotal = 0;
+		for (const l of lines as any[]) {
+			const qty = Number(l.purchasedQty ?? l.quantity ?? 0) || 0;
+			const price = Number(l.purchasePrice ?? 0) || 0;
+			const lineSub = qty * price;
+			subtotal += lineSub;
+			const discAmt = Number(l.discountAmount ?? 0) || 0;
+			const discPct = Number(l.discountPercent ?? 0) || 0;
+			const taxAmt = Number(l.taxAmount ?? 0) || 0;
+			const taxPct = Number(l.taxPercent ?? 0) || 0;
+			const lineDisc =
+				discAmt > 0 ? discAmt : lineSub * (discPct / 100);
+			const afterLineDisc = Math.max(0, lineSub - lineDisc);
+			const lineTax =
+				taxAmt > 0 ? taxAmt : afterLineDisc * (taxPct / 100);
+			lineDiscountTotal += lineDisc;
+			lineTaxTotal += lineTax;
+		}
+		const afterLineDiscSubtotal = Math.max(
+			0,
+			subtotal - lineDiscountTotal
+		);
+		const invDiscAmt = Number(invoiceDiscountAmount ?? 0) || 0;
+		const invDiscPct = Number(invoiceDiscountPercent ?? 0) || 0;
+		const invTaxAmt = Number(invoiceTaxAmount ?? 0) || 0;
+		const invTaxPct = Number(invoiceTaxPercent ?? 0) || 0;
+		const invoiceDiscount =
+			invDiscAmt > 0
+				? invDiscAmt
+				: afterLineDiscSubtotal * (invDiscPct / 100);
+		const invoiceTaxBase = Math.max(
+			0,
+			afterLineDiscSubtotal - invoiceDiscount
+		);
+		const invoiceTax =
+			invTaxAmt > 0
+				? invTaxAmt
+				: invoiceTaxBase * (invTaxPct / 100);
+		const total =
+			subtotal -
+			lineDiscountTotal +
+			lineTaxTotal -
+			invoiceDiscount +
+			invoiceTax;
+		return (Number.isFinite(total) ? total : 0).toFixed(2);
+	});
+
+	$effect(() => {
+		if (!invoiceAmountTouched) {
+			invoiceAmount = computedInvoiceAmount;
+		}
+	});
 	let invoiceDiscountAmount = $state('0');
 	let invoiceDiscountPercent = $state('0');
 	let invoiceTaxAmount = $state('0');
@@ -1086,6 +1145,7 @@
 			invoiceNo = '';
 			invoiceDate = '';
 			invoiceAmount = '';
+			invoiceAmountTouched = false;
 			resetInvoiceCharges();
 			invoicePhotoUrl = null;
 			receivedByUserId = layoutSessionUser.id;
@@ -1218,6 +1278,7 @@
 			invoiceNo = '';
 			invoiceDate = '';
 			invoiceAmount = '';
+			invoiceAmountTouched = false;
 			resetInvoiceCharges();
 			invoicePhotoUrl = null;
 			receivedByUserId = layoutSessionUser.id;
@@ -1399,6 +1460,7 @@
 							step="0.01"
 							inputPlaceholderText="0.00"
 							bind:value={invoiceAmount}
+							oninput={() => (invoiceAmountTouched = true)}
 						/>
 					</GrnFormFieldRow>
 

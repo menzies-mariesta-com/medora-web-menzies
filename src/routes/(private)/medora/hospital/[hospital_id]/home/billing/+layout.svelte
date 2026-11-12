@@ -4,13 +4,14 @@
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import LVisitInfoBar from '$lib/component/own/local/private/medora/visit/LVisitInfoBar.svelte';
 	import { untrack } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	let { children } = $props();
 
 	const routerUtil = new RouterUtil();
 	const hospitalId = $derived(page.params.hospital_id);
+	const isEmbed = $derived(page.url.searchParams.get('embed') === '1');
 
-	// Keep VisitState <-> URL (?visitId=) in sync, same as EMR modules.
 	$effect(() => {
 		const urlVisitId = page.url.searchParams.get('visitId') ?? '';
 		if (
@@ -21,7 +22,7 @@
 		} else if (!urlVisitId && VisitState.visitId) {
 			const vid = VisitState.visitId;
 			untrack(() => {
-				const search = new URLSearchParams(page.url.search);
+				const search = new SvelteURLSearchParams(page.url.search);
 				search.set('visitId', vid);
 				const base = page.url.pathname;
 				const url = `${base}?${search.toString()}`;
@@ -37,7 +38,7 @@
 		patientName: string;
 	}) {
 		VisitState.select(data);
-		const search = new URLSearchParams(page.url.search);
+		const search = new SvelteURLSearchParams(page.url.search);
 		search.set('visitId', String(data.visitId));
 		const base = page.url.pathname;
 		const url =
@@ -49,7 +50,7 @@
 
 	function handleVisitReset() {
 		VisitState.reset();
-		const search = new URLSearchParams(page.url.search);
+		const search = new SvelteURLSearchParams(page.url.search);
 		search.delete('visitId');
 		const base = page.url.pathname;
 		const url =
@@ -64,10 +65,11 @@
 	<LVisitInfoBar
 		visitId={selectedVisitId}
 		{hospitalId}
+		listScope="hospital"
 		onVisitSelected={handleVisitSelected}
 		onVisitReset={handleVisitReset}
 	/>
-	<div class="billing-content">
+	<div class="billing-content" class:billing-content-embed={isEmbed}>
 		{@render children()}
 	</div>
 </div>
@@ -83,6 +85,9 @@
 		display: block;
 		flex: 1;
 		min-height: 0;
+		padding: 0;
+	}
+	.billing-content-embed {
 		padding: 0;
 	}
 </style>

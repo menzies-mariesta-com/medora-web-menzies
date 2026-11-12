@@ -17,7 +17,7 @@ Phase 1 ships a versioned HTML print catalog in code under `src/lib/server/medor
 
 ```bash
 pnpm run verify-document-catalog
-pnpm run db:seed:information   # runs catalog sync after legacy document seeds
+pnpm run db:seed:init:information   # runs catalog sync after legacy document seeds
 ```
 
 See `docs/document-catalog-qa-checklist.md` for manual print QA.

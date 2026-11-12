@@ -16,6 +16,7 @@ import {
 	ITEM_MASTER_CATEGORY_IDS,
 	isItemMasterCategoryId
 } from '$lib/model/enum/item-master-category.enum';
+import { requireMoneyDecimal2dp } from '$lib/server/medora/money-field.server';
 import {
 	normalizePagination,
 	type PaginatedResult,
@@ -32,6 +33,7 @@ import {
 	ne
 } from 'drizzle-orm';
 import { getPharmacyGenericById } from '$lib/server/medora/administration/pharmacy-generic.server';
+import { activeEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import { alias } from 'drizzle-orm/pg-core';
 import { StringUtil } from '$lib/util/string.util.svelte';
 
@@ -67,11 +69,14 @@ export function parseItemMarkupPercent(
 	raw: string | number | null | undefined
 ): string {
 	if (raw == null || raw === '') return '0.00';
-	const n = Number(raw);
-	if (!Number.isFinite(n) || n < 0 || n > 999) {
+	const fixed = requireMoneyDecimal2dp(raw, 'Item markup', {
+		allowNegative: false
+	});
+	const n = Number(fixed);
+	if (n > 999) {
 		throw new Error('Item markup must be between 0 and 999.');
 	}
-	return n.toFixed(2);
+	return fixed;
 }
 
 function hospitalItemScope(hospitalId: string) {
@@ -110,7 +115,7 @@ export async function getItemMasterCategories() {
 				inArray(table.categoryTable.id, [
 					...ITEM_MASTER_CATEGORY_IDS
 				]),
-				ne(table.categoryTable.statusId, StatusEnum.DELETED)
+				activeEntityStatusEq(table.categoryTable.statusId)
 			)
 		)
 		.orderBy(asc(table.categoryTable.categoryName));
@@ -122,19 +127,19 @@ export async function getUnitTypesForItemMaster(): Promise<
 	return ensureDb()
 		.select()
 		.from(table.unitTypeTable)
-		.where(ne(table.unitTypeTable.statusId, StatusEnum.DELETED))
+		.where(activeEntityStatusEq(table.unitTypeTable.statusId))
 		.orderBy(asc(table.unitTypeTable.name));
 }
 
 export async function getUnitsForItemMaster(params?: {
 	unitTypeId?: number | null;
 }): Promise<UnitSchema[]> {
-	const notDeleted = ne(table.unitTable.statusId, StatusEnum.DELETED);
+	const activeOnly = activeEntityStatusEq(table.unitTable.statusId);
 	const typeId = params?.unitTypeId;
 	const whereExpr =
 		typeId != null && Number.isFinite(typeId)
-			? and(notDeleted, eq(table.unitTable.unitTypeId, typeId))
-			: notDeleted;
+			? and(activeOnly, eq(table.unitTable.unitTypeId, typeId))
+			: activeOnly;
 	return ensureDb()
 		.select()
 		.from(table.unitTable)
@@ -342,9 +347,9 @@ export async function listItemUnitMastersForItemMaster(
 		.where(
 			and(
 				eq(table.itemUnitMasterTable.hospitalId, hospitalId),
-				ne(table.itemUnitMasterTable.statusId, StatusEnum.DELETED),
-				ne(purchaseUnitAlias.statusId, StatusEnum.DELETED),
-				ne(issueUnitAlias.statusId, StatusEnum.DELETED)
+				activeEntityStatusEq(table.itemUnitMasterTable.statusId),
+				activeEntityStatusEq(purchaseUnitAlias.statusId),
+				activeEntityStatusEq(issueUnitAlias.statusId)
 			)
 		)
 		.orderBy(asc(purchaseUnitAlias.name), asc(issueUnitAlias.name));

@@ -1,6 +1,7 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as admission from '$lib/server/medora/ipd/admission.server';
+import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -66,11 +67,9 @@ export async function POST(event: RequestEvent) {
 			wardIdRaw != null && wardIdRaw !== ''
 				? Number(wardIdRaw)
 				: undefined;
-		const sourceRaw = body.sourceOpdVisitId;
-		const sourceOpdVisitId =
-			sourceRaw != null && sourceRaw !== ''
-				? Number(sourceRaw)
-				: null;
+		const sourceRaw =
+			body.sourceVisitId ?? body.sourceOpdVisitId ?? null;
+		const sourceVisitId = parseUuid(sourceRaw);
 		const orderRaw = body.admissionOrderId;
 		const admissionOrderId =
 			orderRaw != null && orderRaw !== '' ? Number(orderRaw) : null;
@@ -87,12 +86,7 @@ export async function POST(event: RequestEvent) {
 				wardId: Number.isFinite(wardId as number) ? wardId : undefined,
 				admittingDoctorId: body.admittingDoctorId ?? null,
 				reasonNotes: body.reasonNotes ?? null,
-				sourceOpdVisitId:
-					sourceOpdVisitId != null &&
-					Boolean(sourceOpdVisitId) &&
-					sourceOpdVisitId > 0
-						? sourceOpdVisitId
-						: null,
+				sourceVisitId,
 				admissionOrderId:
 					admissionOrderId != null &&
 					Number.isFinite(admissionOrderId) &&
@@ -108,7 +102,7 @@ export async function POST(event: RequestEvent) {
 		const admissionId = Number(body.admissionId);
 		if (!Number.isFinite(admissionId) || admissionId <= 0)
 			throw error(400, 'admissionId is required');
-		await admission.dischargeAdmission({
+		const discharged = await admission.dischargeAdmission({
 			hospitalId,
 			admissionId
 		});

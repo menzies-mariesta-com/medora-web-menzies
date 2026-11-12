@@ -11,7 +11,7 @@
 	import { erBedStatusLabel } from '$lib/tool/medora/er-bed-status-label.util';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import type { ErBedStatusBoardRow } from '$lib/model/type/medora/er/er.type';
-	import type { ErWardRow } from '$lib/model/type/medora/er/er.type';
+	import type { WardRow } from '$lib/model/type/medora/ipd/ipd.type';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -33,12 +33,12 @@
 	const msg = m as Record<string, (inputs?: object) => string>;
 	const wardApi = $derived(
 		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/administration/er-ward-master?active=1`
+			? `/api/medora/hospital/${hospitalId}/home/administration/ward-master?active=1&scope=er`
 			: ''
 	);
 
 	let rows = $state<ErBedStatusBoardRow[]>([]);
-	let wards = $state<ErWardRow[]>([]);
+	let wards = $state<WardRow[]>([]);
 	let wardFilter = $state('');
 	let statusFilter = $state('');
 	let isLoading = $state(false);
@@ -135,7 +135,7 @@
 	async function loadWards() {
 		if (!wardApi) return;
 		const res = await fetch(wardApi, { credentials: 'include' });
-		if (res.ok) wards = (await res.json()) as ErWardRow[];
+		if (res.ok) wards = (await res.json()) as WardRow[];
 	}
 
 	lifeCycleUtil.onMount(() => {

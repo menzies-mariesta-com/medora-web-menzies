@@ -1,21 +1,13 @@
-import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import {
-	medoraHospitalPageUrl,
-	WebRoutesEnum
-} from '$lib/model/enum/routes.enum';
+	nursingLegacyRootTargets,
+	redirectToNursingChart
+} from '$lib/tool/nursing/nursing-legacy-redirect.server';
 
-export const load: PageServerLoad = async ({ params }) => {
-	const hospitalId = params.hospital_id;
-	if (hospitalId) {
-		throw redirect(
-			302,
-			medoraHospitalPageUrl(
-				hospitalId,
-				WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_EMR_PATIENT_VISIT_HISTORY_DASHBOARD
-			)
-		);
-	}
-
-	return {};
+export const load: PageServerLoad = ({ params, url }) => {
+	redirectToNursingChart({
+		hospitalId: params.hospital_id,
+		targetPageUrl: nursingLegacyRootTargets.emr,
+		searchParams: url.searchParams
+	});
 };

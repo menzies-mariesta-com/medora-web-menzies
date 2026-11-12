@@ -16,13 +16,13 @@ import {
 	uuid,
 	unique,
 	uniqueIndex,
+	index,
 	time,
 	varchar
 } from 'drizzle-orm/pg-core';
 import { uuidV7 } from '../../../../util/id.util';
 import {
 	IpdAdmissionStatusEnum,
-	IpdAccommodationBillingMethodEnum,
 	IpdBedStatusEnum,
 	IpdBedBookingStatusTaggingEnum,
 	IpdBedTransferReqStatusTaggingEnum,
@@ -34,6 +34,7 @@ import {
 	YesNoEnum
 } from '../../../../model/enum/db-link';
 import { BillingDiscountTypeEnum } from '../../../../model/enum/billing-discount-type.enum';
+import { BillingVisitOpenModeEnum } from '../../../../model/enum/billing-visit-open-mode.enum';
 import { userTable } from '../auth-table/auth-table';
 import {
 	bloodTypeTable,
@@ -41,7 +42,6 @@ import {
 	categoryTable,
 	cityTable,
 	countryTable,
-	departmentTable,
 	genderTable,
 	identityTypeTable,
 	maritalStatusTable,
@@ -63,7 +63,6 @@ import {
 	visitTypeTable,
 	weekdayTable
 } from '../master-table/master-table';
-import { index } from 'drizzle-orm/pg-core';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -314,11 +313,24 @@ export const hospitalDepartmentTable = pgTable(
 		hospitalId: uuid('hospital_id')
 			.references(() => hospitalTable.id)
 			.notNull(),
-		departmentId: integer('department_id')
-			.references(() => departmentTable.id)
-			.notNull(),
+		name: varchar('name', { length: 512 }),
+		code: varchar('code', { length: 128 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
 		...timestamps
-	}
+	},
+	(table) => [
+		index('hospital_department_hospital_id_idx').on(table.hospitalId),
+		index('hospital_department_name_idx').on(table.name),
+		index('hospital_department_code_idx').on(table.code),
+		index('hospital_department_status_id_idx').on(table.statusId),
+		unique('hospital_department_hospital_code_unique').on(
+			table.hospitalId,
+			table.code
+		)
+	]
 );
 
 export const moduleTable = pgTable('module', {
@@ -381,9 +393,9 @@ export const staffDepartmentTable = pgTable('staff_department', {
 	staffId: uuid('staff_id')
 		.notNull()
 		.references(() => staffTable.id),
-	departmentId: integer('department_id')
+	hospitalDepartmentId: integer('hospital_department_id')
 		.notNull()
-		.references(() => departmentTable.id),
+		.references(() => hospitalDepartmentTable.id),
 	...junctionTimestamps
 });
 
@@ -984,6 +996,11 @@ export const patientVisitTable = pgTable('patient_visit', {
 		withTimezone: true,
 		mode: 'string'
 	}),
+	/** Prior visit this encounter continues from (ADT/ED conversion, etc.). */
+	sourceVisitId: uuid('source_visit_id').references(
+		(): AnyPgColumn => patientVisitTable.id,
+		{ onDelete: 'set null' }
+	),
 	...timestamps
 });
 
@@ -1474,7 +1491,61 @@ export const serviceTaggingTable = pgTable('service_tagging', {
 	...timestamps
 });
 
-export const serviceOrderTable = pgTable('service_order', {
+/**
+ * Links hospital billing setup (OP / IP / ER) to existing service_item_tagging rows
+ * for auto bill lines when a visit in that care setting is completed.
+ */
+export const billingSetupServiceTaggingTable = pgTable(
+	'billing_setup_service_tagging',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		careSetting: varchar('care_setting', { length: 8 }).notNull(),
+		serviceTaggingId: integer('service_tagging_id')
+			.notNull()
+			.references(() => serviceTaggingTable.id, {
+				onDelete: 'cascade'
+			}),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		uniqueIndex('billing_setup_hospital_care_tagging_uidx').on(
+			table.hospitalId,
+			table.careSetting,
+			table.serviceTaggingId
+		),
+		index('billing_setup_hospital_care_idx').on(
+			table.hospitalId,
+			table.careSetting
+		)
+	]
+);
+
+/** Per-hospital billing behavior (visit open vs bill closed). */
+export const hospitalBillingSettingTable = pgTable('hospital_billing_setting', {
+	hospitalId: uuid('hospital_id')
+		.primaryKey()
+		.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+	/** {@link BillingVisitOpenModeEnum} */
+	visitOpenMode: integer('visit_open_mode')
+		.notNull()
+		.default(BillingVisitOpenModeEnum.ONE_VISIT_ONE_BILL),
+	/** Placeholder service item for in-house medication order bill lines (grouping + FK). */
+	pharmacyBillingServiceItemId: integer(
+		'pharmacy_billing_service_item_id'
+	).references(() => serviceItemTable.id, {
+		onDelete: 'set null'
+	}),
+	...timestamps
+});
+
+export const serviceOrderTable = pgTable('patient_service_order', {
 	id: serial('id').primaryKey(),
 	branchId: uuid('branch_id')
 		.notNull()
@@ -1497,7 +1568,7 @@ export const serviceOrderTable = pgTable('service_order', {
 });
 
 export const serviceOrderDetailTable = pgTable(
-	'service_order_detail',
+	'patient_service_order_detail',
 	{
 		id: serial('id').primaryKey(),
 		serviceOrderId: integer('service_order_id')
@@ -1684,6 +1755,14 @@ export const opBillingLineTable = pgTable(
 			precision: 14,
 			scale: 2
 		}).notNull(),
+		pricingFormulaTemplateId: integer('pricing_formula_template_id'),
+		pricingModule: varchar('pricing_module', { length: 16 }),
+		pricingBatchId: integer('pricing_batch_id'),
+		unitSalePriceIssue: decimal('unit_sale_price_issue', {
+			precision: 14,
+			scale: 2
+		}),
+		pricingInputsSnapshot: jsonb('pricing_inputs_snapshot'),
 		...timestamps
 	},
 	(table) => [
@@ -1845,6 +1924,8 @@ export const wardCategoryTable = pgTable(
 		})
 			.notNull()
 			.default('0'),
+		/** When true, category is for Emergency (ED) master data only. */
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1880,6 +1961,7 @@ export const roomCategoryTable = pgTable(
 		})
 			.notNull()
 			.default('0'),
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1913,6 +1995,7 @@ export const wardTable = pgTable(
 			}),
 		name: varchar('name', { length: 512 }).notNull(),
 		code: varchar('code', { length: 64 }),
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1955,6 +2038,7 @@ export const roomTable = pgTable(
 		capacity: integer('capacity').notNull().default(0),
 		/** Optional amenity / privacy notes (e.g. Ensuite, Isolation). */
 		amenities: text('amenities'),
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1989,10 +2073,16 @@ export const bedTable = pgTable(
 		})
 			.notNull()
 			.default('0'),
+		/** Base price unit (Timeline); daily rate = marked-up base ÷ duration. */
+		basePriceUnitId: integer('base_price_unit_id').references(
+			() => unitTable.id,
+			{ onDelete: 'set null' }
+		),
 		/** {@link IpdBedStatusEnum} */
 		bedStatus: integer('bed_status')
 			.notNull()
 			.default(IpdBedStatusEnum.FREE),
+		isEr: boolean('is_er').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -2021,13 +2111,6 @@ export const ipdAdmissionTable = pgTable(
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
 			}),
-		/**
-		 * OPD visit this admission was converted from (nullable for direct/walk-in IPD).
-		 */
-		sourceOpdVisitId: uuid('source_opd_visit_id').references(
-			() => patientVisitTable.id,
-			{ onDelete: 'set null' }
-		),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
@@ -2082,9 +2165,6 @@ export const ipdAdmissionTable = pgTable(
 	},
 	(table) => [
 		index('ipd_admission_visit_id_idx').on(table.visitId),
-		index('ipd_admission_source_opd_visit_id_idx').on(
-			table.sourceOpdVisitId
-		),
 		index('ipd_admission_hospital_id_idx').on(table.hospitalId),
 		index('ipd_admission_ward_id_idx').on(table.wardId),
 		index('ipd_admission_room_id_idx').on(table.roomId),
@@ -2206,6 +2286,14 @@ export const ipdBedStaySegmentTable = pgTable(
 		})
 			.notNull()
 			.default('0'),
+		basePriceUnitIdSnapshot: integer('base_price_unit_id_snapshot'),
+		basePriceUnitNameSnapshot: varchar('base_price_unit_name_snapshot', {
+			length: 512
+		}),
+		timelineDurationDaysSnapshot: decimal(
+			'timeline_duration_days_snapshot',
+			{ precision: 18, scale: 6 }
+		),
 		startedAt: timestamp('started_at', {
 			withTimezone: true,
 			mode: 'string'
@@ -2236,41 +2324,38 @@ export const ipdBedStaySegmentTable = pgTable(
 );
 
 /**
- * Hospital policy for how stay segments convert to accommodation charges.
- * One row per hospital (upserted on first use).
+ * Hospital policy for how stay length converts to accommodation charges.
+ * One row per hospital + care setting (IP / ED); upserted on first use.
  */
-export const ipdAccommodationBillingPolicyTable = pgTable(
-	'ipd_accommodation_billing_policy',
+export const accommodationBillingPolicyTable = pgTable(
+	'accommodation_billing_policy',
 	{
 		id: serial('id').primaryKey(),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		/** {@link IpdAccommodationBillingMethodEnum} */
-		billingMethod: integer('billing_method')
+		/** IP or ED (same policy shape for both care settings). */
+		careSetting: varchar('care_setting', { length: 8 })
 			.notNull()
-			.default(IpdAccommodationBillingMethodEnum.BLOCK_24H),
-		/** Minutes after cut-off / block end with no extra day (grace). */
-		graceMinutes: integer('grace_minutes').notNull().default(0),
-		/** Minimum billable days (e.g. 0.5); null = no floor. */
-		minimumDays: decimal('minimum_days', {
+			.default('IP'),
+		/** Minimum bill block qty (× accommodation bill unit). */
+		leastBillDuration: decimal('least_bill_duration', {
 			precision: 8,
 			scale: 4
-		}),
-		/**
-		 * Cut-off time for CALENDAR_DAY method as HH:mm (local hospital).
-		 * Default midnight = 00:00.
-		 */
-		cutoffTime: varchar('cutoff_time', { length: 8 })
-			.notNull()
-			.default('00:00'),
+		}).default('1'),
 		/**
 		 * Optional service item used when posting accommodation lines
-		 * into ip_billing_line.
+		 * into ip_billing_line (IP) or ER bed charge (ED).
 		 */
 		accommodationServiceItemId: integer(
 			'accommodation_service_item_id'
 		).references(() => serviceItemTable.id, {
+			onDelete: 'set null'
+		}),
+		/** Timeline unit for least-bill block and IP bill line qty/label. */
+		accommodationBillUnitId: integer(
+			'accommodation_bill_unit_id'
+		).references(() => unitTable.id, {
 			onDelete: 'set null'
 		}),
 		statusId: integer('status_id')
@@ -2280,8 +2365,9 @@ export const ipdAccommodationBillingPolicyTable = pgTable(
 		...timestamps
 	},
 	(table) => [
-		uniqueIndex('ipd_accommodation_billing_policy_hospital_uidx').on(
-			table.hospitalId
+		uniqueIndex('accommodation_billing_policy_hospital_care_uidx').on(
+			table.hospitalId,
+			table.careSetting
 		)
 	]
 );
@@ -2435,15 +2521,31 @@ export const ipBillingLineTable = pgTable(
 			precision: 14,
 			scale: 2
 		}),
-		serviceUnit: integer('service_unit'),
+		/** Base-price-unit qty; fractional (e.g. 8/24 of a Day). */
+		serviceUnit: decimal('service_unit', { precision: 18, scale: 4 }),
 		lineTotal: decimal('line_total', {
 			precision: 14,
 			scale: 2
 		}).notNull(),
+		pricingFormulaTemplateId: integer('pricing_formula_template_id'),
+		pricingModule: varchar('pricing_module', { length: 16 }),
+		pricingBatchId: integer('pricing_batch_id'),
+		unitSalePriceIssue: decimal('unit_sale_price_issue', {
+			precision: 14,
+			scale: 2
+		}),
+		pricingInputsSnapshot: jsonb('pricing_inputs_snapshot'),
+		ipdBedStaySegmentId: integer('ipd_bed_stay_segment_id').references(
+			() => ipdBedStaySegmentTable.id,
+			{ onDelete: 'set null' }
+		),
 		...timestamps
 	},
 	(table) => [
 		index('ip_billing_line_ip_billing_id_idx').on(table.ipBillingId),
+		index('ip_billing_line_ipd_bed_stay_segment_id_idx').on(
+			table.ipdBedStaySegmentId
+		),
 		index('ip_billing_line_service_id_idx').on(table.serviceId),
 		index('ip_billing_line_service_order_detail_id_idx').on(
 			table.serviceOrderDetailId
@@ -2825,7 +2927,7 @@ export const ipdAdmissionOrderTable = pgTable(
 			.references(() => hospitalBranchTable.id, {
 				onDelete: 'cascade'
 			}),
-		sourceOpdVisitId: uuid('source_opd_visit_id')
+		sourceVisitId: uuid('source_visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
@@ -2867,14 +2969,14 @@ export const ipdAdmissionOrderTable = pgTable(
 	(t) => [
 		index('ipd_admission_order_hospital_id_idx').on(t.hospitalId),
 		index('ipd_admission_order_patient_id_idx').on(t.patientId),
-		index('ipd_admission_order_source_opd_visit_id_idx').on(
-			t.sourceOpdVisitId
+		index('ipd_admission_order_source_visit_id_idx').on(
+			t.sourceVisitId
 		),
 		index('ipd_admission_order_status_tagging_id_idx').on(
 			t.statusTaggingId
 		),
-		uniqueIndex('ipd_admission_order_pending_source_opd_uidx')
-			.on(t.sourceOpdVisitId)
+		uniqueIndex('ipd_admission_order_pending_source_visit_uidx')
+			.on(t.sourceVisitId)
 			// Literal 68 = IpdAdmissionOrderStatusTaggingEnum.PENDING
 			.where(sql`${t.statusTaggingId} = 68`)
 	]

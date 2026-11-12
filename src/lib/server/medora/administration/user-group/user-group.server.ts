@@ -16,6 +16,7 @@ import type {
 } from '$lib/model/type/pagination.type';
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 
 export async function getUserGroupsPaginated(
@@ -28,7 +29,10 @@ export async function getUserGroupsPaginated(
 
 	const conditions = [
 		eq(table.userGroupTable.hospitalId, input.hospitalId),
-		ne(table.userGroupTable.statusId, StatusEnum.DELETED)
+		paginatedEntityStatusEq(
+			table.userGroupTable.statusId,
+			input.statusId
+		)
 	];
 
 	const nameFilter = input.name?.trim();
@@ -37,12 +41,6 @@ export async function getUserGroupsPaginated(
 			ilike(table.userGroupTable.name, `%${nameFilter}%`)
 		);
 	}
-	if (typeof input.statusId === 'number') {
-		conditions.push(
-			eq(table.userGroupTable.statusId, input.statusId)
-		);
-	}
-
 	const whereExpr = and(...conditions);
 	const [data, countResult] = await Promise.all([
 		ensureDb()

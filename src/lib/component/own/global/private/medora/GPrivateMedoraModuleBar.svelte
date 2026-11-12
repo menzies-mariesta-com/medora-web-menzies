@@ -1,5 +1,6 @@
 <script lang="ts">
-	
+	import { tick } from 'svelte';
+
 import type {
 		MedoraPageModuleRow,
 		MedoraPageRow
@@ -11,6 +12,7 @@ import type {
 	import MedoraBrandWordmark from '$lib/component/own/global/MedoraBrandWordmark.svelte';
 	import LucidePanelTopOpen from '$lib/component/own/library/lucide/LucidePanelTopOpen.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
+	import { searchForMedoraModuleLink } from '$lib/util/medora-visit-scoped-nav.util';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { StringUtil } from '$lib/util/string.util.svelte';
@@ -29,8 +31,7 @@ import type {
 	import LucideSearch from '$lib/component/own/library/lucide/LucideSearch.svelte';
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
-	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
-	import { tick } from 'svelte';
+	import LMedoraCommandSearchPanel from './LMedoraCommandSearchPanel.svelte';
 	import MedoraNotifications from './MedoraNotifications.svelte';
 	import MedoraModuleIcon from './MedoraModuleIcon.svelte';
 	import LucideCircleQuestionMark from '$lib/component/own/library/lucide/LucideCircleQuestionMark.svelte';
@@ -137,14 +138,9 @@ import type {
 	}
 
 	let searchDialogOpen = $state(false);
-	let selectedPageId = $state('');
 
 	function openSearchDialog() {
-		selectedPageId = '';
 		searchDialogOpen = true;
-		tick().then(() => {
-			document.getElementById('medora-page-search')?.click();
-		});
 	}
 
 	function closeSearchDialog() {
@@ -199,7 +195,8 @@ import type {
 				? medoraHospitalPageUrl(hospitalId, p.pageUrl)
 				: p.pageUrl;
 		if (base == null) return null;
-		return currentSearch ? `${base}${currentSearch}` : base;
+		const search = searchForMedoraModuleLink(p.pageUrl, currentSearch);
+		return search ? `${base}${search}` : base;
 	}
 
 	function goToPage(p: MedoraPageRow) {
@@ -841,29 +838,25 @@ import type {
 	boxClassName="max-w-lg"
 >
 	<div class="flex min-h-0 flex-1 flex-col px-4 py-3">
-		<SearchSelect
-			inputId="medora-page-search"
-			label={paraglideMsg(
-				'medora_command_search_select',
-				'Go to page'
-			)}
-			placeholder={paraglideMsg(
-				'medora_command_search_select',
-				'Go to page'
-			)}
-			filterPlaceholder={paraglideMsg(
-				'medora_command_search_filter',
-				'Search by page or module'
-			)}
-			emptyMessage={paraglideMsg(
-				'medora_command_search_empty',
-				'No pages match your search.'
-			)}
-			className="w-full"
-			options={pageSearchOptions}
-			bind:value={selectedPageId}
-			onChange={handleCommandSearchPick}
-		/>
+		{#if searchDialogOpen}
+			<LMedoraCommandSearchPanel
+				inputId="medora-page-search"
+				options={pageSearchOptions}
+				filterPlaceholder={paraglideMsg(
+					'medora_command_search_filter',
+					'Search by page or module'
+				)}
+				emptyMessage={paraglideMsg(
+					'medora_command_search_empty',
+					'No pages match your search.'
+				)}
+				keyboardHint={paraglideMsg(
+					'medora_command_search_keyboard_hint',
+					'↑↓ to move · Enter to open · Esc to close'
+				)}
+				onPick={handleCommandSearchPick}
+			/>
+		{/if}
 	</div>
 	<WashDialogFooter className="gap-2">
 		<WashButton className="btn" onClick={closeSearchDialog}>

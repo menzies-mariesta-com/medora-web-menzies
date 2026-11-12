@@ -10,6 +10,10 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import {
+		formatTimelineDurationHours,
+		timelineHoursToDbDaysString
+	} from '$lib/util/timeline-duration-days.util';
 	import type { UnitTypeListRow } from '$lib/model/type/medora/ui-rows.type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { m } from '$lib/paraglide/messages';
@@ -33,6 +37,7 @@
 
 	let name = $state('');
 	let unitTypeIdStr = $state('');
+	let timelineDurationHours = $state('');
 	let formActive = $state(true);
 	let isSubmitting = $state(false);
 	let isLoading = $state(true);
@@ -42,6 +47,13 @@
 	const isEdit = $derived(
 		modalState.mode === 'edit' && modalState.editRow != null
 	);
+	const selectedTypeIsTimeline = $derived.by(() => {
+		const id = unitTypeIdStr === '' ? null : Number(unitTypeIdStr);
+		if (!Number.isFinite(id as number)) return false;
+		return Boolean(
+			unitTypes.find((t) => t.id === id)?.isTimeline
+		);
+	});
 
 	lifeCycleUtil.onMount(async () => {
 		try {
@@ -58,6 +70,9 @@
 				name = r.name ?? '';
 				unitTypeIdStr =
 					r.unitTypeId != null ? String(r.unitTypeId) : '';
+				timelineDurationHours = formatTimelineDurationHours(
+					r.timelineDurationDays
+				);
 				formActive =
 					(r.statusId ?? StatusEnum.ACTIVE) === StatusEnum.ACTIVE;
 			}
@@ -73,6 +88,16 @@
 			toastService.addToast(m.name_required(), StatusColorEnum.ERROR);
 			return;
 		}
+		if (selectedTypeIsTimeline) {
+			const hours = Number(timelineDurationHours.trim());
+			if (!Number.isFinite(hours) || hours <= 0) {
+				toastService.addToast(
+					'Duration (hours) is required for Timeline units.',
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+		}
 		if (!apiBase) {
 			toastService.addToast(
 				m.unit_master_load_failed(),
@@ -84,6 +109,9 @@
 			? StatusEnum.ACTIVE
 			: StatusEnum.INACTIVE;
 		const ut = unitTypeIdStr === '' ? null : Number(unitTypeIdStr);
+		const durationPayload = selectedTypeIsTimeline
+			? timelineHoursToDbDaysString(timelineDurationHours.trim())
+			: null;
 		isSubmitting = true;
 		try {
 			if (modalState.mode === 'create') {
@@ -94,6 +122,7 @@
 					body: JSON.stringify({
 						name: name.trim(),
 						unitTypeId: Number.isFinite(ut as number) ? ut : null,
+						timelineDurationDays: durationPayload,
 						statusId
 					})
 				});
@@ -114,6 +143,7 @@
 						id: modalState.editRow.id,
 						name: name.trim(),
 						unitTypeId: Number.isFinite(ut as number) ? ut : null,
+						timelineDurationDays: durationPayload,
 						statusId
 					})
 				});
@@ -177,6 +207,29 @@
 					</WashSelect>
 				</div>
 			</div>
+			{#if selectedTypeIsTimeline}
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<label for="um-duration" class="shrink-0 sm:w-40"
+						>Duration (hours)
+						<span class="text-error">*</span></label
+					>
+					<div class="max-w-lg flex-1">
+						<WashInputField
+							id="um-duration"
+							bind:value={timelineDurationHours}
+							inputType="number"
+							inputPlaceholderText="24 = one day"
+							required
+						/>
+						<p class="mt-1 text-xs opacity-70">
+							Length of one billed unit in hours (e.g. 24 = day, 8 =
+							8 hours).
+						</p>
+					</div>
+				</div>
+			{/if}
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>

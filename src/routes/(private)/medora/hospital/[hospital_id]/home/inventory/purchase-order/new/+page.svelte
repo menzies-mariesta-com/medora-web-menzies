@@ -11,7 +11,7 @@
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
+	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
 	import InventoryTablePickerDialogContent from '$lib/component/own/local/private/medora/inventory/InventoryTablePickerDialogContent.svelte';
 	import PoManualLineDialogContent from '$lib/component/own/local/private/medora/inventory/purchase-order/PoManualLineDialogContent.svelte';
 	import PoManualLinesCard from '$lib/component/own/local/private/medora/inventory/purchase-order/PoManualLinesCard.svelte';
@@ -1141,7 +1141,7 @@
 							>
 								<label class="shrink-0 sm:w-36" for="a11y-page-975e16">{m.inv_po_supplier_search()}</label>
 								<div class="max-w-80 min-w-0 flex-1">
-									<SearchSelect inputId="a11y-page-975e16"
+									<WashSearchSelect inputId="a11y-page-975e16"
 										value={supplierId != null
 											? String(supplierId)
 											: ''}
@@ -1150,11 +1150,24 @@
 											const res = await fetch(
 												`/api/medora/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
 											);
+											if (!res.ok) return [];
 											const j = await res.json();
-											return (j ?? []).map((s: any) => ({
+											return (Array.isArray(j) ? j : []).map((s: any) => ({
 												label: s.name ?? '—',
 												value: String(s.id)
 											}));
+										}}
+										getLabelForValue={async (v: string) => {
+											try {
+												const res = await fetch(
+													`/api/medora/hospital/${hospitalId}/home/inventory-setup/supplier-setup?id=${encodeURIComponent(v)}`
+												);
+												if (!res.ok) return v;
+												const s = await res.json();
+												return s?.name ?? v;
+											} catch {
+												return v;
+											}
 										}}
 										onChange={(v: string) => {
 											if (v) {
@@ -1164,7 +1177,7 @@
 											}
 										}}
 										placeholder="Search supplier..."
-										className="input w-full"
+										className="w-full"
 									/>
 								</div>
 							</div>
@@ -1216,7 +1229,7 @@
 							>
 								<label class="shrink-0 sm:w-36" for="a11y-page-d93e2c">{m.inv_po_supplier_search()}</label>
 								<div class="max-w-80 min-w-0 flex-1">
-									<SearchSelect inputId="a11y-page-d93e2c"
+									<WashSearchSelect inputId="a11y-page-d93e2c"
 										value={supplierId != null
 											? String(supplierId)
 											: ''}
@@ -1225,11 +1238,24 @@
 											const res = await fetch(
 												`/api/medora/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
 											);
+											if (!res.ok) return [];
 											const j = await res.json();
-											return (j ?? []).map((s: any) => ({
+											return (Array.isArray(j) ? j : []).map((s: any) => ({
 												label: s.name ?? '—',
 												value: String(s.id)
 											}));
+										}}
+										getLabelForValue={async (v: string) => {
+											try {
+												const res = await fetch(
+													`/api/medora/hospital/${hospitalId}/home/inventory-setup/supplier-setup?id=${encodeURIComponent(v)}`
+												);
+												if (!res.ok) return v;
+												const s = await res.json();
+												return s?.name ?? v;
+											} catch {
+												return v;
+											}
 										}}
 										onChange={(v: string) => {
 											if (v) {
@@ -1239,7 +1265,7 @@
 											}
 										}}
 										placeholder="Search supplier..."
-										className="input w-full"
+										className="w-full"
 									/>
 								</div>
 							</div>

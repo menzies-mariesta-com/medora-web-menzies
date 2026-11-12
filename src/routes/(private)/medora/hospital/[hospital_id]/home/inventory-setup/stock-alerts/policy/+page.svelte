@@ -138,11 +138,6 @@
 </script>
 
 <div class="space-y-6">
-	<div class="space-y-1">
-		<h1 class="text-lg font-semibold">{m.inv_stock_alert_title()}</h1>
-		<p class="text-sm opacity-70">{m.inv_stock_alert_subtitle()}</p>
-	</div>
-
 	{#if bundleError}
 		<div class="alert alert-error">
 			<span>{bundleError}</span>

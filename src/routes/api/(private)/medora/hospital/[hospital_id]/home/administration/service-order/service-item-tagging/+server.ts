@@ -6,6 +6,12 @@ import {
 	getServiceTaggingsPaginated,
 	updateServiceTagging
 } from '$lib/server/medora/administration/service-order/service-tagging.server';
+import {
+	optionalMoneyDecimal2dp,
+	requireMoneyDecimal2dp
+} from '$lib/server/medora/money-field.server';
+
+const TAGGING_MONEY = { allowNegative: false } as const;
 
 function parseNumberOrNull(value: string | null): number | null {
 	if (value == null || value === '') return null;
@@ -91,15 +97,20 @@ export const POST: RequestHandler = async (event) => {
 		hospitalId,
 		branchId: String(body.branchId ?? ''),
 		serviceId: Number(body.serviceId),
-		serviceAmount: String(body.serviceAmount ?? ''),
-		serviceTaxAmount:
-			body.serviceTaxAmount != null
-				? String(body.serviceTaxAmount)
-				: null,
+		serviceAmount: requireMoneyDecimal2dp(
+			body.serviceAmount,
+			'Service amount',
+			TAGGING_MONEY
+		),
+		serviceTaxAmount: optionalMoneyDecimal2dp(
+			body.serviceTaxAmount,
+			'Service tax amount',
+			TAGGING_MONEY
+		),
 		validDate: body.validDate != null ? String(body.validDate) : null,
 		allowEdit: Boolean(body.allowEdit),
 		statusId: Number(body.statusId ?? 1)
-	} as any);
+	} as Parameters<typeof createServiceTagging>[1]);
 	return json(data);
 };
 
@@ -116,13 +127,19 @@ export const PUT: RequestHandler = async (event) => {
 		id: Number(body.id),
 		serviceAmount:
 			body.serviceAmount !== undefined
-				? String(body.serviceAmount)
+				? requireMoneyDecimal2dp(
+						body.serviceAmount,
+						'Service amount',
+						TAGGING_MONEY
+					)
 				: undefined,
 		serviceTaxAmount:
 			body.serviceTaxAmount !== undefined
-				? body.serviceTaxAmount == null
-					? null
-					: String(body.serviceTaxAmount)
+				? optionalMoneyDecimal2dp(
+						body.serviceTaxAmount,
+						'Service tax amount',
+						TAGGING_MONEY
+					)
 				: undefined,
 		validDate:
 			body.validDate !== undefined
@@ -136,7 +153,7 @@ export const PUT: RequestHandler = async (event) => {
 				: undefined,
 		statusId:
 			body.statusId != null ? Number(body.statusId) : undefined
-	} as any);
+	} as Parameters<typeof updateServiceTagging>[1]);
 	return json(data);
 };
 

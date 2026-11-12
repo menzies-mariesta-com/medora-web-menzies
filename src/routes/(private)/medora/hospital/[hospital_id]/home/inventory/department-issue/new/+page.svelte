@@ -36,6 +36,7 @@
 		ConsumptionDraftLineIum
 	} from '$lib/model/type/medora/department-consumption-detail.type';
 	import { purchaseQtyToIssueQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
+	import { searchItemMasterOptions } from '$lib/tool/inventory/item-master-search-select.util';
 	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
 const lifeCycle = new LifeCycleUtil();
 	const toast = new ToastService();
@@ -544,17 +545,7 @@ const lifeCycle = new LifeCycleUtil();
 	}
 
 	async function searchItemsForPrLine(q: string) {
-		if (!hospitalId) return [];
-		const res = await fetch(
-			`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?name=${encodeURIComponent(q.trim())}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`
-		);
-		const j = (await res.json()) as {
-			data: { id: number; itemName: string | null }[];
-		};
-		return (j.data ?? []).map((x) => ({
-			label: x.itemName ?? '—',
-			value: String(x.id)
-		}));
+		return searchItemMasterOptions(hospitalId, q);
 	}
 
 	function purchaseUnitForLine(line: IssueDraftLine): number | null {

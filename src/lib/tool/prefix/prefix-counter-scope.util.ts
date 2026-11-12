@@ -20,7 +20,7 @@ export function defaultCounterScopeForPrefixKey(
 		prefixKey === 'DEPARTMENT_INDENT_NO' ||
 		prefixKey === 'DEPARTMENT_ISSUE_NO' ||
 		prefixKey === 'DEPARTMENT_CONSUMPTION_NO' ||
-		prefixKey === 'IPD_ADMISSION_NO' ||
+		prefixKey === 'BILL_NO' ||
 		prefixKey === 'IP_BILL_NO'
 	) {
 		return {
@@ -30,7 +30,11 @@ export function defaultCounterScopeForPrefixKey(
 			includeVisit: false
 		};
 	}
-	if (prefixKey === 'VISIT_NO') {
+	if (
+		prefixKey === 'ADMISSION_NO' ||
+		prefixKey === 'VISIT_NO' ||
+		prefixKey === 'IPD_ADMISSION_NO'
+	) {
 		return {
 			includeBranch: true,
 			includeFinancialYear: true,

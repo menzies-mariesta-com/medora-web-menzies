@@ -17,6 +17,14 @@ import {
 	ensureHospitalInventoryAccess
 } from './inventory-scope.server';
 import type { InvApprovalModule } from '$lib/model/type/medora/inv-approval.type';
+import {
+	INV_APPROVAL_MODULE_CODES,
+	isInvApprovalModule
+} from '$lib/model/type/medora/inv-approval.type';
+import type {
+	InvApprovalStaffMatrixCell,
+	InvApprovalStaffMatrixDto
+} from '$lib/model/type/medora/inv-approval-config.type';
 
 export type { InvApprovalModule } from '$lib/model/type/medora/inv-approval.type';
 
@@ -270,6 +278,210 @@ export async function deleteApprovalLevel(
 			deletedBy: userId
 		})
 		.where(eq(table.invApprovalLevelTable.id, input.levelId));
+}
+
+function cellKey(storeId: number, module: InvApprovalModule): string {
+	return `${storeId}:${module}`;
+}
+
+async function getLevelRowForStoreModule(
+	hospitalId: string,
+	storeId: number,
+	module: InvApprovalModule
+) {
+	const [row] = await ensureDb()
+		.select({
+			id: table.invApprovalLevelTable.id,
+			isRequired: table.invApprovalLevelTable.isRequired
+		})
+		.from(table.invApprovalLevelTable)
+		.where(
+			and(
+				eq(table.invApprovalLevelTable.hospitalId, hospitalId),
+				eq(table.invApprovalLevelTable.storeId, storeId),
+				eq(table.invApprovalLevelTable.module, module),
+				eq(table.invApprovalLevelTable.level, 1),
+				isNull(table.invApprovalLevelTable.deletedAt)
+			)
+		)
+		.limit(1);
+	return row ?? null;
+}
+
+async function listAssigneeStaffIdsForLevel(levelId: number): Promise<string[]> {
+	const rows = await ensureDb()
+		.select({ staffId: table.invApprovalAssigneeTable.staffId })
+		.from(table.invApprovalAssigneeTable)
+		.where(eq(table.invApprovalAssigneeTable.levelId, levelId));
+	return rows.map((r) => r.staffId);
+}
+
+export async function getStaffApprovalMatrix(
+	event: RequestEvent,
+	input: { hospitalId: string; staffId: string }
+): Promise<InvApprovalStaffMatrixDto> {
+	await ensureHospitalInventoryAccess(event, input.hospitalId);
+	if (!input.staffId.trim()) throw error(400, 'Staff is required');
+
+	const storeRows = await listStoresForApprovalConfig(event, input.hospitalId);
+	const stores = storeRows.map((s) => ({
+		id: s.id,
+		storeName: s.storeName
+	}));
+
+	const assigned = await ensureDb()
+		.select({
+			storeId: table.invApprovalLevelTable.storeId,
+			module: table.invApprovalLevelTable.module
+		})
+		.from(table.invApprovalAssigneeTable)
+		.innerJoin(
+			table.invApprovalLevelTable,
+			eq(
+				table.invApprovalAssigneeTable.levelId,
+				table.invApprovalLevelTable.id
+			)
+		)
+		.where(
+			and(
+				eq(table.invApprovalLevelTable.hospitalId, input.hospitalId),
+				eq(table.invApprovalAssigneeTable.staffId, input.staffId),
+				eq(table.invApprovalLevelTable.level, 1),
+				isNull(table.invApprovalLevelTable.deletedAt)
+			)
+		);
+
+	const assignedSet = new Set(
+		assigned.map((a) => cellKey(a.storeId, a.module as InvApprovalModule))
+	);
+
+	const modules = [...INV_APPROVAL_MODULE_CODES];
+	const cells: InvApprovalStaffMatrixCell[] = [];
+	for (const store of stores) {
+		for (const module of modules) {
+			cells.push({
+				storeId: store.id,
+				module,
+				canApprove: assignedSet.has(cellKey(store.id, module))
+			});
+		}
+	}
+
+	return { stores, modules, cells };
+}
+
+async function addStaffToStoreModule(
+	event: RequestEvent,
+	hospitalId: string,
+	storeId: number,
+	module: InvApprovalModule,
+	staffId: string
+) {
+	const level = await getLevelRowForStoreModule(hospitalId, storeId, module);
+	if (!level) {
+		await upsertApprovalLevel(event, {
+			hospitalId,
+			storeId,
+			module,
+			assigneeStaffIds: [staffId]
+		});
+		return;
+	}
+	const existing = await listAssigneeStaffIdsForLevel(level.id);
+	if (existing.includes(staffId)) return;
+	await upsertApprovalLevel(event, {
+		hospitalId,
+		storeId,
+		module,
+		id: level.id,
+		isRequired: level.isRequired,
+		assigneeStaffIds: [...existing, staffId]
+	});
+}
+
+async function removeStaffFromStoreModule(
+	event: RequestEvent,
+	hospitalId: string,
+	storeId: number,
+	module: InvApprovalModule,
+	staffId: string
+) {
+	const level = await getLevelRowForStoreModule(hospitalId, storeId, module);
+	if (!level) return;
+	const existing = await listAssigneeStaffIdsForLevel(level.id);
+	if (!existing.includes(staffId)) return;
+	const next = existing.filter((id) => id !== staffId);
+	if (next.length === 0) {
+		await deleteApprovalLevel(event, { hospitalId, levelId: level.id });
+		return;
+	}
+	await upsertApprovalLevel(event, {
+		hospitalId,
+		storeId,
+		module,
+		id: level.id,
+		isRequired: level.isRequired,
+		assigneeStaffIds: next
+	});
+}
+
+export async function saveStaffApprovalMatrix(
+	event: RequestEvent,
+	input: {
+		hospitalId: string;
+		staffId: string;
+		cells: InvApprovalStaffMatrixCell[];
+	}
+) {
+	await ensureHospitalInventoryAccess(event, input.hospitalId);
+	if (!input.staffId.trim()) throw error(400, 'Staff is required');
+
+	for (const cell of input.cells) {
+		if (!Number.isFinite(cell.storeId) || cell.storeId < 1) {
+			throw error(400, 'Invalid store');
+		}
+		if (!isInvApprovalModule(cell.module)) {
+			throw error(400, 'Invalid module');
+		}
+		await assertStoreInHospital(input.hospitalId, cell.storeId);
+	}
+
+	const current = await getStaffApprovalMatrix(event, {
+		hospitalId: input.hospitalId,
+		staffId: input.staffId
+	});
+	const currentByKey = new Map(
+		current.cells.map((c) => [cellKey(c.storeId, c.module), c.canApprove])
+	);
+	const nextByKey = new Map(
+		input.cells.map((c) => [cellKey(c.storeId, c.module), c.canApprove])
+	);
+
+	for (const cell of input.cells) {
+		const key = cellKey(cell.storeId, cell.module);
+		const was = currentByKey.get(key) ?? false;
+		const want = nextByKey.get(key) ?? false;
+		if (want === was) continue;
+		if (want) {
+			await addStaffToStoreModule(
+				event,
+				input.hospitalId,
+				cell.storeId,
+				cell.module,
+				input.staffId
+			);
+		} else {
+			await removeStaffFromStoreModule(
+				event,
+				input.hospitalId,
+				cell.storeId,
+				cell.module,
+				input.staffId
+			);
+		}
+	}
+
+	return { ok: true };
 }
 
 export async function listStoresForApprovalConfig(

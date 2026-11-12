@@ -12,6 +12,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { enrichItemSearchOptionsWithStock } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
+	import { hydrateInventoryLineItemMeta } from '$lib/tool/inventory/hydrate-inventory-line-item-meta.util';
 	import { mapStockLotToBatchAllocationDraft } from '$lib/tool/inventory/map-stock-lot-to-batch-draft.util';
 	import type { InventoryStockLotDto } from '$lib/model/type/medora/inventory-stock-lot.type';
 	import { purchaseQtyToIssueQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
@@ -87,34 +88,19 @@
 		line: DeptIssueDraftLine,
 		itemId: number
 	) {
-		if (!hospitalId) return;
+		const meta =
+			await hydrateInventoryLineItemMeta<ConsumptionDraftLineIum>({
+				hospitalId,
+				itemId,
+				iumMode: 'defaultOnly'
+			});
+		if (!meta) return;
 		line.itemId = itemId;
-		const [detailRes, iumRes] = await Promise.all([
-			fetch(
-				`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?id=${itemId}`,
-				{ method: 'GET' }
-			),
-			fetch(
-				`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?mode=itemUnitMasters`,
-				{ method: 'GET' }
-			)
-		]);
-		const detail = (await detailRes.json()) as {
-			itemName?: string | null;
-			itemUnitMasterIds?: number[];
-			defaultItemUnitMasterId?: number | null;
-		};
-		line.itemLabel = detail.itemName ?? '—';
-		line.itemSearch = line.itemLabel;
-		const allIum = (await iumRes.json()) as ConsumptionDraftLineIum[];
-		const allowed = new Set(detail.itemUnitMasterIds ?? []);
-		const allowedRows = allIum.filter((u) => allowed.has(u.id));
-		const def = detail.defaultItemUnitMasterId;
-		let chosen: ConsumptionDraftLineIum | undefined =
-			def != null ? allowedRows.find((u) => u.id === def) : undefined;
-		if (!chosen && allowedRows.length > 0) chosen = allowedRows[0];
-		line.iumList = chosen ? [chosen] : [];
-		line.itemUnitMasterId = chosen?.id ?? null;
+		line.itemLabel = meta.itemLabel;
+		line.itemSearch = meta.itemLabel;
+		line.iumList = meta.iumList;
+		line.itemUnitMasterId = meta.itemUnitMasterId;
+		const chosen = meta.iumList[0];
 		line.purchaseUnitLabel =
 			chosen?.purchaseUnitName ?? line.purchaseUnitLabel;
 		await refreshBatchAllocations(line);

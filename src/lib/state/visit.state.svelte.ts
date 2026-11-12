@@ -8,18 +8,25 @@
 export const VisitState = (() => {
 	let visitId = $state('');
 	let patientName = $state('');
+	let patientId = $state('');
 	/** ISO timestamp from `patient_visit.clinical_signed_at` when the selected visit is locked. */
 	let clinicalSignedAt = $state<string | null>(null);
 	/** Bumped on clinical sign/unsign so pages can reload visit status tagging. */
 	let clinicalSignRevision = $state(0);
+	/** Bumped after bulk bill close so the bill page reloads lines. */
+	let billingRefreshRevision = $state(0);
 
 	if (typeof window !== 'undefined') {
 		const storedVisit = window.sessionStorage.getItem('heka_visitId');
 		const storedName = window.sessionStorage.getItem(
 			'heka_patientName'
 		);
+		const storedPatientId = window.sessionStorage.getItem(
+			'heka_patientId'
+		);
 		if (storedVisit) visitId = storedVisit;
 		if (storedName) patientName = storedName;
+		if (storedPatientId) patientId = storedPatientId;
 	}
 
 	return {
@@ -38,6 +45,16 @@ export const VisitState = (() => {
 			patientName = v;
 			if (typeof window !== 'undefined')
 				window.sessionStorage.setItem('heka_patientName', v);
+		},
+		get patientId() {
+			return patientId;
+		},
+		set patientId(v: string) {
+			patientId = v;
+			if (typeof window !== 'undefined') {
+				if (v) window.sessionStorage.setItem('heka_patientId', v);
+				else window.sessionStorage.removeItem('heka_patientId');
+			}
 		},
 
 		get clinicalSignedAt() {
@@ -60,6 +77,14 @@ export const VisitState = (() => {
 			clinicalSignRevision += 1;
 		},
 
+		get billingRefreshRevision() {
+			return billingRefreshRevision;
+		},
+
+		notifyBillingDataChanged() {
+			billingRefreshRevision += 1;
+		},
+
 		get isClinicalVisitReadOnly() {
 			return clinicalSignedAt != null && clinicalSignedAt !== '';
 		},
@@ -79,10 +104,12 @@ export const VisitState = (() => {
 		reset() {
 			visitId = '';
 			patientName = '';
+			patientId = '';
 			clinicalSignedAt = null;
 			if (typeof window !== 'undefined') {
 				window.sessionStorage.removeItem('heka_visitId');
 				window.sessionStorage.removeItem('heka_patientName');
+				window.sessionStorage.removeItem('heka_patientId');
 			}
 		}
 	};

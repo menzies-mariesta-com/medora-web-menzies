@@ -2,11 +2,11 @@
 title: "Vitals"
 docType: journal
 slug: patient-journal/vitals
-workflowSlugs: ["nursing-workbench-emr-vital"]
+workflowSlugs: ["nursing-workbench-vital"]
 ---
 
 ## Patient journal: Vitals
 
 Longitudinal chart section. Related workflows:
 
-- [nursing-workbench-emr-vital](/docs/workflows/nursing-workbench-emr-vital)
+- [nursing-workbench-vital](/docs/workflows/nursing-workbench-vital)
