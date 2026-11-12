@@ -36,16 +36,30 @@ import { patientChargeFieldsForBillingLine } from '$lib/server/medora/inventory/
 type PendingDetailRow = PendingBillLineRow;
 
 function inventoryPricingSnapshotForBillLine(r: PendingDetailRow) {
+	if (r.lineSource === 'ipd_accommodation') {
+		return {
+			pricingFormulaTemplateId: null,
+			pricingModule: null,
+			pricingBatchId: null,
+			unitSalePriceIssue: null,
+			pricingInputsSnapshot: r.pricingInputsSnapshot ?? null,
+			ipdBedStaySegmentId: r.id
+		};
+	}
 	if (r.lineSource !== 'medication_order_line') {
 		return {
 			pricingFormulaTemplateId: null,
 			pricingModule: null,
 			pricingBatchId: null,
 			unitSalePriceIssue: null,
-			pricingInputsSnapshot: null
+			pricingInputsSnapshot: null,
+			ipdBedStaySegmentId: null
 		};
 	}
-	return patientChargeFieldsForBillingLine(r);
+	return {
+		...patientChargeFieldsForBillingLine(r),
+		ipdBedStaySegmentId: null
+	};
 }
 
 type IpBillingWithAuditStaff = IpBillingSchema & {
@@ -240,10 +254,14 @@ export async function _syncOpenIpBillingForVisit(opts: {
 	let pendingRows: PendingDetailRow[] = basePendingRows;
 	try {
 		if (admissionId != null) {
-			const { getOrCreateBillingPolicy, computeAccommodationCharges, accommodationChargeToPendingBillFields } =
-				await import(
-					'$lib/server/medora/ipd/accommodation-billing.server'
-				);
+			const {
+				getOrCreateBillingPolicy,
+				computeAccommodationCharges,
+				accommodationChargeToPendingBillFields,
+				accommodationChargePricingAudit
+			} = await import(
+				'$lib/server/medora/ipd/accommodation-billing.server'
+			);
 			const policy = await getOrCreateBillingPolicy({
 				hospitalId: opts.hospitalId,
 				careSetting: 'IP'
@@ -315,6 +333,15 @@ export async function _syncOpenIpBillingForVisit(opts: {
 						subCategoryName,
 						categoryName,
 						orderNo: null,
+						pricingInputsSnapshot: accommodationChargePricingAudit({
+							charge,
+							actualHours:
+								charge.actualHours ??
+								0,
+							billableHours:
+								charge.billableHours ??
+								0
+						}),
 						discount: fields.discount,
 						serviceAmount: fields.serviceAmount,
 						serviceTaxAmount: fields.serviceTaxAmount,

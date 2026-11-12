@@ -5,11 +5,9 @@
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
-	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
-	import { IpdAccommodationBillingMethodEnum } from '$lib/model/enum/db-link';
 	import type {
 		AccommodationBillingCareSetting,
-		IpdAccommodationBillingPolicyRow
+		AccommodationBillingPolicyRow
 	} from '$lib/model/type/medora/ipd/ipd.type';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import {
@@ -26,6 +24,8 @@
 	import { sanitizeUserFacingErrorText } from '$lib/util/user-facing-error.util';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 
+	const DEFAULT_LEAST_BILL_QTY = '1';
+
 	let {
 		careSetting = 'IP' as AccommodationBillingCareSetting
 	}: {
@@ -37,7 +37,6 @@
 	const isEd = $derived(careSetting === 'ED');
 	const billLabel = $derived(isEd ? 'ED' : 'IP');
 
-	/** Number inputs bind a number; empty stays ''. */
 	function trimmed(value: unknown): string {
 		return value == null ? '' : String(value).trim();
 	}
@@ -47,6 +46,11 @@
 			value as string | number | null | undefined,
 			4
 		);
+	}
+
+	function leastQtyFromPolicy(value: unknown): string {
+		const s = decimalInput(value);
+		return s === '' ? DEFAULT_LEAST_BILL_QTY : s;
 	}
 
 	const hospitalId = $derived(
@@ -64,42 +68,11 @@
 
 	let loading = $state(true);
 	let loadError = $state('');
-	let billingMethod = $state(String(IpdAccommodationBillingMethodEnum.BLOCK_24H));
-	let graceMinutes = $state('0');
-	let minimumDays = $state('');
-	let leastBillDurationHours = $state('');
-	let cutoffTime = $state('12:00');
-	let accommodationServiceItemId = $state('');
-	let accommodationBillUnitId = $state('');
+	let leastBillDuration = $state(DEFAULT_LEAST_BILL_QTY);
+	let leastBillDurationUnitId = $state('');
 	let billUnitLabelCache = $state('');
-
-	const methodOptions = [
-		{
-			value: String(IpdAccommodationBillingMethodEnum.BLOCK_24H),
-			label: paraglideMsg(
-				'ip_billing_setup_accommodation_method_block',
-				'24-hour blocks'
-			)
-		},
-		{
-			value: String(IpdAccommodationBillingMethodEnum.CALENDAR_DAY),
-			label: paraglideMsg(
-				'ip_billing_setup_accommodation_method_calendar',
-				'Calendar day (cut-off time)'
-			)
-		},
-		{
-			value: String(IpdAccommodationBillingMethodEnum.PRO_RATA),
-			label: paraglideMsg(
-				'ip_billing_setup_accommodation_method_prorata',
-				'Pro-rata (hours ÷ 24)'
-			)
-		}
-	];
-
-	const showCutoff = $derived(
-		Number(billingMethod) === IpdAccommodationBillingMethodEnum.CALENDAR_DAY
-	);
+	let accommodationServiceItemId = $state('');
+	let serviceItemLabelCache = $state('');
 
 	async function loadPolicy() {
 		if (!apiBase) return;
@@ -115,16 +88,17 @@
 				return;
 			}
 			const data = (await res.json()) as {
-				policy: IpdAccommodationBillingPolicyRow;
+				policy: AccommodationBillingPolicyRow;
 				accommodationServiceName?: string | null;
 				accommodationBillUnitName?: string | null;
 			};
 			const p = data.policy;
-			billingMethod = String(p.billingMethod);
-			graceMinutes = String(p.graceMinutes ?? 0);
-			minimumDays = decimalInput(p.minimumDays);
-			leastBillDurationHours = decimalInput(p.leastBillDurationHours);
-			cutoffTime = trimmed(p.cutoffTime) || '12:00';
+			leastBillDuration = leastQtyFromPolicy(p.leastBillDuration);
+			leastBillDurationUnitId =
+				p.accommodationBillUnitId != null
+					? String(p.accommodationBillUnitId)
+					: '';
+			billUnitLabelCache = data.accommodationBillUnitName?.trim() ?? '';
 			accommodationServiceItemId =
 				p.accommodationServiceItemId != null
 					? String(p.accommodationServiceItemId)
@@ -135,11 +109,6 @@
 			) {
 				serviceItemLabelCache = data.accommodationServiceName;
 			}
-			accommodationBillUnitId =
-				p.accommodationBillUnitId != null
-					? String(p.accommodationBillUnitId)
-					: '';
-			billUnitLabelCache = data.accommodationBillUnitName?.trim() ?? '';
 		} catch {
 			loadError = paraglideMsg(
 				'ip_billing_setup_accommodation_load_failed',
@@ -149,8 +118,6 @@
 			loading = false;
 		}
 	}
-
-	let serviceItemLabelCache = $state('');
 
 	async function searchServiceItems(query: string) {
 		return searchServiceItemOptions(hospitalId, query);
@@ -175,13 +142,22 @@
 			hospitalId,
 			value,
 			cached: billUnitLabelCache
-				? { id: accommodationBillUnitId, label: billUnitLabelCache }
+				? { id: leastBillDurationUnitId, label: billUnitLabelCache }
 				: null
 		});
 	}
 
 	async function savePolicy() {
 		if (!apiBase || saveLock.pending) return;
+		if (trimmed(leastBillDurationUnitId) === '') {
+			toastService.error(
+				paraglideMsg(
+					'ip_billing_setup_accommodation_least_unit_required',
+					'Select a unit for least duration to bill.'
+				)
+			);
+			return;
+		}
 		await saveLock.run(async () => {
 			const res = await fetch(apiBase, {
 				method: 'PUT',
@@ -189,25 +165,12 @@
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
 					careSetting,
-					billingMethod: Number(billingMethod),
-					graceMinutes: Number(graceMinutes) || 0,
-					minimumDays:
-						decimalInput(minimumDays) === ''
-							? null
-							: decimalInput(minimumDays),
-					leastBillDurationHours:
-						decimalInput(leastBillDurationHours) === ''
-							? null
-							: decimalInput(leastBillDurationHours),
-					cutoffTime: trimmed(cutoffTime) || '12:00',
+					leastBillDuration: leastQtyFromPolicy(leastBillDuration),
+					accommodationBillUnitId: Number(leastBillDurationUnitId),
 					accommodationServiceItemId:
 						trimmed(accommodationServiceItemId) === ''
 							? null
-							: Number(accommodationServiceItemId),
-					accommodationBillUnitId:
-						trimmed(accommodationBillUnitId) === ''
-							? null
-							: Number(accommodationBillUnitId)
+							: Number(accommodationServiceItemId)
 				})
 			});
 			if (!res.ok) {
@@ -255,11 +218,11 @@
 			{isEd
 				? paraglideMsg(
 						'ed_billing_setup_accommodation_blurb',
-						'Rates come from Bed Master (base price and room/ward markups). Choose how ED bed stay length converts to billable time and which service item is used for the ED bed charge.'
+						'Rates come from Bed Master. Minimum bill block is qty × unit (same unit on the bill line). Pick the ED bed charge service item.'
 					)
 				: paraglideMsg(
 						'ip_billing_setup_accommodation_blurb',
-						'Rates come from Bed Master (base price and room/ward markups). Map a Timeline unit per bed for bill qty and unit label. Choose how stay length converts to billable days and which service item is used when accommodation lines are posted to the IP bill.'
+						'Rates come from Bed Master. Each assignment snapshots minimum bill qty, unit, and tariffs. Stay length rounds up to qty × unit per segment. That unit is reused on IP bill lines.'
 					)}
 		</p>
 
@@ -272,71 +235,8 @@
 				<label class="form-control w-full">
 					<span class="label-text mb-1 text-sm"
 						>{paraglideMsg(
-							'ip_billing_setup_accommodation_method',
-							'Billing method'
-						)}</span
-					>
-					<WashSelect
-						className="select-bordered select w-full"
-						bind:value={billingMethod}
-						options={methodOptions}
-					/>
-				</label>
-
-				<label class="form-control w-full">
-					<span class="label-text mb-1 text-sm"
-						>{paraglideMsg(
-							'ip_billing_setup_accommodation_grace',
-							'Grace period (minutes)'
-						)}</span
-					>
-					<input
-						class="input-bordered input w-full"
-						type="number"
-						min="0"
-						step="1"
-						bind:value={graceMinutes}
-					/>
-				</label>
-
-				{#if showCutoff}
-					<label class="form-control w-full">
-						<span class="label-text mb-1 text-sm"
-							>{paraglideMsg(
-								'ip_billing_setup_accommodation_cutoff',
-								'Cut-off time (HH:mm)'
-							)}</span
-						>
-						<input
-							class="input-bordered input w-full"
-							type="time"
-							bind:value={cutoffTime}
-						/>
-					</label>
-				{/if}
-
-				<label class="form-control w-full">
-					<span class="label-text mb-1 text-sm"
-						>{paraglideMsg(
-							'ip_billing_setup_accommodation_minimum',
-							'Minimum billable days (optional)'
-						)}</span
-					>
-					<input
-						class="input-bordered input w-full"
-						type="number"
-						min="0"
-						step="0.01"
-						placeholder="—"
-						bind:value={minimumDays}
-					/>
-				</label>
-
-				<label class="form-control w-full">
-					<span class="label-text mb-1 text-sm"
-						>{paraglideMsg(
 							'ip_billing_setup_accommodation_least_hours',
-							'Least duration to bill (hours)'
+							'Least duration to bill'
 						)}</span
 					>
 					<input
@@ -344,22 +244,16 @@
 						type="number"
 						min="0"
 						step="0.25"
-						placeholder="—"
-						bind:value={leastBillDurationHours}
+						placeholder={DEFAULT_LEAST_BILL_QTY}
+						bind:value={leastBillDuration}
 					/>
-					<span class="mt-1 text-xs text-base-content/60"
-						>{paraglideMsg(
-							'ip_billing_setup_accommodation_least_hours_hint',
-							'When set, stay length rounds up to this block (e.g. 8 → 4h stay bills 8h; 12h stay bills 16h). Overrides billing method.'
-						)}</span
-					>
 				</label>
 
-				<label class="form-control w-full md:col-span-2">
+				<label class="form-control w-full">
 					<span class="label-text mb-1 text-sm"
 						>{paraglideMsg(
 							'ip_billing_setup_accommodation_bill_unit',
-							'Bill unit'
+							'Least duration to bill unit'
 						)}</span
 					>
 					<WashSearchSelect
@@ -368,18 +262,19 @@
 							'ip_billing_setup_accommodation_bill_unit_ph',
 							'Search timeline unit…'
 						)}
-						bind:value={accommodationBillUnitId}
+						bind:value={leastBillDurationUnitId}
 						searchFn={searchTimelineUnits}
 						getLabelForValue={labelForBillUnit}
 						minSearchLength={0}
 					/>
-					<span class="mt-1 text-xs text-base-content/60"
-						>{paraglideMsg(
-							'ip_billing_setup_accommodation_bill_unit_hint',
-							'Unit shown on the bed line. Qty and unit price convert into this unit. Empty uses each bed’s base price unit.'
-						)}</span
-					>
 				</label>
+
+				<p class="text-xs text-base-content/60 md:col-span-2">
+					{paraglideMsg(
+						'ip_billing_setup_accommodation_least_hours_hint',
+						'Example: qty 1 + Day → 24h minimum per assignment; qty 8 + Hour (1h) → 8h minimum. Unit label and qty on the bill match this unit.'
+					)}
+				</p>
 
 				<label class="form-control w-full md:col-span-2">
 					<span class="label-text mb-1 text-sm"

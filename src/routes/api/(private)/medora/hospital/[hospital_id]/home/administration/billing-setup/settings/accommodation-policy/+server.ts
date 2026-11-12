@@ -1,6 +1,5 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
-import { IpdAccommodationBillingMethodEnum } from '$lib/model/enum/db-link';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import {
 	getOrCreateBillingPolicy,
@@ -46,13 +45,9 @@ export const GET: RequestHandler = async (event) => {
 			id: policy.id,
 			hospitalId: policy.hospitalId,
 			careSetting: policy.careSetting,
-			billingMethod: policy.billingMethod,
-			graceMinutes: policy.graceMinutes,
-			minimumDays: policy.minimumDays,
-			cutoffTime: policy.cutoffTime,
 			accommodationServiceItemId: policy.accommodationServiceItemId,
 			accommodationBillUnitId: policy.accommodationBillUnitId ?? null,
-			leastBillDurationHours: policy.leastBillDurationHours,
+			leastBillDuration: policy.leastBillDuration,
 			statusId: policy.statusId
 		},
 		accommodationServiceName,
@@ -68,41 +63,15 @@ export const PUT: RequestHandler = async (event) => {
 		body.careSetting ?? event.url.searchParams.get('careSetting')
 	);
 
-	const method = Number(body.billingMethod);
-	if (
-		body.billingMethod !== undefined &&
-		(!Number.isFinite(method) ||
-			![
-				IpdAccommodationBillingMethodEnum.BLOCK_24H,
-				IpdAccommodationBillingMethodEnum.CALENDAR_DAY,
-				IpdAccommodationBillingMethodEnum.PRO_RATA
-			].includes(method))
-	) {
-		throw error(400, 'Invalid billing method');
-	}
-
 	const row = await updateBillingPolicy({
 		hospitalId,
 		careSetting,
-		billingMethod: Number.isFinite(method) ? method : undefined,
-		graceMinutes:
-			body.graceMinutes !== undefined
-				? Number(body.graceMinutes)
-				: undefined,
-		minimumDays:
-			body.minimumDays !== undefined
-				? body.minimumDays === null || body.minimumDays === ''
+		leastBillDuration:
+			body.leastBillDuration !== undefined
+				? body.leastBillDuration === null ||
+					body.leastBillDuration === ''
 					? null
-					: String(body.minimumDays)
-				: undefined,
-		cutoffTime:
-			body.cutoffTime !== undefined ? String(body.cutoffTime) : undefined,
-		leastBillDurationHours:
-			body.leastBillDurationHours !== undefined
-				? body.leastBillDurationHours === null ||
-					body.leastBillDurationHours === ''
-					? null
-					: String(body.leastBillDurationHours)
+					: String(body.leastBillDuration)
 				: undefined,
 		accommodationServiceItemId:
 			body.accommodationServiceItemId !== undefined

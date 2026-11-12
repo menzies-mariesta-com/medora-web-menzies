@@ -65,7 +65,7 @@ import {
 	ipdAdmissionTable,
 	ipdBedHistoryTable,
 	ipdBedStaySegmentTable,
-	ipdAccommodationBillingPolicyTable,
+	accommodationBillingPolicyTable,
 	ipBillingTable,
 	ipBillingLineTable
 } from './information-table';
@@ -1797,22 +1797,22 @@ export const ipdBedStaySegmentTableRelations = relations(
 	})
 );
 
-export const ipdAccommodationBillingPolicyTableRelations = relations(
-	ipdAccommodationBillingPolicyTable,
+export const accommodationBillingPolicyTableRelations = relations(
+	accommodationBillingPolicyTable,
 	({ one }) => ({
 		hospital: one(hospitalTable, {
-			fields: [ipdAccommodationBillingPolicyTable.hospitalId],
+			fields: [accommodationBillingPolicyTable.hospitalId],
 			references: [hospitalTable.id]
 		}),
 		accommodationServiceItem: one(serviceItemTable, {
 			fields: [
-				ipdAccommodationBillingPolicyTable.accommodationServiceItemId
+				accommodationBillingPolicyTable.accommodationServiceItemId
 			],
 			references: [serviceItemTable.id]
 		}),
 		accommodationBillUnit: one(unitTable, {
 			fields: [
-				ipdAccommodationBillingPolicyTable.accommodationBillUnitId
+				accommodationBillingPolicyTable.accommodationBillUnitId
 			],
 			references: [unitTable.id]
 		})

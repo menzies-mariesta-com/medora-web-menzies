@@ -67,7 +67,7 @@ import type {
 	ipdAdmissionTable,
 	ipdBedHistoryTable,
 	ipdBedStaySegmentTable,
-	ipdAccommodationBillingPolicyTable,
+	accommodationBillingPolicyTable,
 	ipBillingTable,
 	ipBillingLineTable,
 	diagnosisCodeTable,
@@ -613,13 +613,23 @@ export type IpdBedStaySegmentSchemaInsert = InferInsertModel<
 export type IpdBedStaySegmentSchemaUpdate =
 	Partial<IpdBedStaySegmentSchemaInsert>;
 
-export type IpdAccommodationBillingPolicySchema = InferSelectModel<
-	typeof ipdAccommodationBillingPolicyTable
+export type AccommodationBillingPolicySchema = InferSelectModel<
+	typeof accommodationBillingPolicyTable
 >;
+export type AccommodationBillingPolicySchemaInsert = InferInsertModel<
+	typeof accommodationBillingPolicyTable
+>;
+export type AccommodationBillingPolicySchemaUpdate =
+	Partial<AccommodationBillingPolicySchemaInsert>;
+/** @deprecated Use {@link AccommodationBillingPolicySchema} */
+export type IpdAccommodationBillingPolicySchema =
+	AccommodationBillingPolicySchema;
+/** @deprecated Use {@link AccommodationBillingPolicySchemaInsert} */
 export type IpdAccommodationBillingPolicySchemaInsert =
-	InferInsertModel<typeof ipdAccommodationBillingPolicyTable>;
+	AccommodationBillingPolicySchemaInsert;
+/** @deprecated Use {@link AccommodationBillingPolicySchemaUpdate} */
 export type IpdAccommodationBillingPolicySchemaUpdate =
-	Partial<IpdAccommodationBillingPolicySchemaInsert>;
+	AccommodationBillingPolicySchemaUpdate;
 
 export type IpBillingSchema = InferSelectModel<typeof ipBillingTable>;
 export type IpBillingSchemaInsert = InferInsertModel<

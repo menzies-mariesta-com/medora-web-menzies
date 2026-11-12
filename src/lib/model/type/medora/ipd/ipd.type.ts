@@ -223,19 +223,18 @@ export type OtHoldPayload = {
 
 export type AccommodationBillingCareSetting = 'IP' | 'ED';
 
-export type IpdAccommodationBillingPolicyRow = {
+export type AccommodationBillingPolicyRow = {
 	id: number;
 	hospitalId: string;
 	careSetting: AccommodationBillingCareSetting | string;
-	billingMethod: number;
-	graceMinutes: number;
-	minimumDays: string | null;
-	cutoffTime: string;
-	leastBillDurationHours: string | null;
+	leastBillDuration: string | null;
 	accommodationServiceItemId: number | null;
 	accommodationBillUnitId: number | null;
 	statusId: number;
 };
+
+/** @deprecated Use {@link AccommodationBillingPolicyRow} */
+export type IpdAccommodationBillingPolicyRow = AccommodationBillingPolicyRow;
 
 export type AccommodationChargeLine = {
 	segmentId: number;
@@ -254,4 +253,6 @@ export type AccommodationChargeLine = {
 	billableUnits: number;
 	/** Unit price on bill line (daily tariff × timeline duration). */
 	unitPrice: string;
+	actualHours?: number;
+	billableHours?: number;
 };

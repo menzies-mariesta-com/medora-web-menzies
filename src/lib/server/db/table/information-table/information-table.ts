@@ -23,7 +23,6 @@ import {
 import { uuidV7 } from '../../../../util/id.util';
 import {
 	IpdAdmissionStatusEnum,
-	IpdAccommodationBillingMethodEnum,
 	IpdBedStatusEnum,
 	IpdBedBookingStatusTaggingEnum,
 	IpdBedTransferReqStatusTaggingEnum,
@@ -2328,8 +2327,8 @@ export const ipdBedStaySegmentTable = pgTable(
  * Hospital policy for how stay length converts to accommodation charges.
  * One row per hospital + care setting (IP / ED); upserted on first use.
  */
-export const ipdAccommodationBillingPolicyTable = pgTable(
-	'ipd_accommodation_billing_policy',
+export const accommodationBillingPolicyTable = pgTable(
+	'accommodation_billing_policy',
 	{
 		id: serial('id').primaryKey(),
 		hospitalId: uuid('hospital_id')
@@ -2339,32 +2338,11 @@ export const ipdAccommodationBillingPolicyTable = pgTable(
 		careSetting: varchar('care_setting', { length: 8 })
 			.notNull()
 			.default('IP'),
-		/** {@link IpdAccommodationBillingMethodEnum} */
-		billingMethod: integer('billing_method')
-			.notNull()
-			.default(IpdAccommodationBillingMethodEnum.BLOCK_24H),
-		/** Minutes after cut-off / block end with no extra day (grace). */
-		graceMinutes: integer('grace_minutes').notNull().default(0),
-		/** Minimum billable days (e.g. 0.5); null = no floor. */
-		minimumDays: decimal('minimum_days', {
+		/** Minimum bill block qty (× accommodation bill unit). */
+		leastBillDuration: decimal('least_bill_duration', {
 			precision: 8,
 			scale: 4
-		}),
-		/**
-		 * When set, bill stay in blocks of this many hours (ceil).
-		 * e.g. 8 → 4h stay bills 8h; 12h stay bills 16h.
-		 */
-		leastBillDurationHours: decimal('least_bill_duration_hours', {
-			precision: 8,
-			scale: 4
-		}),
-		/**
-		 * Cut-off time for CALENDAR_DAY method as HH:mm (local hospital).
-		 * Default midnight = 00:00.
-		 */
-		cutoffTime: varchar('cutoff_time', { length: 8 })
-			.notNull()
-			.default('00:00'),
+		}).default('1'),
 		/**
 		 * Optional service item used when posting accommodation lines
 		 * into ip_billing_line (IP) or ER bed charge (ED).
@@ -2374,7 +2352,7 @@ export const ipdAccommodationBillingPolicyTable = pgTable(
 		).references(() => serviceItemTable.id, {
 			onDelete: 'set null'
 		}),
-		/** Unit Master row for bill qty unit (e.g. Day) on accommodation lines. */
+		/** Timeline unit for least-bill block and IP bill line qty/label. */
 		accommodationBillUnitId: integer(
 			'accommodation_bill_unit_id'
 		).references(() => unitTable.id, {
@@ -2387,7 +2365,7 @@ export const ipdAccommodationBillingPolicyTable = pgTable(
 		...timestamps
 	},
 	(table) => [
-		uniqueIndex('ipd_accommodation_billing_policy_hospital_care_uidx').on(
+		uniqueIndex('accommodation_billing_policy_hospital_care_uidx').on(
 			table.hospitalId,
 			table.careSetting
 		)
@@ -2557,10 +2535,17 @@ export const ipBillingLineTable = pgTable(
 			scale: 2
 		}),
 		pricingInputsSnapshot: jsonb('pricing_inputs_snapshot'),
+		ipdBedStaySegmentId: integer('ipd_bed_stay_segment_id').references(
+			() => ipdBedStaySegmentTable.id,
+			{ onDelete: 'set null' }
+		),
 		...timestamps
 	},
 	(table) => [
 		index('ip_billing_line_ip_billing_id_idx').on(table.ipBillingId),
+		index('ip_billing_line_ipd_bed_stay_segment_id_idx').on(
+			table.ipdBedStaySegmentId
+		),
 		index('ip_billing_line_service_id_idx').on(table.serviceId),
 		index('ip_billing_line_service_order_detail_id_idx').on(
 			table.serviceOrderDetailId
