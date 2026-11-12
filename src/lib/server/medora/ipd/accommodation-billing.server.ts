@@ -2,23 +2,22 @@ import { error } from '@sveltejs/kit';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
-	IpdAccommodationBillingPolicySchema,
+	AccommodationBillingPolicySchema,
 	IpdBedStaySegmentSchema
 } from '$lib/server/db/schema-type';
-import {
-	IpdAccommodationBillingMethodEnum,
-	StatusEnum
-} from '$lib/model/enum/db-link';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import type {
 	AccommodationBillingCareSetting,
 	AccommodationChargeLine,
-	IpdAccommodationBillingPolicyRow
+	AccommodationBillingPolicyRow
 } from '$lib/model/type/medora/ipd/ipd.type';
 import { money, computeDailyRate } from '$lib/server/medora/ipd/tariff.server';
-import { getTimelineUnitMeta } from '$lib/server/medora/administration/timeline-unit.server';
+import {
+	assertActiveTimelineUnitId,
+	getTimelineUnitMeta
+} from '$lib/server/medora/administration/timeline-unit.server';
 import {
 	DEFAULT_TIMELINE_DURATION_DAYS,
-	DEFAULT_TIMELINE_UNIT_LABEL,
 	parseTimelineDurationDays,
 	timelineDurationDaysToHours
 } from '$lib/util/timeline-duration-days.util';
@@ -37,28 +36,92 @@ export function parseAccommodationCareSetting(
 	return 'IP';
 }
 
-/** Fallback when a segment snapshot has no unit name. */
-export const ACCOMMODATION_BILL_UNIT_LABEL_FALLBACK = DEFAULT_TIMELINE_UNIT_LABEL;
+export const DEFAULT_LEAST_BILL_DURATION_QTY = '1';
 
-/** Unit and daily rate come only from the stay segment snapshots. */
-function segmentBillingFromSnapshots(seg: IpdBedStaySegmentSchema): {
-	basePriceUnitLabel: string;
+function effectiveLeastBillDurationQty(value: string | null | undefined): string {
+	const raw = value != null && String(value).trim() !== '' ? String(value).trim() : null;
+	return raw ?? DEFAULT_LEAST_BILL_DURATION_QTY;
+}
+
+/** Block size in hours from billing-setup qty × timeline unit only. */
+export function resolveLeastBillBlockHours(input: {
+	leastBillDuration: string | number | null | undefined;
+	unitDurationDays: number;
+}): number {
+	const qty = Number(effectiveLeastBillDurationQty(input.leastBillDuration));
+	const unitDays = input.unitDurationDays;
+	if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(unitDays) || unitDays <= 0) {
+		return 0;
+	}
+	return qty * timelineDurationDaysToHours(unitDays);
+}
+
+export type TimelineUnitMetaLite = {
+	name: string;
 	durationDays: number;
-	dailyRate: string;
-} {
-	const basePriceUnitLabel =
-		seg.basePriceUnitNameSnapshot?.trim() ||
-		ACCOMMODATION_BILL_UNIT_LABEL_FALLBACK;
+};
+
+export type StaySegmentBillingPolicyInput = {
+	leastBillDuration: string;
+	leastBillDurationUnitId: number | null;
+};
+
+/** Live hospital IP/ED accommodation policy (same for every stay segment). */
+export function resolveStaySegmentBillingPolicy(
+	hospitalPolicy: AccommodationBillingPolicySchema
+): StaySegmentBillingPolicyInput {
+	return {
+		leastBillDuration: effectiveLeastBillDurationQty(
+			hospitalPolicy.leastBillDuration
+		),
+		leastBillDurationUnitId: hospitalPolicy.accommodationBillUnitId ?? null
+	};
+}
+
+export function computeSegmentActualHours(
+	startedAt: string,
+	endedAt: string
+): number {
+	const start = parseUtcInstant(startedAt);
+	const end = parseUtcInstant(endedAt);
+	if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+		return 0;
+	}
+	return (
+		Math.round(((end - start) / (3600 * 1000)) * 10000) / 10000
+	);
+}
+
+export function accommodationChargePricingAudit(input: {
+	charge: AccommodationChargeLine;
+	actualHours: number;
+	billableHours: number;
+}): Record<string, unknown> {
+	return {
+		kind: 'ipd_accommodation',
+		segmentId: input.charge.segmentId,
+		startedAt: input.charge.startedAt,
+		endedAt: input.charge.endedAt,
+		actualHours: input.actualHours,
+		billableHours: input.billableHours,
+		dailyTariff: input.charge.dailyTariff,
+		amount: input.charge.amount,
+		billableUnits: input.charge.billableUnits,
+		unitPrice: input.charge.unitPrice
+	};
+}
+
+/** Bed tariff snapshots only; bill unit comes from accommodation policy. */
+function segmentDailyTariffFromSnapshots(seg: IpdBedStaySegmentSchema): string {
 	const durationDays =
 		parseTimelineDurationDays(seg.timelineDurationDaysSnapshot) ??
 		DEFAULT_TIMELINE_DURATION_DAYS;
-	const dailyRate = computeDailyRate({
+	return computeDailyRate({
 		bedBasePrice: seg.bedBasePriceSnapshot,
 		roomMarkupPercent: seg.roomMarkupSnapshot,
 		wardMarkupPercent: seg.wardMarkupSnapshot,
 		timelineDurationDays: durationDays
 	});
-	return { basePriceUnitLabel, durationDays, dailyRate };
 }
 
 function billableUnitsFromHours(
@@ -74,7 +137,7 @@ export async function resolveAccommodationBillUnitLabel(
 	accommodationBillUnitId: number | null | undefined
 ): Promise<string> {
 	if (accommodationBillUnitId == null) {
-		return ACCOMMODATION_BILL_UNIT_LABEL_FALLBACK;
+		return '';
 	}
 	const [row] = await ensureDb()
 		.select({ name: table.unitTable.name })
@@ -87,43 +150,13 @@ export async function resolveAccommodationBillUnitLabel(
 		)
 		.limit(1);
 	const name = row?.name?.trim();
-	return name || ACCOMMODATION_BILL_UNIT_LABEL_FALLBACK;
+	return name || '';
 }
 
 async function assertAccommodationBillUnitId(
 	unitId: number | null
 ): Promise<number | null> {
-	if (unitId == null) return null;
-	if (!Number.isFinite(unitId) || unitId <= 0) {
-		throw error(400, 'Invalid accommodation bill unit');
-	}
-	const [row] = await ensureDb()
-		.select({ id: table.unitTable.id })
-		.from(table.unitTable)
-		.where(
-			and(
-				eq(table.unitTable.id, unitId),
-				eq(table.unitTable.statusId, StatusEnum.ACTIVE)
-			)
-		)
-		.limit(1);
-	if (!row) {
-		throw error(400, 'Accommodation bill unit not found or not active');
-	}
-	return unitId;
-}
-
-function parseCutoffMinutes(cutoffTime: string): number {
-	const m = /^(\d{1,2}):(\d{2})$/.exec(cutoffTime.trim());
-	if (!m) return 0;
-	const h = Number(m[1]);
-	const min = Number(m[2]);
-	if (h < 0 || h > 23 || min < 0 || min > 59) return 0;
-	return h * 60 + min;
-}
-
-function daysBetweenMs(startMs: number, endMs: number): number {
-	return Math.max(0, (endMs - startMs) / (24 * 60 * 60 * 1000));
+	return assertActiveTimelineUnitId(unitId);
 }
 
 /** Bill stay length in hours, rounded up to least-duration blocks. */
@@ -147,131 +180,53 @@ export function computeBillableHoursWithLeastBlock(input: {
 	return Math.ceil(stayHours / block) * block;
 }
 
-/** Billable hours for one segment under hospital policy. */
+/** Billable hours for one segment (least block qty × timeline unit). */
 export function computeSegmentBillableHours(input: {
 	startedAt: string;
 	endedAt: string;
-	method: number;
-	graceMinutes: number;
-	minimumDays: string | null;
-	cutoffTime: string;
-	leastBillDurationHours?: string | null;
+	leastBillBlockHours: number;
+	graceMinutes?: number;
 }): number {
-	const leastRaw = input.leastBillDurationHours;
-	const least =
-		leastRaw != null && leastRaw !== '' ? Number(leastRaw) : null;
-	if (least != null && Number.isFinite(least) && least > 0) {
-		let hours = computeBillableHoursWithLeastBlock({
-			startedAt: input.startedAt,
-			endedAt: input.endedAt,
-			graceMinutes: input.graceMinutes,
-			leastBillDurationHours: least
-		});
-		const min =
-			input.minimumDays != null && input.minimumDays !== ''
-				? Number(input.minimumDays)
-				: null;
-		if (min != null && Number.isFinite(min) && hours > 0 && hours < min * 24) {
-			hours = min * 24;
-		}
-		return Math.round(hours * 10000) / 10000;
-	}
-
-	const start = parseUtcInstant(input.startedAt);
-	const end = parseUtcInstant(input.endedAt);
-	if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
-		return 0;
-	}
-
-	let days = 0;
-	if (input.method === IpdAccommodationBillingMethodEnum.PRO_RATA) {
-		days = daysBetweenMs(start, end);
-	} else if (
-		input.method === IpdAccommodationBillingMethodEnum.CALENDAR_DAY
-	) {
-		const cutoffMin = parseCutoffMinutes(input.cutoffTime);
-		const startDate = new Date(start);
-		const endDate = new Date(end);
-		// Walk local calendar days; charge a day if any occupancy after cut-off on that day.
-		const cursor = new Date(
-			startDate.getFullYear(),
-			startDate.getMonth(),
-			startDate.getDate()
-		);
-		const last = new Date(
-			endDate.getFullYear(),
-			endDate.getMonth(),
-			endDate.getDate()
-		);
-		while (cursor.getTime() <= last.getTime()) {
-			const dayStart = new Date(cursor);
-			const cut = new Date(cursor);
-			cut.setHours(Math.floor(cutoffMin / 60), cutoffMin % 60, 0, 0);
-			const next = new Date(cursor);
-			next.setDate(next.getDate() + 1);
-			const overlapStart = Math.max(start, dayStart.getTime());
-			const overlapEnd = Math.min(end, next.getTime());
-			if (overlapEnd > overlapStart) {
-				days += 1;
-			}
-			cursor.setDate(cursor.getDate() + 1);
-		}
-	} else {
-		// BLOCK_24H (default)
-		const elapsedMs = end - start;
-		const graceMs = input.graceMinutes * 60 * 1000;
-		const blockMs = 24 * 60 * 60 * 1000;
-		const adjusted = Math.max(0, elapsedMs - graceMs);
-		days = Math.ceil(adjusted / blockMs) || (elapsedMs > 0 ? 1 : 0);
-		if (elapsedMs > 0 && adjusted <= 0) days = 0;
-		if (elapsedMs > 0 && days === 0 && graceMs === 0) {
-			days = 1;
-		}
-	}
-
-	const min =
-		input.minimumDays != null && input.minimumDays !== ''
-			? Number(input.minimumDays)
-			: null;
-	if (min != null && Number.isFinite(min) && days > 0 && days < min) {
-		days = min;
-	}
-	return Math.round(days * 24 * 10000) / 10000;
+	const block = input.leastBillBlockHours;
+	if (!Number.isFinite(block) || block <= 0) return 0;
+	const hours = computeBillableHoursWithLeastBlock({
+		startedAt: input.startedAt,
+		endedAt: input.endedAt,
+		graceMinutes: input.graceMinutes ?? 0,
+		leastBillDurationHours: block
+	});
+	return Math.round(hours * 10000) / 10000;
 }
 
-/** Billable days for one segment under hospital policy. */
+/** Billable day-equivalents for one segment. */
 export function computeSegmentBillableDays(input: {
 	startedAt: string;
 	endedAt: string;
-	method: number;
-	graceMinutes: number;
-	minimumDays: string | null;
-	cutoffTime: string;
-	leastBillDurationHours?: string | null;
+	leastBillBlockHours: number;
+	graceMinutes?: number;
 }): number {
-	const hours = computeSegmentBillableHours(input);
-	return Math.round((hours / 24) * 10000) / 10000;
+	return Math.round((computeSegmentBillableHours(input) / 24) * 10000) / 10000;
 }
 
 export async function getOrCreateBillingPolicy(input: {
 	hospitalId: string;
 	careSetting?: AccommodationBillingCareSetting;
-}): Promise<IpdAccommodationBillingPolicySchema> {
+}): Promise<AccommodationBillingPolicySchema> {
 	const careSetting = parseAccommodationCareSetting(
 		input.careSetting ?? 'IP'
 	);
 	const db = ensureDb();
 	const [existing] = await db
 		.select()
-		.from(table.ipdAccommodationBillingPolicyTable)
+		.from(table.accommodationBillingPolicyTable)
 		.where(
 			and(
 				eq(
-					table.ipdAccommodationBillingPolicyTable.hospitalId,
+					table.accommodationBillingPolicyTable.hospitalId,
 					input.hospitalId
 				),
 				eq(
-					table.ipdAccommodationBillingPolicyTable.careSetting,
+					table.accommodationBillingPolicyTable.careSetting,
 					careSetting
 				)
 			)
@@ -279,11 +234,11 @@ export async function getOrCreateBillingPolicy(input: {
 		.limit(1);
 	if (existing) return existing;
 	const [created] = await db
-		.insert(table.ipdAccommodationBillingPolicyTable)
+		.insert(table.accommodationBillingPolicyTable)
 		.values({
 			hospitalId: input.hospitalId,
 			careSetting,
-			billingMethod: IpdAccommodationBillingMethodEnum.BLOCK_24H
+			leastBillDuration: DEFAULT_LEAST_BILL_DURATION_QTY
 		})
 		.returning();
 	if (!created) throw new Error('Policy create failed');
@@ -293,14 +248,10 @@ export async function getOrCreateBillingPolicy(input: {
 export async function updateBillingPolicy(input: {
 	hospitalId: string;
 	careSetting?: AccommodationBillingCareSetting;
-	billingMethod?: number;
-	graceMinutes?: number;
-	minimumDays?: string | null;
-	cutoffTime?: string;
-	leastBillDurationHours?: string | null;
+	leastBillDuration?: string | null;
 	accommodationServiceItemId?: number | null;
 	accommodationBillUnitId?: number | null;
-}): Promise<IpdAccommodationBillingPolicyRow> {
+}): Promise<AccommodationBillingPolicyRow> {
 	const careSetting = parseAccommodationCareSetting(
 		input.careSetting ?? 'IP'
 	);
@@ -318,34 +269,19 @@ export async function updateBillingPolicy(input: {
 		input.accommodationServiceItemId !== undefined
 			? input.accommodationServiceItemId
 			: current.accommodationServiceItemId;
+	const leastBillDuration =
+		input.leastBillDuration !== undefined
+			? effectiveLeastBillDurationQty(input.leastBillDuration)
+			: effectiveLeastBillDurationQty(current.leastBillDuration);
 	const [row] = await ensureDb()
-		.update(table.ipdAccommodationBillingPolicyTable)
+		.update(table.accommodationBillingPolicyTable)
 		.set({
-			billingMethod:
-				input.billingMethod !== undefined
-					? input.billingMethod
-					: current.billingMethod,
-			graceMinutes:
-				input.graceMinutes !== undefined
-					? input.graceMinutes
-					: current.graceMinutes,
-			minimumDays:
-				input.minimumDays !== undefined
-					? input.minimumDays
-					: current.minimumDays,
-			leastBillDurationHours:
-				input.leastBillDurationHours !== undefined
-					? input.leastBillDurationHours
-					: current.leastBillDurationHours,
-			cutoffTime:
-				input.cutoffTime !== undefined
-					? input.cutoffTime
-					: current.cutoffTime,
+			leastBillDuration,
 			accommodationServiceItemId: serviceItemId,
 			accommodationBillUnitId
 		})
 		.where(
-			eq(table.ipdAccommodationBillingPolicyTable.id, current.id)
+			eq(table.accommodationBillingPolicyTable.id, current.id)
 		)
 		.returning();
 	if (!row) throw new Error('Policy update failed');
@@ -374,48 +310,41 @@ export async function listStaySegments(input: {
 		.orderBy(asc(table.ipdBedStaySegmentTable.startedAt));
 }
 
-export async function computeAccommodationCharges(input: {
-	admissionId: number;
-	hospitalId: string;
-	/** Defaults to now for open segments. */
-	asOf?: string;
-}): Promise<AccommodationChargeLine[]> {
-	const policy = await getOrCreateBillingPolicy({
-		hospitalId: input.hospitalId
-	});
-	let policyBillUnit: { name: string; durationDays: number } | null = null;
-	if (policy.accommodationBillUnitId != null) {
-		try {
-			const meta = await getTimelineUnitMeta(policy.accommodationBillUnitId);
-			policyBillUnit = {
-				name: meta.name,
-				durationDays: meta.durationDays
-			};
-		} catch {
-			policyBillUnit = null;
-		}
-	}
-	const segments = await listStaySegments(input);
-	const asOf = input.asOf ?? toUtcIsoString();
+export function buildAccommodationChargeLines(input: {
+	segments: IpdBedStaySegmentSchema[];
+	hospitalPolicy: AccommodationBillingPolicySchema;
+	asOf: string;
+	unitMetaById: Map<number, TimelineUnitMetaLite>;
+}): AccommodationChargeLine[] {
 	const lines: AccommodationChargeLine[] = [];
 
-	for (const seg of segments) {
-		const endedAt = seg.endedAt ?? asOf;
+	const segmentPolicy = resolveStaySegmentBillingPolicy(input.hospitalPolicy);
+	const billUnitId = input.hospitalPolicy.accommodationBillUnitId;
+	const unitMeta =
+		billUnitId != null ? input.unitMetaById.get(billUnitId) ?? null : null;
+	if (!unitMeta) return lines;
+
+	for (const seg of input.segments) {
+		const endedAt = seg.endedAt ?? input.asOf;
+		const blockHours = resolveLeastBillBlockHours({
+			leastBillDuration: segmentPolicy.leastBillDuration,
+			unitDurationDays: unitMeta.durationDays
+		});
+		if (blockHours <= 0) continue;
+		const actualHours = computeSegmentActualHours(
+			seg.startedAt,
+			endedAt
+		);
 		const billableHours = computeSegmentBillableHours({
 			startedAt: seg.startedAt,
 			endedAt,
-			method: policy.billingMethod,
-			graceMinutes: policy.graceMinutes,
-			minimumDays: policy.minimumDays,
-			cutoffTime: policy.cutoffTime,
-			leastBillDurationHours: policy.leastBillDurationHours
+			leastBillBlockHours: blockHours
 		});
 		if (billableHours <= 0) continue;
 		const days = Math.round((billableHours / 24) * 10000) / 10000;
-		const { basePriceUnitLabel, durationDays, dailyRate } =
-			segmentBillingFromSnapshots(seg);
-		const billLabel = policyBillUnit?.name ?? basePriceUnitLabel;
-		const billDuration = policyBillUnit?.durationDays ?? durationDays;
+		const dailyRate = segmentDailyTariffFromSnapshots(seg);
+		const billLabel = unitMeta.name;
+		const billDuration = unitMeta.durationDays;
 		const unitHours = timelineDurationDaysToHours(billDuration);
 		const daily = Number(dailyRate);
 		const billableUnits = billableUnitsFromHours(
@@ -444,10 +373,44 @@ export async function computeAccommodationCharges(input: {
 			endedAt,
 			basePriceUnitLabel: billLabel,
 			billableUnits,
-			unitPrice
+			unitPrice,
+			actualHours,
+			billableHours
 		});
 	}
 	return lines;
+}
+
+export async function computeAccommodationCharges(input: {
+	admissionId: number;
+	hospitalId: string;
+	/** Defaults to now for open segments. */
+	asOf?: string;
+}): Promise<AccommodationChargeLine[]> {
+	const policy = await getOrCreateBillingPolicy({
+		hospitalId: input.hospitalId
+	});
+	if (policy.accommodationBillUnitId == null) {
+		return [];
+	}
+	const segments = await listStaySegments(input);
+	const billUnitMeta = await getTimelineUnitMeta(policy.accommodationBillUnitId);
+	const unitMetaById = new Map<number, TimelineUnitMetaLite>([
+		[
+			policy.accommodationBillUnitId,
+			{
+				name: billUnitMeta.name,
+				durationDays: billUnitMeta.durationDays
+			}
+		]
+	]);
+	const asOf = input.asOf ?? toUtcIsoString();
+	return buildAccommodationChargeLines({
+		segments,
+		hospitalPolicy: policy,
+		asOf,
+		unitMetaById
+	});
 }
 
 /** Bill line qty/price for accommodation: N days × daily tariff. */
@@ -464,9 +427,7 @@ export function accommodationChargeToPendingBillFields(input: {
 } {
 	const base = input.serviceItemName.trim() || 'Accommodation';
 	const serviceName = `${base}: ${input.charge.label}`.slice(0, 512);
-	const unitLabel =
-		input.charge.basePriceUnitLabel.trim() ||
-		ACCOMMODATION_BILL_UNIT_LABEL_FALLBACK;
+	const unitLabel = input.charge.basePriceUnitLabel.trim();
 	return {
 		serviceName,
 		serviceAmount: input.charge.unitPrice,
@@ -535,15 +496,24 @@ export async function postAccommodationLinesToIpBill(input: {
 	if (svc.name) serviceName = svc.name;
 
 	const existing = await db
-		.select({ lineIndex: table.ipBillingLineTable.lineIndex })
+		.select({
+			lineIndex: table.ipBillingLineTable.lineIndex,
+			segmentId: table.ipBillingLineTable.ipdBedStaySegmentId
+		})
 		.from(table.ipBillingLineTable)
 		.where(eq(table.ipBillingLineTable.ipBillingId, input.ipBillingId));
+	const postedSegmentIds = new Set(
+		existing
+			.map((r) => r.segmentId)
+			.filter((id): id is number => id != null)
+	);
 	let nextIndex =
 		existing.reduce((m, r) => Math.max(m, r.lineIndex), 0) + 1;
 
 	let subtotal = 0;
 	await db.transaction(async (tx) => {
 		for (const charge of charges) {
+			if (postedSegmentIds.has(charge.segmentId)) continue;
 			const fields = accommodationChargeToPendingBillFields({
 				charge,
 				serviceItemName: serviceName
@@ -558,7 +528,13 @@ export async function postAccommodationLinesToIpBill(input: {
 					serviceAmount: fields.serviceAmount,
 					serviceTaxAmount: fields.serviceTaxAmount,
 					serviceUnit: fields.serviceUnit,
-					lineTotal: charge.amount
+					lineTotal: charge.amount,
+					ipdBedStaySegmentId: charge.segmentId,
+					pricingInputsSnapshot: accommodationChargePricingAudit({
+						charge,
+						actualHours: charge.actualHours ?? 0,
+						billableHours: charge.billableHours ?? 0
+					})
 				})
 			);
 			subtotal += Number(toDbMoney2dp(charge.amount));

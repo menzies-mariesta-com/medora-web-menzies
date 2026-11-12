@@ -45,6 +45,7 @@ export type OpBillingPendingAccommodationLineRow = {
 	serviceTaxAmount: string | null;
 	serviceUnit: number | null;
 	serviceUnitLabel?: string | null;
+	pricingInputsSnapshot?: Record<string, unknown> | null;
 };
 
 export type PendingBillLineRow =

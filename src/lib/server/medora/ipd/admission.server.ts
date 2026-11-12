@@ -464,7 +464,6 @@ export async function transferBed(
 	});
 
 	const movedAt = new Date().toISOString();
-
 	return db.transaction(async (tx) => {
 		// Lock the admission so a concurrent discharge/transfer cannot interleave.
 		const [admission] = await tx

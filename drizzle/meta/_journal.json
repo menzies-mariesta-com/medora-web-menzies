@@ -421,6 +421,55 @@
       "when": 1794700000000,
       "tag": "0059_reset_stay_segment_base_price_unit",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1794800000000,
+      "tag": "0060_document_type_id_sequence",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1794900000000,
+      "tag": "0061_stay_segment_billing_policy_snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1795000000000,
+      "tag": "0062_accommodation_policy_default_least_24h",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1795100000000,
+      "tag": "0063_least_bill_duration_qty_and_unit",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1795200000000,
+      "tag": "0064_drop_legacy_accommodation_policy_cols",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1795203600000,
+      "tag": "0065_drop_segment_least_bill_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1795207200000,
+      "tag": "0066_rename_accommodation_billing_policy",
+      "breakpoints": true
     }
   ]
 }
