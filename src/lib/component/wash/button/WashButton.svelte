@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	/**
 	 * Svelte adapter for Menzies Design Wash Button.
 	 * @see https://design-menzies.netlify.app/ — Components → Buttons
@@ -82,7 +83,7 @@
 		soft?: boolean;
 		dash?: boolean;
 		title?: string;
-		children?: () => void;
+		children?: Snippet;
 	}>();
 
 	const isDisabled = $derived(Boolean(disabled || loading));
@@ -144,6 +145,8 @@
 			{/if}
 		</span>
 	{:else}
-		{@render children?.()}
+		{#if children}
+			{@render children()}
+		{/if}
 	{/if}
 </button>

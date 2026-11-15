@@ -36,7 +36,10 @@ let {
 		return StringUtil.doctorOptionDisplayName(row.doctor);
 	}
 
-	async function loadNotes() {
+	async function loadNotes(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId || !visitId) {
 			notes = [];
 			return;
@@ -47,7 +50,7 @@ let {
 			const url = new URL(apiRoot, window.location.origin);
 			url.searchParams.set('mode', 'prescriptionNote.list');
 			url.searchParams.set('visitId', String(visitId));
-			const res = await fetch(url.toString(), { credentials: 'include' });
+			const res = await fetch(url.toString(), { credentials: 'include', signal: opts?.signal });
 			if (!res.ok) await throwUserFacingHttpError(res);
 			const rows = (await res.json()) as CpoePrescriptionNoteListRow[];
 			if (seq !== loadSeq) return;
@@ -56,7 +59,7 @@ let {
 			if (seq !== loadSeq) return;
 			notes = [];
 		} finally {
-			if (seq === loadSeq) isLoading = false;
+			if (seq === loadSeq) if (!opts?.isCancelled?.()) isLoading = false;
 		}
 	}
 
@@ -67,7 +70,13 @@ let {
 			notes = [];
 			return;
 		}
-		void loadNotes();
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadNotes({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

@@ -554,6 +554,9 @@
 							<option value={DiagnosisCodingSystemEnum.ICD11}
 								>{msg.hospital_coding_system_icd11()}</option
 							>
+							<option value={DiagnosisCodingSystemEnum.SNOMED_CT}
+								>{msg.hospital_coding_system_snomed_ct()}</option
+							>
 						</WashSelect>
 						<p class="mt-1 text-xs text-base-content/70">
 							{#if codingSystemLocked}

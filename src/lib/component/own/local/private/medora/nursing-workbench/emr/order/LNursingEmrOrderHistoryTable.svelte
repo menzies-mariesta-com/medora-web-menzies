@@ -72,6 +72,7 @@
 		showAddButton={Boolean(onAdd)}
 		{addLabel}
 		onAdd={() => onAdd?.()}
+		showRefreshButton={true}
 		on:refresh={() => onRefresh?.()}
 		on:filtersChange={(event) => onFiltersChange?.(event.detail.filters)}
 		{fillParent}

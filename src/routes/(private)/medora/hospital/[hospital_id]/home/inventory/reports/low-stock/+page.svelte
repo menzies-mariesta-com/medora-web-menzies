@@ -59,24 +59,31 @@
 		}));
 	}
 
-	async function load() {
+	async function load(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId) return;
 		loading = true;
 		errorMessage = '';
 		try {
 			const res = await fetch(buildApiUrl(), {
 				method: 'GET',
-				cache: 'no-store'
+				cache: 'no-store',
+				signal: opts?.signal
 			});
+			if (opts?.isCancelled?.()) return;
 			if (!res.ok) await throwUserFacingHttpError(res);
 			rows = mapRows((await res.json()) as Record<string, unknown>[]);
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			console.error(e);
 			errorMessage =
 				toUserFacingErrorDetail(e) ?? m.error_load_failed();
 			rows = [];
 		} finally {
-			loading = false;
+			if (!opts?.isCancelled?.()) loading = false;
 		}
 	}
 
@@ -94,9 +101,15 @@
 
 	$effect(() => {
 		void hospitalId;
+		let cancelled = false;
+		const ac = new AbortController();
 		untrack(() => {
-			void load();
+			void load({ signal: ac.signal, isCancelled: () => cancelled });
 		});
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	const columns: MenziesTableColumn<Row>[] = [

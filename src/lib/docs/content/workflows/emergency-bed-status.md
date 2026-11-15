@@ -3,7 +3,7 @@ title: "ED Bed Status"
 description: "How to use ED Bed Status in Emergency."
 docType: workflow
 slug: workflows/emergency-bed-status
-pageId: 124
+pageId: 1200200
 moduleId: 12
 pageUrl: "/medora/home/emergency/bed-status"
 generated: true

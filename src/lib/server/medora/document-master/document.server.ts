@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { and, count, eq, inArray, isNull, ne, or } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -229,6 +230,8 @@ export async function createDocument(
 		})
 		.returning();
 	if (!row) throw error(500, 'Insert failed');
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }
 
@@ -268,6 +271,8 @@ export async function updateDocument(
 		.where(eq(table.documentTable.id, id))
 		.returning();
 	if (!row) throw error(500, 'Update failed');
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }
 

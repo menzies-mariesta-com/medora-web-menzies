@@ -72,11 +72,12 @@
 		return n > 99 ? '99+' : String(n);
 	}
 
-	async function refreshUnreadCount() {
+	async function refreshUnreadCount(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		try {
-			const r = await fetch(
-				'/api/medora/notification?mode=unreadCount'
-			);
+			const r = await fetch('/api/medora/notification?mode=unreadCount', { signal: opts?.signal });
 			if (!r.ok) throw new Error('unread count failed');
 			const j = (await r.json()) as { count?: number };
 			unreadCount = j.count ?? 0;
@@ -241,7 +242,13 @@
 		const hid = effectiveHospitalId ?? null;
 		if (hid === prevHospitalId) return;
 		prevHospitalId = hid;
-		void refreshUnreadCount();
+			let cancelled = false;
+			const ac = new AbortController();
+		void refreshUnreadCount({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

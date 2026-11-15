@@ -3,7 +3,7 @@ title: "Vital"
 description: "How to use Vital in Nursing Workbench."
 docType: workflow
 slug: workflows/nursing-workbench-vital
-pageId: 800001
+pageId: 400101
 moduleId: 4
 pageUrl: "/medora/home/nursing-workbench/vital"
 generated: true

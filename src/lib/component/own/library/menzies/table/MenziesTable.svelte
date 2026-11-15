@@ -168,7 +168,7 @@
 		currentPage = $bindable(1),
 		totalRowCount,
 		isLoading = false,
-		showRefreshButton = true,
+		showRefreshButton = false,
 		refreshTooltip = 'Refresh',
 		emptyMessage = 'No records found.',
 		showRowActions = false,
@@ -886,8 +886,8 @@
 												<LucideCircleCheck className="size-3.5" />
 											{/snippet}
 										</MenziesTableIconAction>
-									{:else}
-										{@render rowActions?.(row, index)}
+									{:else if rowActions}
+										{@render rowActions(row, index)}
 									{/if}
 								</td>
 							{/if}

@@ -380,11 +380,19 @@
 		const _hospital = hospitalId;
 		const _branch = selectedBranchId;
 		if (!_hospital) return;
-		(async () => {
+		let cancelled = false;
+		const ac = new AbortController();
+		void (async () => {
 			await fetchCategories();
+			if (cancelled) return;
 			await fetchSubCategories();
+			if (cancelled) return;
 			await fetchServiceItems(true);
 		})();
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	function onCategoryChange() {

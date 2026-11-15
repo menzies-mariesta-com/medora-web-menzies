@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { and, count, desc, eq, ilike, ne, or } from 'drizzle-orm';
 import { DocumentCatalogKindEnum } from '$lib/model/enum/document-catalog.enum';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -233,6 +234,8 @@ export async function createCatalogTemplateAdmin(
 	};
 
 	await ensureDb().insert(table.documentCatalogTable).values(meta);
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return meta;
 }
 
@@ -311,6 +314,8 @@ export async function updateCatalogTemplateAdmin(
 		.update(table.documentCatalogTable)
 		.set(catalogPatch)
 		.where(eq(table.documentCatalogTable.catalogCode, payload.catalogCode));
+
+	void notifyHospitalMasterWrite(hospitalId);
 
 	return catalogPatch;
 }

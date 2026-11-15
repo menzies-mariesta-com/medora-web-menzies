@@ -20,6 +20,8 @@
 	import { isMedoraVisitScopedPagePath } from '$lib/util/medora-visit-scoped-nav.util';
 	import { replaceState } from '$app/navigation';
 	import { browser } from '$app/environment';
+	import TrialExpiredRibbon from '$lib/component/own/global/plan/TrialExpiredRibbon.svelte';
+	import { setMedoraEntitlementFromLayout } from '$lib/state/medora-entitlement.state.svelte';
 
 	let { children, data } = $props();
 
@@ -176,9 +178,41 @@
 		}
 		routerUtil.replaceRoute(target);
 	});
+
+	const entitlementShowRibbon = $derived(
+		Boolean(
+			(data as { entitlementShowRibbon?: boolean })?.entitlementShowRibbon
+		)
+	);
+	const entitlementRibbonLabel = $derived(
+		(data as { entitlementRibbonLabel?: string | null })
+			?.entitlementRibbonLabel ?? 'Trial expired'
+	);
+	const ownerWorkspaceReadOnly = $derived(
+		Boolean(
+			(data as { ownerWorkspaceReadOnly?: boolean })?.ownerWorkspaceReadOnly
+		)
+	);
+
+	$effect(() => {
+		setMedoraEntitlementFromLayout({
+			ownerWorkspaceReadOnly: ownerWorkspaceReadOnly
+		});
+	});
 </script>
 
 <div class="my-app">
+	{#if entitlementShowRibbon}
+		<TrialExpiredRibbon label={entitlementRibbonLabel} />
+	{/if}
+	{#if ownerWorkspaceReadOnly}
+		<div
+			class="bg-error/70 text-error-content border-error/30 border-b px-4 py-2 text-center text-sm text-error"
+			role="status"
+		>
+			This workspace is read-only. Viewing is allowed; changes are blocked until your plan is renewed.
+		</div>
+	{/if}
 	{#if !isEmbed}
 		<GPrivateMedoraNavbar />
 		{#key `${hospitalId}-${((data as any)?.staffUserGroupsForNav ?? []).map((g: { id: number }) => g.id).join(',')}-${((data as any)?.staffBranchesForNav ?? []).map((b: { id: string }) => b.id).join(',')}-${(data as any)?.selectedInventoryFromStoreId ?? ''}-${(data as any)?.inventoryFromStoresForNav?.length ?? 0}`}
@@ -222,7 +256,9 @@
 	<div class="my-main p-3" class:my-main-embed={isEmbed}>
 		{#key page.url.pathname}
 			<AnimatedPageContent>
-				{@render children?.()}
+				{#if children}
+					{@render children()}
+				{/if}
 			</AnimatedPageContent>
 		{/key}
 	</div>

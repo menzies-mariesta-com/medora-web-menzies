@@ -34,15 +34,16 @@
 			: 'procedure_log_endoscopy_v1'
 	);
 
-	async function loadCaseAndTemplate() {
+	async function loadCaseAndTemplate(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!caseId || !caseApi) return;
-		const cRes = await fetch(`${caseApi}?mode=detail&id=${caseId}`);
+		const cRes = await fetch(`${caseApi}?mode=detail&id=${caseId}`, { signal: opts?.signal });
 		if (!cRes.ok) await throwUserFacingHttpError(cRes);
 		const c = (await cRes.json()) as { caseType: string };
 		caseType = c.caseType as SurgicalCaseTypeEnum;
-		const tRes = await fetch(
-			`${formApi}?mode=template&code=${encodeURIComponent(templateCode)}`
-		);
+		const tRes = await fetch(`${formApi}?mode=template&code=${encodeURIComponent(templateCode)}`, { signal: opts?.signal });
 		if (!tRes.ok) await throwUserFacingHttpError(tRes);
 		schema = (
 			(await tRes.json()) as { schemaJson: ClinicalFormTemplateSchema }
@@ -50,7 +51,13 @@
 	}
 
 	$effect(() => {
-		void loadCaseAndTemplate();
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadCaseAndTemplate({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	async function saveLog() {

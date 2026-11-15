@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -101,6 +102,8 @@ export async function createEdTriageLevel(
 		.values(payload)
 		.returning();
 	if (!row) throw new Error('Insert failed');
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }
 
@@ -127,6 +130,8 @@ export async function updateEdTriageLevel(payload: {
 		)
 		.returning();
 	if (!row) throw error(404, 'Triage level not found');
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }
 

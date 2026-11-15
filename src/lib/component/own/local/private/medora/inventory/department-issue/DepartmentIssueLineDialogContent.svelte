@@ -84,10 +84,11 @@
 		);
 	}
 
-	async function hydrateLineItemMeta(
-		line: DeptIssueDraftLine,
-		itemId: number
-	) {
+	async function hydrateLineItemMeta(line: DeptIssueDraftLine,
+		itemId: number, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		const meta =
 			await hydrateInventoryLineItemMeta<ConsumptionDraftLineIum>({
 				hospitalId,
@@ -106,7 +107,10 @@
 		await refreshBatchAllocations(line);
 	}
 
-	async function refreshBatchAllocations(line: DeptIssueDraftLine) {
+	async function refreshBatchAllocations(line: DeptIssueDraftLine, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		batchAllocations = [];
 		if (!hospitalId || storeId == null || line.itemId == null) return;
 		try {
@@ -114,16 +118,15 @@
 			ps.set('mode', 'lots');
 			ps.set('storeId', String(storeId));
 			ps.set('itemId', String(line.itemId));
-			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/inventory/stock?${ps}`,
-				{ method: 'GET' }
-			);
+			const res = await fetch(`/api/medora/hospital/${hospitalId}/home/inventory/stock?${ps}`, { method: 'GET', signal: opts?.signal });
 			if (!res.ok) throw new Error(String(res.status));
 			const rows = (await res.json()) as InventoryStockLotDto[];
 			batchAllocations = rows
 				.filter((r) => Number(r.quantity) > 1e-9)
 				.map((r) => mapStockLotToBatchAllocationDraft(r));
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			toast.addToast(
 				m.inv_dc_batch(),
 				StatusColorEnum.ERROR,
@@ -246,7 +249,7 @@
 
 		if (draftLine.iumList.length === 0) {
 			lastAutoBatchFetchKey = null;
-			void hydrateLineItemMeta(draftLine, draftLine.itemId);
+			void hydrateLineItemMeta(draftLine, draftLine.itemId, { signal: ac.signal, isCancelled: () => cancelled });
 			return;
 		}
 
@@ -256,8 +259,14 @@
 			lastAutoBatchFetchKey !== batchAutoFetchKey
 		) {
 			lastAutoBatchFetchKey = batchAutoFetchKey;
-			void refreshBatchAllocations(draftLine);
+			let cancelled = false;
+			const ac = new AbortController();
+			void refreshBatchAllocations(draftLine, { signal: ac.signal, isCancelled: () => cancelled });
 		}
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

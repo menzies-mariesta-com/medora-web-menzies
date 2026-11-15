@@ -62,7 +62,10 @@ export function applySecurityHeaders(
 		);
 	}
 
-	if (isSensitivePath(event.url.pathname)) {
+	if (
+		isSensitivePath(event.url.pathname) &&
+		!headers.has('Cache-Control')
+	) {
 		headers.set(
 			'Cache-Control',
 			'no-store, no-cache, must-revalidate, private'

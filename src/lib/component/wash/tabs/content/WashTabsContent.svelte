@@ -1,9 +1,10 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	let { tabName, className, active, children } = $props<{
 		tabName: string;
 		className?: string;
 		active?: boolean;
-		children?: () => void;
+		children?: Snippet;
 	}>();
 </script>
 
@@ -15,5 +16,7 @@
 	aria-labelledby={tabName}
 	class:active
 >
-	{@render children?.()}
+	{#if children}
+		{@render children()}
+	{/if}
 </div>

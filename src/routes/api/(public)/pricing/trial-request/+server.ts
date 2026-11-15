@@ -1,8 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
-import { sendEmailServer } from '$lib/server/util/mailer.server';
-import { isTrialDuration } from '$lib/tool/pricing';
+import { PlanRequestKindEnum } from '$lib/model/enum/plan.enum';
+import { submitPlanRequest } from '$lib/server/pricing/submit-plan-request.server';
 
 export const POST: RequestHandler = async ({ request }) => {
 	const form = await request.formData();
@@ -15,79 +14,34 @@ export const POST: RequestHandler = async ({ request }) => {
 		.toLowerCase();
 	const message = String(form.get('message') ?? '').trim();
 	const duration = String(form.get('duration') ?? '').trim();
+	const otp = String(form.get('otp') ?? '').trim();
 
-	if (!firstName || !lastName || !hospitalName || !email || !duration) {
-		return json(
-			{
-				success: false,
-				message: 'Fill all required fields.'
-			},
-			{ status: 400 }
-		);
-	}
-	if (!email.includes('@')) {
-		return json(
-			{
-				success: false,
-				message: 'Enter a valid email address.'
-			},
-			{ status: 400 }
-		);
-	}
-	if (!isTrialDuration(duration)) {
-		return json(
-			{
-				success: false,
-				message: 'Choose a trial duration: 7 days, 2 weeks, or 1 month.'
-			},
-			{ status: 400 }
-		);
-	}
-
-	const inbox = (
-		env.SUPPORT_IT_EMAIL ||
-		env.SMTP_USER ||
-		''
-	).trim();
-
-	const body = [
-		`Trial request from Medora pricing`,
-		``,
-		`Name: ${firstName} ${lastName}`,
-		`Hospital / group: ${hospitalName}`,
-		`Website: ${website || '(none)'}`,
-		`Email: ${email}`,
-		`Duration: ${duration}`,
-		``,
-		`Message:`,
-		message || '(none)'
-	].join('\n');
-
-	if (!inbox) {
-		return json({
-			success: true,
-			message: 'Trial request received. We will follow up by email soon.'
-		});
-	}
-
-	const sent = await sendEmailServer({
-		to: inbox,
-		subject: `Medora trial request: ${hospitalName}`,
-		message: body
+	const result = await submitPlanRequest({
+		firstName,
+		lastName,
+		hospitalName,
+		website,
+		email,
+		message,
+		otp,
+		requestKind: PlanRequestKindEnum.TRIAL,
+		pricingTier: null,
+		trialDuration: duration
 	});
 
-	if (!sent) {
+	if (!result.ok) {
 		return json(
 			{
 				success: false,
-				message: 'Could not send your request. Try again later.'
+				message: result.message,
+				...(result.code ? { code: result.code } : {})
 			},
-			{ status: 500 }
+			{ status: result.status }
 		);
 	}
 
 	return json({
 		success: true,
-		message: 'Trial request received. We will follow up by email soon.'
+		message: result.message
 	});
 };

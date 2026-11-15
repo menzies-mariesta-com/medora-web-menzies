@@ -91,7 +91,10 @@
 		)
 	);
 
-	async function load() {
+	async function load(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId) return;
 		loading = true;
 		try {
@@ -106,8 +109,9 @@
 			}
 			const res = await fetch(
 				`/api/medora/hospital/${hospitalId}/home/inventory/stock?${sp.toString()}`,
-				{ method: 'GET' }
+				{ method: 'GET', signal: opts?.signal }
 			);
+			if (opts?.isCancelled?.()) return;
 			if (view === 'lots') {
 				const raw = (await res.json()) as Record<string, unknown>[];
 				rowsLots = raw.map((r) => ({
@@ -128,8 +132,11 @@
 			} else {
 				rowsAgg = (await res.json()) as AggRow[];
 			}
+		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 		} finally {
-			loading = false;
+			if (!opts?.isCancelled?.()) loading = false;
 		}
 	}
 
@@ -138,7 +145,13 @@
 		void view;
 		void selectedInventoryFromStoreId;
 		void stockListAllStores;
-		void load();
+		let cancelled = false;
+		const ac = new AbortController();
+		void load({ signal: ac.signal, isCancelled: () => cancelled });
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	const aggColumns: MenziesTableColumn<AggRow>[] = [

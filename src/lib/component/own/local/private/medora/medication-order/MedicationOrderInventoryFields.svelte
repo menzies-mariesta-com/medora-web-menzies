@@ -186,7 +186,10 @@
 		applyFefoFromSaleQty();
 	}
 
-	async function refreshUnitSalePricePreview() {
+	async function refreshUnitSalePricePreview(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId || storeId <= 0 || itemId <= 0 || outUnitId <= 0) {
 			unitSalePrice = '0';
 			return;
@@ -242,7 +245,13 @@
 		void outUnitId;
 		void iumList.length;
 		void chosenIum?.id;
-		void refreshUnitSalePricePreview();
+			let cancelled = false;
+			const ac = new AbortController();
+		void refreshUnitSalePricePreview({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	function applyFefoFromSaleQty() {

@@ -116,12 +116,16 @@
 		return parts.length > 0 ? parts.join('; ') : '—';
 	}
 
-	async function loadStores() {
+	async function loadStores(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId) return;
 		const res = await fetch(
 			`/api/medora/hospital/${hospitalId}/home/inventory-setup/stores?mode=allForPicker`,
-			{ method: 'GET' }
+			{ method: 'GET', signal: opts?.signal }
 		);
+		if (opts?.isCancelled?.()) return;
 		stores = (await res.json()) as typeof stores;
 	}
 
@@ -322,7 +326,13 @@
 
 	$effect(() => {
 		void hospitalId;
-		void loadStores();
+		let cancelled = false;
+		const ac = new AbortController();
+		void loadStores({ signal: ac.signal, isCancelled: () => cancelled });
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 </script>
 

@@ -167,8 +167,12 @@
 		return `${year}-${month}-${day}`;
 	}
 
-	async function fetchVisit() {
+	async function fetchVisit(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!visitId || !hospitalId) return;
+		if (opts?.isCancelled?.()) return;
 		isLoadingVisit = true;
 		try {
 			await ensureServiceFilterSubCategoryIdsLoaded();
@@ -178,6 +182,7 @@
 					visitId: String(visitId)
 				}
 			);
+			if (opts?.isCancelled?.()) return;
 			if (v) {
 				visit = {
 					patientId: v.patientId,
@@ -197,8 +202,12 @@
 				pendingItems = [];
 				historyItems = [];
 			}
+		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
+			throw e;
 		} finally {
-			isLoadingVisit = false;
+			if (!opts?.isCancelled?.()) isLoadingVisit = false;
 		}
 	}
 
@@ -247,7 +256,16 @@
 		if (visitId !== lastLoadedVisitId) {
 			lastLoadedVisitId = visitId;
 			if (visitId) {
-				fetchVisit();
+				let cancelled = false;
+				const ac = new AbortController();
+				void fetchVisit({
+					signal: ac.signal,
+					isCancelled: () => cancelled
+				});
+				return () => {
+					cancelled = true;
+					ac.abort();
+				};
 			} else {
 				visit = null;
 				currentOrder = null;
@@ -945,6 +963,7 @@
 					class={TableEnum.HEIGHT}
 				>
 					<MenziesTable
+						showRefreshButton={true}
 						title="Order"
 						rows={[]}
 						columns={detailColumns}
@@ -984,6 +1003,7 @@
 					{#snippet table()}
 						<div class="flex min-h-0 flex-1 flex-col">
 							<MenziesTable
+								showRefreshButton={true}
 								rows={pendingItems}
 								columns={detailColumns}
 								isLoading={false}

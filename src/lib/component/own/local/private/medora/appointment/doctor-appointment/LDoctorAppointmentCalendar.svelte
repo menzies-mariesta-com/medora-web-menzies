@@ -26,6 +26,7 @@
 	import { tick } from 'svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
+	import LucideClipboardClock from '$lib/component/own/library/lucide/LucideClipboardClock.svelte';
 	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
 	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
@@ -81,7 +82,8 @@
 		onBlockDeleted,
 		/** Refetch appointments/blocks view (toolbar refresh). */
 		onRefreshAppointments,
-		isRefreshAppointmentsLoading = false
+		isRefreshAppointmentsLoading = false,
+		onOpenCancelHistory
 	} = $props<{
 		hospitalId?: string;
 		selectDate: string;
@@ -120,6 +122,8 @@
 		/** Refetch appointment list for the calendar (after cancel/edit or manual refresh). */
 		onRefreshAppointments?: () => void | Promise<void>;
 		isRefreshAppointmentsLoading?: boolean;
+		/** Open cancel-appointment history for the selected doctor. */
+		onOpenCancelHistory?: () => void | Promise<void>;
 	}>();
 
 	let selectedAppointmentId = $state<number | null>(null);
@@ -822,7 +826,7 @@
 					>
 				{/if}
 			</div>
-			<div>
+			<div class="flex items-center gap-2">
 				<WashTooltip
 					tooltipText="Block time (no appointments in blocked range)"
 					className=" tooltip-error"
@@ -833,6 +837,18 @@
 						disabled={!canInteractWithCalendar}
 					>
 						<LucideBan />
+					</WashButton>
+				</WashTooltip>
+				<WashTooltip
+					tooltipText="Cancel appointment history (selected doctor)"
+					className=" tooltip-secondary"
+				>
+					<WashButton
+						className="btn-secondary btn-square"
+						onClick={() => void onOpenCancelHistory?.()}
+						disabled={!canInteractWithCalendar}
+					>
+						<LucideClipboardClock />
 					</WashButton>
 				</WashTooltip>
 			</div>

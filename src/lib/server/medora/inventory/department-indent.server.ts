@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import {
 	and,
 	asc,
@@ -23,6 +24,11 @@ import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import { uuidV7 } from '$lib/util/id.util';
+import {
+	assertRowsUpdated,
+	throwDocumentStatusConflict,
+	updateStatusTaggingIfCurrent
+} from '$lib/server/medora/workflow/status-transition.server';
 import {
 	assertStaffCanApproveLevel,
 	getMaxApprovalLevel,
@@ -671,6 +677,8 @@ export async function createDepartmentIndent(
 		);
 		return newId;
 	});
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return getDepartmentIndentById(event, {
 		hospitalId: input.hospitalId,
 		id
@@ -739,47 +747,98 @@ export async function approveDepartmentIndent(
 			? String(input.remarks).trim()
 			: 'Rejected by approver';
 
+	const pending = InvDepartmentIndentStatusTaggingEnum.PENDING;
+
 	await ensureDb().transaction(async (tx) => {
+		const [locked] = await tx
+			.select()
+			.from(table.invDepartmentIndentTable)
+			.where(
+				and(
+					eq(table.invDepartmentIndentTable.id, input.indentId),
+					eq(
+						table.invDepartmentIndentTable.hospitalId,
+						input.hospitalId
+					),
+					eq(
+						table.invDepartmentIndentTable.statusTaggingId,
+						pending
+					),
+					isNull(table.invDepartmentIndentTable.deletedAt)
+				)
+			)
+			.for('update')
+			.limit(1);
+		if (!locked) throwDocumentStatusConflict();
+
 		if (input.action === InvApprovalActionEnum.REJECTED) {
-			await tx
-				.update(table.invDepartmentIndentTable)
-				.set({
+			await updateStatusTaggingIfCurrent(
+				tx,
+				table.invDepartmentIndentTable,
+				input.indentId,
+				pending,
+				{
 					statusTaggingId:
 						InvDepartmentIndentStatusTaggingEnum.CANCELLED,
 					cancelledBy: userId,
 					cancelledAt: sql<string>`now()`,
 					cancelReason: rejectReason,
 					updatedBy: userId
-				})
-				.where(eq(table.invDepartmentIndentTable.id, input.indentId));
+				},
+				[
+					eq(
+						table.invDepartmentIndentTable.currentLevel,
+						locked.currentLevel
+					)
+				]
+			);
 		} else if (input.action === InvApprovalActionEnum.APPROVED) {
-			if (ind.currentLevel < maxLevel) {
-				await tx
+			if (locked.currentLevel < maxLevel) {
+				const rows = await tx
 					.update(table.invDepartmentIndentTable)
 					.set({
-						currentLevel: ind.currentLevel + 1,
+						currentLevel: locked.currentLevel + 1,
 						updatedBy: userId
 					})
 					.where(
-						eq(table.invDepartmentIndentTable.id, input.indentId)
-					);
+						and(
+							eq(
+								table.invDepartmentIndentTable.id,
+								input.indentId
+							),
+							eq(
+								table.invDepartmentIndentTable.statusTaggingId,
+								pending
+							),
+							eq(
+								table.invDepartmentIndentTable.currentLevel,
+								locked.currentLevel
+							)
+						)
+					)
+					.returning({ id: table.invDepartmentIndentTable.id });
+				assertRowsUpdated(rows);
 			} else {
-				// Final from-store approval only: `from_approved_by/at` stay null while
-				// intermediate levels approve (current_level increments).
-				// Central fulfillment queue — DISS creates the department issue.
-				await tx
-					.update(table.invDepartmentIndentTable)
-					.set({
+				await updateStatusTaggingIfCurrent(
+					tx,
+					table.invDepartmentIndentTable,
+					input.indentId,
+					pending,
+					{
 						statusTaggingId:
 							InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL,
 						currentLevel: 1,
 						fromApprovedBy: userId,
 						fromApprovedAt: sql<string>`now()`,
 						updatedBy: userId
-					})
-					.where(
-						eq(table.invDepartmentIndentTable.id, input.indentId)
-					);
+					},
+					[
+						eq(
+							table.invDepartmentIndentTable.currentLevel,
+							locked.currentLevel
+						)
+					]
+				);
 			}
 		}
 	});

@@ -1,10 +1,13 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	let { className, children } = $props<{
 		className?: string;
-		children: () => void;
+		children?: Snippet;
 	}>();
 </script>
 
 <ul class="list rounded-box shadow-md {className}">
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 </ul>

@@ -16,6 +16,12 @@
 	import LEdAssignErBedDialogContent from '$lib/component/own/local/private/medora/emergency/LEdAssignErBedDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { HOSPITAL_COLOR_CATEGORY } from '$lib/model/const/color-purpose.const';
+	import {
+		badgeInlineStyleFromColor,
+		resolveHospitalColor
+	} from '$lib/tool/color/hospital-color-resolve.util';
+	import { loadHospitalColorMap } from '$lib/util/hospital-color-map-client.util';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 	const lifeCycle = new LifeCycleUtil();
@@ -37,6 +43,29 @@
 	let rows = $state<EdEncounterBoardRow[]>([]);
 	let loading = $state(false);
 	let movingVisitId = $state<string | null>(null);
+	let colorMap = $state<Record<string, string> | null>(null);
+
+	function columnBorderStyle(col: string): string | undefined {
+		const hex = resolveHospitalColor(
+			colorMap,
+			HOSPITAL_COLOR_CATEGORY.ED_BOARD_COLUMN,
+			col
+		);
+		return `border-top: 3px solid ${hex}`;
+	}
+
+	function acuityBadgeStyle(level: string | null | undefined): string | undefined {
+		if (!level?.trim()) return undefined;
+		const key = level.trim();
+		const asNum = Number(key);
+		const entityKey = Number.isFinite(asNum) ? String(asNum) : key;
+		const hex = resolveHospitalColor(
+			colorMap,
+			HOSPITAL_COLOR_CATEGORY.ED_TRIAGE_LEVEL,
+			entityKey
+		);
+		return badgeInlineStyleFromColor(hex);
+	}
 
 	function columnLabel(code: string): string {
 		switch (code) {
@@ -116,6 +145,8 @@
 	}
 
 	lifeCycle.onMount(() => {
+		const hid = page.params.hospital_id ?? '';
+		if (hid) void loadHospitalColorMap(hid).then((m) => (colorMap = m));
 		void loadBoard();
 		if (!hospitalId) return;
 		return connectPerioperativeSse({
@@ -139,7 +170,10 @@
 	</div>
 	<div class="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-x-auto md:grid-cols-3 xl:grid-cols-6">
 		{#each columns as col (col)}
-			<section class="bg-base-200 flex min-h-48 min-w-[14rem] flex-col rounded-box p-2">
+			<section
+				class="bg-base-200 flex min-h-48 min-w-[14rem] flex-col rounded-box p-2"
+				style={columnBorderStyle(col)}
+			>
 				<h2 class="text-sm font-bold">{columnLabel(col)}</h2>
 				<div class="mt-2 flex flex-1 flex-col gap-2 overflow-y-auto">
 					{#each rows.filter((r) => r.boardColumn === col) as card (card.visitId)}
@@ -161,7 +195,11 @@
 									{msg.ed_wait_minutes({ minutes: String(card.waitMinutes) })}
 								</p>
 								{#if card.acuityLevel}
-									<span class="badge badge-sm badge-error">{card.acuityLevel}</span>
+									<span
+										class="badge badge-sm badge-outline"
+										style={acuityBadgeStyle(card.acuityLevel)}
+										>{card.acuityLevel}</span
+									>
 								{/if}
 							</button>
 							<div class="mt-2 flex flex-col gap-1">

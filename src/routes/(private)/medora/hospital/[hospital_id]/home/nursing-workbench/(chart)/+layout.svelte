@@ -123,12 +123,16 @@
 			{/each}
 		</div>
 		<div class="nursing-chart-content">
-			{@render children()}
+			{#if children}
+				{@render children()}
+			{/if}
 		</div>
 	</div>
 {:else}
 	<div>
-		{@render children()}
+		{#if children}
+			{@render children()}
+		{/if}
 	</div>
 {/if}
 

@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { env } from '$env/dynamic/private';
 import { type RequestEvent } from '@sveltejs/kit';
 import {
 	and,
@@ -12,6 +11,7 @@ import {
 	ne,
 	sql
 } from 'drizzle-orm';
+import { resolveEmailAppOrigin } from '$lib/asset/email/email-brand';
 import { renderStockAlertEmail } from '$lib/asset/email/stock-alert';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -438,20 +438,9 @@ async function maybeNotifyStaffInApp(params: {
 	});
 }
 
-function resolvePublicOrigin(): string {
-	const raw = env.BETTER_AUTH_BASE_URL?.trim();
-	if (!raw) return '';
-	try {
-		return new URL(raw).origin;
-	} catch {
-		return '';
-	}
-}
-
-/** Absolute URL for email clients when `BETTER_AUTH_BASE_URL` is set; otherwise relative path. */
+/** Absolute URL for links in email (same origin chain as the logo `<img>`). */
 function toAbsoluteAppUrl(path: string): string {
-	const origin = resolvePublicOrigin();
-	if (!origin) return path;
+	const origin = resolveEmailAppOrigin().replace(/\/$/, '');
 	const p = path.startsWith('/') ? path : `/${path}`;
 	return `${origin}${p}`;
 }
@@ -622,8 +611,8 @@ async function dispatchStoreScopedStockAlerts(params: {
 				count: lowStock.length,
 				eventType: stockAlertEventType('inv_low_stock', sid),
 				severity: StatusColorEnum.WARNING,
-				title: 'Low stock',
-				message: `${lowStock.length} item(s) are below the reorder level at ${storeLabel}.`,
+				title: 'Low stock needs a look',
+				message: `${lowStock.length} item${lowStock.length === 1 ? '' : 's'} at ${storeLabel} ${lowStock.length === 1 ? 'is' : 'are'} below the reorder level. Open the report when you have a moment to review and reorder.`,
 				link: `${base}/low-stock?storeId=${sid}`,
 				emailFlag: settings.emailLowStock,
 				notifyProp: 'notifyLowStock'
@@ -632,8 +621,8 @@ async function dispatchStoreScopedStockAlerts(params: {
 				count: expired.length,
 				eventType: stockAlertEventType('inv_expired', sid),
 				severity: StatusColorEnum.ERROR,
-				title: 'Expired stock',
-				message: `${expired.length} lot(s) have expired at ${storeLabel}.`,
+				title: 'Expired stock needs attention',
+				message: `${expired.length} batch${expired.length === 1 ? '' : 'es'} at ${storeLabel} ${expired.length === 1 ? 'has' : 'have'} passed the expiry date. Please review them in the inventory report.`,
 				link: `${base}/expired?mode=expired&storeId=${sid}`,
 				emailFlag: settings.emailExpired,
 				notifyProp: 'notifyExpired'
@@ -642,8 +631,8 @@ async function dispatchStoreScopedStockAlerts(params: {
 				count: expSoon.length,
 				eventType: stockAlertEventType('inv_expiring_soon', sid),
 				severity: StatusColorEnum.WARNING,
-				title: 'Expiring soon',
-				message: `${expSoon.length} lot(s) expire soon at ${storeLabel}.`,
+				title: 'Batches expiring soon',
+				message: `${expSoon.length} batch${expSoon.length === 1 ? '' : 'es'} at ${storeLabel} will expire soon. Check the report so you can use or replace them in time.`,
 				link: `${base}/expired?mode=soon&storeId=${sid}`,
 				emailFlag: settings.emailExpiringSoon,
 				notifyProp: 'notifyExpiringSoon'
@@ -672,7 +661,7 @@ async function dispatchStoreScopedStockAlerts(params: {
 						title: a.title,
 						body: a.message,
 						url: reportUrl,
-						ctaLabel: 'View inventory report'
+						ctaLabel: 'Open inventory report'
 					});
 					await maybeSendStockAlertEmail({
 						staffId: r.staffId,
@@ -680,7 +669,7 @@ async function dispatchStoreScopedStockAlerts(params: {
 						storeId: sid,
 						eventType: a.eventType,
 						minGapMinutes: settings.emailMinGapMinutes,
-						subject: `[Medora] ${a.title}`,
+						subject: `Medora · ${a.title} — ${storeLabel}`,
 						text: plainText,
 						html
 					});

@@ -72,8 +72,8 @@
 			: '';
 	}
 
-	async function apiGet<T>(url: string): Promise<T> {
-		const res = await fetch(url);
+	async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
+		const res = await fetch(url, { signal });
 		if (!res.ok) {
 			const text = await res.text().catch(() => '');
 			throw new Error(text || res.statusText);
@@ -200,7 +200,10 @@
 		}
 	}
 
-	async function fetchVisit(): Promise<{
+	async function fetchVisit(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}): Promise<{
 		patientId: string;
 		hospitalId: string;
 	} | null> {
@@ -211,7 +214,8 @@
 			if (!base) return null;
 			const res = await apiGet<{
 				data: { patientId: string; hospitalId: string } | null;
-			}>(`${base}?action=visitBasics&visitId=${visitId}`);
+			}>(`${base}?action=visitBasics&visitId=${visitId}`, opts?.signal);
+			if (opts?.isCancelled?.()) return null;
 			if (!res.data) {
 				visit = null;
 				return null;
@@ -219,17 +223,22 @@
 			visit = res.data;
 			return res.data;
 		} catch (_err) {
+			if (opts?.isCancelled?.()) return null;
 			visit = null;
 			return null;
 		} finally {
-			isLoadingVisit = false;
+			if (!opts?.isCancelled?.()) isLoadingVisit = false;
 		}
 	}
 
 	async function fetchVitals(
 		patientId: string,
 		hospitalIdParam: string,
-		options?: { force?: boolean }
+		options?: {
+			force?: boolean;
+			signal?: AbortSignal;
+			isCancelled?: () => boolean;
+		}
 	) {
 		const base = apiBase();
 		if (!base) return;
@@ -263,14 +272,16 @@
 			const result = await apiGet<{
 				data: PatientVitalWithVisit[];
 				total: number;
-			}>(url.pathname + url.search);
+			}>(url.pathname + url.search, options?.signal);
+			if (options?.isCancelled?.()) return;
 			vitals = result.data;
 			totalVitals = result.total;
 		} catch (_err) {
+			if (options?.isCancelled?.()) return;
 			vitals = [];
 			totalVitals = 0;
 		} finally {
-			isLoadingVitals = false;
+			if (!options?.isCancelled?.()) isLoadingVitals = false;
 		}
 	}
 
@@ -283,15 +294,29 @@
 				return;
 			}
 			lastLoadedVisitKey = visitKey;
-			(async () => {
-				const resolvedVisit = await fetchVisit();
+			let cancelled = false;
+			const ac = new AbortController();
+			void (async () => {
+				const resolvedVisit = await fetchVisit({
+					signal: ac.signal,
+					isCancelled: () => cancelled
+				});
+				if (cancelled) return;
 				if (resolvedVisit) {
 					await fetchVitals(
 						resolvedVisit.patientId,
-						resolvedVisit.hospitalId
+						resolvedVisit.hospitalId,
+						{
+							signal: ac.signal,
+							isCancelled: () => cancelled
+						}
 					);
 				}
 			})();
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 		} else {
 			lastLoadedVisitKey = '';
 			visit = null;

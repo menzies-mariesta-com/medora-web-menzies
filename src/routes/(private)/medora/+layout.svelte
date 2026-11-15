@@ -10,4 +10,6 @@
 	<title>{m.menzies_medora()}</title>
 </svelte:head>
 
-{@render children?.()}
+{#if children}
+	{@render children()}
+{/if}

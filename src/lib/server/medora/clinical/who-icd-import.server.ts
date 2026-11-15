@@ -140,6 +140,21 @@ export function isWhoIcdSeedSkipped(): boolean {
 	return raw === '1' || raw === 'true' || raw === 'yes';
 }
 
+/** Init seed: ICD10 | ICD11 | BOTH (default) | NONE when WHO_ICD_SKIP_SEED is unset. */
+export function resolveWhoIcdSeedSystems(): WhoIcdSystem[] | 'BOTH' | null {
+	if (isWhoIcdSeedSkipped()) return null;
+	const raw = (process.env.WHO_ICD_SEED_SYSTEM ?? '').trim().toUpperCase();
+	if (!raw || raw === 'BOTH') return 'BOTH';
+	if (raw === 'NONE') return null;
+	if (raw === DiagnosisCodingSystemEnum.ICD10) {
+		return [DiagnosisCodingSystemEnum.ICD10];
+	}
+	if (raw === DiagnosisCodingSystemEnum.ICD11) {
+		return [DiagnosisCodingSystemEnum.ICD11];
+	}
+	return 'BOTH';
+}
+
 function resolveSystems(
 	systems: WhoIcdImportOptions['systems']
 ): WhoIcdSystem[] {

@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { and, count, desc, eq, ilike, ne } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -100,6 +101,8 @@ export async function createUserGroup(
 		.values(input)
 		.returning();
 	if (!created) throw new Error('Failed to create user group');
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return created;
 }
 
@@ -125,6 +128,8 @@ export async function updateUserGroup(
 		.where(eq(table.userGroupTable.id, id))
 		.returning();
 	if (!updated) throw error(404, 'User group not found');
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return updated;
 }
 

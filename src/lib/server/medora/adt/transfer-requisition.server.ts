@@ -17,6 +17,7 @@ import {
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { transferBed } from '$lib/server/medora/ipd/admission.server';
+import { updateStatusTaggingIfCurrent } from '$lib/server/medora/workflow/status-transition.server';
 
 export async function getTransferRequisitionsPaginated(
 	params: PaginationParams & {
@@ -239,30 +240,17 @@ export async function completeTransferRequisition(input: {
 		actorStaffId: input.actorStaffId
 	});
 
-	const [updated] = await db
-		.update(table.ipdBedTransferRequisitionTable)
-		.set({
-			statusTaggingId: IpdBedTransferReqStatusTaggingEnum.COMPLETED,
-			updatedAt: sql`now()`
-		})
-		.where(eq(table.ipdBedTransferRequisitionTable.id, req.id))
-		.returning();
-	return updated;
-}
-
-export async function cancelTransferRequisition(input: {
-	hospitalId: string;
-	id: number;
-}) {
-	const [row] = await ensureDb()
-		.update(table.ipdBedTransferRequisitionTable)
-		.set({
-			statusTaggingId: IpdBedTransferReqStatusTaggingEnum.CANCELLED,
-			updatedAt: sql`now()`
-		})
-		.where(
-			and(
-				eq(table.ipdBedTransferRequisitionTable.id, input.id),
+	await db.transaction(async (tx) => {
+		await updateStatusTaggingIfCurrent(
+			tx,
+			table.ipdBedTransferRequisitionTable,
+			req.id,
+			req.statusTaggingId,
+			{
+				statusTaggingId: IpdBedTransferReqStatusTaggingEnum.COMPLETED,
+				updatedAt: sql`now()`
+			},
+			[
 				eq(
 					table.ipdBedTransferRequisitionTable.hospitalId,
 					input.hospitalId
@@ -271,9 +259,68 @@ export async function cancelTransferRequisition(input: {
 					table.ipdBedTransferRequisitionTable.statusId,
 					StatusEnum.DELETED
 				)
+			]
+		);
+	});
+	const [updated] = await db
+		.select()
+		.from(table.ipdBedTransferRequisitionTable)
+		.where(eq(table.ipdBedTransferRequisitionTable.id, req.id))
+		.limit(1);
+	return updated;
+}
+
+export async function cancelTransferRequisition(input: {
+	hospitalId: string;
+	id: number;
+}) {
+	return ensureDb().transaction(async (tx) => {
+		const [locked] = await tx
+			.select()
+			.from(table.ipdBedTransferRequisitionTable)
+			.where(
+				and(
+					eq(table.ipdBedTransferRequisitionTable.id, input.id),
+					eq(
+						table.ipdBedTransferRequisitionTable.hospitalId,
+						input.hospitalId
+					),
+					ne(
+						table.ipdBedTransferRequisitionTable.statusId,
+						StatusEnum.DELETED
+					)
+				)
 			)
-		)
-		.returning();
-	if (!row) throw error(404, 'Requisition not found');
-	return row;
+			.for('update')
+			.limit(1);
+		if (!locked) throw error(404, 'Requisition not found');
+		if (
+			locked.statusTaggingId ===
+			IpdBedTransferReqStatusTaggingEnum.CANCELLED
+		) {
+			return locked;
+		}
+		if (
+			locked.statusTaggingId ===
+			IpdBedTransferReqStatusTaggingEnum.COMPLETED
+		) {
+			throw error(400, 'Cannot cancel a completed requisition');
+		}
+		await updateStatusTaggingIfCurrent(
+			tx,
+			table.ipdBedTransferRequisitionTable,
+			input.id,
+			locked.statusTaggingId,
+			{
+				statusTaggingId: IpdBedTransferReqStatusTaggingEnum.CANCELLED,
+				updatedAt: sql`now()`
+			}
+		);
+		const [row] = await tx
+			.select()
+			.from(table.ipdBedTransferRequisitionTable)
+			.where(eq(table.ipdBedTransferRequisitionTable.id, input.id))
+			.limit(1);
+		return row!;
+	});
 }

@@ -140,9 +140,14 @@
 
 	$effect(() => {
 		if (open && dialogEl) {
+			let cancelled = false;
 			tick().then(() => {
+				if (cancelled) return;
 				if (dialogEl && !dialogEl.open) dialogEl.showModal();
 			});
+			return () => {
+				cancelled = true;
+			};
 		}
 	});
 

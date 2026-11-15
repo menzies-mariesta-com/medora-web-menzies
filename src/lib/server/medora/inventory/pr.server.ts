@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import {
 	and,
 	asc,
@@ -36,20 +37,17 @@ import {
 } from './inventory-scope.server';
 import type { InvApprovalModule } from './approval-config.server';
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/medora/administration/item-master.server';
+import {
+	assertRowsUpdated,
+	throwDocumentStatusConflict,
+	transitionStatusFromAny,
+	updateStatusTaggingIfCurrent
+} from '$lib/server/medora/workflow/status-transition.server';
 
-const EDITABLE_PR_STATUSES = new Set([
-	InvPrStatusTaggingEnum.DRAFT,
-	InvPrStatusTaggingEnum.PENDING,
-	InvPrStatusTaggingEnum.SENT_BACK,
-	InvPrStatusTaggingEnum.REJECTED
-]);
-
-const CANCELLABLE_PR_STATUSES = new Set([
-	InvPrStatusTaggingEnum.DRAFT,
-	InvPrStatusTaggingEnum.PENDING,
-	InvPrStatusTaggingEnum.REJECTED,
-	InvPrStatusTaggingEnum.SENT_BACK
-]);
+import {
+	CANCELLABLE_PR_STATUSES,
+	EDITABLE_PR_STATUSES
+} from '$lib/tool/inventory/pr-workflow.util';
 
 export async function listPurchaseRequisitions(
 	event: RequestEvent,
@@ -642,6 +640,8 @@ export async function createPurchaseRequisition(
 		return pr.id;
 	});
 
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return getPurchaseRequisitionById(event, {
 		hospitalId: input.hospitalId,
 		id: prId
@@ -745,6 +745,8 @@ export async function updatePurchaseRequisition(
 		}
 	});
 
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return getPurchaseRequisitionById(event, {
 		hospitalId: input.hospitalId,
 		id: input.id
@@ -804,6 +806,27 @@ export async function approvePurchaseRequisition(
 	);
 
 	await ensureDb().transaction(async (tx) => {
+		const [locked] = await tx
+			.select()
+			.from(table.purchaseRequisitionTable)
+			.where(
+				and(
+					eq(table.purchaseRequisitionTable.id, input.prId),
+					eq(
+						table.purchaseRequisitionTable.hospitalId,
+						input.hospitalId
+					),
+					eq(
+						table.purchaseRequisitionTable.statusTaggingId,
+						InvPrStatusTaggingEnum.PENDING
+					),
+					isNull(table.purchaseRequisitionTable.deletedAt)
+				)
+			)
+			.for('update')
+			.limit(1);
+		if (!locked) throwDocumentStatusConflict();
+
 		if (
 			input.action === InvApprovalActionEnum.APPROVED &&
 			input.lineAdjustments?.length
@@ -837,42 +860,75 @@ export async function approvePurchaseRequisition(
 			}
 		}
 
+		const pending = InvPrStatusTaggingEnum.PENDING;
+
 		if (input.action === InvApprovalActionEnum.REJECTED) {
-			await tx
-				.update(table.purchaseRequisitionTable)
-				.set({
+			await updateStatusTaggingIfCurrent(
+				tx,
+				table.purchaseRequisitionTable,
+				input.prId,
+				pending,
+				{
 					statusTaggingId: InvPrStatusTaggingEnum.REJECTED,
 					updatedBy: userId
-				})
-				.where(eq(table.purchaseRequisitionTable.id, input.prId));
+				},
+				[eq(table.purchaseRequisitionTable.currentLevel, locked.currentLevel)]
+			);
 		} else if (input.action === InvApprovalActionEnum.SENT_BACK) {
-			await tx
-				.update(table.purchaseRequisitionTable)
-				.set({
+			await updateStatusTaggingIfCurrent(
+				tx,
+				table.purchaseRequisitionTable,
+				input.prId,
+				pending,
+				{
 					statusTaggingId: InvPrStatusTaggingEnum.SENT_BACK,
 					currentLevel: 1,
 					updatedBy: userId
-				})
-				.where(eq(table.purchaseRequisitionTable.id, input.prId));
+				},
+				[eq(table.purchaseRequisitionTable.currentLevel, locked.currentLevel)]
+			);
 		} else if (input.action === InvApprovalActionEnum.APPROVED) {
-			if (pr.currentLevel < maxLevel) {
-				await tx
+			if (locked.currentLevel < maxLevel) {
+				const rows = await tx
 					.update(table.purchaseRequisitionTable)
 					.set({
-						currentLevel: pr.currentLevel + 1,
+						currentLevel: locked.currentLevel + 1,
 						updatedBy: userId
 					})
-					.where(eq(table.purchaseRequisitionTable.id, input.prId));
+					.where(
+						and(
+							eq(table.purchaseRequisitionTable.id, input.prId),
+							eq(
+								table.purchaseRequisitionTable.statusTaggingId,
+								pending
+							),
+							eq(
+								table.purchaseRequisitionTable.currentLevel,
+								locked.currentLevel
+							)
+						)
+					)
+					.returning({ id: table.purchaseRequisitionTable.id });
+				assertRowsUpdated(rows);
 			} else {
-				await tx
-					.update(table.purchaseRequisitionTable)
-					.set({
+				await updateStatusTaggingIfCurrent(
+					tx,
+					table.purchaseRequisitionTable,
+					input.prId,
+					pending,
+					{
 						statusTaggingId: InvPrStatusTaggingEnum.APPROVED,
 						updatedBy: userId,
 						approvedBy: userId,
 						approvedAt: sql<string>`now()`
-					})
-					.where(eq(table.purchaseRequisitionTable.id, input.prId));
+					},
+					[
+						eq(
+							table.purchaseRequisitionTable.currentLevel,
+							locked.currentLevel
+						)
+					]
+				);
 			}
 		}
 
@@ -880,7 +936,7 @@ export async function approvePurchaseRequisition(
 			hospitalId: input.hospitalId,
 			documentId: input.prId,
 			module: 'PR',
-			level: pr.currentLevel,
+			level: locked.currentLevel,
 			action: input.action,
 			remarks: input.remarks,
 			approvedBy: userId,
@@ -924,14 +980,20 @@ export async function resubmitPurchaseRequisition(
 		throw error(400, 'PR cannot be resubmitted from this status');
 	}
 
-	await ensureDb()
-		.update(table.purchaseRequisitionTable)
-		.set({
+	await transitionStatusFromAny(
+		ensureDb(),
+		table.purchaseRequisitionTable,
+		input.prId,
+		[
+			InvPrStatusTaggingEnum.SENT_BACK,
+			InvPrStatusTaggingEnum.REJECTED
+		],
+		{
 			statusTaggingId: InvPrStatusTaggingEnum.PENDING,
 			currentLevel: 1,
 			updatedBy: userId
-		})
-		.where(eq(table.purchaseRequisitionTable.id, input.prId));
+		}
+	);
 
 	return getPurchaseRequisitionById(event, {
 		hospitalId: input.hospitalId,
@@ -1272,16 +1334,43 @@ export async function cancelPurchaseRequisition(
 		);
 	}
 
-	await ensureDb()
-		.update(table.purchaseRequisitionTable)
-		.set({
-			statusTaggingId: InvPrStatusTaggingEnum.CANCELLED,
-			cancelledBy: userId,
-			cancelledAt: sql<string>`now()`,
-			cancelReason: reason,
-			updatedBy: userId
-		})
-		.where(eq(table.purchaseRequisitionTable.id, input.prId));
+	await ensureDb().transaction(async (tx) => {
+		const [locked] = await tx
+			.select()
+			.from(table.purchaseRequisitionTable)
+			.where(
+				and(
+					eq(table.purchaseRequisitionTable.id, input.prId),
+					eq(
+						table.purchaseRequisitionTable.hospitalId,
+						input.hospitalId
+					),
+					isNull(table.purchaseRequisitionTable.deletedAt)
+				)
+			)
+			.for('update')
+			.limit(1);
+		if (!locked) throw error(404, 'PR not found');
+		if (locked.statusTaggingId === InvPrStatusTaggingEnum.CANCELLED) {
+			throw error(400, 'PR is already cancelled');
+		}
+		if (!CANCELLABLE_PR_STATUSES.has(locked.statusTaggingId)) {
+			throw error(400, 'PR cannot be cancelled in current status');
+		}
+		await updateStatusTaggingIfCurrent(
+			tx,
+			table.purchaseRequisitionTable,
+			input.prId,
+			locked.statusTaggingId,
+			{
+				statusTaggingId: InvPrStatusTaggingEnum.CANCELLED,
+				cancelledBy: userId,
+				cancelledAt: sql<string>`now()`,
+				cancelReason: reason,
+				updatedBy: userId
+			}
+		);
+	});
 
 	return getPurchaseRequisitionById(event, {
 		hospitalId: input.hospitalId,

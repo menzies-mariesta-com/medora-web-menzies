@@ -6,18 +6,31 @@ import { env } from '$env/dynamic/private';
 
 export const EMAIL_BRAND_NAME = 'Medora';
 
-/** Public path under `static/` (and mirrored in `$lib/asset/image/`). */
-export const EMAIL_LOGO_PATH = '/medora-logo.svg';
+/**
+ * Raster logo for email (`static/medora-logo-email.png`).
+ * shortcut: SVG in static/ is not shown in many clients (Gmail, Outlook), use PNG.
+ */
+export const EMAIL_LOGO_PATH = '/medora-logo-email.png';
+
+/** MIME Content-ID for inline logo attachment in transactional mail. */
+export const EMAIL_LOGO_CID = 'medora-logo@medora';
+
+/** `<img src>` for HTML sent via SMTP (logo attached with this CID). */
+export function emailLogoSrcForSend(): string {
+	return `cid:${EMAIL_LOGO_CID}`;
+}
 
 /**
  * Public site origin for absolute asset URLs in email.
- * Prefers `BETTER_AUTH_BASE_URL`, then `BETTER_AUTH_URL`, then local default.
+ * Prefers `BETTER_AUTH_BASE_URL`, then `BETTER_AUTH_URL`, then `ORIGIN`, then local default.
  */
 export function resolveEmailAppOrigin(): string {
-	const raw =
-		env.BETTER_AUTH_BASE_URL?.trim() ||
-		env.BETTER_AUTH_URL?.trim() ||
-		'http://localhost:4002';
+	const candidates = [
+		env.BETTER_AUTH_BASE_URL?.trim(),
+		env.BETTER_AUTH_URL?.trim(),
+		env.ORIGIN?.trim()
+	].filter(Boolean) as string[];
+	const raw = candidates[0] ?? 'http://localhost:4002';
 	try {
 		return new URL(raw).origin;
 	} catch {
@@ -39,7 +52,7 @@ export function applyEmailBrandPlaceholders(
 	html: string,
 	opts?: { logoUrl?: string; brandName?: string }
 ): string {
-	const logoUrl = opts?.logoUrl ?? resolveEmailLogoUrl();
+	const logoUrl = opts?.logoUrl ?? emailLogoSrcForSend();
 	const brandName = opts?.brandName ?? EMAIL_BRAND_NAME;
 	return html
 		.replace(/\{\{logoUrl\}\}/g, logoUrl)

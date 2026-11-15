@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	/**
 	 * Menzies Design Wash Select (web 1.3.0).
 	 * daisyUI-styled trigger + custom listbox (not the OS native picker).
@@ -127,7 +128,7 @@
 		menuClassName = '',
 		'aria-label': ariaLabel
 	}: {
-		children?: () => void;
+		children?: Snippet;
 		options?: readonly SelectItem[];
 		className?: string;
 		/** Legacy placeholder (empty `<option value="">`). Prefer `placeholder`. */
@@ -487,7 +488,9 @@
 			{#if optionHeader != null && optionHeader !== ''}
 				<option value="">{optionHeader}</option>
 			{/if}
-			{@render children?.()}
+			{#if children}
+				{@render children()}
+			{/if}
 		</select>
 	{/if}
 

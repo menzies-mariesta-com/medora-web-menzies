@@ -550,7 +550,10 @@
 		}));
 	}
 
-	async function loadApprovedPrs() {
+	async function loadApprovedPrs(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId) return;
 		const toStoreId = selectedInventoryFromStoreId;
 		if (toStoreId == null) {
@@ -571,8 +574,9 @@
 		sp.set('pageSize', '150');
 		const res = await fetch(
 			`/api/medora/hospital/${hospitalId}/home/inventory/purchase-requisition?${sp.toString()}`,
-			{ method: 'GET' }
+			{ method: 'GET', signal: opts?.signal }
 		);
+		if (opts?.isCancelled?.()) return;
 		if (!res.ok) {
 			approvedPrList = [];
 			return;
@@ -589,6 +593,7 @@
 				poCount?: number;
 			}[];
 		};
+		if (opts?.isCancelled?.()) return;
 		approvedPrList = j.data ?? [];
 	}
 
@@ -938,9 +943,16 @@
 	$effect(() => {
 		if (poCreateMode !== 'pr' || !hospitalId) return;
 		void selectedInventoryFromStoreId;
-		void (async () => {
-			await loadApprovedPrs();
-		})();
+		let cancelled = false;
+		const ac = new AbortController();
+		void loadApprovedPrs({
+			signal: ac.signal,
+			isCancelled: () => cancelled
+		});
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	function patchPoCreateLine(

@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import {
 	and,
 	asc,
@@ -748,6 +749,8 @@ export async function createMaster(
 			updatedBy: userId
 		})
 		.returning();
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return row;
 }
 
@@ -1007,6 +1010,8 @@ export async function updateMaster(
 		.where(and(eq(t.id, id), isNull(t.deletedAt)))
 		.returning();
 	if (!row) throw error(404, 'Not found');
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return { ...row, statusId } as any;
 }
 
@@ -1144,6 +1149,8 @@ export async function deleteMaster(
 		.update(table.medOrderFrequencyTable)
 		.set(del)
 		.where(eq(table.medOrderFrequencyTable.id, id));
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return { ok: true };
 }
 

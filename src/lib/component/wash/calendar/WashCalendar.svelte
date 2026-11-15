@@ -14,6 +14,8 @@
 		DEFAULT_CALENDAR_TIME,
 		addMonths,
 		buildMonthCells,
+		buildYearOptions,
+		canGoToAdjacentMonth,
 		clampISODate,
 		compareISODate,
 		currentTimeRounded,
@@ -117,15 +119,19 @@
 
 	function defaultViewISOFrom(
 		modeValue: WashCalendarMode,
-		valueStr: string
+		valueStr: string,
+		boundsMin?: string,
+		boundsMax?: string
 	): string {
+		const emptyDefault = () => clampISODate(todayISO, boundsMin, boundsMax);
 		if (modeValue === 'range') {
-			return parseRangeValue(valueStr).start || todayISO;
+			return parseRangeValue(valueStr).start || emptyDefault();
 		}
 		if (modeValue === 'multi') {
-			return parseMultiValue(valueStr)[0] || todayISO;
+			return parseMultiValue(valueStr)[0] || emptyDefault();
 		}
-		return toISODateFromDateTime(valueStr) || valueStr || todayISO;
+		if (!valueStr.trim()) return emptyDefault();
+		return toISODateFromDateTime(valueStr) || valueStr || emptyDefault();
 	}
 
 	let internalViewISO = $state(todayISO);
@@ -151,7 +157,7 @@
 			return;
 		}
 		if (!didInitView) {
-			internalViewISO = defaultViewISOFrom(mode, value);
+			internalViewISO = defaultViewISOFrom(mode, value, min, max);
 			focusISO = clampISODate(
 				toISODateFromDateTime(internalViewISO) || internalViewISO,
 				min,
@@ -181,12 +187,12 @@
 	);
 	const months = $derived(monthOptions(resolvedLocale));
 	const weekdays = $derived(weekdayLabels(resolvedLocale, firstDayOfWeek));
-	const yearCenter = new Date().getFullYear();
-	const years = $derived(
-		Array.from({ length: maxYears + 1 }, (_, i) => ({
-			value: yearCenter - Math.floor(maxYears / 2) + i,
-			label: String(yearCenter - Math.floor(maxYears / 2) + i)
-		}))
+	const years = $derived(buildYearOptions(min, max, maxYears));
+	const canGoPrevMonth = $derived(
+		canGoToAdjacentMonth(viewMonth, -1, min, max)
+	);
+	const canGoNextMonth = $derived(
+		canGoToAdjacentMonth(viewMonth, 1, min, max)
 	);
 	const cells = $derived(
 		buildMonthCells(viewMonth, firstDayOfWeek, showOutsideDays)
@@ -410,7 +416,11 @@
 			class="btn btn-ghost btn-square btn-sm btn-primary cursor-pointer"
 			aria-label="Previous month"
 			title="Previous month"
-			onclick={() => moveViewTo(toISODate(addMonths(viewMonth, -1)))}
+			disabled={!canGoPrevMonth}
+			onclick={() => {
+				if (!canGoPrevMonth) return;
+				moveViewTo(toISODate(addMonths(viewMonth, -1)));
+			}}
 		>
 			<LucideChevronLeft className="size-4" />
 		</button>
@@ -574,7 +584,11 @@
 			class="btn btn-ghost btn-square btn-sm btn-primary cursor-pointer"
 			aria-label="Next month"
 			title="Next month"
-			onclick={() => moveViewTo(toISODate(addMonths(viewMonth, 1)))}
+			disabled={!canGoNextMonth}
+			onclick={() => {
+				if (!canGoNextMonth) return;
+				moveViewTo(toISODate(addMonths(viewMonth, 1)));
+			}}
 		>
 			<LucideChevronRight className="size-4" />
 		</button>

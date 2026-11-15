@@ -58,29 +58,37 @@
 			InvDepartmentConsumptionStatusTaggingEnum.PENDING
 	);
 
-	async function loadDetail() {
+	async function loadDetail(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId || !consumptionId) return;
 		loading = true;
 		try {
-			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/inventory/department-consumption?id=${encodeURIComponent(consumptionId)}`,
-				{ method: 'GET' }
-			);
+			const res = await fetch(`/api/medora/hospital/${hospitalId}/home/inventory/department-consumption?id=${encodeURIComponent(consumptionId)}`, { method: 'GET', signal: opts?.signal });
 			if (!res.ok) throw new Error(String(res.status));
 			const j = (await res.json()) as DetailRow | null;
 			detail = j;
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			toast.addErrorToast(m.inv_dc_detail_heading(), e);
 			detail = null;
 		} finally {
-			loading = false;
+			if (!opts?.isCancelled?.()) loading = false;
 		}
 	}
 
 	$effect(() => {
 		void hospitalId;
 		void consumptionId;
-		void loadDetail();
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadDetail({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	const readColumns: MenziesTableColumn<DepartmentConsumptionDetailLine>[] =

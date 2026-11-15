@@ -1,20 +1,28 @@
 <script lang="ts">
 	import { parseUuid } from '$lib/util/id.util';
+	import {
+		visitBarListUrl,
+		type VisitBarPack
+	} from '$lib/tool/medora/visit-bar-phase.util';
+	import { fetchJsonCached } from '$lib/util/client-fetch-cache.util';
 	import { m } from '$lib/paraglide/messages';
 	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import LVisitAlertIndicators from '$lib/component/own/local/private/medora/emr/LVisitAlertIndicators.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
+	import type { VisitBarColorHints } from '$lib/model/type/medora/color-configuration.type';
 
 	let {
 		visitId = '',
 		hospitalId = '',
-		emptyLabel = m.no_visit_selected()
+		emptyLabel = m.no_visit_selected(),
+		onColorHints
 	} = $props<{
 		visitId?: string;
 		hospitalId?: string;
 		emptyLabel?: string;
+		onColorHints?: (hints: VisitBarColorHints | null) => void;
 	}>();
 
 	let visit = $state<any>(null);
@@ -36,32 +44,30 @@
 			return;
 		}
 		let cancelled = false;
+		const ac = new AbortController();
 		(async () => {
 			isLoading = true;
 			try {
-				const qs = new URLSearchParams({
-					mode: 'visit.bar',
-					visitId: String(id)
-				});
-				const r = await fetch(
-					`/api/medora/hospital/${encodeURIComponent(hid)}/home/emr/visit-list?${qs}`
-				);
-				if (!r.ok) throw new Error('visit bar failed');
-				const pack = (await r.json()) as {
-					visit: any;
-					hasActiveAllergies: boolean;
-					hasAbnormalVital: boolean;
-				};
+				const url = visitBarListUrl(hid, String(id));
+				const pack = await fetchJsonCached<
+					VisitBarPack & {
+						hasActiveAllergies?: boolean;
+						hasAbnormalVital?: boolean;
+						colorHints?: VisitBarColorHints | null;
+					}
+				>(url, { bypass: true, signal: ac.signal });
 				if (!cancelled) {
-					visit = pack.visit;
-					hasActiveAllergies = pack.hasActiveAllergies;
-					hasAbnormalVital = pack.hasAbnormalVital;
+					visit = pack.visit ?? null;
+					hasActiveAllergies = pack.hasActiveAllergies ?? false;
+					hasAbnormalVital = pack.hasAbnormalVital ?? false;
+					onColorHints?.(pack.colorHints ?? null);
 				}
 			} catch {
 				if (!cancelled) {
 					visit = null;
 					hasActiveAllergies = false;
 					hasAbnormalVital = false;
+					onColorHints?.(null);
 				}
 			} finally {
 				if (!cancelled) isLoading = false;
@@ -69,6 +75,7 @@
 		})();
 		return () => {
 			cancelled = true;
+			ac.abort();
 		};
 	});
 

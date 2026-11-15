@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import WashInputField from '../../inputfield/WashInputField.svelte';
 
 	let { tabName, groupName, checked, className, onClick, children } =
@@ -8,7 +9,7 @@
 			checked?: boolean;
 			className?: string;
 
-			children?: () => void;
+			children?: Snippet;
 			onClick?: () => void;
 		}>();
 </script>
@@ -21,5 +22,7 @@
 		{onClick}
 		{checked}
 	/>
-	{@render children?.()}
+	{#if children}
+		{@render children()}
+	{/if}
 </label>

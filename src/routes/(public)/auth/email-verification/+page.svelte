@@ -163,18 +163,22 @@
 			>
 				{msg.auth_otp_verify()}
 			</WashButton>
-			<WashButton
+			<button
 				type="button"
-				className="btn-ghost w-full"
-				disabled={resendSeconds > 0}
-				loading={isResending}
-				loadingText={m.loading()}
-				onClick={handleResend}
+				class="btn btn-ghost w-full"
+				disabled={resendSeconds > 0 || isResending}
+				aria-busy={isResending || undefined}
+				onclick={handleResend}
 			>
-				{resendSeconds > 0
-					? msg.auth_otp_resend_in({ seconds: String(resendSeconds) })
-					: msg.auth_otp_resend()}
-			</WashButton>
+				{#if isResending}
+					<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+					<span>{m.loading()}</span>
+				{:else}
+					{resendSeconds > 0
+						? msg.auth_otp_resend_in({ seconds: String(resendSeconds) })
+						: msg.auth_otp_resend()}
+				{/if}
+			</button>
 			<a
 				class="link link-secondary cursor-pointer text-center text-sm"
 				href={WebRoutesEnum.LOGIN}

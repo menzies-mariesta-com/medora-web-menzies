@@ -3,7 +3,7 @@ title: "Trauma Log"
 description: "How to use Trauma Log in Nursing Workbench."
 docType: workflow
 slug: workflows/nursing-workbench-trauma-log
-pageId: 122
+pageId: 400112
 moduleId: 4
 pageUrl: "/medora/home/nursing-workbench/trauma-log"
 generated: true

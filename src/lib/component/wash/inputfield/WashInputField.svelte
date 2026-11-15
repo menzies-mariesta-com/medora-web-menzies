@@ -5,6 +5,10 @@
 	 */
 	import WashDatePicker from '$lib/component/wash/datepicker/WashDatePicker.svelte';
 	import WashTimePicker from '$lib/component/wash/timepicker/WashTimePicker.svelte';
+	import {
+		dateOfBirthMaxIso,
+		dateOfBirthMinIso
+	} from '$lib/util/date-of-birth-range.util';
 	import { normalizeTime } from '$lib/util/wash-calendar-date.util';
 
 	let {
@@ -18,6 +22,7 @@
 		maxlength,
 		min,
 		max,
+		dateBounds,
 		step,
 		nameText,
 		value = $bindable(),
@@ -40,6 +45,8 @@
 		maxlength?: number;
 		min?: string;
 		max?: string;
+		/** When `inputType="date"`, apply standard DOB min/max unless `min`/`max` set. */
+		dateBounds?: 'dateOfBirth';
 		step?: string;
 		nameText?: string;
 		value?: string;
@@ -117,6 +124,19 @@
 			: 'md'
 	);
 
+	const pickerMin = $derived(
+		min ??
+			(isDateField && dateBounds === 'dateOfBirth'
+				? dateOfBirthMinIso()
+				: undefined)
+	);
+	const pickerMax = $derived(
+		max ??
+			(isDateField && dateBounds === 'dateOfBirth'
+				? dateOfBirthMaxIso()
+				: undefined)
+	);
+
 	$effect(() => {
 		if (isWashPicker) return;
 		void value;
@@ -143,8 +163,8 @@
 		{id}
 		value={value ?? ''}
 		includeTime={isDateTimeField}
-		{min}
-		{max}
+		min={pickerMin}
+		max={pickerMax}
 		{disabled}
 		{required}
 		name={nameText}

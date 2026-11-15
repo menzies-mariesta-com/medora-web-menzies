@@ -78,6 +78,8 @@
 	);
 
 	let detailsEl = $state<HTMLDetailsElement | null>(null);
+	/** Remount calendar when reopening an empty value so the view resets to max/today. */
+	let calendarMountKey = $state(0);
 	let placement = $state<DropdownPlacement>({
 		end: false,
 		top: false,
@@ -136,6 +138,9 @@
 			return;
 		}
 		if (details.open) {
+			if (!(value ?? '').trim()) {
+				calendarMountKey += 1;
+			}
 			placement = measureDropdownPlacement(details, {
 				panelWidth: compact ? 280 : 320,
 				panelHeight: withTime ? 480 : mode === 'range' ? 400 : 380
@@ -203,20 +208,22 @@
 		role="dialog"
 		aria-label={emptyHint}
 	>
-		<WashCalendar
-			{mode}
-			value={value ?? ''}
-			onChange={onCalendarChange}
-			min={calendarMin}
-			max={calendarMax}
-			{isDateDisallowed}
-			locale={resolvedLocale}
-			size={compact ? 'sm' : 'md'}
-			bordered={false}
-			includeTime={withTime}
-			aria-label={ariaLabel ?? emptyHint}
-			className="w-full !max-w-none"
-		/>
+		{#key calendarMountKey}
+			<WashCalendar
+				{mode}
+				value={value ?? ''}
+				onChange={onCalendarChange}
+				min={calendarMin}
+				max={calendarMax}
+				{isDateDisallowed}
+				locale={resolvedLocale}
+				size={compact ? 'sm' : 'md'}
+				bordered={false}
+				includeTime={withTime}
+				aria-label={ariaLabel ?? emptyHint}
+				className="w-full !max-w-none"
+			/>
+		{/key}
 	</div>
 </details>
 {#if name}

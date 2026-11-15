@@ -7,6 +7,7 @@
 	import LucideLogOut from '$lib/component/own/library/lucide/LucideLogOut.svelte';
 	import LucideUserCog from '$lib/component/own/library/lucide/LucideUserCog.svelte';
 	import LucideUsers from '$lib/component/own/library/lucide/LucideUsers.svelte';
+	import LucideReceiptText from '$lib/component/own/library/lucide/LucideReceiptText.svelte';
 	import LucideUsersRound from '$lib/component/own/library/lucide/LucideUsersRound.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { AdminPageKeyEnum } from '$lib/model/enum/db-link';
@@ -73,6 +74,14 @@
 			icon: LucideHouse,
 			match: (pathname) =>
 				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_HOSPITALS)
+		},
+		{
+			href: WebRoutesEnum.MEDORA_ADMIN_PLANS,
+			pageKey: AdminPageKeyEnum.PLANS,
+			label: () => paraglideMsg('admin_nav_plans', 'Plans'),
+			icon: LucideReceiptText,
+			match: (pathname) =>
+				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_PLANS)
 		},
 		{
 			href: WebRoutesEnum.MEDORA_ADMIN_STAFF,

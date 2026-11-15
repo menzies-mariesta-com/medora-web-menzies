@@ -7,18 +7,21 @@
  *   - ICD10: WHO ICD-10 (international, 2019 via WHO ICD-API)
  *   - ICD10_CM: US ICD-10-CM clinical modification (CDC/NCHS flat files)
  *   - ICD11: WHO ICD-11 MMS (via WHO ICD-API)
+ *   - SNOMED_CT: SNOMED CT International (RF2 Snapshot import)
  * - Changing coding_system is blocked once the hospital has coded diagnoses.
  */
 export enum DiagnosisCodingSystemEnum {
 	ICD10 = 'ICD10',
 	ICD10_CM = 'ICD10_CM',
-	ICD11 = 'ICD11'
+	ICD11 = 'ICD11',
+	SNOMED_CT = 'SNOMED_CT'
 }
 
 export const DIAGNOSIS_CODING_SYSTEM_VALUES = [
 	DiagnosisCodingSystemEnum.ICD10,
 	DiagnosisCodingSystemEnum.ICD10_CM,
-	DiagnosisCodingSystemEnum.ICD11
+	DiagnosisCodingSystemEnum.ICD11,
+	DiagnosisCodingSystemEnum.SNOMED_CT
 ] as const;
 
 export type DiagnosisCodingSystem =
@@ -70,6 +73,8 @@ export function diagnosisCodingSystemLabelKey(
 			return 'hospital_coding_system_icd10_cm';
 		case DiagnosisCodingSystemEnum.ICD11:
 			return 'hospital_coding_system_icd11';
+		case DiagnosisCodingSystemEnum.SNOMED_CT:
+			return 'hospital_coding_system_snomed_ct';
 		case DiagnosisCodingSystemEnum.ICD10:
 		default:
 			return 'hospital_coding_system_icd10';
