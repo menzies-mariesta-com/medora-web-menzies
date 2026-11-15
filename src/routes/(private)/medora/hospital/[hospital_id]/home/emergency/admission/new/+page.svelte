@@ -236,7 +236,10 @@
 		}
 	}
 
-	async function loadSourceOpdVisits(pid: string) {
+	async function loadSourceOpdVisits(pid: string, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		sourceOpdVisits = [];
 		if (!sourceOpdFromUrl) sourceOpdVisitId = '';
 		if (!api || !pid.trim()) return;
@@ -246,9 +249,7 @@
 				mode: 'source-opd',
 				patientId: pid.trim()
 			});
-			const res = await fetch(`${api}?${qs}`, {
-				credentials: 'include'
-			});
+			const res = await fetch(`${api}?${qs}`, { credentials: 'include', signal: opts?.signal });
 			if (!res.ok) return;
 			const list = (await res.json()) as AdtSourceOpdVisitRow[];
 			sourceOpdVisits = list ?? [];
@@ -267,7 +268,13 @@
 
 	$effect(() => {
 		const pid = patientId;
-		void loadSourceOpdVisits(pid);
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadSourceOpdVisits(pid, { signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	$effect(() => {

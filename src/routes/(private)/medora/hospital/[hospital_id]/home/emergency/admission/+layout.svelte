@@ -52,11 +52,15 @@
 			{/each}
 		</div>
 		<div class="ed-subnav-content">
-			{@render children()}
+			{#if children}
+				{@render children()}
+			{/if}
 		</div>
 	</div>
 {:else}
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 {/if}
 
 <style>

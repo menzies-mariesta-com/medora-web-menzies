@@ -1,0 +1,39 @@
+---
+description: Safe Svelte 5 snippet {@render} — avoid invalid_snippet runtime errors
+alwaysApply: true
+---
+
+# Snippet render safety (Svelte 5)
+
+Rendering `null`/`undefined` snippets throws [`invalid_snippet`](https://svelte.dev/e/invalid_snippet) and can break navigation (uncaught promise, “stuck loading”).
+
+## Optional snippets (default)
+
+- Type slot props as `children?: Snippet` (import `type { Snippet } from 'svelte'`), not `() => void`.
+- Render with a guard:
+
+```svelte
+{#if children}
+	{@render children()}
+{/if}
+```
+
+Do **not** use `{@render children()}` or `{@render children?.()}` when the snippet may be omitted.
+
+## Required snippets
+
+When the API always provides the snippet, type `name: Snippet` and `{@render name()}` is allowed without a guard.
+
+## Wash / slot adapters
+
+Components that wrap default slot content (`WashCard`, `WashCardBody`, `WashCardBodyTitle`, layouts, etc.) treat `children` as **optional** unless documented otherwise.
+
+Do not pass ad-hoc props (`title`, `subtitle`) to Wash adapters unless that component defines them — put copy in the default slot / `children`.
+
+## Local `#snippet` in the same file
+
+Calls like `{@render mySection()}` for a `#snippet mySection()` defined in the same file do not need `{#if}` (the snippet exists). Still guard props typed `foo?: Snippet`.
+
+## CI
+
+`pnpm run check:snippet-render` enforces guards for optional snippets and bare `children` renders.

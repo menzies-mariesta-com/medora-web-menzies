@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('public documentation', () => {
-	test('docs overview loads', async ({ page }) => {
+	test('docs index redirects to getting started', async ({ page }) => {
 		const res = await page.goto('/docs');
 		expect(res?.status()).toBeLessThan(500);
-		await expect(page.getByRole('heading', { name: /Medora documentation/i })).toBeVisible();
+		await expect(page).toHaveURL(/\/docs\/guides\/getting-started/);
+		await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
 	});
 
 	test('workflow page loads', async ({ page }) => {

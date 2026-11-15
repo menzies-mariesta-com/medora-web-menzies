@@ -64,6 +64,10 @@
 				if (res.ok) wards = (await res.json()) as WardRow[];
 			})
 			.catch(() => {});
+	let cancelled = false;
+	return () => {
+		cancelled = true;
+	};
 	});
 
 	$effect(() => {
@@ -81,6 +85,10 @@
 			.catch(() => {
 				beds = [];
 			});
+	let cancelled = false;
+	return () => {
+		cancelled = true;
+	};
 	});
 
 	async function handleSubmit(e: Event) {

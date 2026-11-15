@@ -1,4 +1,5 @@
 import { ensureDb } from '$lib/server/db';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import * as table from '$lib/server/db/schema';
 import type {
 	ItemUnitMasterSchema,
@@ -238,6 +239,8 @@ export async function createItemUnitMaster(
 		.returning();
 	if (!row) throw new Error('Insert failed');
 
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }
 
@@ -322,6 +325,8 @@ export async function updateItemUnitMaster(
 		.where(eq(table.itemUnitMasterTable.id, id))
 		.returning();
 	if (!row) throw new Error('Update failed');
+
+	void notifyHospitalMasterWrite(hospitalId);
 
 	return row;
 }

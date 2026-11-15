@@ -58,14 +58,15 @@
 	);
 
 	async function apiGet<T>(
-		params: Record<string, string | number | undefined>
+		params: Record<string, string | number | undefined>,
+		init?: RequestInit
 	): Promise<T> {
 		const qs = new URLSearchParams();
 		for (const [k, v] of Object.entries(params)) {
 			if (v == null || v === '') continue;
 			qs.set(k, String(v));
 		}
-		const res = await fetch(`${baseApi}?${qs.toString()}`);
+		const res = await fetch(`${baseApi}?${qs.toString()}`, init);
 		if (!res.ok)
 			throw new Error(await readFailedResponseMessage(res));
 		return (await res.json()) as T;
@@ -282,12 +283,20 @@
 		return `${year}-${month}-${day}`;
 	}
 
-	async function fetchVisit() {
+	async function fetchVisit(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!visitId || !hospitalId) return;
 		isLoadingVisit = true;
 		try {
 			await ensureServiceFilterSubCategoryIdsLoaded();
-			const v = await getPatientVisitById({ id: visitId });
+			if (opts?.isCancelled?.()) return;
+			const v = await apiGet<any>(
+				{ mode: 'visit.get', visitId: visitId },
+				{ signal: opts?.signal }
+			);
+			if (opts?.isCancelled?.()) return;
 			if (v) {
 				visit = {
 					patientId: v.patientId,
@@ -299,6 +308,7 @@
 						null
 				};
 				await fetchBranchServices(v.hospitalId, v.branchId);
+				if (opts?.isCancelled?.()) return;
 				pendingItems = [];
 				void loadOrderHistory();
 			} else {
@@ -310,7 +320,7 @@
 				historyItems = [];
 			}
 		} finally {
-			isLoadingVisit = false;
+			if (!opts?.isCancelled?.()) isLoadingVisit = false;
 		}
 	}
 
@@ -359,7 +369,16 @@
 		if (visitId !== lastLoadedVisitId) {
 			lastLoadedVisitId = visitId;
 			if (visitId) {
-				fetchVisit();
+				let cancelled = false;
+				const ac = new AbortController();
+				void fetchVisit({
+					signal: ac.signal,
+					isCancelled: () => cancelled
+				});
+				return () => {
+					cancelled = true;
+					ac.abort();
+				};
 			} else {
 				visit = null;
 				currentOrder = null;
@@ -1014,6 +1033,7 @@
 					class={TableEnum.HEIGHT}
 				>
 					<MenziesTable
+						showRefreshButton={true}
 						title="Order"
 						rows={[]}
 						columns={detailColumns}
@@ -1053,6 +1073,7 @@
 					{#snippet table()}
 						<div class="flex min-h-0 flex-1 flex-col">
 							<MenziesTable
+								showRefreshButton={true}
 								rows={pendingItems}
 								columns={detailColumns}
 								isLoading={false}

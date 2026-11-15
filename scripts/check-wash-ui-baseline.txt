@@ -68,6 +68,8 @@ src/routes/(private)/medora/hospital/[hospital_id]/home/administration/document-
 src/routes/(private)/medora/hospital/[hospital_id]/home/administration/external-refer-master/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/administration/financial-year/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/administration/prefix-configuration/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/administration/color-configuration/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/administration/trauma-activation-setup/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/administration/room-master/room/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/administration/room-master/room-category/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/administration/schedule-master/doctor-schedule/+page.svelte: own/library/menzies clone path
@@ -133,3 +135,16 @@ src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/(chart
 src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/(chart)/vital/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/(chart)/census/+page.svelte: own/library/menzies clone path
 src/routes/(private)/medora/hospital/[hospital_id]/home/registration/patient/list/+page.svelte: own/library/menzies clone path
+src/lib/component/own/global/private/medora/LMedoraCommandSearchPanel.svelte: own/library/menzies clone path
+src/lib/component/own/local/private/medora/admin/AdminPlansSection.svelte: own/library/menzies clone path
+src/lib/component/own/local/private/medora/billing/BillingSetupServiceTaggingLinks.svelte: own/library/menzies clone path
+src/lib/component/own/local/private/medora/nursing/LNursingWorklist.svelte: own/library/menzies clone path
+src/lib/component/own/local/private/medora/nursing-workbench/emr/order/LNursingEmrOrderHistoryTable.svelte: own/library/menzies clone path
+src/lib/component/own/snippet/modal/ChangeLanguageModal.svelte: own/library/menzies clone path
+src/lib/tool/menzies/menzies-table-entity-status.util.ts: own/library/menzies clone path
+src/lib/tool/order/service-order-history-detail-columns.util.ts: own/library/menzies clone path
+src/lib/tool/order/service-order-pending-detail-columns.util.ts: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/administration/er-triage-level/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/billing/advance-deposit/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/emergency/admission/new/+page.svelte: own/library/menzies clone path
+src/routes/(private)/medora/hospital/[hospital_id]/home/emergency/bed-status/+page.svelte: own/library/menzies clone path

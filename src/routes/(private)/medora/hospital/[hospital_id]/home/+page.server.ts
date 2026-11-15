@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import {
 	defaultHospitalHomeDateRange,
+	getHospitalHomeDateBounds,
 	loadHospitalHomeDashboard,
 	parseHospitalHomeDateRange,
 	resolveBranchIdsFromParent
@@ -13,10 +14,15 @@ type ParentLayoutData = {
 
 export const load: PageServerLoad = async (event) => {
 	const hospitalId = event.params.hospital_id;
+	const fallbackToday = defaultHospitalHomeDateRange().dateTo;
+	const dateRangeBounds = hospitalId
+		? await getHospitalHomeDateBounds(hospitalId)
+		: { min: fallbackToday, max: fallbackToday };
 	const filters = parseHospitalHomeDateRange({
 		dates: event.url.searchParams.get('dates'),
 		dateFrom: event.url.searchParams.get('dateFrom'),
-		dateTo: event.url.searchParams.get('dateTo')
+		dateTo: event.url.searchParams.get('dateTo'),
+		bounds: dateRangeBounds
 	});
 
 	if (!hospitalId) {
@@ -24,6 +30,7 @@ export const load: PageServerLoad = async (event) => {
 			stats: null,
 			visitsByDay: [],
 			filters,
+			dateRangeBounds,
 			branchScopeName: null as string | null
 		};
 	}
@@ -37,12 +44,13 @@ export const load: PageServerLoad = async (event) => {
 			hospitalId,
 			branchIds,
 			branchScopeName,
-			filters
+			filters,
+			dateRangeBounds
 		});
 		return payload;
 	} catch (err) {
 		console.error('[hospital-home load]', err);
-		const fallbackRange = defaultHospitalHomeDateRange();
+		const fallbackRange = defaultHospitalHomeDateRange(dateRangeBounds);
 		return {
 			stats: null,
 			visitsByDay: [],
@@ -54,6 +62,7 @@ export const load: PageServerLoad = async (event) => {
 					filters.dates ||
 					`${fallbackRange.dateFrom}/${fallbackRange.dateTo}`
 			},
+			dateRangeBounds,
 			branchScopeName,
 			dashboardLoadError: true
 		};

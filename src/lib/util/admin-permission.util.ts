@@ -13,7 +13,8 @@ export const ADMIN_PAGE_KEYS_CLIENT: AdminPageKeyEnum[] = [
 	AdminPageKeyEnum.STAFF,
 	AdminPageKeyEnum.MONITORING,
 	AdminPageKeyEnum.ICD,
-	AdminPageKeyEnum.TEAM
+	AdminPageKeyEnum.TEAM,
+	AdminPageKeyEnum.PLANS
 ];
 
 const ACTION_COLUMN: Record<
@@ -54,6 +55,9 @@ export function adminPathToPageKey(
 	}
 	if (path.startsWith(WebRoutesEnum.MEDORA_ADMIN_TEAM)) {
 		return AdminPageKeyEnum.TEAM;
+	}
+	if (path.startsWith(WebRoutesEnum.MEDORA_ADMIN_PLANS)) {
+		return AdminPageKeyEnum.PLANS;
 	}
 	if (path.startsWith(WebRoutesEnum.MEDORA_ADMIN)) {
 		return AdminPageKeyEnum.OVERVIEW;

@@ -1,10 +1,18 @@
 <script lang="ts">
 	import MedoraBrandWordmark from '$lib/component/own/global/MedoraBrandWordmark.svelte';
+	import SeoHead from '$lib/component/own/snippet/seo/SeoHead.svelte';
+	import { absoluteAssetUrl, absoluteUrl } from '$lib/util/seo.util';
+
+	let { data } = $props();
 </script>
 
-<svelte:head>
-	<title>Medora Patient App</title>
-</svelte:head>
+<SeoHead
+	title="Medora Patient App"
+	description="Patient sign-in is available in the Medora mobile app on iOS and Android."
+	canonical={absoluteUrl(data.origin, '/patient-app')}
+	ogImage={absoluteAssetUrl(data.origin)}
+	siteName="Medora"
+/>
 
 <main class="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-6 px-6 py-12">
 	<MedoraBrandWordmark />

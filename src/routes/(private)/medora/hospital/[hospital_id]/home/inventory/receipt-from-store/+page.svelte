@@ -151,7 +151,10 @@ const dt = new DateTimeUtil();
 		}
 	]);
 
-	async function loadList() {
+	async function loadList(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId) return;
 		loading = true;
 		try {
@@ -176,16 +179,21 @@ const dt = new DateTimeUtil();
 				ps.set('fromStoreId', fromStoreFilter);
 			}
 			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/inventory/department-issue?${ps}`
+				`/api/medora/hospital/${hospitalId}/home/inventory/department-issue?${ps}`,
+				{ method: 'GET', signal: opts?.signal }
 			);
+			if (opts?.isCancelled?.()) return;
 			if (!res.ok) throw new Error(String(res.status));
 			const j = (await res.json()) as { data: Row[]; total?: number };
+			if (opts?.isCancelled?.()) return;
 			list = j.data ?? [];
 			total = j.total ?? 0;
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			toast.addErrorToast('List', e);
 		} finally {
-			loading = false;
+			if (!opts?.isCancelled?.()) loading = false;
 		}
 	}
 
@@ -210,7 +218,13 @@ const dt = new DateTimeUtil();
 		if (!hospitalId) return;
 		void fromStoreId;
 		currentPage = 1;
-		void loadList();
+		let cancelled = false;
+		const ac = new AbortController();
+		void loadList({ signal: ac.signal, isCancelled: () => cancelled });
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	async function receiveRow(row: Row) {

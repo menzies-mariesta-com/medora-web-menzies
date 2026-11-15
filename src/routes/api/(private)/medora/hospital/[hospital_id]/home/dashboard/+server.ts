@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import {
 	defaultHospitalHomeDateRange,
+	getHospitalHomeDateBounds,
 	loadHospitalHomeDashboard,
 	parseHospitalHomeDateRange,
 	resolveHospitalHomeBranchScope
@@ -11,10 +12,12 @@ export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
 	if (!hospitalId) throw error(400, 'Hospital is required');
 
+	const dateRangeBounds = await getHospitalHomeDateBounds(hospitalId);
 	const filters = parseHospitalHomeDateRange({
 		dates: event.url.searchParams.get('dates'),
 		dateFrom: event.url.searchParams.get('dateFrom'),
-		dateTo: event.url.searchParams.get('dateTo')
+		dateTo: event.url.searchParams.get('dateTo'),
+		bounds: dateRangeBounds
 	});
 
 	try {
@@ -23,12 +26,13 @@ export const GET: RequestHandler = async (event) => {
 			hospitalId,
 			branchIds: scope.branchIds,
 			branchScopeName: scope.scopeLabel,
-			filters
+			filters,
+			dateRangeBounds
 		});
 		return json(payload);
 	} catch (err) {
 		console.error('[hospital-home dashboard API]', err);
-		const fallbackRange = defaultHospitalHomeDateRange();
+		const fallbackRange = defaultHospitalHomeDateRange(dateRangeBounds);
 		return json({
 			stats: null,
 			visitsByDay: [],
@@ -40,6 +44,7 @@ export const GET: RequestHandler = async (event) => {
 					filters.dates ||
 					`${fallbackRange.dateFrom}/${fallbackRange.dateTo}`
 			},
+			dateRangeBounds,
 			branchScopeName: null,
 			dashboardLoadError: true
 		});

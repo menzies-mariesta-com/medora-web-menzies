@@ -107,43 +107,48 @@
 		if (vid) {
 			const base = apiBase();
 			if (!base) return;
-			apiGet<{ data: any | null }>(
-				`${base}?action=byId&id=${vid}`
-			).then((res) => {
-				const v = res.data;
-				if (v) {
-					height = asStr(v.height);
-					weight = asStr(v.weight);
-					const hNum = toNumber(v.height);
-					const wNum = toNumber(v.weight);
-					const calc = computeBmiFromCmKg(hNum, wNum);
-					const stored = toNumber(v.bmi);
-					if (stored != null) {
-						bmi = String(stored);
-						bmiUserOverridden =
-							calc == null || Math.abs(stored - calc) > 0.051;
-					} else if (calc != null) {
-						bmi = String(calc);
-						bmiUserOverridden = false;
-					} else {
-						bmi = '';
-						bmiUserOverridden = false;
+			let cancelled = false;
+			apiGet<{ data: any | null }>(`${base}?action=byId&id=${vid}`).then(
+				(res) => {
+					if (cancelled) return;
+					const v = res.data;
+					if (v) {
+						height = asStr(v.height);
+						weight = asStr(v.weight);
+						const hNum = toNumber(v.height);
+						const wNum = toNumber(v.weight);
+						const calc = computeBmiFromCmKg(hNum, wNum);
+						const stored = toNumber(v.bmi);
+						if (stored != null) {
+							bmi = String(stored);
+							bmiUserOverridden =
+								calc == null || Math.abs(stored - calc) > 0.051;
+						} else if (calc != null) {
+							bmi = String(calc);
+							bmiUserOverridden = false;
+						} else {
+							bmi = '';
+							bmiUserOverridden = false;
+						}
+						bpSystolic = asStr(v.bpSystolic);
+						bpDiastolic = asStr(v.bpDiastolic);
+						pulse = asStr(v.pulse);
+						temperature = asStr(v.temperature);
+						spO2 = asStr(v.spO2);
+						respiration = asStr(v.respiration);
+						rbs = asStr(v.rbs);
+						vitalDateTime = formatVitalDateTimeForInput(
+							v.vitalDateTime ?? v.createdAt
+						);
+						symptom = asStr(v.symptom);
+						description = asStr(v.description);
+						remark = asStr(v.remark);
 					}
-					bpSystolic = asStr(v.bpSystolic);
-					bpDiastolic = asStr(v.bpDiastolic);
-					pulse = asStr(v.pulse);
-					temperature = asStr(v.temperature);
-					spO2 = asStr(v.spO2);
-					respiration = asStr(v.respiration);
-					rbs = asStr(v.rbs);
-					vitalDateTime = formatVitalDateTimeForInput(
-						v.vitalDateTime ?? v.createdAt
-					);
-					symptom = asStr(v.symptom);
-					description = asStr(v.description);
-					remark = asStr(v.remark);
 				}
-			});
+			);
+			return () => {
+				cancelled = true;
+			};
 		} else if (!vitalDateTime.trim()) {
 			vitalDateTime = formatVitalDateTimeForInput(
 				new Date().toISOString()

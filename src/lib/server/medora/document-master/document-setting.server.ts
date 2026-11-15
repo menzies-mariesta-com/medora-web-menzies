@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { and, count, desc, eq, isNull, ne, or } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -103,6 +104,8 @@ export async function createDocumentSetting(
 		.values(input)
 		.returning();
 	if (!inserted) throw new Error('Failed to create document setting');
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return inserted;
 }
 
@@ -128,6 +131,8 @@ export async function updateDocumentSetting(
 		.where(eq(table.documentSettingTable.id, id))
 		.returning();
 	if (!updated) throw new Error('Failed to update document setting');
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return updated;
 }
 

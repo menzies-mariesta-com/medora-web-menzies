@@ -20,6 +20,7 @@ import { PasswordHashUtil } from '$lib/server/auth/password-hash.server';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { and, eq, ilike, ne, or, sql, type SQL } from 'drizzle-orm';
 import { uuidV7 } from '$lib/util/id.util';
+import { requireOptionalDateOfBirth } from '$lib/server/medora/date-of-birth-range.server';
 
 const NO_EMAIL_SUFFIX = '@no-email.medora';
 
@@ -281,6 +282,13 @@ export async function updatePatientInHospital(
 	await ensureCanAccessHospital(event, hospitalId);
 	if (!id) throw error(400, 'Patient id is required');
 
+	const patch = { ...rest } as PatientSchemaUpdate;
+	if (patch.dateOfBirth !== undefined && patch.dateOfBirth !== null) {
+		patch.dateOfBirth = requireOptionalDateOfBirth(
+			String(patch.dateOfBirth)
+		);
+	}
+
 	const existing = await ensureDb().query.patientTable.findFirst({
 		where: and(
 			eq(table.patientTable.id, id),
@@ -293,7 +301,7 @@ export async function updatePatientInHospital(
 
 	const [row] = await ensureDb()
 		.update(table.patientTable)
-		.set(rest as PatientSchemaUpdate)
+		.set(patch)
 		.where(
 			and(
 				eq(table.patientTable.id, id),
@@ -565,9 +573,7 @@ export async function createPatientWithUserInHospital(
 			? Number(payload.guardianTitleId)
 			: undefined,
 		identityNo: payload.identityNo,
-		dateOfBirth: payload.dateOfBirth
-			? new Date(payload.dateOfBirth).toISOString().split('T')[0]
-			: undefined,
+		dateOfBirth: requireOptionalDateOfBirth(payload.dateOfBirth),
 		guardianName: payload.guardianName,
 		guardianPhone: payload.guardianPhone,
 		guardianPhoneCountryId: payload.guardianPhoneCountryId

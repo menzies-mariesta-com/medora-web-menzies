@@ -28,7 +28,6 @@
 
 	let formLevel = $state('1');
 	let formName = $state('');
-	let formColor = $state('error');
 	let formActive = $state(true);
 	let isSubmitting = $state(false);
 
@@ -38,30 +37,17 @@
 		value: String(n),
 		label: String(n)
 	}));
-	const colorOptions = [
-		'error',
-		'warning',
-		'info',
-		'accent',
-		'success',
-		'primary',
-		'secondary',
-		'neutral'
-	].map((c) => ({ value: c, label: c }));
-
 	lifeCycleUtil.onMount(() => {
 		const state = EdTriageLevelModalState;
 		if (state.mode === 'edit' && state.editRow) {
 			formLevel = String(state.editRow.level);
 			formName = state.editRow.name ?? '';
-			formColor = state.editRow.color ?? 'neutral';
 			formActive =
 				(state.editRow.statusId ?? StatusEnum.ACTIVE) ===
 				StatusEnum.ACTIVE;
 		} else {
 			formLevel = '1';
 			formName = '';
-			formColor = 'error';
 			formActive = true;
 		}
 	});
@@ -90,7 +76,6 @@
 					...(isEdit ? { id: modalState.editRow?.id } : {}),
 					level: Number(formLevel),
 					name: formName.trim(),
-					color: formColor,
 					statusId: formActive
 						? StatusEnum.ACTIVE
 						: StatusEnum.INACTIVE
@@ -159,20 +144,10 @@
 					/>
 				</div>
 			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label for="triage-color" class="shrink-0 sm:w-36">
-					{msg.ed_triage_level_col_color?.() ?? 'Badge color'}
-				</label>
-				<div class="max-w-80 flex-1">
-					<WashSelect
-						id="triage-color"
-						bind:value={formColor}
-						options={colorOptions}
-					/>
-				</div>
-			</div>
+			<p class="text-sm text-base-content/70">
+				{msg.color_configuration_triage_hint?.() ??
+					'Badge colors are managed under Administration → Color Configuration (ED triage levels).'}
+			</p>
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>

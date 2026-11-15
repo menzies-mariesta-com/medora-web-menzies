@@ -3,7 +3,7 @@ title: "Census"
 description: "How to use Census in Nursing Workbench."
 docType: workflow
 slug: workflows/nursing-workbench-census
-pageId: 1900001
+pageId: 400109
 moduleId: 4
 pageUrl: "/medora/home/nursing-workbench/census"
 generated: true

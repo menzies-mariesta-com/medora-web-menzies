@@ -118,13 +118,17 @@
 			<p class="text-ink-muted py-4 text-center text-sm">{emptyMessage}</p>
 		{:else if children}
 			<div class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto">
-				{@render children()}
+				{#if children}
+					{@render children()}
+				{/if}
 			</div>
 		{/if}
 
 		{#if !isLoading && footer}
 			<div class="shrink-0 border-t border-ink-border/60 pt-2">
-				{@render footer()}
+				{#if footer}
+					{@render footer()}
+				{/if}
 			</div>
 		{/if}
 	</WashCardBody>

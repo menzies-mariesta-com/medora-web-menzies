@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -291,6 +292,8 @@ export async function updateBillingPolicy(input: {
 			erBedServiceItemId: input.accommodationServiceItemId
 		});
 	}
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return row;
 }
 

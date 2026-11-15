@@ -1,10 +1,13 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	let { children, className } = $props<{
-		children: () => void;
+		children?: Snippet;
 		className?: string;
 	}>();
 </script>
 
 <div class="card-title {className}">
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 </div>

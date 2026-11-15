@@ -3,7 +3,7 @@ title: "New patient"
 description: "How to use New patient in Emergency."
 docType: workflow
 slug: workflows/emergency-admission-new-patient
-pageId: 123003
+pageId: 1200102
 moduleId: 12
 pageUrl: "/medora/home/emergency/admission/new-patient"
 generated: true

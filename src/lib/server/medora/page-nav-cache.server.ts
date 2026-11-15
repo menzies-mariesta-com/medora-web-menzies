@@ -1,7 +1,16 @@
 import { ensureDb } from '$lib/server/db';
 import type { PageWithRelations } from '$lib/model/type/medora/page.type';
+import {
+	cacheGetOrSet,
+	invalidateCacheKey,
+	invalidateCacheTag
+} from '$lib/server/cache/tiered-cache.server';
+import {
+	cacheKeys,
+	cacheTags
+} from '$lib/server/cache/cache-keys.server';
 
-const TTL_MS = 120_000;
+const TTL_SECONDS = 120;
 
 /** ED registration "New patient" tab; detect stale nav cache after seed. */
 const ED_ADMISSION_NEW_PATIENT_PAGE_ID = 123003;
@@ -16,9 +25,6 @@ const BILL_PAGE_ID = 800100;
 const BILL_ADVANCE_PAGE_ID = 800200;
 /** Retired OP/IP/ER billing top-level pages (unified under Bill). */
 const RETIRED_BILLING_PAGE_IDS = new Set([15, 150001, 150004]);
-
-let cached: PageWithRelations[] | null = null;
-let cachedAt = 0;
 
 function navCacheLooksCurrent(pages: PageWithRelations[]): boolean {
 	const nursingRoot = pages.find(
@@ -89,28 +95,33 @@ function navCacheLooksCurrent(pages: PageWithRelations[]): boolean {
 	return true;
 }
 
+async function loadMedoraPagesForNav(): Promise<PageWithRelations[]> {
+	return cacheGetOrSet({
+		key: cacheKeys.medoraNavPages(),
+		ttlSeconds: TTL_SECONDS,
+		tags: [cacheTags.medoraNav],
+		factory: async () =>
+			(await ensureDb().query.pageTable.findMany({
+				with: {
+					module: true,
+					status: true
+				}
+			})) as unknown as PageWithRelations[]
+	});
+}
+
 /** Cached full page tree for module bar (status + module relations). */
 export async function getMedoraPagesForNav(): Promise<PageWithRelations[]> {
-	const now = Date.now();
-	if (cached && now - cachedAt < TTL_MS) {
-		if (navCacheLooksCurrent(cached)) return cached;
-		invalidateMedoraPagesNavCache();
+	let pages = await loadMedoraPagesForNav();
+	if (!navCacheLooksCurrent(pages)) {
+		await invalidateMedoraPagesNavCache();
+		pages = await loadMedoraPagesForNav();
 	}
-
-	const fullPages = (await ensureDb().query.pageTable.findMany({
-		with: {
-			module: true,
-			status: true
-		}
-	})) as unknown as PageWithRelations[];
-
-	cached = fullPages;
-	cachedAt = now;
-	return fullPages;
+	return pages;
 }
 
 /** Call after page CRUD in admin (optional). */
-export function invalidateMedoraPagesNavCache(): void {
-	cached = null;
-	cachedAt = 0;
+export async function invalidateMedoraPagesNavCache(): Promise<void> {
+	await invalidateCacheKey(cacheKeys.medoraNavPages());
+	await invalidateCacheTag(cacheTags.medoraNav);
 }

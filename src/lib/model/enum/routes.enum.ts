@@ -29,6 +29,7 @@ export enum WebRoutesEnum {
 	MEDORA_ADMIN_MONITORING = '/medora/admin/monitoring',
 	MEDORA_ADMIN_ICD = '/medora/admin/icd',
 	MEDORA_ADMIN_TEAM = '/medora/admin/team',
+	MEDORA_ADMIN_PLANS = '/medora/admin/plans',
 
 	// Legacy base paths (DB stores /medora/home/...; use medoraHospitalHome(hospitalId) + suffix for real URLs)
 	MEDORA_HOME = '/medora/home',
@@ -52,6 +53,7 @@ export enum WebRoutesEnum {
 	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_IP = '/medora/home/administration/billing-setup/ip-billing',
 	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_ED = '/medora/home/administration/billing-setup/ed-billing',
 	MEDORA_HOME_ADMINISTRATION_BILLING_SETUP_SETTINGS = '/medora/home/administration/billing-setup/settings',
+	MEDORA_HOME_ADMINISTRATION_TRAUMA_ACTIVATION_SETUP = '/medora/home/administration/trauma-activation-setup',
 	MEDORA_HOME_REGISTRATION = '/medora/home/registration',
 	MEDORA_HOME_REGISTRATION_PATIENT = '/medora/home/registration/patient',
 	MEDORA_HOME_REGISTRATION_PATIENT_REGISTRATION = '/medora/home/registration/patient/registration',

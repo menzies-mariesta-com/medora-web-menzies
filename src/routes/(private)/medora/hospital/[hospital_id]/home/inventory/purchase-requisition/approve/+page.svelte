@@ -28,6 +28,7 @@
 		itemUnitMastersResponseToCatalog
 	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+	import { canApprovePr } from '$lib/tool/inventory/pr-workflow.util';
 
 	const toastService = new ToastService();
 
@@ -109,20 +110,25 @@
 		lineApprovedQtyDraft = next;
 	}
 
-	async function load() {
+	async function load(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId || !prId) return;
 		loading = true;
 		try {
+			const init = { method: 'GET' as const, signal: opts?.signal };
 			const [res, iumRes] = await Promise.all([
 				fetch(
 					`/api/medora/hospital/${hospitalId}/home/inventory/purchase-requisition?id=${encodeURIComponent(prId)}`,
-					{ method: 'GET' }
+					init
 				),
 				fetch(
 					`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?mode=itemUnitMasters`,
-					{ method: 'GET' }
+					init
 				)
 			]);
+			if (opts?.isCancelled?.()) return;
 			if (iumRes.ok) {
 				const iumRows = (await iumRes.json()) as {
 					id: number;
@@ -134,11 +140,15 @@
 			} else {
 				iumCatalogById = new Map();
 			}
+			if (opts?.isCancelled?.()) return;
 			if (!res.ok) throw new Error(String(res.status));
 			const j = (await res.json()) as PrDetail | null;
+			if (opts?.isCancelled?.()) return;
 			detail = j;
 			if (j) syncApprovedDrafts(j);
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			toastError(
 				toastService,
 				m.entity_purchase_requisition(),
@@ -146,7 +156,7 @@
 				e
 			);
 		} finally {
-			loading = false;
+			if (!opts?.isCancelled?.()) loading = false;
 		}
 	}
 
@@ -300,13 +310,19 @@
 	$effect(() => {
 		void prId;
 		void hospitalId;
-		void load();
+		let cancelled = false;
+		const ac = new AbortController();
+		void load({ signal: ac.signal, isCancelled: () => cancelled });
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	const lineColumns = $derived.by((): MenziesTableColumn<PrLine>[] => {
 		const cat = iumCatalogById;
 		const pending =
-			detail?.statusTaggingId === InvPrStatusTaggingEnum.PENDING;
+			detail != null && canApprovePr(detail.statusTaggingId);
 		const requestedCol: MenziesTableColumn<PrLine> = {
 			id: 'requestedQty',
 			header: m.inv_pr_line_requested_qty(),
@@ -510,7 +526,7 @@
 				</div>
 			</div>
 
-			{#if detail.statusTaggingId === InvPrStatusTaggingEnum.PENDING}
+			{#if canApprovePr(detail.statusTaggingId)}
 				<div
 					class="mb-6 rounded-lg border border-base-200 bg-base-100/50 p-4"
 				>

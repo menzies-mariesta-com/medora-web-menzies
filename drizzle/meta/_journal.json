@@ -470,6 +470,27 @@
       "when": 1795207200000,
       "tag": "0066_rename_accommodation_billing_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1795210800000,
+      "tag": "0067_owner_plan_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1795214400000,
+      "tag": "0068_trauma_command_center",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1795218000000,
+      "tag": "0069_hospital_color_config",
+      "breakpoints": true
     }
   ]
 }

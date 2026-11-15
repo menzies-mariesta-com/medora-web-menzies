@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { and, count, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
@@ -315,6 +316,8 @@ export async function createServiceTagging(
 		.values(payload)
 		.returning();
 	if (!row) throw new Error('Failed to create service tagging');
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return normalizeServiceTaggingRow(row);
 }
 
@@ -337,6 +340,8 @@ export async function updateServiceTagging(
 		.where(eq(table.serviceTaggingTable.id, id))
 		.returning();
 	if (!row) throw error(404, 'Service tagging not found');
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return normalizeServiceTaggingRow(row);
 }
 

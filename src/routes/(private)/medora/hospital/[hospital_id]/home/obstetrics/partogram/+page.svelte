@@ -27,11 +27,12 @@
 	let linkCSection = $state(true);
 	let submitting = $state(false);
 
-	async function loadTemplates() {
+	async function loadTemplates(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		for (const code of ['ld_partogram_v1', 'ld_delivery_record_v1']) {
-			const res = await fetch(
-				`${formApi}?mode=template&code=${encodeURIComponent(code)}`
-			);
+			const res = await fetch(`${formApi}?mode=template&code=${encodeURIComponent(code)}`, { signal: opts?.signal });
 			if (!res.ok) await throwUserFacingHttpError(res);
 			const tpl = (await res.json()) as {
 				schemaJson: ClinicalFormTemplateSchema;
@@ -42,7 +43,13 @@
 	}
 
 	$effect(() => {
-		if (formApi) void loadTemplates();
+			let cancelled = false;
+			const ac = new AbortController();
+		if (formApi) void loadTemplates({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	async function savePartogram() {

@@ -117,7 +117,9 @@
 
 <!-- Pure Wash: single shell only — never nest washShell / washPanel / page-wash below. -->
 <div class={washRecipes.washShell}>
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 </div>
 
 <!-- Floating Action Button (hidden when embed=1) -->

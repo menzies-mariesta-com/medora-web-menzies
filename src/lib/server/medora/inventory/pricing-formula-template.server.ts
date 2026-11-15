@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { and, count, eq } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -183,6 +184,8 @@ export async function createPricingFormulaTemplate(
 		})
 		.returning();
 	if (!row) throw error(500, 'Template insert failed');
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return rowToPricingFormulaTemplateDto(row);
 }
 

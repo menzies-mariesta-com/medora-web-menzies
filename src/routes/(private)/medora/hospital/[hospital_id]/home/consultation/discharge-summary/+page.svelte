@@ -156,7 +156,10 @@
 		}
 	}
 
-	async function loadSummary() {
+	async function loadSummary(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId || !visitId) {
 			fillForm(null);
 			visitRow = null;
@@ -171,13 +174,15 @@
 			fillForm(row);
 			visitRow = visit;
 		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			console.error(error);
 			toastService.addErrorToast(
 				m.mo_clinical_discharge_load_failed(),
 				error
 			);
 		} finally {
-			isLoading = false;
+			if (!opts?.isCancelled?.()) isLoading = false;
 		}
 	}
 
@@ -416,7 +421,13 @@
 		if (!mounted) return;
 		void visitId;
 		void hospitalId;
-		void loadSummary();
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadSummary({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

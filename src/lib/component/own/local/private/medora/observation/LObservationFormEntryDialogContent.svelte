@@ -99,11 +99,12 @@
 		}
 		selectedFormCode = seeded;
 		const seq = ++loadSeq;
+		let cancelled = false;
 		void apiGet<FormEntryRow | null>('formEntry.get', {
 			id: String(id)
 		})
 			.then((row) => {
-				if (seq !== loadSeq) return;
+				if (cancelled || seq !== loadSeq) return;
 				if (!row) {
 					toastService.addToast(
 						'Form entry not found.',
@@ -116,7 +117,7 @@
 				statusIdStr = String(row.statusId ?? StatusEnum.ACTIVE);
 			})
 			.catch((err) => {
-				if (seq !== loadSeq) return;
+				if (cancelled || seq !== loadSeq) return;
 				toastService.addToast(
 					(err instanceof Error
 						? err.message
@@ -125,6 +126,9 @@
 				);
 				cancel();
 			});
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	async function handleSave() {

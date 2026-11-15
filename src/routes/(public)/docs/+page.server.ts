@@ -1,13 +1,7 @@
-import type { PageServerLoad } from './$types';
-import { getSiteOrigin } from '$lib/server/seo/site-origin.server';
-import { getDocsManifest } from '$lib/docs/load-doc.server';
+import { redirect } from '@sveltejs/kit';
 
 export const prerender = true;
 
-export const load: PageServerLoad = async () => {
-	const manifest = getDocsManifest();
-	return {
-		origin: getSiteOrigin(),
-		stats: manifest.stats
-	};
-};
+export function load() {
+	redirect(301, '/docs/guides/getting-started');
+}

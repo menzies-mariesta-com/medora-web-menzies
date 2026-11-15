@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { and, count, desc, eq, ilike, ne, or } from 'drizzle-orm';
 import {
 	IpdAdmissionCareLevelEnum,
@@ -18,6 +19,10 @@ import {
 } from '$lib/model/type/pagination.type';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import {
+	throwDocumentStatusConflict,
+	updateStatusTaggingIfCurrent
+} from '$lib/server/medora/workflow/status-transition.server';
 
 function patientDisplayName(r: {
 	patientFirst: string | null;
@@ -363,31 +368,33 @@ export async function cancelAdmissionOrder(input: {
 	hospitalId: string;
 	id: number;
 }): Promise<void> {
-	const db = ensureDb();
-	const [order] = await db
-		.select({
-			id: table.ipdAdmissionOrderTable.id,
-			statusTaggingId: table.ipdAdmissionOrderTable.statusTaggingId
-		})
-		.from(table.ipdAdmissionOrderTable)
-		.where(
-			and(
-				eq(table.ipdAdmissionOrderTable.id, input.id),
-				eq(table.ipdAdmissionOrderTable.hospitalId, input.hospitalId),
-				ne(table.ipdAdmissionOrderTable.statusId, StatusEnum.DELETED)
+	const pending = IpdAdmissionOrderStatusTaggingEnum.PENDING;
+	await ensureDb().transaction(async (tx) => {
+		const [locked] = await tx
+			.select({
+				id: table.ipdAdmissionOrderTable.id,
+				statusTaggingId: table.ipdAdmissionOrderTable.statusTaggingId
+			})
+			.from(table.ipdAdmissionOrderTable)
+			.where(
+				and(
+					eq(table.ipdAdmissionOrderTable.id, input.id),
+					eq(table.ipdAdmissionOrderTable.hospitalId, input.hospitalId),
+					eq(table.ipdAdmissionOrderTable.statusTaggingId, pending),
+					ne(table.ipdAdmissionOrderTable.statusId, StatusEnum.DELETED)
+				)
 			)
-		)
-		.limit(1);
-	if (!order) throw error(404, 'Admission order not found');
-	if (
-		order.statusTaggingId !== IpdAdmissionOrderStatusTaggingEnum.PENDING
-	) {
-		throw error(400, 'Only pending orders can be cancelled');
-	}
-	await db
-		.update(table.ipdAdmissionOrderTable)
-		.set({
-			statusTaggingId: IpdAdmissionOrderStatusTaggingEnum.CANCELLED
-		})
-		.where(eq(table.ipdAdmissionOrderTable.id, input.id));
+			.for('update')
+			.limit(1);
+		if (!locked) throwDocumentStatusConflict();
+		await updateStatusTaggingIfCurrent(
+			tx,
+			table.ipdAdmissionOrderTable,
+			input.id,
+			pending,
+			{
+				statusTaggingId: IpdAdmissionOrderStatusTaggingEnum.CANCELLED
+			}
+		);
+	});
 }

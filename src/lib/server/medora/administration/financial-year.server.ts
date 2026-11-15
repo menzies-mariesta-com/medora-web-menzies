@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -35,6 +36,8 @@ export async function createFinancialYear(
 		.values(input)
 		.returning();
 	if (!inserted) throw new Error('Failed to create financial year');
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return inserted;
 }
 
@@ -57,6 +60,8 @@ export async function updateFinancialYear(
 		.where(eq(table.financialYearTable.id, id))
 		.returning();
 	if (!updated) throw new Error('Failed to update financial year');
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return updated;
 }
 

@@ -93,10 +93,8 @@
 		else loading = true;
 		errorMessage = null;
 		try {
-			const res = await fetch('/api/medora/admin/ops', {
-				credentials: 'include',
-				cache: 'no-store'
-			});
+			const res = await fetch('/api/medora/admin/ops', { credentials: 'include',
+				cache: 'no-store', signal: opts?.signal });
 			if (!res.ok) {
 				ops = null;
 				errorMessage = msg.admin_ops_load_error();
@@ -107,7 +105,7 @@
 			ops = null;
 			errorMessage = msg.admin_ops_load_error();
 		} finally {
-			loading = false;
+			if (!opts?.isCancelled?.()) loading = false;
 			refreshing = false;
 		}
 	}
@@ -118,7 +116,13 @@
 
 	$effect(() => {
 		const key = refreshKey;
-		if (key > 0) void loadOps({ silent: true });
+			let cancelled = false;
+			const ac = new AbortController();
+		if (key > 0) void loadOps({ silent: true }, { signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

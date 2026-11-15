@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import {
 	and,
 	count,
@@ -673,6 +674,8 @@ export async function updateMedicationOrderBatch(
 			})
 			.where(eq(table.medicationOrderBatchTable.id, batchId));
 	});
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return { ok: true };
 }
 
@@ -712,6 +715,8 @@ export async function deleteMedicationOrderBatch(
 			.set(delBatch)
 			.where(eq(table.medicationOrderBatchTable.id, batchId));
 	});
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return { ok: true };
 }
 

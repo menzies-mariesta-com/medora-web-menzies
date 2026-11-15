@@ -21,6 +21,10 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { InvPrStatusTaggingEnum } from '$lib/model/enum/db-link';
+	import {
+		canCancelPr,
+		canEditPr
+	} from '$lib/tool/inventory/pr-workflow.util';
 	import { toastError } from '$lib/util/toast-copy.util';
 	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
 const dt = new DateTimeUtil();
@@ -146,12 +150,7 @@ const dt = new DateTimeUtil();
 	}
 
 	function prRowEditVisible(row: PrRow): boolean {
-		return (
-			row.statusTaggingId === InvPrStatusTaggingEnum.DRAFT ||
-			row.statusTaggingId === InvPrStatusTaggingEnum.PENDING ||
-			row.statusTaggingId === InvPrStatusTaggingEnum.SENT_BACK ||
-			row.statusTaggingId === InvPrStatusTaggingEnum.REJECTED
-		);
+		return canEditPr(row.statusTaggingId);
 	}
 
 	function prRowCanEdit(row: PrRow): boolean {
@@ -164,12 +163,7 @@ const dt = new DateTimeUtil();
 		if (row.statusTaggingId === InvPrStatusTaggingEnum.CANCELLED)
 			return false;
 		if ((row.poCount ?? 0) > 0) return false;
-		const statusOk =
-			row.statusTaggingId === InvPrStatusTaggingEnum.DRAFT ||
-			row.statusTaggingId === InvPrStatusTaggingEnum.PENDING ||
-			row.statusTaggingId === InvPrStatusTaggingEnum.REJECTED ||
-			row.statusTaggingId === InvPrStatusTaggingEnum.SENT_BACK;
-		if (!statusOk) return false;
+		if (!canCancelPr(row.statusTaggingId)) return false;
 		if (!currentUserId) return false;
 		return row.createdBy === currentUserId;
 	}

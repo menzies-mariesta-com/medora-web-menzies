@@ -3,7 +3,7 @@ title: "Nursing Complete"
 description: "How to use Nursing Complete in Nursing Workbench."
 docType: workflow
 slug: workflows/nursing-workbench-nursing-complete
-pageId: 800003
+pageId: 400107
 moduleId: 4
 pageUrl: "/medora/home/nursing-workbench/nursing-complete"
 generated: true
