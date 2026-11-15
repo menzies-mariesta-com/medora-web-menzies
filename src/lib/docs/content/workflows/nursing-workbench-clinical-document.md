@@ -3,7 +3,7 @@ title: "Clinical Document"
 description: "How to use Clinical Document in Nursing Workbench."
 docType: workflow
 slug: workflows/nursing-workbench-clinical-document
-pageId: 800005
+pageId: 400104
 moduleId: 4
 pageUrl: "/medora/home/nursing-workbench/clinical-document"
 generated: true

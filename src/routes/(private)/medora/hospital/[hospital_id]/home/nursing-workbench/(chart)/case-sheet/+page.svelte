@@ -22,7 +22,6 @@
 	} from '$lib/util/case-sheet-document-preview.util';
 	import {
 		buildPrintHtmlFromDocumentMasterBootstrap,
-		fetchDocumentPrintBootstrap,
 		printFromDocumentMasterBootstrap
 	} from '$lib/util/document-master-print.util.svelte';
 	import { persistEmrPrintPdf } from '$lib/util/emr-print-persist.util';
@@ -218,18 +217,32 @@
 		}
 	});
 
-	async function ensurePrintBootstrap(): Promise<DocumentMasterPrintBootstrap | null> {
+	async function ensurePrintBootstrap(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}): Promise<DocumentMasterPrintBootstrap | null> {
 		if (printBootstrap?.document?.documentText) return printBootstrap;
 		if (!hospitalId) return null;
 		try {
-			const bootstrap = await fetchDocumentPrintBootstrap(
-				hospitalId,
-				DOCUMENT_PRINT_CODE.CASE_SHEET
+			const res = await fetch(
+				`/api/medora/hospital/${hospitalId}/home/document-print?mode=bootstrap&code=${encodeURIComponent(DOCUMENT_PRINT_CODE.CASE_SHEET)}`,
+				{ credentials: 'include', signal: opts?.signal }
 			);
+			if (opts?.isCancelled?.()) return null;
+			if (!res.ok) {
+				throw new Error(`Template load failed (${res.status})`);
+			}
+			const bootstrap =
+				(await res.json()) as DocumentMasterPrintBootstrap;
+			if (opts?.isCancelled?.()) return null;
 			printBootstrap = bootstrap;
 			printTemplateReady = Boolean(bootstrap.document?.documentText);
 			return bootstrap.document?.documentText ? bootstrap : null;
 		} catch (err) {
+			if (opts?.isCancelled?.()) return null;
+			if (err instanceof DOMException && err.name === 'AbortError') {
+				return null;
+			}
 			console.error('Case sheet template load failed', err);
 			printBootstrap = null;
 			printTemplateReady = false;
@@ -237,7 +250,10 @@
 		}
 	}
 
-	async function loadCaseSheet() {
+	async function loadCaseSheet(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!visitId) {
 			visitRow = null;
 			allergies = [];
@@ -264,11 +280,13 @@
 			}
 
 			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/case-sheet?visitId=${visitId}`
+				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/case-sheet?visitId=${visitId}`,
+				{ signal: opts?.signal }
 			);
 			if (!res.ok)
 				throw new Error(`Failed to load case sheet (${res.status})`);
 			const data = (await res.json()) as CaseSheetGetResponse;
+			if (opts?.isCancelled?.()) return;
 
 			visitRow = data.visitRow ?? null;
 			allergies = Array.isArray(data.allergies) ? data.allergies : [];
@@ -290,13 +308,22 @@
 				? data.patientConditionEntries
 				: [];
 		} finally {
-			isLoading = false;
+			if (!opts?.isCancelled?.()) isLoading = false;
 		}
 	}
 
 	$effect(() => {
 		if (!mounted || !hospitalId) return;
-		void ensurePrintBootstrap();
+		let cancelled = false;
+		const ac = new AbortController();
+		void ensurePrintBootstrap({
+			signal: ac.signal,
+			isCancelled: () => cancelled
+		});
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	$effect(() => {
@@ -312,7 +339,16 @@
 			patientConditionEntries = [];
 			return;
 		}
-		void loadCaseSheet();
+		let cancelled = false;
+		const ac = new AbortController();
+		void loadCaseSheet({
+			signal: ac.signal,
+			isCancelled: () => cancelled
+		});
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	async function printCaseSheet() {

@@ -85,11 +85,13 @@
 		const f = field;
 		if (vid == null || f == null) return;
 		const seq = ++loadSeq;
-		(async () => {
+		let cancelled = false;
+		const ac = new AbortController();
+		void (async () => {
 			const v = await apiGet<VisitRow | null>('visit.get', {
 				visitId: String(vid)
 			});
-			if (seq !== loadSeq) return;
+			if (cancelled || seq !== loadSeq) return;
 			if (f === 'chiefComplaint') {
 				text = v?.chiefComplaint ?? '';
 			} else if (f === 'patientCondition') {
@@ -98,6 +100,10 @@
 				text = v?.diagnosisNotes ?? '';
 			}
 		})();
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	async function handleSave() {

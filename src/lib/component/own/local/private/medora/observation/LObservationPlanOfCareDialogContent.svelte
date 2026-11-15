@@ -81,7 +81,10 @@
 		return (await res.json()) as T;
 	}
 
-	async function loadPlanForEdit(id: number, seq: number) {
+	async function loadPlanForEdit(id: number, seq: number, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		const row = await apiGet<PlanRow | null>('planOfCare.get', {
 			id: String(id)
 		});
@@ -109,7 +112,13 @@
 			statusIdStr = String(StatusEnum.ACTIVE);
 			return;
 		}
-		void loadPlanForEdit(id, seq);
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadPlanForEdit(id, seq, { signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	async function handleSubmit() {

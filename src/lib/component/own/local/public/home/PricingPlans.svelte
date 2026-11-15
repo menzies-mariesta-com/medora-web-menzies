@@ -50,7 +50,7 @@
 				: m.pricing_plan_starter_tagline_onprem(),
 			cloudMonthlyUsd: CLOUD_MONTHLY_USD.starter,
 			ctaLabel: m.pricing_plan_starter_cta(),
-			ctaHref: loginHref,
+			ctaHref: '/pricing/request/starter',
 			features: [
 				cloud
 					? m.pricing_plan_starter_f1()
@@ -73,7 +73,7 @@
 			cloudMonthlyUsd: CLOUD_MONTHLY_USD.business,
 			highlight: true,
 			ctaLabel: m.pricing_plan_business_cta(),
-			ctaHref: loginHref,
+			ctaHref: '/pricing/request/business',
 			features: [
 				cloud
 					? m.pricing_plan_business_f1()
@@ -94,7 +94,7 @@
 				: m.pricing_plan_scale_tagline_onprem(),
 			cloudMonthlyUsd: CLOUD_MONTHLY_USD.scale,
 			ctaLabel: m.pricing_plan_scale_cta(),
-			ctaHref: loginHref,
+			ctaHref: '/pricing/request/scale',
 			features: [
 				m.pricing_plan_scale_f1(),
 				m.pricing_plan_scale_f2(),

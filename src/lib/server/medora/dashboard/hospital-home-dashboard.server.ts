@@ -32,8 +32,10 @@ import type {
 	HospitalHomeDailyVisitCount,
 	HospitalHomeDashboardFilters,
 	HospitalHomeDashboardPayload,
-	HospitalHomeDashboardStats
+	HospitalHomeDashboardStats,
+	HospitalHomeDateRangeBounds
 } from '$lib/model/type/medora/hospital-home-dashboard.type';
+import { parseUtcInstant } from '$lib/util/utc-instant.util';
 
 /** Matches home layout “All Branches” sentinel. */
 export const HOSPITAL_HOME_BRANCH_ALL = '__all__';
@@ -69,25 +71,64 @@ function addDaysISO(iso: string, delta: number): string {
 	return d.toISOString().slice(0, 10);
 }
 
-/** Default inclusive window: last 7 calendar days ending today. */
-export function defaultHospitalHomeDateRange(): {
+function clampIsoDate(iso: string, lo: string, hi: string): string {
+	if (iso < lo) return lo;
+	if (iso > hi) return hi;
+	return iso;
+}
+
+function instantToISODate(value: string | null | undefined): string | null {
+	const ms = parseUtcInstant(value);
+	if (Number.isNaN(ms)) return null;
+	return new Date(ms).toISOString().slice(0, 10);
+}
+
+/** Default inclusive window: last 7 calendar days ending today (clamped to bounds). */
+export function defaultHospitalHomeDateRange(bounds?: HospitalHomeDateRangeBounds): {
 	dateFrom: string;
 	dateTo: string;
 } {
-	const dateTo = todayISODate();
-	return { dateFrom: addDaysISO(dateTo, -6), dateTo };
+	const hi = bounds?.max ?? todayISODate();
+	const lo = bounds?.min ?? hi;
+	const dateTo = clampIsoDate(todayISODate(), lo, hi);
+	let dateFrom = addDaysISO(dateTo, -6);
+	dateFrom = clampIsoDate(dateFrom, lo, hi);
+	if (dateFrom > dateTo) dateFrom = dateTo;
+	return { dateFrom, dateTo };
+}
+
+export async function getHospitalHomeDateBounds(
+	hospitalId: string
+): Promise<HospitalHomeDateRangeBounds> {
+	const max = todayISODate();
+	if (!hospitalId) return { min: max, max };
+	const db = ensureDb();
+	const [row] = await db
+		.select({ createdAt: table.hospitalTable.createdAt })
+		.from(table.hospitalTable)
+		.where(eq(table.hospitalTable.id, hospitalId))
+		.limit(1);
+	const created = instantToISODate(row?.createdAt ?? null) ?? max;
+	const min = created > max ? max : created;
+	return { min, max };
 }
 
 /**
  * Parses `dates=YYYY-MM-DD/YYYY-MM-DD` (or separate from/to) into a valid inclusive range.
  * Invalid / incomplete values fall back to the default 7-day window.
+ * Result is clamped to bounds (hospital created … today).
  */
 export function parseHospitalHomeDateRange(input: {
 	dates?: string | null;
 	dateFrom?: string | null;
 	dateTo?: string | null;
+	bounds?: HospitalHomeDateRangeBounds;
 }): HospitalHomeDashboardFilters {
-	const fallback = defaultHospitalHomeDateRange();
+	const lo = input.bounds?.min;
+	const hi = input.bounds?.max ?? todayISODate();
+	const fallback = defaultHospitalHomeDateRange(
+		lo ? { min: lo, max: hi } : { min: hi, max: hi }
+	);
 	let from = (input.dateFrom ?? '').trim();
 	let to = (input.dateTo ?? '').trim();
 	const combined = (input.dates ?? '').trim();
@@ -108,6 +149,10 @@ export function parseHospitalHomeDateRange(input: {
 		from = to;
 		to = swap;
 	}
+	const rangeLo = lo ?? hi;
+	from = clampIsoDate(from, rangeLo, hi);
+	to = clampIsoDate(to, rangeLo, hi);
+	if (from > to) from = to;
 	return { dateFrom: from, dateTo: to, dates: `${from}/${to}` };
 }
 
@@ -330,8 +375,10 @@ export async function loadHospitalHomeDashboard(input: {
 	branchIds: string[];
 	branchScopeName: string | null;
 	filters: HospitalHomeDashboardFilters;
+	dateRangeBounds: HospitalHomeDateRangeBounds;
 }): Promise<HospitalHomeDashboardPayload> {
-	const { hospitalId, branchIds, branchScopeName, filters } = input;
+	const { hospitalId, branchIds, branchScopeName, filters, dateRangeBounds } =
+		input;
 	const visitsByDay = buildVisitsByDayBuckets(
 		filters.dateFrom,
 		filters.dateTo
@@ -342,6 +389,7 @@ export async function loadHospitalHomeDashboard(input: {
 			stats: emptyStats(),
 			visitsByDay,
 			filters,
+			dateRangeBounds,
 			branchScopeName: null
 		};
 	}
@@ -723,6 +771,7 @@ export async function loadHospitalHomeDashboard(input: {
 		stats,
 		visitsByDay,
 		filters,
+		dateRangeBounds,
 		branchScopeName,
 		...(partialErrors.length > 0 ? { partialErrors } : {})
 	};

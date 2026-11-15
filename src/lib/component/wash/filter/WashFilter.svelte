@@ -13,5 +13,7 @@
 </script>
 
 <form class="filter {className}">
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 </form>

@@ -374,6 +374,13 @@
 	}
 
 	async function openAccountSetting() {
+		if (!staffId) {
+			toastService.addToast(
+				'No staff profile linked to this account.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
 		if (!canLoadSettings) {
 			toastService.addToast(
 				'Hospital context missing.',
@@ -409,6 +416,13 @@
 	}
 
 	async function loadAccountSettings() {
+		if (!staffId) {
+			toastService.addToast(
+				'No staff profile linked to this account.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
 		if (!canLoadSettings) {
 			toastService.addToast(
 				'Hospital context missing.',
@@ -423,10 +437,18 @@
 				genderOptions.length ? Promise.resolve() : loadGenderOptions()
 			]);
 			if (!settingsRes.ok) {
-				throw new Error(
-					(await settingsRes.text()) ||
-						`Failed to load: ${settingsRes.status}`
-				);
+				const raw = await settingsRes.text();
+				let message = raw;
+				try {
+					const parsed = JSON.parse(raw) as { message?: string };
+					if (parsed?.message) message = parsed.message;
+				} catch {
+					// Keep raw text.
+				}
+				if (!message) {
+					message = `Failed to load: ${settingsRes.status}`;
+				}
+				throw new Error(message);
 			}
 			const data = (await settingsRes
 				.json()
@@ -437,10 +459,11 @@
 			// Prefer session seed over a hard failure so the user can still edit/save.
 			if (!settingsReady) seedFromInitialProfile();
 			if (!settingsReady) {
-				toastService.addToast(
-					'Failed to load account settings.',
-					StatusColorEnum.ERROR
-				);
+				const message =
+					err instanceof Error && err.message
+						? err.message
+						: 'Failed to load account settings.';
+				toastService.addToast(message, StatusColorEnum.ERROR);
 				// Empty baseline so edits can make Save dirty (not stuck forever).
 				applyNormalized(emptyNormalized());
 			}
@@ -919,6 +942,7 @@
 											id="account-dob"
 											bind:value={form.dateOfBirth}
 											inputType="date"
+											dateBounds="dateOfBirth"
 										/>
 									</div>
 								</div>
@@ -1079,15 +1103,17 @@
 							{msg.back_to_hospitals()}
 						</WashButton>
 					{/if}
-					<WashButton
-						type="button"
-						className="btn-ghost w-full justify-start gap-2"
-						onClick={openAccountSetting}
-						disabled={isBusy}
-					>
-						<LucideUserCog className="size-5" />
-						Account settings
-					</WashButton>
+					{#if staffId}
+						<WashButton
+							type="button"
+							className="btn-ghost w-full justify-start gap-2"
+							onClick={openAccountSetting}
+							disabled={isBusy}
+						>
+							<LucideUserCog className="size-5" />
+							Account settings
+						</WashButton>
+					{/if}
 					<WashButton
 						type="button"
 						className="btn-ghost w-full justify-start gap-2"

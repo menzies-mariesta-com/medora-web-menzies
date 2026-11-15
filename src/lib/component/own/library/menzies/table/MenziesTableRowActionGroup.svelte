@@ -5,5 +5,7 @@
 </script>
 
 <div class="menzies-table-row-actions flex flex-nowrap items-center justify-start gap-1">
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 </div>

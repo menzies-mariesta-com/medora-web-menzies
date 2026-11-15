@@ -23,5 +23,7 @@
 </script>
 
 <div class="{recipe} {className}">
-	{@render children?.()}
+	{#if children}
+		{@render children()}
+	{/if}
 </div>

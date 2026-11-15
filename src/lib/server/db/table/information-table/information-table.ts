@@ -226,6 +226,27 @@ export const financialYearTable = pgTable(
 	]
 );
 
+/** Hospital-scoped color overrides for UI badges, borders, ribbons. */
+export const hospitalColorConfigTable = pgTable(
+	'hospital_color_config',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		category: varchar('category', { length: 64 }).notNull(),
+		entityKey: varchar('entity_key', { length: 128 }).notNull(),
+		color: varchar('color', { length: 32 }).notNull(),
+		...timestamps
+	},
+	(table) => [
+		uniqueIndex('hospital_color_config_hospital_cat_key_uidx')
+			.on(table.hospitalId, table.category, table.entityKey)
+			.where(sql`${table.deletedAt} IS NULL`),
+		index('hospital_color_config_hospital_id_idx').on(table.hospitalId)
+	]
+);
+
 /** Format template per hospital + purpose key (no counter). */
 export const prefixFormatTable = pgTable(
 	'prefix_format',

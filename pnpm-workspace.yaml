@@ -2,5 +2,8 @@ allowBuilds:
   esbuild: true
   argon2: true
   core-js: true
+minimumReleaseAgeExclude:
+  - '@menzies-mariesta-com/menzies-design-wash-ui@1.5.0'
+  - '@menzies-mariesta-com/wash-ui-mcp@1.5.0'
 patchedDependencies:
   postcss-selector-parser@6.0.10: patches/postcss-selector-parser@6.0.10.patch

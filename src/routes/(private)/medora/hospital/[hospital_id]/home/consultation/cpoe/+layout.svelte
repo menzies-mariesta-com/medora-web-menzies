@@ -230,7 +230,9 @@
 		class="emr-subnav-content"
 		class:clinical-visit-locked={clinicalVisitReadOnly}
 	>
-		{@render children()}
+		{#if children}
+			{@render children()}
+		{/if}
 	</div>
 </div>
 

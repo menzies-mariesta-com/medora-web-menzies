@@ -47,11 +47,15 @@
 			{/each}
 		</div>
 		<div class="adt-subnav-content">
-			{@render children()}
+			{#if children}
+				{@render children()}
+			{/if}
 		</div>
 	</div>
 {:else}
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 {/if}
 
 <style>

@@ -100,7 +100,9 @@
 </script>
 
 {#if isEmbed}
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 {:else}
 	<div class="staff-subnav-wrapper">
 		{#if !isExternalMedOrderPage}
@@ -133,7 +135,9 @@
 		{/if}
 
 		<div class="staff-subnav-content">
-			{@render children()}
+			{#if children}
+				{@render children()}
+			{/if}
 		</div>
 	</div>
 {/if}

@@ -3,6 +3,7 @@ import {
 	integer,
 	pgTable,
 	serial,
+	text,
 	timestamp,
 	uniqueIndex,
 	uuid,
@@ -67,4 +68,84 @@ export const hospitalEdBillingConfigTable = pgTable(
 		),
 		...timestamps
 	}
+);
+
+/** Hospital trauma team activation level (code I/II/III or custom). */
+export const hospitalTraumaActivationLevelTable = pgTable(
+	'hospital_trauma_activation_level',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		code: varchar('code', { length: 16 }).notNull(),
+		name: varchar('name', { length: 512 }).notNull(),
+		description: text('description'),
+		color: varchar('color', { length: 32 }).notNull().default('error'),
+		sortOrder: integer('sort_order').notNull().default(0),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		uniqueIndex('hospital_trauma_activation_level_hospital_code_uidx').on(
+			t.hospitalId,
+			t.code
+		),
+		index('hospital_trauma_activation_level_hospital_id_idx').on(
+			t.hospitalId
+		)
+	]
+);
+
+export const hospitalTraumaMilestoneTemplateTable = pgTable(
+	'hospital_trauma_milestone_template',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		code: varchar('code', { length: 64 }).notNull(),
+		label: varchar('label', { length: 512 }).notNull(),
+		sortOrder: integer('sort_order').notNull().default(0),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		uniqueIndex('hospital_trauma_milestone_tpl_hospital_code_uidx').on(
+			t.hospitalId,
+			t.code
+		),
+		index('hospital_trauma_milestone_tpl_hospital_id_idx').on(t.hospitalId)
+	]
+);
+
+export const hospitalTraumaTeamRoleTable = pgTable(
+	'hospital_trauma_team_role',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		code: varchar('code', { length: 64 }).notNull(),
+		label: varchar('label', { length: 512 }).notNull(),
+		sortOrder: integer('sort_order').notNull().default(0),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		uniqueIndex('hospital_trauma_team_role_hospital_code_uidx').on(
+			t.hospitalId,
+			t.code
+		),
+		index('hospital_trauma_team_role_hospital_id_idx').on(t.hospitalId)
+	]
 );

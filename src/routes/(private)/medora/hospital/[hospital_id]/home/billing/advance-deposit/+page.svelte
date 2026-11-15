@@ -151,7 +151,10 @@
 
 	const canAdd = $derived(!!visitId && admissionId != null && !!api);
 
-	async function fetchRows() {
+	async function fetchRows(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!api || !visitId) {
 			rows = [];
 			admissionId = null;
@@ -172,9 +175,7 @@
 				tableFilters.paymentMethod?.trim() ||
 				'';
 			if (search) qs.set('search', search);
-			const res = await fetch(`${api}?${qs.toString()}`, {
-				credentials: 'include'
-			});
+			const res = await fetch(`${api}?${qs.toString()}`, { credentials: 'include', signal: opts?.signal });
 			if (!res.ok) await throwUserFacingHttpError(res);
 			const data = (await res.json()) as {
 				items?: IpAdvanceDepositRow[];
@@ -188,6 +189,8 @@
 					: null;
 			totalAmount = Number(data.totalAmount ?? 0) || 0;
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			rows = [];
 			admissionId = null;
 			totalAmount = 0;
@@ -196,7 +199,7 @@
 				StatusColorEnum.ERROR
 			);
 		} finally {
-			isLoading = false;
+			if (!opts?.isCancelled?.()) isLoading = false;
 		}
 	}
 
@@ -248,7 +251,13 @@
 		const vid = visitId;
 		void vid;
 		currentPage = 1;
-		void fetchRows();
+			let cancelled = false;
+			const ac = new AbortController();
+		void fetchRows({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	lifeCycleUtil.onDestroy(() => {

@@ -26,6 +26,8 @@
 	} from '$lib/tool/ipd/ipd-nursing-redirect.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+	import { loadHospitalColorMap } from '$lib/util/hospital-color-map-client.util';
+	import { bedStatusBadgeStyle } from '$lib/tool/color/hospital-color-badge.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -60,6 +62,7 @@
 	let bedFilter = $state('');
 	let roomFilter = $state('');
 	let isLoading = $state(false);
+	let colorMap = $state<Record<string, string> | null>(null);
 
 	const statusOptions = [
 		{ value: String(IpdBedStatusEnum.FREE), label: 'Free' },
@@ -83,12 +86,8 @@
 		);
 	}
 
-	function statusTone(s: number): string {
-		if (s === IpdBedStatusEnum.FREE) return 'badge-success';
-		if (s === IpdBedStatusEnum.OCCUPIED) return 'badge-warning';
-		if (s === IpdBedStatusEnum.BLOCKED) return 'badge-error';
-		if (s === IpdBedStatusEnum.CLEANING) return 'badge-info';
-		return 'badge-ghost';
+	function statusBadgeStyle(s: number): string | undefined {
+		return bedStatusBadgeStyle(colorMap, s);
 	}
 
 	function bedTitle(row: AdtBedStatusRow): string {
@@ -273,6 +272,11 @@
 	}
 
 	lifeCycleUtil.onMount(() => {
+		const hid =
+			typeof page.params.hospital_id === 'string'
+				? page.params.hospital_id
+				: '';
+		if (hid) void loadHospitalColorMap(hid).then((m) => (colorMap = m));
 		loadWards();
 		load();
 	});
@@ -395,16 +399,24 @@
 				<section class="space-y-4">
 					<header class="flex flex-wrap items-center gap-2">
 						<h2 class="text-base font-semibold">{ward.wardName}</h2>
-						<span class="badge badge-sm badge-success"
+						<span
+							class="badge badge-sm badge-outline"
+							style={statusBadgeStyle(IpdBedStatusEnum.FREE)}
 							>Free {ward.counts.free}</span
 						>
-						<span class="badge badge-sm badge-warning"
+						<span
+							class="badge badge-sm badge-outline"
+							style={statusBadgeStyle(IpdBedStatusEnum.OCCUPIED)}
 							>Occupied {ward.counts.occupied}</span
 						>
-						<span class="badge badge-sm badge-info"
+						<span
+							class="badge badge-sm badge-outline"
+							style={statusBadgeStyle(IpdBedStatusEnum.CLEANING)}
 							>Cleaning {ward.counts.cleaning}</span
 						>
-						<span class="badge badge-sm badge-error"
+						<span
+							class="badge badge-sm badge-outline"
+							style={statusBadgeStyle(IpdBedStatusEnum.BLOCKED)}
 							>Blocked {ward.counts.blocked}</span
 						>
 					</header>
@@ -417,7 +429,7 @@
 								class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
 							>
 								{#each room.beds as bed (bed.id)}
-									{@const tone = statusTone(bed.bedStatus)}
+									{@const bedStyle = statusBadgeStyle(bed.bedStatus)}
 									{@const canDischarge =
 										!!bed.admissionId &&
 										bed.bedStatus === IpdBedStatusEnum.OCCUPIED}
@@ -430,7 +442,10 @@
 												>
 													{bedTitle(bed)}
 												</h4>
-												<span class="badge badge-xs shrink-0 {tone}">
+												<span
+													class="badge badge-xs badge-outline shrink-0"
+													style={bedStyle}
+												>
 													{statusLabel(bed.bedStatus)}
 												</span>
 											</div>

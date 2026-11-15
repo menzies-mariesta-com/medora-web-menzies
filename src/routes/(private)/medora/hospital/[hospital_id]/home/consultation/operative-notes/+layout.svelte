@@ -60,4 +60,6 @@
 	onVisitSelected={handleVisitSelected}
 	onVisitReset={handleVisitReset}
 />
-{@render children()}
+{#if children}
+	{@render children()}
+{/if}

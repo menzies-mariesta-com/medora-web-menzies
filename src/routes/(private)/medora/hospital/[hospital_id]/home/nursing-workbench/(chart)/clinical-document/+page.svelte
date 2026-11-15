@@ -79,11 +79,15 @@
 			visit !== null
 	);
 
-	async function fetchAllData() {
+	async function fetchAllData(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		isLoading = true;
 		try {
 			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/clinical-document?mode=bootstrap&visitId=${visitId}`
+				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/clinical-document?mode=bootstrap&visitId=${visitId}`,
+				{ signal: opts?.signal }
 			);
 			if (!res.ok) throw new Error(`Failed to load (${res.status})`);
 			const payload = (await res.json()) as {
@@ -91,6 +95,7 @@
 				documents?: ClinicalDocumentRow[];
 				documentSettings?: DocumentSettingWithRelations[];
 			};
+			if (opts?.isCancelled?.()) return;
 
 			if (visitId) visit = payload.visit ?? null;
 			documents = Array.isArray(payload.documents)
@@ -105,15 +110,18 @@
 					visitId,
 					hospitalId: payload.visit.hospitalId
 				});
+				if (opts?.isCancelled?.()) return;
 				serviceLinesTableHtml =
 					buildVisitServiceLinesTableHtml(printRows);
 			} else {
 				serviceLinesTableHtml = '';
 			}
 		} catch (err) {
+			if (opts?.isCancelled?.()) return;
+			if (err instanceof DOMException && err.name === 'AbortError') return;
 			console.error('Failed to fetch data', err);
 		} finally {
-			isLoading = false;
+			if (!opts?.isCancelled?.()) isLoading = false;
 		}
 	}
 
@@ -129,7 +137,16 @@
 
 		if (visitId !== lastLoadedVisitId) {
 			lastLoadedVisitId = visitId;
-			fetchAllData();
+			let cancelled = false;
+			const ac = new AbortController();
+			void fetchAllData({
+				signal: ac.signal,
+				isCancelled: () => cancelled
+			});
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 		}
 	});
 

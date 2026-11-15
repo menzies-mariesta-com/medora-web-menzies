@@ -142,28 +142,36 @@
 		}
 	);
 
-	async function loadDetail() {
+	async function loadDetail(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId || !issueId) return;
 		loading = true;
 		try {
-			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/inventory/department-issue?id=${encodeURIComponent(issueId)}`,
-				{ method: 'GET' }
-			);
+			const res = await fetch(`/api/medora/hospital/${hospitalId}/home/inventory/department-issue?id=${encodeURIComponent(issueId)}`, { method: 'GET', signal: opts?.signal });
 			if (!res.ok) throw new Error(String(res.status));
 			detail = (await res.json()) as IssueDetail;
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			toast.addErrorToast(m.inv_di_issue_detail_heading(), e);
 			detail = null;
 		} finally {
-			loading = false;
+			if (!opts?.isCancelled?.()) loading = false;
 		}
 	}
 
 	$effect(() => {
 		void hospitalId;
 		void issueId;
-		void loadDetail();
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadDetail({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

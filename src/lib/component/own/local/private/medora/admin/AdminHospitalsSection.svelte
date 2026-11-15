@@ -127,7 +127,10 @@
 		if (onChanged) await onChanged();
 	}
 
-	async function loadHospitals(forceRefresh = false) {
+	async function loadHospitals(forceRefresh = false, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		isLoading = true;
 		try {
 			const pageSize = Number(pageSizeStr) || 10;
@@ -150,15 +153,13 @@
 			for (const [k, v] of Object.entries(params))
 				url.searchParams.set(k, v);
 
-			const res = await fetch(url, {
-				method: 'GET',
-				credentials: 'include'
-			});
+			const res = await fetch(url, { method: 'GET',
+				credentials: 'include', signal: opts?.signal });
 			if (!res.ok) await throwUserFacingHttpError(res);
 			hospitalResult =
 				(await res.json()) as PaginatedResult<HospitalWithOwner>;
 		} finally {
-			isLoading = false;
+			if (!opts?.isCancelled?.()) isLoading = false;
 		}
 	}
 
@@ -254,8 +255,14 @@
 		const key = refreshKey;
 		if (key > 0 && key !== lastRefreshKey) {
 			lastRefreshKey = key;
-			void loadHospitals(true);
+			let cancelled = false;
+			const ac = new AbortController();
+			void loadHospitals(true, { signal: ac.signal, isCancelled: () => cancelled });
 		}
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

@@ -259,7 +259,10 @@
 		return trimmed;
 	}
 
-	async function applyPricingForSelectedService() {
+	async function applyPricingForSelectedService(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		const bId = branchId;
 		if (!bId) return;
 		const serviceId = parseNumberOrNull(detailServiceIdInput);
@@ -378,7 +381,13 @@
 	$effect(() => {
 		detailServiceIdInput;
 		orderDateInput;
-		void applyPricingForSelectedService();
+			let cancelled = false;
+			const ac = new AbortController();
+		void applyPricingForSelectedService({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	$effect(() => {

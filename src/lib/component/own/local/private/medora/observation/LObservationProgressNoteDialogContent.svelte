@@ -141,7 +141,10 @@
 		return StringUtil.doctorOptionDisplayName(staff);
 	}
 
-	async function loadNoteForEdit(id: number, seq: number) {
+	async function loadNoteForEdit(id: number, seq: number, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		const row = await apiGet<NoteRow | null>('progressNote.get', {
 			id: String(id)
 		});
@@ -187,7 +190,13 @@
 			statusIdStr = String(StatusEnum.ACTIVE);
 			return;
 		}
-		void loadNoteForEdit(id, seq);
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadNoteForEdit(id, seq, { signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	async function handleSubmit() {

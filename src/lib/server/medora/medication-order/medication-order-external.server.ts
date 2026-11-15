@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import {
 	and,
 	count,
@@ -587,6 +588,8 @@ export async function updateMedicationOrderBatchExternal(
 	if (!b) throw error(404, 'Batch not found');
 	assertExternalOriginBatch(b);
 	await assertBatchNotPaid(input.hospitalId, input.batchId);
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return updateMedicationOrderBatch(event, {
 		...input,
 		pricingModule: EXTERNAL_SALES_PRICING_MODULE
@@ -611,5 +614,7 @@ export async function deleteMedicationOrderBatchExternal(
 	if (!b) throw error(404, 'Not found');
 	assertExternalOriginBatch(b);
 	await assertBatchNotPaid(hospitalId, batchId);
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return deleteMedicationOrderBatch(event, hospitalId, batchId);
 }

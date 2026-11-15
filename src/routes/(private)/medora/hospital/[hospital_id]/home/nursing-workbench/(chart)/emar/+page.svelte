@@ -31,7 +31,10 @@
 	let selectedLineId = $state('');
 	let isSubmitting = $state(false);
 
-	async function loadSchedules() {
+	async function loadSchedules(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!apiBase) return;
 		const from = new Date(Date.now() - 86400000).toISOString();
 		const to = new Date(Date.now() + 86400000 * 2).toISOString();
@@ -41,7 +44,8 @@
 			to
 		});
 		if (visitId) qs.set('visitId', visitId);
-		const res = await fetch(`${apiBase}?${qs}`);
+		const res = await fetch(`${apiBase}?${qs}`, { signal: opts?.signal });
+		if (opts?.isCancelled?.()) return;
 		schedules = (await res.json()) as MedicationScheduleRow[];
 	}
 
@@ -78,7 +82,17 @@
 	}
 
 	$effect(() => {
-		if (apiBase) void loadSchedules();
+		if (!apiBase) return;
+		let cancelled = false;
+		const ac = new AbortController();
+		void loadSchedules({
+			signal: ac.signal,
+			isCancelled: () => cancelled
+		});
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 </script>
 

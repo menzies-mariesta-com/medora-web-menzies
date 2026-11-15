@@ -133,19 +133,23 @@
 		const hid = hospitalId;
 		const bid = scopedBranchId;
 		if (!mounted) return;
+		let cancelled = false;
 		if (hid) {
 			apiGet<DoctorStaff[]>('doctor.list', {
 				branchId: bid
 			}).then((list) => {
-				DOCTOR_STAFF_LIST = list;
+				if (!cancelled) DOCTOR_STAFF_LIST = list;
 			});
 			fetchBranchesAll(hid).then((list) => {
-				branchData = list;
+				if (!cancelled) branchData = list;
 			});
 		} else {
 			DOCTOR_STAFF_LIST = [];
 			branchData = [];
 		}
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	lifeCycleUtil.onDestroy(() => {
@@ -267,7 +271,13 @@
 		if (noEndDate) toDate = '';
 	});
 	$effect(() => {
-		void loadDoctorSchedules();
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadDoctorSchedules({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 	let daySchedules = $state<DaySchedule[]>([]);
 
@@ -289,7 +299,10 @@
 	});
 	let isSaving = $state(false);
 
-	async function loadDoctorSchedules() {
+	async function loadDoctorSchedules(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		const id = staffId.trim();
 		if (!id) {
 			doctorSchedules = [];

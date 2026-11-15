@@ -349,6 +349,7 @@ export async function activateTrauma(input: {
 	levelCode: string;
 	staffId: string;
 	valuesJson?: Record<string, unknown>;
+	activationLevelId?: number | null;
 }) {
 	await ensureEdEncounter({
 		hospitalId: input.hospitalId,
@@ -375,6 +376,7 @@ export async function activateTrauma(input: {
 			hospitalId: input.hospitalId,
 			visitId: input.visitId,
 			levelCode: input.levelCode,
+			activationLevelId: input.activationLevelId ?? null,
 			formInstanceId,
 			activatedBy: input.staffId
 		})
@@ -419,10 +421,14 @@ export async function listTraumaActivations(input: {
 export async function deactivateTrauma(input: {
 	hospitalId: string;
 	id: number;
+	deactivateReason?: string | null;
 }) {
 	await ensureDb()
 		.update(table.traumaActivationTable)
-		.set({ deactivatedAt: new Date().toISOString() })
+		.set({
+			deactivatedAt: new Date().toISOString(),
+			deactivateReason: input.deactivateReason?.trim() || null
+		})
 		.where(
 			and(
 				eq(table.traumaActivationTable.id, input.id),

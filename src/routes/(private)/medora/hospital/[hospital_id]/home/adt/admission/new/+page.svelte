@@ -158,19 +158,22 @@
 		if (res.ok) wards = (await res.json()) as WardRow[];
 	}
 
-	async function loadFreeBeds(wid: number) {
+	async function loadFreeBeds(wid: number, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!bedApi || !wid) {
 			beds = [];
 			return;
 		}
-		const res = await fetch(
-			`${bedApi}?free=1&wardId=${encodeURIComponent(String(wid))}`,
-			{ credentials: 'include' }
-		);
+		const res = await fetch(`${bedApi}?free=1&wardId=${encodeURIComponent(String(wid))}`, { credentials: 'include', signal: opts?.signal });
 		beds = res.ok ? ((await res.json()) as BedRow[]) : [];
 	}
 
-	async function loadSourceOpdVisits(pid: string) {
+	async function loadSourceOpdVisits(pid: string, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (orderLocked) return;
 		sourceOpdVisits = [];
 		sourceOpdVisitId = '';
@@ -181,9 +184,7 @@
 				mode: 'source-opd',
 				patientId: pid.trim()
 			});
-			const res = await fetch(`${api}?${qs}`, {
-				credentials: 'include'
-			});
+			const res = await fetch(`${api}?${qs}`, { credentials: 'include', signal: opts?.signal });
 			if (!res.ok) return;
 			const list = (await res.json()) as AdtSourceOpdVisitRow[];
 			sourceOpdVisits = list ?? [];
@@ -195,14 +196,14 @@
 		}
 	}
 
-	async function loadAdmissionOrder(orderId: number) {
+	async function loadAdmissionOrder(orderId: number, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!orderApi) return;
 		loadingOrder = true;
 		try {
-			const res = await fetch(
-				`${orderApi}?id=${encodeURIComponent(String(orderId))}`,
-				{ credentials: 'include' }
-			);
+			const res = await fetch(`${orderApi}?id=${encodeURIComponent(String(orderId))}`, { credentials: 'include', signal: opts?.signal });
 			if (!res.ok) await throwUserFacingHttpError(res);
 			const order = (await res.json()) as IpdAdmissionOrderRow;
 			admissionOrderId = order.id;
@@ -222,6 +223,8 @@
 			}
 			if (order.notes) reasonNotes = order.notes;
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			toastService.addToast(
 				e instanceof Error ? e.message : 'Failed to load order',
 				StatusColorEnum.ERROR
@@ -234,20 +237,38 @@
 	$effect(() => {
 		const wid = Number(wardId);
 		bedId = '';
-		if (Number.isFinite(wid) && wid > 0) void loadFreeBeds(wid);
+			let cancelled = false;
+			const ac = new AbortController();
+		if (Number.isFinite(wid) && wid > 0) void loadFreeBeds(wid, { signal: ac.signal, isCancelled: () => cancelled });
 		else beds = [];
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	$effect(() => {
 		const pid = patientId;
-		if (!orderLocked) void loadSourceOpdVisits(pid);
+			let cancelled = false;
+			const ac = new AbortController();
+		if (!orderLocked) void loadSourceOpdVisits(pid, { signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	$effect(() => {
 		const oid = orderIdFromUrl;
 		if (oid != null && admissionOrderId !== oid) {
-			void loadAdmissionOrder(oid);
+			let cancelled = false;
+			const ac = new AbortController();
+			void loadAdmissionOrder(oid, { signal: ac.signal, isCancelled: () => cancelled });
 		}
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	async function handleAdmit(e: Event) {

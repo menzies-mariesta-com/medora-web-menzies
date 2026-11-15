@@ -141,20 +141,25 @@ const toastService = new ToastService();
 		return received < ordered;
 	}
 
-	async function load() {
+	async function load(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId || !poId) return;
 		detailLoading = true;
 		try {
+			const init = { method: 'GET' as const, signal: opts?.signal };
 			const [res, iumRes] = await Promise.all([
 				fetch(
 					`/api/medora/hospital/${hospitalId}/home/inventory/purchase-order?id=${encodeURIComponent(poId)}`,
-					{ method: 'GET' }
+					init
 				),
 				fetch(
 					`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?mode=itemUnitMasters`,
-					{ method: 'GET' }
+					init
 				)
 			]);
+			if (opts?.isCancelled?.()) return;
 			if (iumRes.ok) {
 				const iumRows = (await iumRes.json()) as {
 					id: number;
@@ -166,13 +171,17 @@ const toastService = new ToastService();
 			} else {
 				iumCatalogById = new Map();
 			}
+			if (opts?.isCancelled?.()) return;
 			if (!res.ok) throw new Error(String(res.status));
 			const j = (await res.json()) as PoDetail | null;
+			if (opts?.isCancelled?.()) return;
 			detail = j;
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			toastService.addErrorToast('Could not load purchase order', e);
 		} finally {
-			detailLoading = false;
+			if (!opts?.isCancelled?.()) detailLoading = false;
 		}
 	}
 
@@ -241,7 +250,13 @@ const toastService = new ToastService();
 	$effect(() => {
 		void poId;
 		void hospitalId;
-		void load();
+		let cancelled = false;
+		const ac = new AbortController();
+		void load({ signal: ac.signal, isCancelled: () => cancelled });
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	$effect(() => {

@@ -37,7 +37,9 @@
 </script>
 
 {#if isEmbed}
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 {:else}
 	<div class="pricing-section space-y-6 p-4">
 		<div class="space-y-1">
@@ -64,11 +66,15 @@
 					{/each}
 				</div>
 				<div class="staff-subnav-content">
-					{@render children()}
+					{#if children}
+						{@render children()}
+					{/if}
 				</div>
 			</div>
 		{:else}
-			{@render children()}
+			{#if children}
+				{@render children()}
+			{/if}
 		{/if}
 	</div>
 {/if}

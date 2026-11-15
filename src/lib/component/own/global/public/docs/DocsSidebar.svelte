@@ -48,12 +48,10 @@
 	let {
 		modules = [],
 		activePath = '',
-		mobileOpen = false,
 		onNavigate
 	} = $props<{
 		modules?: DocsManifestModule[];
 		activePath?: string;
-		mobileOpen?: boolean;
 		onNavigate?: () => void;
 	}>();
 
@@ -111,26 +109,11 @@
 	}
 </script>
 
-<aside
-	class="fixed inset-y-0 left-0 z-20 flex w-72 flex-col border-r border-ink-border bg-base-200 pt-14 transition-transform duration-200 lg:static lg:z-0 lg:w-64 lg:translate-x-0 lg:pt-0 {mobileOpen
-		? 'translate-x-0'
-		: '-translate-x-full lg:translate-x-0'}"
+<nav
+	class="menu min-h-0 w-full flex-1 gap-1 overflow-y-auto scroll-smooth px-4 py-4 text-sm"
+	aria-label={msg.docs_nav_aria()}
 >
-	<nav class="min-h-0 flex-1 overflow-y-auto px-2 py-4 text-sm" aria-label={msg.docs_nav_aria()}>
-		<ul class="menu menu-md w-full gap-0.5 p-0">
-			<li>
-				<a
-					href="/docs"
-					class="cursor-pointer"
-					class:menu-active={isExact('/docs')}
-					onclick={onLinkClick}
-				>
-					{msg.docs_nav_overview()}
-				</a>
-			</li>
-		</ul>
-
-		<details class="docs-nav-details" open={guidesOpen}>
+	<details class="docs-nav-details" open={guidesOpen}>
 			<summary class="docs-nav-summary cursor-pointer">{msg.docs_nav_guides()}</summary>
 			<ul class="menu menu-sm w-full gap-0 p-0 pl-1">
 				{#each GUIDES as guide (guide.slug)}
@@ -282,8 +265,7 @@
 				</li>
 			</ul>
 		</details>
-	</nav>
-</aside>
+</nav>
 
 <style>
 	.docs-nav-details {

@@ -4,6 +4,7 @@
 	import { D3Util, type BarChartOptions } from '$lib/util/d3.util';
 	import { formatIntegerDisplay } from '$lib/util/number-display.util';
 	import {
+		clampISODate,
 		formatRangeValue,
 		parseRangeValue,
 		toISODate
@@ -42,6 +43,7 @@
 	const stats = $derived(data.stats);
 	const visitsByDay = $derived(data.visitsByDay ?? []);
 	const filters = $derived(data.filters);
+	const dateRangeBounds = $derived(data.dateRangeBounds);
 	const showDashboardWarning = $derived(
 		Boolean(
 			data.dashboardLoadError || (data.partialErrors?.length ?? 0) > 0
@@ -81,11 +83,25 @@
 	}
 
 	/** Default API range when Clear is pressed (dates query is required). */
+	function clampRangeToBounds(value: string): string {
+		const { start, end } = parseRangeValue(value);
+		if (!start || !end) return value;
+		const min = dateRangeBounds.min;
+		const max = dateRangeBounds.max;
+		let from = clampISODate(start, min, max);
+		let to = clampISODate(end, min, max);
+		if (from > to) from = to;
+		return formatRangeValue(from, to);
+	}
+
+	/** Default API range when Clear is pressed (dates query is required). */
 	function defaultDateRange(): string {
-		const to = toISODate(new Date());
-		const from = new Date(`${to}T00:00:00.000Z`);
-		from.setUTCDate(from.getUTCDate() - 6);
-		return formatRangeValue(from.toISOString().slice(0, 10), to);
+		const to = dateRangeBounds.max;
+		const fromD = new Date(`${to}T00:00:00.000Z`);
+		fromD.setUTCDate(fromD.getUTCDate() - 6);
+		let from = fromD.toISOString().slice(0, 10);
+		if (from < dateRangeBounds.min) from = dateRangeBounds.min;
+		return formatRangeValue(from, to);
 	}
 
 	function isCompleteRange(value: string): boolean {
@@ -106,6 +122,7 @@
 	async function applyDates(nextDates: string) {
 		if (!isCompleteRange(nextDates)) return;
 		if (filters?.dates === nextDates) {
+		nextDates = clampRangeToBounds(nextDates);
 			dateDraft = nextDates;
 			closeDateMenu();
 			return;
@@ -149,9 +166,10 @@
 
 	function onCalendarChange(value: string) {
 		dateDraft = value;
-		if (isCompleteRange(value)) {
-			void applyDates(value);
-		}
+		dateDraft = isCompleteRange(value) ? clampRangeToBounds(value) : value;
+		if (isCompleteRange(dateDraft)) {
+			void applyDates(dateDraft);
+	}
 	}
 
 	$effect(() => {
@@ -251,6 +269,8 @@
 						mode="range"
 						bind:value={dateDraft}
 						size="sm"
+						min={dateRangeBounds.min}
+						max={dateRangeBounds.max}
 						bordered={false}
 						aria-label={msg.hospital_home_date_range_aria()}
 						onChange={onCalendarChange}

@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { requireOptionalDateOfBirth } from '$lib/server/medora/date-of-birth-range.server';
 import { eq } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -147,8 +148,16 @@ export async function updateSelfAccountSettings(
 	const address = normalizeString(input.address);
 	if (address !== undefined) setObj.address = address;
 
-	const dateOfBirth = normalizeDateOnly(input.dateOfBirth);
-	if (dateOfBirth !== undefined) setObj.dateOfBirth = dateOfBirth;
+	if (input.dateOfBirth !== undefined) {
+		const raw = normalizeDateOnly(input.dateOfBirth);
+		if (raw === undefined) {
+			// unchanged
+		} else if (raw === null) {
+			setObj.dateOfBirth = null;
+		} else {
+			setObj.dateOfBirth = requireOptionalDateOfBirth(raw) ?? null;
+		}
+	}
 
 	if (input.genderId !== undefined) {
 		if (input.genderId === null) setObj.genderId = null;

@@ -367,9 +367,13 @@
 		const v = value?.trim();
 		if (!isAsync || !v || !getLabelForValue) return;
 		if (optionsList.some((o) => o.value === v)) return;
+		let cancelled = false;
 		getLabelForValue(v).then((labelText) => {
-			cachedLabelForValue = labelText;
+			if (!cancelled) cachedLabelForValue = labelText;
 		});
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	$effect(() => {

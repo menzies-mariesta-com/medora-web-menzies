@@ -175,13 +175,18 @@
 		editSeedDone = true;
 		storeId = String(initialEdit.storeId);
 		itemId = String(initialEdit.itemId);
+		let cancelled = false;
 		void (async () => {
 			const resolved = await hydrateItemIums(
 				initialEdit.itemId,
 				initialEdit.itemUnitMasterId
 			);
+			if (cancelled) return;
 			applyIssueQtyAsPurchaseDraft(initialEdit.minQtyIssue, resolved);
 		})();
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	async function onItemChange(v: string) {

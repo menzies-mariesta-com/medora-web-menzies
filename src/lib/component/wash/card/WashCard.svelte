@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { gsapAnimate } from '$lib/action/gsap.action.svelte';
 	import { washRecipes } from '@menzies-mariesta-com/menzies-design-wash-ui/core';
 
@@ -7,7 +8,7 @@
 		className,
 		animate = false
 	} = $props<{
-		children: () => void;
+		children?: Snippet;
 		className?: string;
 		/** When true, card fades in smoothly on mount */
 		animate?: boolean;
@@ -20,5 +21,7 @@
 		? { type: 'fadeUp', duration: 0.3, enabled: true }
 		: false}
 >
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 </div>

@@ -43,6 +43,14 @@ export type HospitalHomeDashboardStats = {
 	checkInRatio: HospitalHomeCheckInRatio;
 };
 
+/** Inclusive selectable calendar bounds for hospital home dashboard. */
+export type HospitalHomeDateRangeBounds = {
+	/** Earliest day: hospital `created_at` (calendar date, UTC). */
+	min: string;
+	/** Latest day: today (calendar date, UTC). */
+	max: string;
+};
+
 export type HospitalHomeDashboardFilters = {
 	/** Inclusive start `YYYY-MM-DD`. */
 	dateFrom: string;
@@ -56,6 +64,7 @@ export type HospitalHomeDashboardPayload = {
 	stats: HospitalHomeDashboardStats | null;
 	visitsByDay: HospitalHomeDailyVisitCount[];
 	filters: HospitalHomeDashboardFilters;
+	dateRangeBounds: HospitalHomeDateRangeBounds;
 	branchScopeName: string | null;
 	/** True when the aggregate loader failed entirely (page shell still renders). */
 	dashboardLoadError?: boolean;

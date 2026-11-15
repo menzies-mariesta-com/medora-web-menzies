@@ -19,15 +19,27 @@
 	let content = $state('');
 	let isSaving = $state(false);
 
-	async function load() {
+	async function load(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!visitId) return;
-		instances = (await fetch(`${api}?visitId=${visitId}`).then((r) =>
-			r.json()
-		)) as NursingCarePlanInstanceRow[];
+		const res = await fetch(`${api}?visitId=${visitId}`, {
+			signal: opts?.signal
+		});
+		if (opts?.isCancelled?.()) return;
+		instances = (await res.json()) as NursingCarePlanInstanceRow[];
 	}
 
 	$effect(() => {
-		if (api && visitId) void load();
+		if (!api || !visitId) return;
+		let cancelled = false;
+		const ac = new AbortController();
+		void load({ signal: ac.signal, isCancelled: () => cancelled });
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 </script>
 

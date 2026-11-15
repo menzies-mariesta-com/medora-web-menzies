@@ -226,6 +226,9 @@
 			showAddButton={true}
 			addLabel="Create"
 			onAdd={startCreate}
+			showRefreshButton={true}
+			refreshTooltip={m.refresh_data()}
+			on:refresh={() => fetchData({ bustCache: true })}
 		>
 			{#snippet rowActions(row, rowIndex)}
 				<MenziesTableEditDeleteActions
