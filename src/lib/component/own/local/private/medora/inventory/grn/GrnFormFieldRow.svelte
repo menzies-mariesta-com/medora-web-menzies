@@ -31,6 +31,8 @@
 		<span class="shrink-0 sm:w-40 {alignStart ? 'sm:pt-2' : ''}">{label}</span>
 	{/if}
 	<div class="min-w-0 flex-1">
-		{@render children()}
+		{#if children}
+			{@render children()}
+		{/if}
 	</div>
 </div>

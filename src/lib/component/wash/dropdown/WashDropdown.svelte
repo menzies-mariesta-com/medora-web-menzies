@@ -3,11 +3,12 @@
 </script>
 
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
 
 	let { children, className } = $props<{
 		className?: string;
-		children: () => void;
+		children?: Snippet;
 	}>();
 
 	let detailsElement: HTMLDetailsElement;
@@ -75,5 +76,7 @@
 </script>
 
 <details bind:this={detailsElement} class="dropdown {className}">
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 </details>

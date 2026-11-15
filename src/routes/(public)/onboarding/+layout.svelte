@@ -19,7 +19,9 @@
 	<div class="my-main">
 		{#key page.url.pathname}
 			<AnimatedPageContent type="fadeUp">
-				{@render children?.()}
+				{#if children}
+					{@render children()}
+				{/if}
 			</AnimatedPageContent>
 		{/key}
 	</div>

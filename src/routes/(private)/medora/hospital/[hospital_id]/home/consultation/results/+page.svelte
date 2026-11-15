@@ -41,12 +41,15 @@
 		if (!response.ok) await throwUserFacingHttpError(response);
 	}
 
-	async function loadResults() {
+	async function loadResults(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId || !visitId) return;
 		isBusy = true;
 		errorMessage = '';
 		try {
-			const response = await fetch(`${apiBase}?visitId=${visitId}`);
+			const response = await fetch(`${apiBase}?visitId=${visitId}`, { signal: opts?.signal });
 			if (!response.ok) await throwUserFacingHttpError(response);
 			const result = (await response.json()) as {
 				labs: LabResultRow[];
@@ -57,12 +60,14 @@
 			structuredLabs = result.structured ?? [];
 			imaging = result.imaging;
 		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			errorMessage =
 				error instanceof Error
 					? error.message
 					: m.mo_clinical_results_load_failed();
 		} finally {
-			isBusy = false;
+			if (!opts?.isCancelled?.()) isBusy = false;
 		}
 	}
 
@@ -129,7 +134,13 @@
 
 	$effect(() => {
 		void visitId;
-		void loadResults();
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadResults({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

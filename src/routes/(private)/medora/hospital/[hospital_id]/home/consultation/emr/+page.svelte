@@ -379,7 +379,10 @@
 		}
 	}
 
-	async function refreshAllForVisit() {
+	async function refreshAllForVisit(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
@@ -428,10 +431,7 @@
 						return;
 					}
 					try {
-						const res = await fetch(
-							`/api/medora/hospital/${hospitalId}/home/adt/admission-order?sourceOpdVisitId=${encodeURIComponent(String(visitId))}`,
-							{ credentials: 'include' }
-						);
+						const res = await fetch(`/api/medora/hospital/${hospitalId}/home/adt/admission-order?sourceOpdVisitId=${encodeURIComponent(String(visitId))}`, { credentials: 'include', signal: opts?.signal });
 						if (!res.ok) {
 							pendingAdmissionOrderId = null;
 							return;
@@ -924,7 +924,13 @@
 	$effect(() => {
 		const rev = VisitState.clinicalSignRevision;
 		if (!mounted || rev === 0 || !visitId) return;
-		void refreshAllForVisit();
+			let cancelled = false;
+			const ac = new AbortController();
+		void refreshAllForVisit({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	async function handleSaveAsSigned() {

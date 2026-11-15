@@ -3,7 +3,7 @@ title: "Nursing Workbench"
 description: "How to use Nursing Workbench in Nursing Workbench."
 docType: workflow
 slug: workflows/nursing-workbench
-pageId: 910000
+pageId: 400100
 moduleId: 4
 pageUrl: "/medora/home/nursing-workbench"
 generated: true

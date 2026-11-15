@@ -461,6 +461,9 @@
 			{isLoading}
 			showRowActions={true}
 			actionsVariant="none"
+			showRefreshButton={true}
+			refreshTooltip={m.refresh_data()}
+			on:refresh={() => fetchData()}
 		>
 			{#snippet rowActions(row)}
 				<MenziesTableRowActionGroup>

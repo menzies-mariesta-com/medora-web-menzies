@@ -286,7 +286,10 @@
 		}, 350);
 	}
 
-	async function loadFilterMasters() {
+	async function loadFilterMasters(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId) return;
 		try {
 			const [cats, subs] = await Promise.all([
@@ -362,7 +365,10 @@
 		}
 	}
 
-	async function reloadAll() {
+	async function reloadAll(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		await Promise.all([loadAvailable(), loadLinked()]);
 	}
 
@@ -426,12 +432,24 @@
 
 	$effect(() => {
 		if (!hospitalId || !selectedBranchId) return;
-		void reloadAll();
+			let cancelled = false;
+			const ac = new AbortController();
+		void reloadAll({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	$effect(() => {
 		if (!hospitalId) return;
-		void loadFilterMasters();
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadFilterMasters({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

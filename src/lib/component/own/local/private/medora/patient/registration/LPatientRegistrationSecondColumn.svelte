@@ -26,7 +26,6 @@
 		selectedIdentityTypeId = $bindable(),
 		identityNo = $bindable(),
 		dateOfBirth = $bindable(),
-		dateOfBirthMax,
 		fatherName = $bindable(),
 		guardianName = $bindable(),
 		guardianPhone = $bindable()
@@ -43,7 +42,6 @@
 		selectedIdentityTypeId?: string;
 		identityNo?: string;
 		dateOfBirth?: string;
-		dateOfBirthMax?: string;
 		guardianName?: string;
 		guardianPhone?: string;
 	}>();
@@ -227,8 +225,8 @@
 				id="date-of-birth"
 				bind:value={dateOfBirth}
 				inputType="date"
+				dateBounds="dateOfBirth"
 				className="shrink-0"
-				max={dateOfBirthMax}
 			/>
 			<div class="join flex">
 				<WashInputField

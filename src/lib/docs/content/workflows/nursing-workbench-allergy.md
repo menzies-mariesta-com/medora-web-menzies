@@ -3,7 +3,7 @@ title: "Allergy"
 description: "How to use Allergy in Nursing Workbench."
 docType: workflow
 slug: workflows/nursing-workbench-allergy
-pageId: 800002
+pageId: 400102
 moduleId: 4
 pageUrl: "/medora/home/nursing-workbench/allergy"
 generated: true

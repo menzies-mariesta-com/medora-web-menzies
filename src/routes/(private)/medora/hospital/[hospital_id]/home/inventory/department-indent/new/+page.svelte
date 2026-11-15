@@ -116,18 +116,30 @@ const lifeCycle = new LifeCycleUtil();
 		return stores.filter((s) => s.id !== fromId);
 	});
 
-	async function loadStores() {
+	async function loadStores(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId) return;
 		const res = await fetch(
-			`/api/medora/hospital/${hospitalId}/home/inventory-setup/stores?mode=allForPicker`
+			`/api/medora/hospital/${hospitalId}/home/inventory-setup/stores?mode=allForPicker`,
+			{ method: 'GET', signal: opts?.signal }
 		);
+		if (opts?.isCancelled?.()) return;
 		const raw = (await res.json()) as StoreRow[];
+		if (opts?.isCancelled?.()) return;
 		stores = raw;
 	}
 
 	$effect(() => {
 		void hospitalId;
-		void loadStores();
+		let cancelled = false;
+		const ac = new AbortController();
+		void loadStores({ signal: ac.signal, isCancelled: () => cancelled });
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	lifeCycle.onMount(() => {

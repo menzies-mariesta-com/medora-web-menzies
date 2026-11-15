@@ -9,6 +9,7 @@ import type {
 	hospitalTable,
 	financialYearTable,
 	prefixFormatTable,
+	hospitalColorConfigTable,
 	prefixCounterTable,
 	moduleTable,
 	pageTable,
@@ -133,6 +134,15 @@ export type FinancialYearSchemaInsert = InferInsertModel<
 >;
 export type FinancialYearSchemaUpdate =
 	Partial<FinancialYearSchemaInsert>;
+
+export type HospitalColorConfigSchema = InferSelectModel<
+	typeof hospitalColorConfigTable
+>;
+export type HospitalColorConfigSchemaInsert = InferInsertModel<
+	typeof hospitalColorConfigTable
+>;
+export type HospitalColorConfigSchemaUpdate =
+	Partial<HospitalColorConfigSchemaInsert>;
 
 export type PrefixFormatSchema = InferSelectModel<
 	typeof prefixFormatTable

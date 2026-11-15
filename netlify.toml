@@ -51,3 +51,23 @@
 	for = "/favicon.ico"
 	[headers.values]
 	Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+# Authenticated app HTML: browser revalidates; Netlify edge holds private SWR shell.
+[[headers]]
+	for = "/medora/*"
+	[headers.values]
+	Cache-Control = "private, max-age=0, must-revalidate"
+	Netlify-CDN-Cache-Control = "private, durable, max-age=60, stale-while-revalidate=180"
+	Vary = "Cookie, Accept-Language"
+
+[[headers]]
+	for = "/auth/*"
+	[headers.values]
+	Cache-Control = "private, max-age=0, must-revalidate"
+	Netlify-CDN-Cache-Control = "private, durable, max-age=60, stale-while-revalidate=180"
+	Vary = "Cookie, Accept-Language"
+
+[[headers]]
+	for = "/medora-sw.js"
+	[headers.values]
+	Cache-Control = "public, max-age=0, must-revalidate"

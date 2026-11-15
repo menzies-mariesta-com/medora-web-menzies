@@ -70,7 +70,9 @@
 		onVisitReset={handleVisitReset}
 	/>
 	<div class="billing-content" class:billing-content-embed={isEmbed}>
-		{@render children()}
+		{#if children}
+			{@render children()}
+		{/if}
 	</div>
 </div>
 

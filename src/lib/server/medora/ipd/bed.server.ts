@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -291,6 +292,8 @@ export async function createBed(
 		.returning();
 	if (!row) throw new Error('Insert failed');
 	await syncRoomCapacityFromBeds({ roomId: payload.roomId });
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }
 
@@ -348,6 +351,8 @@ export async function updateBed(payload: {
 	if (previousRoomId !== nextRoomId) {
 		await syncRoomCapacityFromBeds({ roomId: previousRoomId });
 	}
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }
 

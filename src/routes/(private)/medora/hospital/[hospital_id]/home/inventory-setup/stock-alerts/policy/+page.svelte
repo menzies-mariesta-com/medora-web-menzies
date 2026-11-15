@@ -54,19 +54,22 @@
 		inAppMinGapStr = String(s.inAppMinGapMinutes);
 	}
 
-	async function loadBundle() {
+	async function loadBundle(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId) return;
 		bundleLoading = true;
 		bundleError = null;
 		try {
-			const res = await fetch(apiBase(), {
-				credentials: 'include',
-				cache: 'no-store'
-			});
+			const res = await fetch(apiBase(), { credentials: 'include',
+				cache: 'no-store', signal: opts?.signal });
 			if (!res.ok) await throwUserFacingHttpError(res);
 			const b = (await res.json()) as { settings: SettingsDto };
 			syncFormFromSettings(b.settings);
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			console.error(e);
 			bundleError =
 				toUserFacingErrorDetail(e) ?? m.error_load_failed();
@@ -133,7 +136,13 @@
 
 	$effect(() => {
 		void hospitalId;
-		void loadBundle();
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadBundle({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

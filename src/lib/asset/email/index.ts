@@ -5,7 +5,9 @@
 export {
 	applyEmailBrandPlaceholders,
 	EMAIL_BRAND_NAME,
+	EMAIL_LOGO_CID,
 	EMAIL_LOGO_PATH,
+	emailLogoSrcForSend,
 	resolveEmailAppOrigin,
 	resolveEmailLogoUrl
 } from './email-brand';
@@ -21,3 +23,8 @@ export {
 	renderStockAlertEmail,
 	type StockAlertEmailParams
 } from './stock-alert';
+export {
+	buildMedoraEmailDocument,
+	EMAIL_SUPPORT_EMAIL
+} from './email-layout';
+export { renderSupportTicketNotifyEmail } from './support-ticket-notify';

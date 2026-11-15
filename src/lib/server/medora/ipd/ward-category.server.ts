@@ -1,4 +1,5 @@
 import { ensureDb } from '$lib/server/db';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import * as table from '$lib/server/db/schema';
 import type {
 	WardCategorySchema,
@@ -124,6 +125,8 @@ export async function createWardCategory(
 		})
 		.returning();
 	if (!row) throw new Error('Insert failed');
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }
 
@@ -147,6 +150,8 @@ export async function updateWardCategory(payload: {
 		)
 		.returning();
 	if (!row) throw new Error('Update failed');
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }
 

@@ -14,6 +14,7 @@ import { normalizePagination } from '$lib/model/type/pagination.type';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { SupportTicketSchema } from '$lib/server/db/schema-type';
+import { renderSupportTicketNotifyEmail } from '$lib/asset/email/support-ticket-notify';
 import { sendEmailServer } from '$lib/server/util/mailer.server';
 
 export type SupportTicketSession = {
@@ -96,19 +97,18 @@ export async function createSupportTicket(
 
 	const supportTo = env.SUPPORT_IT_EMAIL?.trim();
 	if (supportTo) {
-		const lines = [
-			`New support ticket #${row.id}`,
-			`Subject: ${row.subject}`,
-			`Priority: ${row.priority}`,
-			`Requester user id: ${row.requesterId}`,
-			row.contextUrl ? `Context: ${row.contextUrl}` : null,
-			'',
-			row.description
-		].filter(Boolean);
+		const mail = renderSupportTicketNotifyEmail({
+			ticketId: row.id,
+			subject: row.subject,
+			priority: row.priority,
+			description: row.description,
+			contextUrl: row.contextUrl
+		});
 		void sendEmailServer({
 			to: supportTo,
 			subject: `[Medora Support] #${row.id} ${row.subject}`,
-			message: lines.join('\n')
+			message: mail.plainText,
+			html: mail.html
 		});
 	}
 

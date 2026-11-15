@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import {
 	and,
 	count,
@@ -41,6 +42,7 @@ import {
 } from './item-unit-inventory.server';
 import { computeLandedCostTotals } from '$lib/tool/inventory/grn-pricing.util';
 import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
+import { updateStatusTaggingIfCurrent } from '$lib/server/medora/workflow/status-transition.server';
 
 function parseGrnOptionalQty(s: string | null | undefined): number {
 	if (s == null || s === '') return 0;
@@ -524,6 +526,27 @@ export async function createAndPostGoodsReceipt(
 			if (!u) throw error(400, 'Invalid receivedBy');
 		}
 
+		const [lockedPo] = await tx
+			.select({
+				id: table.purchaseOrderTable.id,
+				statusTaggingId: table.purchaseOrderTable.statusTaggingId
+			})
+			.from(table.purchaseOrderTable)
+			.where(
+				and(
+					eq(table.purchaseOrderTable.id, input.poId),
+					eq(table.purchaseOrderTable.hospitalId, input.hospitalId),
+					isNull(table.purchaseOrderTable.deletedAt)
+				)
+			)
+			.for('update')
+			.limit(1);
+		if (!lockedPo) throw error(404, 'PO not found');
+		if (!PO_ALLOWS_GRN.has(lockedPo.statusTaggingId)) {
+			throw error(400, 'PO status does not allow goods receipt');
+		}
+		const poStatusAtLock = lockedPo.statusTaggingId;
+
 		const invoiceCharges = grnInvoiceChargeDbValues(input);
 
 		const [grn] = await tx
@@ -721,18 +744,23 @@ export async function createAndPostGoodsReceipt(
 			}
 		}
 
-		await tx
-			.update(table.purchaseOrderTable)
-			.set({
+		await updateStatusTaggingIfCurrent(
+			tx,
+			table.purchaseOrderTable,
+			input.poId,
+			poStatusAtLock,
+			{
 				statusTaggingId: allClosed
 					? InvPoStatusTaggingEnum.CLOSED
 					: InvPoStatusTaggingEnum.PARTIALLY_RECEIVED,
 				updatedBy: userId
-			})
-			.where(eq(table.purchaseOrderTable.id, input.poId));
+			}
+		);
 
 		return grn.id;
 	});
+
+	void notifyHospitalMasterWrite(input.hospitalId);
 
 	return getGoodsReceiptNoteById(event, {
 		hospitalId: input.hospitalId,
@@ -962,6 +990,8 @@ export async function createAndPostDirectGoodsReceipt(
 
 		return grn.id;
 	});
+
+	void notifyHospitalMasterWrite(input.hospitalId);
 
 	return getGoodsReceiptNoteById(event, {
 		hospitalId: input.hospitalId,

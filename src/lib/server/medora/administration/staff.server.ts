@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -221,5 +222,9 @@ export async function updateStaffStatusForSelf(
 		.where(eq(table.staffTable.id, input.staffId))
 		.returning();
 	if (!row) throw error(404, 'Staff not found');
+	const hospitalId =
+		event.locals.staff?.staffHospitals?.[0]?.hospitalId ?? '';
+	if (hospitalId) void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }

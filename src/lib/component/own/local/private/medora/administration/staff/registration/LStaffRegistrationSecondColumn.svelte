@@ -80,6 +80,7 @@
 			<WashInputField
 				bind:value={selectedDateOfBirth}
 				inputType="date"
+				dateBounds="dateOfBirth"
 			/>
 		</div>
 	</div>

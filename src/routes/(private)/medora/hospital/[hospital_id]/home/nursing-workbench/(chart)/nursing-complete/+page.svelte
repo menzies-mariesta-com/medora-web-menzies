@@ -177,7 +177,11 @@
 		}
 	}
 
-	async function fetchNursingComplete(options?: { force?: boolean }) {
+	async function fetchNursingComplete(options?: {
+		force?: boolean;
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!visitId || !hospitalId) {
 			visit = null;
 			rows = [];
@@ -200,13 +204,19 @@
 		lastFetchKey = requestKey;
 
 		isLoading = true;
+		const fetchInit = options?.signal
+			? { signal: options.signal }
+			: undefined;
 		try {
 			const visitRes = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=visit.get&visitId=${visitId}`
+				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=visit.get&visitId=${visitId}`,
+				fetchInit
 			);
+			if (options?.isCancelled?.()) return;
 			if (!visitRes.ok)
 				throw new Error(`Visit load failed (${visitRes.status})`);
 			const currentVisit = await visitRes.json();
+			if (options?.isCancelled?.()) return;
 			if (!currentVisit) {
 				visit = null;
 				rows = [];
@@ -223,11 +233,14 @@
 			};
 
 			const ordersRes = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=serviceOrder.list&visitId=${visitId}`
+				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=serviceOrder.list&visitId=${visitId}`,
+				fetchInit
 			);
+			if (options?.isCancelled?.()) return;
 			if (!ordersRes.ok)
 				throw new Error(`Orders load failed (${ordersRes.status})`);
 			const orders = await ordersRes.json();
+			if (options?.isCancelled?.()) return;
 			if (orders.length === 0) {
 				rows = [];
 				totalRows = 0;
@@ -250,19 +263,25 @@
 			if (statusId != null && Number.isFinite(statusId))
 				detailQs.set('statusId', String(statusId));
 			const detailsRes = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?${detailQs.toString()}`
+				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?${detailQs.toString()}`,
+				fetchInit
 			);
+			if (options?.isCancelled?.()) return;
 			if (!detailsRes.ok)
 				throw new Error(`Details load failed (${detailsRes.status})`);
 			const detailsResult = await detailsRes.json();
+			if (options?.isCancelled?.()) return;
 			const details = detailsResult.data;
 			totalRows = detailsResult.total;
 			if (serviceItems.length === 0) {
 				const docsRes = await fetch(
-					`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/order?mode=serviceItem.paginated&page=1&pageSize=1000`
+					`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/order?mode=serviceItem.paginated&page=1&pageSize=1000`,
+					fetchInit
 				);
+				if (options?.isCancelled?.()) return;
 				if (docsRes.ok) {
 					const paged = await docsRes.json();
+					if (options?.isCancelled?.()) return;
 					serviceItems = Array.isArray(paged?.data) ? paged.data : [];
 				}
 			}
@@ -277,6 +296,7 @@
 				orderById[order.id] = order;
 			}
 
+			if (options?.isCancelled?.()) return;
 			rows = details.map((detail: ServiceOrderDetailListRow) => {
 				const service = serviceById[detail.serviceId];
 				const order = orderById[detail.serviceOrderId];
@@ -304,14 +324,19 @@
 				};
 			});
 			initialized = true;
+			if (options?.isCancelled?.()) return;
 			await refreshNursingIncompleteCount();
 		} catch (error) {
+			if (options?.isCancelled?.()) return;
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				return;
+			}
 			console.error('Failed to load nursing complete rows', error);
 			rows = [];
 			totalRows = 0;
 			nursingIncompleteCount = 0;
 		} finally {
-			isLoading = false;
+			if (!options?.isCancelled?.()) isLoading = false;
 		}
 	}
 
@@ -330,7 +355,16 @@
 				return;
 			}
 			lastLoadedVisitKey = visitKey;
-			fetchNursingComplete();
+			let cancelled = false;
+			const ac = new AbortController();
+			void fetchNursingComplete({
+				signal: ac.signal,
+				isCancelled: () => cancelled
+			});
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 		} else {
 			lastLoadedVisitKey = '';
 			visit = null;

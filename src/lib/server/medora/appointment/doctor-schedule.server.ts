@@ -1,4 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { and, eq } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -282,6 +283,8 @@ export async function createDoctorSchedule(
 		.values(payload)
 		.returning();
 	if (!row) throw new Error('Insert failed');
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }
 
@@ -355,5 +358,7 @@ export async function updateDoctorSchedule(
 		.where(eq(table.doctorScheduleTable.id, id))
 		.returning();
 	if (!row) throw new Error('Update failed');
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }

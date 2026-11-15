@@ -239,7 +239,10 @@
 		return `/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/patient-visit-history-dashboard?visitId=${visitIdValue}`;
 	}
 
-	async function loadDashboard(visitIdValue: number) {
+	async function loadDashboard(visitIdValue: number, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		const seq = ++loadSeq;
 		isLoading = true;
 		loadError = '';
@@ -326,12 +329,14 @@
 				} satisfies LabOrderRow;
 			});
 		} catch (err) {
+			if (err instanceof DOMException && err.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			if (seq !== loadSeq || visitIdValue !== visitId) return;
 			console.error(err);
 			loadError =
 				toUserFacingErrorDetail(err) ?? m.error_load_failed();
 		} finally {
-			if (seq === loadSeq) isLoading = false;
+			if (seq === loadSeq) if (!opts?.isCancelled?.()) isLoading = false;
 		}
 	}
 
@@ -446,7 +451,13 @@
 		}
 		if (lastLoadedVisitId === visitId) return;
 		lastLoadedVisitId = visitId;
-		void loadDashboard(visitId);
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadDashboard(visitId, { signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

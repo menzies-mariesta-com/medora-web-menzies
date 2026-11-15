@@ -3,7 +3,7 @@ title: "MLC documentation"
 description: "How to use MLC documentation in Nursing Workbench."
 docType: workflow
 slug: workflows/nursing-workbench-mlc-documentation
-pageId: 800016
+pageId: 400115
 moduleId: 4
 pageUrl: "/medora/home/nursing-workbench/mlc-documentation"
 generated: true

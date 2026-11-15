@@ -286,3 +286,67 @@ export function monthOptions(
 		label: fmt.format(new Date(2024, i, 1))
 	}));
 }
+
+export type WashCalendarYearOption = { value: number; label: string };
+
+const MAX_YEAR_LIST = 200;
+
+/** Year dropdown: bounded by min/max when set; otherwise centered on today. */
+export function buildYearOptions(
+	min?: string,
+	max?: string,
+	fallbackSpan = 50
+): WashCalendarYearOption[] {
+	const yearCenter = new Date().getFullYear();
+	const minYear = min ? parseISODate(min.slice(0, 10))?.getFullYear() : undefined;
+	const maxYear = max ? parseISODate(max.slice(0, 10))?.getFullYear() : undefined;
+
+	let startYear: number;
+	let endYear: number;
+
+	if (minYear != null && maxYear != null) {
+		startYear = Math.min(minYear, maxYear);
+		endYear = Math.max(minYear, maxYear);
+	} else if (minYear != null) {
+		startYear = minYear;
+		endYear = maxYear ?? yearCenter;
+	} else if (maxYear != null) {
+		endYear = maxYear;
+		startYear = minYear ?? maxYear - fallbackSpan;
+	} else {
+		const half = Math.floor(fallbackSpan / 2);
+		startYear = yearCenter - half;
+		endYear = yearCenter + (fallbackSpan - half);
+	}
+
+	if (endYear - startYear + 1 > MAX_YEAR_LIST) {
+		startYear = endYear - MAX_YEAR_LIST + 1;
+	}
+
+	const out: WashCalendarYearOption[] = [];
+	for (let y = startYear; y <= endYear; y++) {
+		out.push({ value: y, label: String(y) });
+	}
+	return out;
+}
+
+/** Whether `viewMonth` (1st of month) may move by `delta` months within min/max. */
+export function canGoToAdjacentMonth(
+	viewMonth: Date,
+	delta: -1 | 1,
+	min?: string,
+	max?: string
+): boolean {
+	const adj = addMonths(viewMonth, delta);
+	if (delta === 1 && max) {
+		return compareISODate(toISODate(adj), max.slice(0, 10)) <= 0;
+	}
+	if (delta === -1 && min) {
+		const lastDay = daysInMonth(adj.getFullYear(), adj.getMonth());
+		const last = toISODate(
+			new Date(adj.getFullYear(), adj.getMonth(), lastDay)
+		);
+		return compareISODate(last, min.slice(0, 10)) >= 0;
+	}
+	return true;
+}

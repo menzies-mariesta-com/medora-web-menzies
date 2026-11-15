@@ -193,14 +193,14 @@
 		templates = json.data ?? [];
 	}
 
-	async function loadAssignment() {
+	async function loadAssignment(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!configApi || !branchId) return;
 		assignmentLoading = true;
 		try {
-			const res = await fetch(
-				`${configApi}?branchId=${encodeURIComponent(branchId)}&module=${activeModule}`,
-				{ credentials: 'include' }
-			);
+			const res = await fetch(`${configApi}?branchId=${encodeURIComponent(branchId)}&module=${activeModule}`, { credentials: 'include', signal: opts?.signal });
 			if (!res.ok) throw new Error(`Config (${res.status})`);
 			const json = (await res.json()) as {
 				assignment: ModulePricingAssignmentDto | null;
@@ -213,6 +213,8 @@
 					? String(json.assignment.formulaTemplateId)
 					: '';
 		} catch (err) {
+			if (err instanceof DOMException && err.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			toastService.addToast(
 				err instanceof Error ? err.message : m.loading(),
 				StatusColorEnum.ERROR
@@ -222,7 +224,10 @@
 		}
 	}
 
-	async function loadOverview() {
+	async function loadOverview(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!configApi || !hospitalId) return;
 		overviewLoading = true;
 		try {
@@ -230,15 +235,15 @@
 			if (overviewBranchFilter) {
 				params.set('branchId', overviewBranchFilter);
 			}
-			const res = await fetch(`${configApi}?${params}`, {
-				credentials: 'include'
-			});
+			const res = await fetch(`${configApi}?${params}`, { credentials: 'include', signal: opts?.signal });
 			if (!res.ok) throw new Error(`Overview (${res.status})`);
 			const json = (await res.json()) as {
 				data: ModulePricingAssignmentOverviewRow[];
 			};
 			allOverviewRows = json.data ?? [];
 		} catch (err) {
+			if (err instanceof DOMException && err.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			toastService.addToast(
 				err instanceof Error ? err.message : m.loading(),
 				StatusColorEnum.ERROR
@@ -286,17 +291,29 @@
 		const navBranch = navbarSelectedBranchId;
 		void navBranch;
 		if (hospitalId && configApi) {
-			void loadOverview();
+			let cancelled = false;
+			const ac = new AbortController();
+			void loadOverview({ signal: ac.signal, isCancelled: () => cancelled });
 		}
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	$effect(() => {
 		const bid = branchId;
 		const mod = activeModule;
 		if (bid && configApi) {
-			void loadAssignment();
+			let cancelled = false;
+			const ac = new AbortController();
+			void loadAssignment({ signal: ac.signal, isCancelled: () => cancelled });
 		}
 		void mod;
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	function configureFromOverview(row: ModulePricingAssignmentOverviewRow) {

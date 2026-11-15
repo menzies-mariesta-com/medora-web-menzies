@@ -1,5 +1,5 @@
 import { pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
-import { uuidV7 } from '$lib/util/id.util';
+import { uuidV7 } from '../../../../util/id.util';
 import { hospitalTable, patientTable } from '../information-table/information-table';
 import { userTable } from '../auth-table/auth-table';
 

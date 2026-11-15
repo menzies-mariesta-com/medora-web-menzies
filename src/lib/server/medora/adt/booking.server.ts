@@ -15,6 +15,11 @@ import {
 } from '$lib/model/type/pagination.type';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { requireOptionalDateOfBirth } from '$lib/server/medora/date-of-birth-range.server';
+import {
+	throwDocumentStatusConflict,
+	updateStatusTaggingIfCurrent
+} from '$lib/server/medora/workflow/status-transition.server';
 
 function mapRow(r: {
 	id: number;
@@ -141,7 +146,9 @@ export async function createBooking(
 			patientId,
 			patientTitleId: input.patientTitleId ?? null,
 			patientName,
-			patientDateOfBirth: input.patientDateOfBirth || null,
+			patientDateOfBirth:
+				requireOptionalDateOfBirth(input.patientDateOfBirth ?? undefined) ??
+				null,
 			patientAgeYear: input.patientAgeYear ?? null,
 			patientAgeMonth: input.patientAgeMonth ?? null,
 			patientAgeDay: input.patientAgeDay ?? null,
@@ -164,20 +171,38 @@ export async function cancelBooking(input: {
 	hospitalId: string;
 	id: number;
 }) {
-	const [row] = await ensureDb()
-		.update(table.ipdBedBookingTable)
-		.set({
-			statusTaggingId: IpdBedBookingStatusTaggingEnum.CANCELLED,
-			updatedAt: sql`now()`
-		})
-		.where(
-			and(
-				eq(table.ipdBedBookingTable.id, input.id),
-				eq(table.ipdBedBookingTable.hospitalId, input.hospitalId),
-				ne(table.ipdBedBookingTable.statusId, StatusEnum.DELETED)
+	const booked = IpdBedBookingStatusTaggingEnum.BOOKED;
+	return ensureDb().transaction(async (tx) => {
+		const [locked] = await tx
+			.select()
+			.from(table.ipdBedBookingTable)
+			.where(
+				and(
+					eq(table.ipdBedBookingTable.id, input.id),
+					eq(table.ipdBedBookingTable.hospitalId, input.hospitalId),
+					eq(table.ipdBedBookingTable.statusTaggingId, booked),
+					ne(table.ipdBedBookingTable.statusId, StatusEnum.DELETED)
+				)
 			)
-		)
-		.returning();
-	if (!row) throw error(404, 'Booking not found');
-	return row;
+			.for('update')
+			.limit(1);
+		if (!locked) throwDocumentStatusConflict();
+		await updateStatusTaggingIfCurrent(
+			tx,
+			table.ipdBedBookingTable,
+			input.id,
+			booked,
+			{
+				statusTaggingId: IpdBedBookingStatusTaggingEnum.CANCELLED,
+				updatedAt: sql`now()`
+			}
+		);
+		const [row] = await tx
+			.select()
+			.from(table.ipdBedBookingTable)
+			.where(eq(table.ipdBedBookingTable.id, input.id))
+			.limit(1);
+		if (!row) throw error(404, 'Booking not found');
+		return row;
+	});
 }

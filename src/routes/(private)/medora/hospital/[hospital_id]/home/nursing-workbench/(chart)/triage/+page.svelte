@@ -40,26 +40,46 @@
 		triageSystem === 'mts' ? 'ed_triage_mts_v1' : 'ed_triage_esi_v1'
 	);
 
-	async function loadSettingsAndTemplate() {
+	async function loadSettingsAndTemplate(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!edApi || !formApi) return;
-		const sRes = await fetch(`${edApi}?mode=settings`);
+		const sRes = await fetch(`${edApi}?mode=settings`, {
+			signal: opts?.signal
+		});
+		if (opts?.isCancelled?.()) return;
 		if (sRes.ok) {
 			settings = (await sRes.json()) as HospitalPerioperativeSettingRow;
 			triageSystem = settings.defaultEdTriageSystem ?? 'esi';
 		}
+		if (opts?.isCancelled?.()) return;
 		const tRes = await fetch(
-			`${formApi}?mode=template&code=${encodeURIComponent(templateCode)}`
+			`${formApi}?mode=template&code=${encodeURIComponent(templateCode)}`,
+			{ signal: opts?.signal }
 		);
+		if (opts?.isCancelled?.()) return;
 		if (!tRes.ok) await throwUserFacingHttpError(tRes);
 		const tpl = (await tRes.json()) as {
 			schemaJson: ClinicalFormTemplateSchema;
 		};
+		if (opts?.isCancelled?.()) return;
 		schema = tpl.schemaJson;
 	}
 
 	$effect(() => {
 		void templateCode;
-		void loadSettingsAndTemplate();
+		if (!edApi || !formApi) return;
+		let cancelled = false;
+		const ac = new AbortController();
+		void loadSettingsAndTemplate({
+			signal: ac.signal,
+			isCancelled: () => cancelled
+		});
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	async function openAssignBedDialog(): Promise<boolean> {

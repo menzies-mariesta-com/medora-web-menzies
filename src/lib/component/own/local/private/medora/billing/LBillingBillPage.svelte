@@ -426,7 +426,10 @@
 		return res;
 	}
 
-	async function loadBillingLines(currentVisitId: string | null) {
+	async function loadBillingLines(currentVisitId: string | null, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!currentVisitId) {
 			groups = [];
 			grandTotal = 0;
@@ -460,9 +463,7 @@
 		isLoading = true;
 		loadError = '';
 		try {
-			const res = await fetch(
-				`${billApiBase}/visit-lines?visitId=${visitNumeric}`
-			);
+			const res = await fetch(`${billApiBase}/visit-lines?visitId=${visitNumeric}`, { signal: opts?.signal });
 			if (requestSeq !== billingLinesLoadSeq) return;
 			if (!res.ok) {
 				groups = [];
@@ -529,6 +530,8 @@
 					Number.isFinite(amt) && amt > 0 ? String(amt) : '';
 			}
 		} catch (err) {
+			if (err instanceof DOMException && err.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			if (requestSeq !== billingLinesLoadSeq) return;
 			console.error(err);
 			groups = [];
@@ -545,7 +548,7 @@
 			);
 		} finally {
 			if (requestSeq === billingLinesLoadSeq) {
-				isLoading = false;
+				if (!opts?.isCancelled?.()) isLoading = false;
 			}
 		}
 	}
@@ -1022,7 +1025,13 @@
 	$effect(() => {
 		if (!browser || billingViewAll) return;
 		void VisitState.billingRefreshRevision;
-		void loadBillingLines(visitId);
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadBillingLines(visitId, { signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	function billThisVisitFromAll(id: string) {

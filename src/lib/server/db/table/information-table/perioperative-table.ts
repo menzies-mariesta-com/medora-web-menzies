@@ -28,7 +28,10 @@ import {
 } from './information-table';
 import { itemBatchTable } from './inventory-transaction-table';
 import {
-	edTriageLevelTable
+	edTriageLevelTable,
+	hospitalTraumaActivationLevelTable,
+	hospitalTraumaMilestoneTemplateTable,
+	hospitalTraumaTeamRoleTable
 } from './er-master-table';
 import {
 	bedTable,
@@ -329,6 +332,11 @@ export const traumaActivationTable = pgTable(
 			.notNull()
 			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
 		levelCode: varchar('level_code', { length: 16 }).notNull(),
+		activationLevelId: integer('activation_level_id').references(
+			() => hospitalTraumaActivationLevelTable.id,
+			{ onDelete: 'set null' }
+		),
+		deactivateReason: text('deactivate_reason'),
 		activatedAt: timestamp('activated_at', {
 			withTimezone: true,
 			mode: 'string'
@@ -348,6 +356,59 @@ export const traumaActivationTable = pgTable(
 		...perioperativeTimestamps
 	},
 	(t) => [index('trauma_activation_hospital_idx').on(t.hospitalId)]
+);
+
+export const traumaActivationMilestoneTable = pgTable(
+	'trauma_activation_milestone',
+	{
+		id: serial('id').primaryKey(),
+		traumaActivationId: integer('trauma_activation_id')
+			.notNull()
+			.references(() => traumaActivationTable.id, { onDelete: 'cascade' }),
+		milestoneTemplateId: integer('milestone_template_id')
+			.notNull()
+			.references(() => hospitalTraumaMilestoneTemplateTable.id, {
+				onDelete: 'cascade'
+			}),
+		completedAt: timestamp('completed_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		completedBy: uuid('completed_by').references(() => staffTable.id)
+	},
+	(t) => [
+		uniqueIndex('trauma_activation_milestone_uidx').on(
+			t.traumaActivationId,
+			t.milestoneTemplateId
+		)
+	]
+);
+
+export const traumaActivationTeamAckTable = pgTable(
+	'trauma_activation_team_ack',
+	{
+		id: serial('id').primaryKey(),
+		traumaActivationId: integer('trauma_activation_id')
+			.notNull()
+			.references(() => traumaActivationTable.id, { onDelete: 'cascade' }),
+		teamRoleId: integer('team_role_id')
+			.notNull()
+			.references(() => hospitalTraumaTeamRoleTable.id, {
+				onDelete: 'cascade'
+			}),
+		notified: boolean('notified').notNull().default(false),
+		acknowledgedAt: timestamp('acknowledged_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		staffId: uuid('staff_id').references(() => staffTable.id)
+	},
+	(t) => [
+		uniqueIndex('trauma_activation_team_ack_uidx').on(
+			t.traumaActivationId,
+			t.teamRoleId
+		)
+	]
 );
 
 export const surgicalCaseImplantTable = pgTable(

@@ -2,6 +2,10 @@ import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as triage from '$lib/server/medora/er/ed-triage-level.server';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import {
+	defaultColorFor,
+	HOSPITAL_COLOR_CATEGORY
+} from '$lib/model/const/color-purpose.const';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -62,7 +66,10 @@ export async function POST(event: RequestEvent) {
 			hospitalId,
 			level,
 			name,
-			color: body.color ? String(body.color).trim() : 'neutral',
+			color: defaultColorFor(
+				HOSPITAL_COLOR_CATEGORY.ED_TRIAGE_LEVEL,
+				String(level)
+			),
 			statusId:
 				body.statusId === StatusEnum.INACTIVE
 					? StatusEnum.INACTIVE

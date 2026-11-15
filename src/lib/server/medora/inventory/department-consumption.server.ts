@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { alias } from 'drizzle-orm/pg-core';
 import {
 	and,
@@ -12,6 +13,11 @@ import {
 	sql
 } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
+import {
+	assertRowsUpdated,
+	throwDocumentStatusConflict,
+	updateStatusTaggingIfCurrent
+} from '$lib/server/medora/workflow/status-transition.server';
 import * as table from '$lib/server/db/schema';
 import {
 	InvApprovalActionEnum,
@@ -585,6 +591,8 @@ export async function createDepartmentConsumptionSubmitted(
 		return newId;
 	});
 
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return getDepartmentConsumptionById(event, {
 		hospitalId: input.hospitalId,
 		id
@@ -655,30 +663,60 @@ export async function approveDepartmentConsumption(
 			? String(input.remarks).trim()
 			: 'Rejected by approver';
 
+	const pending = InvDepartmentConsumptionStatusTaggingEnum.PENDING;
+
 	await ensureDb().transaction(async (tx) => {
+		const [locked] = await tx
+			.select()
+			.from(table.invDepartmentConsumptionTable)
+			.where(
+				and(
+					eq(
+						table.invDepartmentConsumptionTable.id,
+						input.consumptionId
+					),
+					eq(
+						table.invDepartmentConsumptionTable.hospitalId,
+						input.hospitalId
+					),
+					eq(
+						table.invDepartmentConsumptionTable.statusTaggingId,
+						pending
+					),
+					isNull(table.invDepartmentConsumptionTable.deletedAt)
+				)
+			)
+			.for('update')
+			.limit(1);
+		if (!locked) throwDocumentStatusConflict();
+
 		if (input.action === InvApprovalActionEnum.REJECTED) {
-			await tx
-				.update(table.invDepartmentConsumptionTable)
-				.set({
+			await updateStatusTaggingIfCurrent(
+				tx,
+				table.invDepartmentConsumptionTable,
+				input.consumptionId,
+				pending,
+				{
 					statusTaggingId:
 						InvDepartmentConsumptionStatusTaggingEnum.CANCELLED,
 					cancelledBy: userId,
 					cancelledAt: sql<string>`now()`,
 					cancelReason: rejectReason,
 					updatedBy: userId
-				})
-				.where(
+				},
+				[
 					eq(
-						table.invDepartmentConsumptionTable.id,
-						input.consumptionId
+						table.invDepartmentConsumptionTable.currentLevel,
+						locked.currentLevel
 					)
-				);
+				]
+			);
 
 			await tx.insert(table.invApprovalLogTable).values({
 				hospitalId: input.hospitalId,
 				documentId: input.consumptionId,
 				module: 'DC',
-				level: doc.currentLevel,
+				level: locked.currentLevel,
 				action: input.action,
 				remarks: input.remarks,
 				approvedBy: userId
@@ -690,25 +728,39 @@ export async function approveDepartmentConsumption(
 			throw error(400, 'Invalid approval action');
 		}
 
-		if (doc.currentLevel < maxLevel) {
-			await tx
+		if (locked.currentLevel < maxLevel) {
+			const rows = await tx
 				.update(table.invDepartmentConsumptionTable)
 				.set({
-					currentLevel: doc.currentLevel + 1,
+					currentLevel: locked.currentLevel + 1,
 					updatedBy: userId
 				})
 				.where(
-					eq(
-						table.invDepartmentConsumptionTable.id,
-						input.consumptionId
+					and(
+						eq(
+							table.invDepartmentConsumptionTable.id,
+							input.consumptionId
+						),
+						eq(
+							table.invDepartmentConsumptionTable.statusTaggingId,
+							pending
+						),
+						eq(
+							table.invDepartmentConsumptionTable.currentLevel,
+							locked.currentLevel
+						)
 					)
-				);
+				)
+				.returning({
+					id: table.invDepartmentConsumptionTable.id
+				});
+			assertRowsUpdated(rows);
 
 			await tx.insert(table.invApprovalLogTable).values({
 				hospitalId: input.hospitalId,
 				documentId: input.consumptionId,
 				module: 'DC',
-				level: doc.currentLevel,
+				level: locked.currentLevel,
 				action: input.action,
 				remarks: input.remarks,
 				approvedBy: userId
@@ -735,7 +787,7 @@ export async function approveDepartmentConsumption(
 				hospitalId: input.hospitalId,
 				batchId: line.batchId,
 				itemId: line.itemId,
-				storeId: doc.storeId,
+				storeId: locked.storeId,
 				module: 'DC'
 			});
 			await tx
@@ -764,7 +816,7 @@ export async function approveDepartmentConsumption(
 				.from(table.invStockTable)
 				.where(
 					and(
-						eq(table.invStockTable.storeId, doc.storeId),
+						eq(table.invStockTable.storeId, locked.storeId),
 						eq(table.invStockTable.batchId, line.batchId),
 						eq(table.invStockTable.itemId, line.itemId),
 						isNull(table.invStockTable.deletedAt)
@@ -780,34 +832,38 @@ export async function approveDepartmentConsumption(
 			await addDeltaToInvStock(tx, {
 				hospitalId: input.hospitalId,
 				itemId: line.itemId,
-				storeId: doc.storeId,
+				storeId: locked.storeId,
 				batchId: line.batchId,
 				delta: String(-needN),
 				userId
 			});
 		}
 
-		await tx
-			.update(table.invDepartmentConsumptionTable)
-			.set({
+		await updateStatusTaggingIfCurrent(
+			tx,
+			table.invDepartmentConsumptionTable,
+			input.consumptionId,
+			pending,
+			{
 				statusTaggingId:
 					InvDepartmentConsumptionStatusTaggingEnum.POSTED,
 				approvedBy: userId,
 				approvedAt: sql<string>`now()`,
 				updatedBy: userId
-			})
-			.where(
+			},
+			[
 				eq(
-					table.invDepartmentConsumptionTable.id,
-					input.consumptionId
+					table.invDepartmentConsumptionTable.currentLevel,
+					locked.currentLevel
 				)
-			);
+			]
+		);
 
 		await tx.insert(table.invApprovalLogTable).values({
 			hospitalId: input.hospitalId,
 			documentId: input.consumptionId,
 			module: 'DC',
-			level: doc.currentLevel,
+			level: locked.currentLevel,
 			action: input.action,
 			remarks: input.remarks,
 			approvedBy: userId

@@ -2,4 +2,6 @@
 	let { children } = $props();
 </script>
 
-{@render children()}
+{#if children}
+	{@render children()}
+{/if}

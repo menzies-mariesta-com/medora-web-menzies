@@ -214,7 +214,13 @@
 		}
 	];
 
-	async function loadData(options?: { force?: boolean }) {
+	async function loadData(
+		options?: {
+			force?: boolean;
+			signal?: AbortSignal;
+			isCancelled?: () => boolean;
+		}
+	) {
 		if (!visitId) {
 			rows = [];
 			totalRowCount = 0;
@@ -249,19 +255,26 @@
 				'filters',
 				JSON.stringify(tableFilters ?? {})
 			);
-			const r = await fetch(url.toString(), { method: 'GET' });
+			const r = await fetch(url.toString(), {
+				method: 'GET',
+				signal: options?.signal
+			});
+			if (options?.isCancelled?.()) return;
 			if (!r.ok)
 				throw new Error(`Failed to load history (${r.status})`);
 			const res = (await r.json()) as {
 				data: ReferHistoryWithRelations[];
 				total: number;
 			};
+			if (options?.isCancelled?.()) return;
 			rows = res.data ?? [];
 			totalRowCount = res.total ?? 0;
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (options?.isCancelled?.()) return;
 			console.error(e);
 		} finally {
-			isLoading = false;
+			if (!options?.isCancelled?.()) isLoading = false;
 		}
 	}
 
@@ -420,7 +433,13 @@
 			totalRowCount = 0;
 			return;
 		}
-		loadData();
+		let cancelled = false;
+		const ac = new AbortController();
+		void loadData({ signal: ac.signal, isCancelled: () => cancelled });
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 </script>
 

@@ -161,15 +161,21 @@
 			return;
 		}
 		const seq = ++loadSeq;
-		(async () => {
+		let cancelled = false;
+		const ac = new AbortController();
+		void (async () => {
 			const row = await apiGet<PatientDocRow | null>(
 				'patientDocument.get',
 				{ id: String(pid) }
 			);
-			if (seq !== loadSeq || !row) return;
+			if (cancelled || seq !== loadSeq || !row) return;
 			documentIdInput = String(row.documentId);
 			statusIdStr = String(row.statusId ?? StatusEnum.ACTIVE);
 		})();
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	async function handleSave() {

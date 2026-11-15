@@ -26,9 +26,12 @@
 	let accessionNo = $state('');
 	let busy = $state(false);
 
-	async function load() {
+	async function load(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!api || !accessionId) return;
-		const res = await fetch(`${api}?accessionId=${accessionId}`);
+		const res = await fetch(`${api}?accessionId=${accessionId}`, { signal: opts?.signal });
 		if (!res.ok) await throwUserFacingHttpError(res);
 		const data = (await res.json()) as {
 			accession: { accessionNo: string };
@@ -68,7 +71,13 @@
 	lifeCycle.onMount(() => void load());
 	$effect(() => {
 		void accessionId;
-		void load();
+			let cancelled = false;
+			const ac = new AbortController();
+		void load({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

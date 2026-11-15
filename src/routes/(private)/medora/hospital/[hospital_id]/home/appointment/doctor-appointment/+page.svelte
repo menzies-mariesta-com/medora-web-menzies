@@ -2,7 +2,6 @@
 	import LDoctorAppointmentCalendar from '$lib/component/own/local/private/medora/appointment/doctor-appointment/LDoctorAppointmentCalendar.svelte';
 	import LDoctorAppointmentProfileBar from '$lib/component/own/local/private/medora/appointment/doctor-appointment/LDoctorAppointmentProfileBar.svelte';
 	import LDoctorAppointmentStatistics from '$lib/component/own/local/private/medora/appointment/doctor-appointment/LDoctorAppointmentStatistics.svelte';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import LCancelAppointmentHistoryDialogContent from '$lib/component/own/local/private/medora/appointment/doctor-appointment/LCancelAppointmentHistoryDialogContent.svelte';
 	import type { AppointmentWithRelations } from '$lib/model/type/medora/appointment.type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -436,15 +435,6 @@
 		/>
 	</div>
 	<div class="w-full min-w-0">
-		<div class="mb-3 flex justify-end">
-			<WashButton
-				className="btn-ghost btn-sm"
-				disabled={!selectedDoctorId.trim()}
-				onClick={openCancelHistory}
-			>
-				Cancel appointment history
-			</WashButton>
-		</div>
 		<LDoctorAppointmentCalendar
 			hospitalId={hospitalId ?? ''}
 			{selectDate}
@@ -460,6 +450,7 @@
 			onAppointmentCreated={reloadCalendarAfterAppointmentMutation}
 			onRefreshAppointments={refreshAppointmentsToolbar}
 			isRefreshAppointmentsLoading={isAppointmentToolbarRefreshing}
+			onOpenCancelHistory={openCancelHistory}
 			onBlockCreated={async (block) => {
 				try {
 					const created = await apiPost<AppointmentBlockListRow>(

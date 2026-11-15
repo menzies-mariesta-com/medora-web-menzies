@@ -56,20 +56,20 @@
 		wards = (await res.json()) as WardRow[];
 	}
 
-	async function loadFreeBeds() {
+	async function loadFreeBeds(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		selectedBedId = null;
 		freeBeds = [];
 		if (!bedApi || !wardId) return;
 		loading = true;
 		try {
-			const res = await fetch(
-				`${bedApi}&wardId=${encodeURIComponent(wardId)}`,
-				{ credentials: 'include' }
-			);
+			const res = await fetch(`${bedApi}&wardId=${encodeURIComponent(wardId)}`, { credentials: 'include', signal: opts?.signal });
 			if (!res.ok) return;
 			freeBeds = (await res.json()) as BedRow[];
 		} finally {
-			loading = false;
+			if (!opts?.isCancelled?.()) loading = false;
 		}
 	}
 
@@ -119,7 +119,13 @@
 
 	$effect(() => {
 		void wardId;
-		void loadFreeBeds();
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadFreeBeds({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

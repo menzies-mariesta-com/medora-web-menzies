@@ -150,8 +150,9 @@
 		const fromS = se?.selectedStoreId ?? null;
 		const toS = se?.toStoreId ?? null;
 		const tiles: LineItemMetricTile[] = [];
+		let cancelled = false;
 
-		(async () => {
+		void (async () => {
 			try {
 				if (fromS != null) {
 					const map = await fetchStockLabelsForItemsAtStore(
@@ -159,6 +160,7 @@
 						fromS,
 						[itemId]
 					);
+					if (cancelled) return;
 					tiles.push({
 						label: m.inv_line_modal_on_hand_selected(),
 						value: map.get(itemId) ?? '0'
@@ -170,11 +172,13 @@
 						toS,
 						[itemId]
 					);
+					if (cancelled) return;
 					tiles.push({
 						label: m.inv_line_modal_on_hand_to(),
 						value: map.get(itemId) ?? '0'
 					});
 				}
+				if (cancelled) return;
 				tiles.push({
 					label: m.inv_line_modal_metric_line_qty(),
 					value: qty || '0',
@@ -182,11 +186,14 @@
 				});
 				computedMetricTiles = tiles.length > 0 ? tiles : null;
 			} catch {
-				computedMetricTiles = null;
+				if (!cancelled) computedMetricTiles = null;
 			}
 		})().catch(() => {
-			computedMetricTiles = null;
+			if (!cancelled) computedMetricTiles = null;
 		});
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	let saving = $state(false);

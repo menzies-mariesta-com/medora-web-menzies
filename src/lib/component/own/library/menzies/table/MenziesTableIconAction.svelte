@@ -61,7 +61,9 @@
 		onClick={onClick}
 	>
 		<span class="menzies-table-icon-action__glyph" aria-hidden="true">
-			{@render icon()}
+			{#if icon}
+				{@render icon()}
+			{/if}
 		</span>
 	</WashButton>
 	<span class="menzies-table-icon-action-tip__label" role="tooltip">

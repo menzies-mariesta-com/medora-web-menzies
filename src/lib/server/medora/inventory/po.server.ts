@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import {
 	and,
 	count,
@@ -20,6 +21,11 @@ import {
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
+import {
+	assertRowsUpdated,
+	throwDocumentStatusConflict,
+	updateStatusTaggingIfCurrent
+} from '$lib/server/medora/workflow/status-transition.server';
 import {
 	assertStaffCanApproveLevel,
 	getMaxApprovalLevel,
@@ -630,6 +636,8 @@ export async function createPurchaseOrder(
 		return po.id;
 	});
 
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return getPurchaseOrderById(event, {
 		hospitalId: input.hospitalId,
 		id: poId
@@ -788,6 +796,8 @@ export async function createPurchaseOrderDirect(
 		return po.id;
 	});
 
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return getPurchaseOrderById(event, {
 		hospitalId: input.hospitalId,
 		id: poId
@@ -849,6 +859,24 @@ export async function approvePurchaseOrder(
 	);
 
 	await ensureDb().transaction(async (tx) => {
+		const [locked] = await tx
+			.select()
+			.from(table.purchaseOrderTable)
+			.where(
+				and(
+					eq(table.purchaseOrderTable.id, input.poId),
+					eq(table.purchaseOrderTable.hospitalId, input.hospitalId),
+					eq(
+						table.purchaseOrderTable.statusTaggingId,
+						InvPoStatusTaggingEnum.PENDING
+					),
+					isNull(table.purchaseOrderTable.deletedAt)
+				)
+			)
+			.for('update')
+			.limit(1);
+		if (!locked) throwDocumentStatusConflict();
+
 		if (
 			input.action === InvApprovalActionEnum.APPROVED &&
 			input.lineAdjustments?.length
@@ -896,42 +924,75 @@ export async function approvePurchaseOrder(
 				.where(eq(table.purchaseOrderTable.id, input.poId));
 		}
 
+		const pending = InvPoStatusTaggingEnum.PENDING;
+
 		if (input.action === InvApprovalActionEnum.REJECTED) {
-			await tx
-				.update(table.purchaseOrderTable)
-				.set({
+			await updateStatusTaggingIfCurrent(
+				tx,
+				table.purchaseOrderTable,
+				input.poId,
+				pending,
+				{
 					statusTaggingId: InvPoStatusTaggingEnum.REJECTED,
 					updatedBy: userId
-				})
-				.where(eq(table.purchaseOrderTable.id, input.poId));
+				},
+				[eq(table.purchaseOrderTable.currentLevel, locked.currentLevel)]
+			);
 		} else if (input.action === InvApprovalActionEnum.SENT_BACK) {
-			await tx
-				.update(table.purchaseOrderTable)
-				.set({
+			await updateStatusTaggingIfCurrent(
+				tx,
+				table.purchaseOrderTable,
+				input.poId,
+				pending,
+				{
 					statusTaggingId: InvPoStatusTaggingEnum.SENT_BACK,
 					currentLevel: 1,
 					updatedBy: userId
-				})
-				.where(eq(table.purchaseOrderTable.id, input.poId));
+				},
+				[eq(table.purchaseOrderTable.currentLevel, locked.currentLevel)]
+			);
 		} else if (input.action === InvApprovalActionEnum.APPROVED) {
-			if (po.currentLevel < maxLevel) {
-				await tx
+			if (locked.currentLevel < maxLevel) {
+				const rows = await tx
 					.update(table.purchaseOrderTable)
 					.set({
-						currentLevel: po.currentLevel + 1,
+						currentLevel: locked.currentLevel + 1,
 						updatedBy: userId
 					})
-					.where(eq(table.purchaseOrderTable.id, input.poId));
+					.where(
+						and(
+							eq(table.purchaseOrderTable.id, input.poId),
+							eq(
+								table.purchaseOrderTable.statusTaggingId,
+								pending
+							),
+							eq(
+								table.purchaseOrderTable.currentLevel,
+								locked.currentLevel
+							)
+						)
+					)
+					.returning({ id: table.purchaseOrderTable.id });
+				assertRowsUpdated(rows);
 			} else {
-				await tx
-					.update(table.purchaseOrderTable)
-					.set({
+				await updateStatusTaggingIfCurrent(
+					tx,
+					table.purchaseOrderTable,
+					input.poId,
+					pending,
+					{
 						statusTaggingId: InvPoStatusTaggingEnum.APPROVED,
 						updatedBy: userId,
 						approvedBy: userId,
 						approvedAt: sql<string>`now()`
-					})
-					.where(eq(table.purchaseOrderTable.id, input.poId));
+					},
+					[
+						eq(
+							table.purchaseOrderTable.currentLevel,
+							locked.currentLevel
+						)
+					]
+				);
 			}
 		}
 
@@ -939,7 +1000,7 @@ export async function approvePurchaseOrder(
 			hospitalId: input.hospitalId,
 			documentId: input.poId,
 			module: 'PO',
-			level: po.currentLevel,
+			level: locked.currentLevel,
 			action: input.action,
 			remarks: input.remarks,
 			approvedBy: userId,

@@ -10,8 +10,15 @@ import {
 import {
 	importWhoIcdSystems,
 	isWhoIcdSeedSkipped,
+	resolveWhoIcdSeedSystems,
 	WhoIcdCredentialsError
 } from '$lib/server/medora/clinical/who-icd-import.server';
+import { importIcd10CmCatalogue } from '$lib/server/medora/clinical/icd10-cm-import.server';
+import {
+	importSnomedRf2Catalogue,
+	isSnomedSeedSkipped,
+	SnomedRf2ImportError
+} from '$lib/server/medora/clinical/snomed-rf2-import.server';
 
 const client = neon(ensureDatabaseUrl());
 const db = drizzle(client);
@@ -25,10 +32,9 @@ const db = drizzle(client);
  * Does **not** seed demo patients, staff, service items, inventory, ER demo beds, or
  * transactional visits — use scripts under `src/lib/server/db/seed/demo/` (`pnpm db:seed:demo:*`).
  *
- * **ICD-10 / ICD-11:** imports the full WHO coded catalogues via the ICD-API
- * (`WHO_ICD_CLIENT_ID` + `WHO_ICD_CLIENT_SECRET` required). Set
- * `WHO_ICD_SKIP_SEED=1` only to skip (catalogue will not be complete).
- * Same importer as `pnpm db:import:icd` and admin Reseed.
+ * **Diagnosis catalogues:** optional WHO ICD (`WHO_ICD_*`), ICD-10-CM (`ICD10_CM_SEED=1`),
+ * SNOMED CT (`SNOMED_RF2_DIR`). Use `WHO_ICD_SEED_SYSTEM=ICD10|ICD11|BOTH` to import one WHO edition.
+ * Set `WHO_ICD_SKIP_SEED=1` / `SNOMED_SKIP_SEED=1` to skip.
  *
  * Per-hospital **`item_master`** catalog rows are **not** seeded here (created via the app).
  * Migration **`0074_item_master_drop_barcode_batch_required`** removes legacy **`barcode`** /
@@ -128,6 +134,7 @@ export async function seedInformationTables() {
 			(100705, 'Hospital Template Access', 1, 1, 100700, '/medora/home/administration/document-master/hospital-templates', 5),
 			(100800, 'Financial Year', 1, 1, null, '/medora/home/administration/financial-year', 8),
 			(100900, 'Prefix Configuration', 1, 1, null, '/medora/home/administration/prefix-configuration', 9),
+			(100905, 'Color Configuration', 1, 1, null, '/medora/home/administration/color-configuration', 10),
 			(101000, 'Departments', 1, 1, null, '/medora/home/administration/departments', 10),
 			(101100, 'Medication Order Setup', 1, 1, null, '/medora/home/administration/medication-order-setup', 12),
 			(101101, 'Frequency', 1, 1, 101100, '/medora/home/administration/medication-order-setup/frequency', 1),
@@ -150,6 +157,7 @@ export async function seedInformationTables() {
 			(101503, 'ED Billing', 1, 1, 101500, '/medora/home/administration/billing-setup/ed-billing', 3),
 			(101504, 'Billing Settings', 1, 1, 101500, '/medora/home/administration/billing-setup/settings', 4),
 			(101600, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
+			(101610, 'Trauma activation setup', 1, 1, null, '/medora/home/administration/trauma-activation-setup', 20),
 
 			-- ── Module 2: Registration ──
 			(200100, 'Patient', 2, 1, null, '/medora/home/registration/patient', 1),
@@ -304,16 +312,15 @@ export async function seedInformationTables() {
 		`);
 	seedLogger.info('Seeded: page');
 
-	// Full WHO ICD-10 + ICD-11 (every coded entity). Requires WHO_ICD_* keys.
-	// Set WHO_ICD_SKIP_SEED=1 only for CI/local escape hatches (leaves catalog empty/unchanged).
-	if (isWhoIcdSeedSkipped()) {
+	const whoSystems = resolveWhoIcdSeedSystems();
+	if (whoSystems == null) {
 		seedLogger.warn(
-			'Skipped diagnosis_code WHO import (WHO_ICD_SKIP_SEED is set). Catalogue will not be complete.'
+			'Skipped diagnosis_code WHO import (WHO_ICD_SKIP_SEED or WHO_ICD_SEED_SYSTEM=NONE).'
 		);
 	} else {
 		try {
 			const icdResult = await importWhoIcdSystems({
-				systems: 'BOTH',
+				systems: whoSystems,
 				notesPrefix: 'Seeded by information-table-seed (WHO ICD-API)',
 				log: (m) => seedLogger.info(m)
 			});
@@ -324,6 +331,47 @@ export async function seedInformationTables() {
 			if (err instanceof WhoIcdCredentialsError) {
 				throw new Error(
 					`${err.message} Or set WHO_ICD_SKIP_SEED=1 to skip ICD during information seed (not recommended for real hospitals).`
+				);
+			}
+			throw err;
+		}
+	}
+
+	const icdCmSkip =
+		(process.env.ICD10_CM_SKIP_SEED ?? '').trim().toLowerCase() === '1';
+	const icdCmSeed =
+		(process.env.ICD10_CM_SEED ?? '').trim().toLowerCase() === '1';
+	if (icdCmSkip) {
+		seedLogger.warn('Skipped ICD-10-CM import (ICD10_CM_SKIP_SEED=1).');
+	} else if (icdCmSeed) {
+		try {
+			const cmResult = await importIcd10CmCatalogue({
+				notesPrefix: 'Seeded by information-table-seed (CDC ICD-10-CM)',
+				log: (m) => seedLogger.info(m)
+			});
+			seedLogger.info(
+				`Seeded: diagnosis_code (ICD-10-CM) inserted=${cmResult.inserted} updated=${cmResult.updated} total=${cmResult.total}`
+			);
+		} catch (err) {
+			throw err;
+		}
+	}
+
+	if (isSnomedSeedSkipped()) {
+		seedLogger.warn('Skipped SNOMED CT import (SNOMED_SKIP_SEED is set).');
+	} else if ((process.env.SNOMED_RF2_DIR ?? '').trim()) {
+		try {
+			const snomedResult = await importSnomedRf2Catalogue({
+				notesPrefix: 'Seeded by information-table-seed (SNOMED RF2)',
+				log: (m) => seedLogger.info(m)
+			});
+			seedLogger.info(
+				`Seeded: diagnosis_code (SNOMED CT) inserted=${snomedResult.inserted} updated=${snomedResult.updated} total=${snomedResult.total}`
+			);
+		} catch (err) {
+			if (err instanceof SnomedRf2ImportError) {
+				throw new Error(
+					`${err.message} Or set SNOMED_SKIP_SEED=1 to skip SNOMED during information seed.`
 				);
 			}
 			throw err;
@@ -753,11 +801,20 @@ export async function seedInformationTables() {
 	`);
 	seedLogger.info('Seeded: allergy');
 
+	const { afterGlobalMasterCatalogMutation } = await import(
+		'$lib/server/cache/on-master-mutation.server'
+	);
+	await afterGlobalMasterCatalogMutation();
+
 	try {
 		const { seedEdTriageLevelsForHospitals } = await import(
 			'$lib/server/db/seed/init/seed-ed-triage-levels.server'
 		);
 		await seedEdTriageLevelsForHospitals(db);
+		const { seedTraumaActivationDefaultsForHospitals } = await import(
+			'$lib/server/db/seed/init/seed-trauma-activation-defaults.server'
+		);
+		await seedTraumaActivationDefaultsForHospitals(db);
 	} catch (e) {
 		seedLogger.warn(
 			`Skipped: ed_triage_level (${e instanceof Error ? e.message : String(e)})`

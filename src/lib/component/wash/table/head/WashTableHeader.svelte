@@ -1,11 +1,14 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	let { className, children } = $props<{
 		className?: string;
-		children: () => void;
+		children?: Snippet;
 	}>();
 </script>
 
 <!-- head -->
 <thead class={className}>
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 </thead>

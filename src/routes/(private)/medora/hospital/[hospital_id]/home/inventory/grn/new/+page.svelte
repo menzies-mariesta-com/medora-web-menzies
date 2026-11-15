@@ -915,7 +915,10 @@
 		}
 	]);
 
-	async function loadEligiblePos() {
+	async function loadEligiblePos(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId) return;
 		try {
 			const sp = new URLSearchParams();
@@ -925,8 +928,9 @@
 			}
 			const poRes = await fetch(
 				`/api/medora/hospital/${hospitalId}/home/inventory/purchase-order?${sp.toString()}`,
-				{ method: 'GET' }
+				{ method: 'GET', signal: opts?.signal }
 			);
+			if (opts?.isCancelled?.()) return;
 			if (!poRes.ok) {
 				toastService.addToast(
 					'Could not load eligible POs',
@@ -936,6 +940,7 @@
 				return;
 			}
 			const j = (await poRes.json()) as { data: PoRowLite[] };
+			if (opts?.isCancelled?.()) return;
 			/** GRN allowed: approved, sent, partially received — filter client-side by status id if needed */
 			poList = (j.data ?? []).filter(
 				(p) =>
@@ -946,6 +951,8 @@
 						InvPoStatusTaggingEnum.PARTIALLY_RECEIVED
 			);
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			toastService.addErrorToast('Could not load eligible POs', e);
 		}
 	}
@@ -1296,6 +1303,8 @@
 		const key = `${hospitalId ?? ''}:${mode}:${selectedInventoryFromStoreId ?? ''}`;
 		if (!hospitalId || key === lastGrnNewBootstrapKey) return;
 		lastGrnNewBootstrapKey = key;
+		let cancelled = false;
+		const ac = new AbortController();
 		if (mode === 'direct') {
 			grnFormMode = 'direct';
 			directStoreId = selectedInventoryFromStoreId;
@@ -1304,9 +1313,16 @@
 			receivedDate = new Date().toISOString().slice(0, 10);
 		} else {
 			grnFormMode = 'fromPo';
-			void loadEligiblePos();
+			void loadEligiblePos({
+				signal: ac.signal,
+				isCancelled: () => cancelled
+			});
 		}
 		receivedByUserId = layoutSessionUser.id;
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	function patchLineForm(

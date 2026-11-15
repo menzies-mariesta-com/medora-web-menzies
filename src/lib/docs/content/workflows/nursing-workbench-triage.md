@@ -3,7 +3,7 @@ title: "Triage"
 description: "How to use Triage in Nursing Workbench."
 docType: workflow
 slug: workflows/nursing-workbench-triage
-pageId: 121
+pageId: 400111
 moduleId: 4
 pageUrl: "/medora/home/nursing-workbench/triage"
 generated: true

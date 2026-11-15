@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { uuidV7 } from '$lib/util/id.util';
 import { ensureDb } from '$lib/server/db';
@@ -6,6 +7,7 @@ import * as table from '$lib/server/db/schema';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { assertHospitalDepartmentForStaff } from '$lib/server/medora/administration/hospital-department.server';
 import { PasswordHashUtil } from '$lib/server/auth/password-hash.server';
+import { requireOptionalDateOfBirth } from '$lib/server/medora/date-of-birth-range.server';
 import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 import { activeEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import type {
@@ -428,7 +430,7 @@ export async function createStaffRegistration(
 						input.phonePrimaryCountryId ?? undefined,
 					phoneSecondaryCountryId:
 						input.phoneSecondaryCountryId ?? undefined,
-					dateOfBirth: toDateOnlyString(input.dateOfBirth),
+					dateOfBirth: requireOptionalDateOfBirth(input.dateOfBirth),
 					joinDate: toDateOnlyString(input.joinDate),
 					resignDate: toDateOnlyString(input.resignDate),
 					photoUrl: input.photoUrl ?? undefined,
@@ -576,6 +578,8 @@ export async function updateStaffRegistration(
 
 	const hospitalCondition = sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${input.hospitalId})`;
 
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return ensureDb().transaction(async (tx) => {
 		// Validate staff exists & belongs to hospital
 		const existing = await tx.query.staffTable.findFirst({
@@ -637,8 +641,8 @@ export async function updateStaffRegistration(
 
 		const staffPatch = { ...input.staff };
 		if (typeof staffPatch.dateOfBirth === 'string') {
-			staffPatch.dateOfBirth = toDateOnlyString(
-				staffPatch.dateOfBirth
+			staffPatch.dateOfBirth = requireOptionalDateOfBirth(
+				toDateOnlyString(staffPatch.dateOfBirth)
 			);
 		}
 		if (typeof staffPatch.joinDate === 'string') {

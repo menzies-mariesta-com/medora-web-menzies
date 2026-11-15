@@ -147,15 +147,15 @@
 		if (res.ok) wards = (await res.json()) as WardRow[];
 	}
 
-	async function loadBeds(wid: number) {
+	async function loadBeds(wid: number, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!bedApi || !wid) {
 			beds = [];
 			return;
 		}
-		const res = await fetch(
-			`${bedApi}?wardId=${encodeURIComponent(String(wid))}`,
-			{ credentials: 'include' }
-		);
+		const res = await fetch(`${bedApi}?wardId=${encodeURIComponent(String(wid))}`, { credentials: 'include', signal: opts?.signal });
 		if (!res.ok) {
 			beds = [];
 			return;
@@ -169,8 +169,14 @@
 	$effect(() => {
 		const wid = Number(preferredWardId);
 		preferredBedId = '';
-		if (Number.isFinite(wid) && wid > 0) void loadBeds(wid);
+			let cancelled = false;
+			const ac = new AbortController();
+		if (Number.isFinite(wid) && wid > 0) void loadBeds(wid, { signal: ac.signal, isCancelled: () => cancelled });
 		else beds = [];
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	async function handleCreate(e: Event) {
@@ -301,6 +307,7 @@
 								id="bk-dob"
 								bind:value={patientDateOfBirth}
 								inputType="date"
+								dateBounds="dateOfBirth"
 							/>
 						</div>
 					{/if}

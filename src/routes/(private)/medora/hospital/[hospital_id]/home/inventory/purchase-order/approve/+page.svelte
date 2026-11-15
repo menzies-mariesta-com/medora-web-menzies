@@ -135,20 +135,25 @@
 		baselinePrice = bp;
 	}
 
-	async function load() {
+	async function load(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId || !poId) return;
 		loading = true;
 		try {
+			const init = { method: 'GET' as const, signal: opts?.signal };
 			const [res, iumRes] = await Promise.all([
 				fetch(
 					`/api/medora/hospital/${hospitalId}/home/inventory/purchase-order?id=${encodeURIComponent(poId)}`,
-					{ method: 'GET' }
+					init
 				),
 				fetch(
 					`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?mode=itemUnitMasters`,
-					{ method: 'GET' }
+					init
 				)
 			]);
+			if (opts?.isCancelled?.()) return;
 			if (iumRes.ok) {
 				const iumRows = (await iumRes.json()) as {
 					id: number;
@@ -160,14 +165,18 @@
 			} else {
 				iumCatalogById = new Map();
 			}
+			if (opts?.isCancelled?.()) return;
 			if (!res.ok) throw new Error(String(res.status));
 			const j = (await res.json()) as PoDetail | null;
+			if (opts?.isCancelled?.()) return;
 			detail = j;
 			if (j) syncPoLineDrafts(j);
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			toastService.addErrorToast('Could not load purchase order', e);
 		} finally {
-			loading = false;
+			if (!opts?.isCancelled?.()) loading = false;
 		}
 	}
 
@@ -310,7 +319,13 @@
 	$effect(() => {
 		void poId;
 		void hospitalId;
-		void load();
+		let cancelled = false;
+		const ac = new AbortController();
+		void load({ signal: ac.signal, isCancelled: () => cancelled });
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	const lineColumns = $derived.by((): MenziesTableColumn<PoLine>[] => {

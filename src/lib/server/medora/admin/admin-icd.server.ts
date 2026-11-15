@@ -30,6 +30,10 @@ import {
 	WhoIcdDatabaseUrlError,
 	type WhoIcdSystem
 } from '$lib/server/medora/clinical/who-icd-import.server';
+import {
+	importSnomedRf2Catalogue,
+	SnomedRf2ImportError
+} from '$lib/server/medora/clinical/snomed-rf2-import.server';
 import { requireAdminPagePermission } from './admin-permission.server';
 import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
@@ -65,7 +69,7 @@ function parseSystemFilter(
 	if (!isDiagnosisCodingSystem(value)) {
 		throw error(
 			400,
-			'system must be ICD10, ICD10_CM, ICD11, WHO, or ALL'
+			'system must be ICD10, ICD10_CM, ICD11, SNOMED_CT, WHO, or ALL'
 		);
 	}
 	return value;
@@ -75,7 +79,8 @@ function emptySystemTotals(): AdminIcdSystemTotals {
 	return {
 		[DiagnosisCodingSystemEnum.ICD10]: 0,
 		[DiagnosisCodingSystemEnum.ICD10_CM]: 0,
-		[DiagnosisCodingSystemEnum.ICD11]: 0
+		[DiagnosisCodingSystemEnum.ICD11]: 0,
+		[DiagnosisCodingSystemEnum.SNOMED_CT]: 0
 	};
 }
 
@@ -276,6 +281,26 @@ async function reseedCm(): Promise<AdminIcdReseedResponse> {
 	};
 }
 
+async function reseedSnomed(): Promise<AdminIcdReseedResponse> {
+	const result = await importSnomedRf2Catalogue({
+		notesPrefix: 'Admin diagnosis catalogue reseed (SNOMED RF2)',
+		log: (m) => console.info(`[admin-icd-reseed] ${m}`)
+	});
+	return {
+		systems: [
+			{
+				system: result.system,
+				inserted: result.inserted,
+				updated: result.updated,
+				total: result.total
+			}
+		],
+		inserted: result.inserted,
+		updated: result.updated,
+		total: result.total
+	};
+}
+
 /**
  * Catalogue reseed for the active admin tab (or all WHO + CM when system omitted).
  * Upsert by (system, code); does not truncate. Diagnosis FKs stay intact.
@@ -291,13 +316,17 @@ export async function reseedAdminIcdCodes(
 		if (system === DiagnosisCodingSystemEnum.ICD10_CM) {
 			return await reseedCm();
 		}
+		if (system === DiagnosisCodingSystemEnum.SNOMED_CT) {
+			return await reseedSnomed();
+		}
 		if (system && isWhoDiagnosisCodingSystem(system)) {
 			return await reseedWho([system]);
 		}
-		// ALL / omitted: WHO ICD-10 + ICD-11, then CDC ICD-10-CM
+		// ALL / omitted: WHO ICD-10 + ICD-11, CDC ICD-10-CM, SNOMED CT
 		let result = emptyReseed();
 		result = mergeReseed(result, await reseedWho('BOTH'));
 		result = mergeReseed(result, await reseedCm());
+		result = mergeReseed(result, await reseedSnomed());
 		return result;
 	} catch (err) {
 		if (err instanceof WhoIcdCredentialsError) {
@@ -308,6 +337,9 @@ export async function reseedAdminIcdCodes(
 		}
 		if (err instanceof Icd10CmImportError) {
 			throw error(502, err.message);
+		}
+		if (err instanceof SnomedRf2ImportError) {
+			throw error(503, err.message);
 		}
 		const message =
 			err instanceof Error

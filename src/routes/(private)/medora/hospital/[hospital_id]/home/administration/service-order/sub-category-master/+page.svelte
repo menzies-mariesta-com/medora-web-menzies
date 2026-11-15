@@ -136,7 +136,13 @@
 
 	$effect(() => {
 		if (!hospitalId) return;
-		fetchCategories().then(() => fetchSubCategories(true));
+		let cancelled = false;
+		void fetchCategories().then(() => {
+			if (!cancelled) void fetchSubCategories(true);
+		});
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	async function openCreate() {

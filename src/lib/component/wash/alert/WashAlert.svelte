@@ -90,7 +90,9 @@
 	</div>
 	{#if hasTrailing}
 		<div class="flex shrink-0 items-center">
-			{@render trailing?.()}
+			{#if trailing}
+				{@render trailing()}
+			{/if}
 		</div>
 	{/if}
 	{#if showToastActions}

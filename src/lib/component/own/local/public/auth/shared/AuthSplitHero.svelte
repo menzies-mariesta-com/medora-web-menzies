@@ -39,7 +39,9 @@
 		</div>
 
 		<div class="w-full {formMaxWidthClass} shrink-0">
-			{@render children()}
+			{#if children}
+				{@render children()}
+			{/if}
 		</div>
 	</div>
 </div>
