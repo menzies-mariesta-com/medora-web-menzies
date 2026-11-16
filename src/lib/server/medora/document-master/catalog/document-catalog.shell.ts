@@ -1,16 +1,16 @@
 /** Shared HTML fragments for catalog document bodies (print-time placeholders). */
 
 export const CATALOG_PATIENT_HEADER_HTML = `<dl class="meta clinical-form-meta">
-<div><dt>Patient name</dt><dd>{{patient.name}}</dd></div>
-<div><dt>Patient code</dt><dd>{{patient.code}}</dd></div>
-<div><dt>Date of birth</dt><dd>{{patient.dob}}</dd></div>
-<div><dt>Age</dt><dd>{{patient.age}}</dd></div>
-<div><dt>Gender</dt><dd>{{patient.gender}}</dd></div>
-<div><dt>Visit no.</dt><dd>{{visit.no}}</dd></div>
-<div><dt>Visit date</dt><dd>{{visit.date}}</dd></div>
-<div><dt>Visit type</dt><dd>{{visit.type}}</dd></div>
-<div><dt>Department</dt><dd>{{visit.department}}</dd></div>
-<div><dt>Attending doctor</dt><dd>{{doctor.name}}</dd></div>
+<div><dt>Patient name</dt><dd>{{patient_name}}</dd></div>
+<div><dt>Patient code</dt><dd>{{patient_code}}</dd></div>
+<div><dt>Date of birth</dt><dd>{{patient_dob}}</dd></div>
+<div><dt>Age</dt><dd>{{patient_age}}</dd></div>
+<div><dt>Gender</dt><dd>{{patient_gender}}</dd></div>
+<div><dt>Visit no.</dt><dd>{{visit_code}}</dd></div>
+<div><dt>Visit date</dt><dd>{{visit_date}}</dd></div>
+<div><dt>Visit type</dt><dd>{{visit_type}}</dd></div>
+<div><dt>Department</dt><dd>{{visit_department}}</dd></div>
+<div><dt>Attending doctor</dt><dd>{{doctor_name}}</dd></div>
 </dl>`;
 
 export function catalogLines(count: number): string {
@@ -51,11 +51,11 @@ export function catalogSignatureBlock(
 }
 
 export function buildCatalogDocumentShell(bodyHtml: string): string {
-	return `<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>{{hospital.address}} | Tel: {{hospital.phone}}</header>
-<h2 class="clinical-form-title">{{document.number}}</h2>
+	return `<header class="print-doc-header"><strong>{{hospital_name}}</strong><br/>{{hospital_address}} | Tel: {{hospital_phone}}</header>
+<h2 class="clinical-form-title">{{document_number}}</h2>
 ${CATALOG_PATIENT_HEADER_HTML}
 <section class="clinical-form-body">${bodyHtml}</section>
-<footer class="catalog-print-footer"><span>{{print.date}}</span> · <span>{{print.by}}</span></footer>`;
+<footer class="catalog-print-footer"><span>{{print_date}}</span> · <span>{{print_by}}</span></footer>`;
 }
 
 /** Standard consent body from intro + optional checkboxes + notes + signatures */

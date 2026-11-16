@@ -1,11 +1,8 @@
-import { json } from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import {
-	createDocumentType,
-	deleteDocumentType,
 	getDocumentTypes,
-	getDocumentTypesPaginated,
-	updateDocumentType
+	getDocumentTypesPaginated
 } from '$lib/server/medora/document-master/document-type.server';
 
 export const GET: RequestHandler = async (event) => {
@@ -33,56 +30,14 @@ export const GET: RequestHandler = async (event) => {
 	return json(data);
 };
 
-export const POST: RequestHandler = async (event) => {
-	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<
-		string,
-		unknown
-	>;
-	const created = await createDocumentType(event, {
-		hospitalId,
-		documentType:
-			body.documentType != null ? String(body.documentType) : null,
-		statusId:
-			body.statusId != null ? Number(body.statusId) : undefined
-	});
-	return json(created);
+export const POST: RequestHandler = async () => {
+	throw error(403, 'Document purposes are fixed; create is disabled.');
 };
 
-export const PUT: RequestHandler = async (event) => {
-	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<
-		string,
-		unknown
-	>;
-	const updated = await updateDocumentType(event, {
-		hospitalId,
-		id: Number(body.id),
-		documentType:
-			body.documentType === undefined
-				? undefined
-				: body.documentType != null
-					? String(body.documentType)
-					: null,
-		statusId:
-			body.statusId === undefined
-				? undefined
-				: body.statusId != null
-					? Number(body.statusId)
-					: undefined
-	});
-	return json(updated);
+export const PUT: RequestHandler = async () => {
+	throw error(403, 'Document purposes are fixed; update is disabled.');
 };
 
-export const DELETE: RequestHandler = async (event) => {
-	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<
-		string,
-		unknown
-	>;
-	await deleteDocumentType(event, {
-		hospitalId,
-		id: Number(body.id)
-	});
-	return json({ ok: true });
+export const DELETE: RequestHandler = async () => {
+	throw error(403, 'Document purposes are fixed; delete is disabled.');
 };

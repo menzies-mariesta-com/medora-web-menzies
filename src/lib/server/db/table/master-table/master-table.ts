@@ -188,6 +188,47 @@ export const diagnosisTypeTable = pgTable(
 	]
 );
 
+/** Document purpose lookup (fixed categories; not user-creatable). */
+export const documentTypeTable = pgTable(
+	'document_type',
+	{
+		id: serial('id').primaryKey(),
+		documentType: varchar('document_type', { length: 512 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('document_type_name_idx').on(table.documentType),
+		index('document_type_status_id_idx').on(table.statusId)
+	]
+);
+
+/** Global document templates; hospital link is `hospital_document.document_id` → `id`. `code` is optional legacy print alias only (never catalog keys). */
+export const documentTable = pgTable(
+	'document',
+	{
+		id: serial('id').primaryKey(),
+		code: varchar('code', { length: 128 }),
+		locale: varchar('locale', { length: 16 }).notNull().default('en'),
+		documentText: text('document_text'),
+		documentNumber: varchar('document_number', { length: 128 }),
+		clinicalSection: varchar('clinical_section', { length: 32 }),
+		documentSettingId: integer('document_setting_id'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('document_code_idx').on(table.code),
+		index('document_status_id_idx').on(table.statusId)
+	]
+);
+
 /** EMR / visit form identifiers (which form or section: chief complaint, patient condition, etc.). */
 export const formNameTable = pgTable(
 	'form_name',

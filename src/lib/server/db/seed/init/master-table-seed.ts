@@ -1847,15 +1847,18 @@ export async function seedMasterTables() {
 			timeline_duration_days = 1,
 			name = EXCLUDED.name;
 	`);
+	// Neon HTTP: one statement per execute
 	await db.execute(sql`
 		SELECT setval(
 			pg_get_serial_sequence('unit', 'id'),
 			GREATEST(COALESCE((SELECT MAX(id) FROM unit), 0), 1)
-		);
+		)
+	`);
+	await db.execute(sql`
 		SELECT setval(
 			pg_get_serial_sequence('unit_type', 'id'),
 			GREATEST(COALESCE((SELECT MAX(id) FROM unit_type), 0), 1)
-		);
+		)
 	`);
 	seedLogger.info('Seeded: unit');
 
@@ -1916,6 +1919,31 @@ export async function seedMasterTables() {
 			status_id = EXCLUDED.status_id;
 	`);
 	seedLogger.info('Seeded: form_name');
+
+	// 15. Document type — global master (purposes fixed; not hospital-specific)
+	await db.execute(sql`
+		INSERT INTO document_type (id, document_type, status_id)
+		VALUES
+			(1, 'Clinical document', 1),
+			(2, 'Bill print', 1),
+			(3, 'Nursing complete', 1),
+			(4, 'Case sheet', 1),
+			(5, 'Discharge summary', 1),
+			(6, 'Medication receipt', 1),
+			(7, 'Appointment slip', 1),
+			(8, 'Visit label', 1),
+			(9, 'IPD wristband', 1)
+		ON CONFLICT (id) DO UPDATE SET
+			document_type = EXCLUDED.document_type,
+			status_id = EXCLUDED.status_id;
+	`);
+	await db.execute(sql`
+		SELECT setval(
+			pg_get_serial_sequence('document_type', 'id'),
+			GREATEST(COALESCE((SELECT MAX(id) FROM document_type), 0), 1)
+		)
+	`);
+	seedLogger.info('Seeded: document_type');
 
 	seedLogger.info('Master tables seeding completed');
 }

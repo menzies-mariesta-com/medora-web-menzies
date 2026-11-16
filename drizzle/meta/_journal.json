@@ -470,6 +470,132 @@
       "when": 1795207200000,
       "tag": "0066_rename_accommodation_billing_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1795210800000,
+      "tag": "0067_document_master_redesign",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1795214400000,
+      "tag": "0068_hospital_scoped_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1795218000000,
+      "tag": "0069_document_catalog_default_body",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1795221600000,
+      "tag": "0070_hide_master_templates_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1795225200000,
+      "tag": "0071_reusable_global_documents_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1795228800000,
+      "tag": "0072_drop_print_option_and_purpose_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1795232400000,
+      "tag": "0073_remove_document_catalog_hospital_document",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1795236000000,
+      "tag": "0074_hospital_document_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1795239600000,
+      "tag": "0075_document_master_global",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1795243200000,
+      "tag": "0076_hospital_document_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1795246800000,
+      "tag": "0077_drop_hospital_document_enabled",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1795250400000,
+      "tag": "0078_drop_hospital_document_setting_locale",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1795254000000,
+      "tag": "0079_reusable_global_documents_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1795257600000,
+      "tag": "0080_drop_retired_document_master_nav",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1795261200000,
+      "tag": "0081_document_clear_catalog_codes",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1795264800000,
+      "tag": "0082_document_master_data_cleanup",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1795268400000,
+      "tag": "0083_drop_hospital_document_settings_document_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1795272000000,
+      "tag": "0084_document_body_strip_embedded_letterhead",
+      "breakpoints": true
     }
   ]
 }

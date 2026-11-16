@@ -11,7 +11,6 @@
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
-	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideStrikeThrough from '$lib/component/own/library/lucide/LucideStrikeThrough.svelte';
 	import OpBillingReadinessPanel from '$lib/component/own/local/private/medora/billing/OpBillingReadinessPanel.svelte';
 	import BillingBillLineRows from '$lib/component/own/local/private/medora/billing/BillingBillLineRows.svelte';
@@ -29,8 +28,16 @@
 		OpBillingVisitLinesGetResponse,
 		OpBillingVisitSummary
 	} from '$lib/model/type/medora/op-billing.type';
-	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
-	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
+	import { DocumentTypeId } from '$lib/model/constant/document-type-id.constant';
+	import type { DocumentMasterPrintBootstrap } from '$lib/model/type/medora/document-print.type';
+	import {
+		buildPrintHtmlFromDocumentMasterBootstrap,
+		fetchDocumentPrintBootstrap,
+	} from '$lib/util/document-master-print.util.svelte';
+	import PrintPreview from '$lib/component/own/library/menzies/PrintPreview.svelte';
+	import type { VisitLike } from '$lib/util/document-placeholder.util';
+	import { fetchVisitLikeForDocumentPrint } from '$lib/tool/emr/visit-print-context.util';
+	import { printByFromPage } from '$lib/tool/emr/document-master-client-print.util';
 	import {
 		buildOpBillingPrintBodyHtml,
 		opBillingLineToPrintLine
@@ -44,7 +51,7 @@
 		canCloseAllOpenBillDetails,
 		closeAllOpenBills,
 		fetchAllOpenBillVisitDetails,
-		printAllOpenBillsCombined,
+		buildOpenBillsCombinedDocumentMasterOpts,
 		sumPayableOpenBillDetails,
 		type BillingPrintLabels,
 		type OpenBillVisitDetail
@@ -79,6 +86,7 @@
 
 	const visitId = $derived(VisitState.visitId);
 	const hospitalId = $derived(page.params.hospital_id ?? '');
+	const printByName = $derived(printByFromPage(page));
 	const isIpBilling = $derived(visitTypeId === VisitTypeEnum.IPD);
 	const billingUiKey = $derived(
 		isIpBilling ? 'ip-billing' : visitTypeId === VisitTypeEnum.ED ? 'er-billing' : 'op-billing'
@@ -100,14 +108,7 @@
 		const isIp = visitTypeId === VisitTypeEnum.IPD;
 		return msg[`${isIp ? 'ip' : 'op'}_billing_${key}`];
 	}
-	const printDocumentCode = $derived(
-		isIpBilling
-			? DOCUMENT_PRINT_CODE.IP_BILL
-			: DOCUMENT_PRINT_CODE.OP_BILL
-	);
-	const printIframeId = $derived(
-		isIpBilling ? 'ip-billing-print-iframe' : 'op-billing-print-iframe'
-	);
+	const printIframeId = 'billing-print-iframe';
 
 	function tr(
 		getter: (() => string) | undefined,
@@ -173,6 +174,11 @@
 	let billingLinesLoadSeq = 0;
 	let grandTotal = $state(0);
 	let visitSummary = $state<VisitSummary | null>(null);
+	let visitPrintContext = $state<VisitLike | null>(null);
+	let billPrintDocumentId = $state<number | null>(null);
+	let printBootstrap = $state<DocumentMasterPrintBootstrap | null>(null);
+	let printTemplateReady = $state(false);
+	let allVisitsPrintVisit = $state<VisitLike | null>(null);
 	let billingMeta = $state<BillingMeta | null>(null);
 	let billingReadiness = $state<OpBillingReadiness | null>(null);
 	let advanceTotal = $state(0);
@@ -189,7 +195,6 @@
 	let historyLoading = $state(false);
 	let historyError = $state('');
 	let historyBills = $state<BillingHistory[]>([]);
-	let historyPrintLoadingId = $state<number | null>(null);
 
 	const discountInputNumber = $derived.by(() => {
 		const raw = Number(discountInput);
@@ -431,6 +436,7 @@
 			groups = [];
 			grandTotal = 0;
 			visitSummary = null;
+			visitPrintContext = null;
 			billingMeta = null;
 			billingReadiness = null;
 			advanceTotal = 0;
@@ -447,6 +453,7 @@
 			groups = [];
 			grandTotal = 0;
 			visitSummary = null;
+			visitPrintContext = null;
 			billingMeta = null;
 			billingReadiness = null;
 			advanceTotal = 0;
@@ -460,14 +467,18 @@
 		isLoading = true;
 		loadError = '';
 		try {
-			const res = await fetch(
-				`${billApiBase}/visit-lines?visitId=${visitNumeric}`
-			);
+			const [res, visitForPrint] = await Promise.all([
+				fetch(`${billApiBase}/visit-lines?visitId=${visitNumeric}`),
+				hospitalId
+					? fetchVisitLikeForDocumentPrint(hospitalId, visitNumeric)
+					: Promise.resolve(null)
+			]);
 			if (requestSeq !== billingLinesLoadSeq) return;
 			if (!res.ok) {
 				groups = [];
 				grandTotal = 0;
 				visitSummary = null;
+				visitPrintContext = null;
 				billingMeta = null;
 				billingReadiness = null;
 				advanceTotal = 0;
@@ -489,6 +500,7 @@
 				...row
 			}));
 			visitSummary = data.visit ?? null;
+			visitPrintContext = visitForPrint;
 			billingMeta = data.billing ?? null;
 			billingReadiness = data.readiness ?? null;
 			const grouped = groupLines(lines);
@@ -534,6 +546,7 @@
 			groups = [];
 			grandTotal = 0;
 			visitSummary = null;
+			visitPrintContext = null;
 			billingMeta = null;
 			billingReadiness = null;
 			advanceTotal = 0;
@@ -681,20 +694,44 @@
 		}
 	}
 
-	async function printBill(opts: {
+	type BillPrintInput = {
 		groups: BillingGroup[];
 		visitSummary: VisitSummary;
+		visitForPrint?: VisitLike | null;
 		grandTotal: number;
 		discountValue: number;
 		netTotal: number;
 		hasDiscount: boolean;
+		billNo?: string | null;
 		advanceDepositCollected?: number;
 		advanceAppliedToBill?: number;
 		advanceRefundDue?: number;
 		balanceDue?: number;
-	}): Promise<void> {
-		if (!opts.groups.length || !hospitalId) return;
+	};
 
+	function billPrintLabels() {
+		return {
+			service: tr(bm('print_service'), 'Service'),
+			order: tr(bm('print_order'), 'Order'),
+			qty: tr(bm('col_qty'), 'Qty'),
+			unit: tr(bm('col_unit'), 'Unit'),
+			unitPrice: tr(bm('col_unit_price'), 'Unit price'),
+			amount: tr(bm('print_amount'), 'Amount'),
+			subtotal: tr(bm('print_subtotal'), 'Subtotal'),
+			grandTotal: tr(bm('print_grand_total'), 'Grand total'),
+			discount: tr(bm('print_discount'), 'Discount'),
+			netTotal: tr(bm('print_net_total'), 'Net total'),
+			advanceDeposit: 'Advance deposit (collected)',
+			appliedToBill: 'Applied to bill',
+			refundDue: 'Refund due',
+			balanceDue: 'Balance due'
+		};
+	}
+
+	function buildBillDocumentMasterPrintOpts(
+		opts: BillPrintInput,
+		visitForPrint: VisitLike | null
+	) {
 		const v = opts.visitSummary;
 		const bodyHtml = buildOpBillingPrintBodyHtml({
 			groups: opts.groups.map((g) => ({
@@ -710,87 +747,68 @@
 			advanceAppliedToBill: opts.advanceAppliedToBill,
 			advanceRefundDue: opts.advanceRefundDue,
 			balanceDue: opts.balanceDue,
-			labels: {
-				service: tr(bm('print_service'), 'Service'),
-				order: tr(bm('print_order'), 'Order'),
-				qty: tr(bm('col_qty'), 'Qty'),
-				unit: tr(bm('col_unit'), 'Unit'),
-				unitPrice: tr(bm('col_unit_price'), 'Unit price'),
-				amount: tr(bm('print_amount'), 'Amount'),
-				subtotal: tr(bm('print_subtotal'), 'Subtotal'),
-				grandTotal: tr(
-					bm('print_grand_total'),
-					'Grand total'
-				),
-				discount: tr(bm('print_discount'), 'Discount'),
-				netTotal: tr(bm('print_net_total'), 'Net total'),
-				advanceDeposit: 'Advance deposit (collected)',
-				appliedToBill: 'Applied to bill',
-				refundDue: 'Refund due',
-				balanceDue: 'Balance due'
-			},
+			labels: billPrintLabels(),
 			formatMoney: formatMoneyAmount
 		});
 
 		const printedAt = `${tr(bm('print_generated'), 'Printed')}: ${new Date().toLocaleString()}`;
+		const visitDate = formatPrintDate(v?.visitDateIso);
+		const billNo =
+			opts.billNo?.trim() || v?.visitNo?.trim() || '—';
 
-		await printFromDocumentMaster({
-			hospitalId,
-			documentCode: printDocumentCode,
+		const slimVisitPlaceholders = visitForPrint
+			? {}
+			: {
+					'{{patient_name}}': v?.patientName?.trim() || '—',
+					'{{patient_code}}': v?.patientCode?.trim() || '—',
+					'{{visit_code}}': v?.visitNo ?? '—',
+					'{{doctor_name}}': v?.doctorName?.trim() || '—',
+					'{{visit_department}}': v?.branchName?.trim() || '—',
+					'{{hospital_name}}':
+						v?.hospitalName?.trim() ||
+						tr(bm('title'), isIpBilling ? 'IP Billing' : 'OP Billing')
+				};
+
+		return {
+			visit: visitForPrint,
+			printBy: printByName,
 			extraPlaceholders: {
-				'{{patient.name}}': v?.patientName?.trim() || '—',
-				'{{patient.code}}': v?.patientCode?.trim() || '—',
-				'{{visit.no}}': v?.visitNo ?? '—',
-				'{{visit.date}}': formatPrintDate(v?.visitDateIso),
-				'{{doctor.name}}': v?.doctorName?.trim() || '—',
-				'{{visit.department}}': v?.branchName?.trim() || '—',
-				'{{hospital.name}}':
-					v?.hospitalName?.trim() ||
-					tr(bm('title'), isIpBilling ? 'IP Billing' : 'OP Billing'),
-				'{{print.body_html}}': bodyHtml,
-				'{{print.datetime}}': printedAt,
-				'{{print.label_patient}}': tr(
-					bm('print_patient'),
-					'Patient'
-				),
-				'{{print.label_patient_code}}': tr(
+				...slimVisitPlaceholders,
+				'{{visit_date}}': visitDate,
+				'{{document_number}}': billNo,
+				'{{document_date}}': visitDate,
+				'{{bill_care_setting}}': isIpBilling ? 'IP' : 'OP',
+				'{{print_body_html}}': bodyHtml,
+				'{{print_datetime}}': printedAt,
+				'{{print_label_patient}}': tr(bm('print_patient'), 'Patient'),
+				'{{print_label_patient_code}}': tr(
 					bm('print_patient_code'),
 					'Patient code'
 				),
-				'{{print.label_visit_no}}': tr(
-					bm('print_visit_no'),
-					'Visit no.'
-				),
-				'{{print.label_date}}': tr(bm('print_date'), 'Date'),
-				'{{print.label_doctor}}': tr(
-					bm('print_doctor'),
-					'Doctor'
-				),
-				'{{print.label_branch}}': tr(
-					bm('print_branch'),
-					'Branch'
-				),
-				'{{print.label_thank_you}}': tr(
+				'{{print_label_visit_no}}': tr(bm('print_visit_no'), 'Visit no.'),
+				'{{print_label_date}}': tr(bm('print_date'), 'Date'),
+				'{{print_label_doctor}}': tr(bm('print_doctor'), 'Doctor'),
+				'{{print_label_branch}}': tr(bm('print_branch'), 'Branch'),
+				'{{print_label_thank_you}}': tr(
 					bm('print_thank_you'),
 					'Thank you for choosing us.'
 				)
 			},
 			iframeId: printIframeId
-		});
+		};
 	}
 
-	function printCurrentBill() {
-		if (!visitId) return;
-		if (!groups.length) return;
-		if (!visitSummary) return;
-
-		void printBill({
+	function currentBillPrintInput(): BillPrintInput | null {
+		if (!groups.length || !visitSummary) return null;
+		return {
 			groups,
 			visitSummary,
+			visitForPrint: visitPrintContext,
 			grandTotal: linesSubtotalDisplay,
 			discountValue: discountValueDisplay,
 			netTotal,
 			hasDiscount: hasDiscountDisplay,
+			billNo: billingMeta?.billNo ?? null,
 			advanceDepositCollected:
 				isIpBilling && advanceCollectedDisplay > 0
 					? advanceCollectedDisplay
@@ -807,8 +825,93 @@
 				isIpBilling && advanceCollectedDisplay > 0
 					? payableDisplay
 					: undefined
-		});
+		};
 	}
+
+	async function loadPrintBootstrap(
+		documentId: number | null = billPrintDocumentId
+	): Promise<void> {
+		if (!hospitalId) return;
+		try {
+			const bootstrap = await fetchDocumentPrintBootstrap(hospitalId, {
+				documentTypeId: DocumentTypeId.BILL_PRINT,
+				documentId
+			});
+			printBootstrap = bootstrap;
+			printTemplateReady = Boolean(bootstrap.document?.documentText);
+		} catch (err) {
+			console.error('Bill print template load failed', err);
+			printBootstrap = null;
+			printTemplateReady = false;
+		}
+	}
+
+	function billPreviewDocumentMasterOpts() {
+		if (billingViewAll) {
+			return buildOpenBillsCombinedDocumentMasterOpts({
+				details: openBillDetails,
+				labels: allVisitsPrintLabels(),
+				visitForPrint: allVisitsPrintVisit,
+				printBy: printByName
+			});
+		}
+		const input = currentBillPrintInput();
+		if (!input) return null;
+		return buildBillDocumentMasterPrintOpts(input, visitPrintContext);
+	}
+
+	const showBillPrintPreview = $derived(
+		billingViewAll
+			? openBillDetails.some((d) => d.groups.length > 0)
+			: groups.length > 0
+	);
+
+	const billPreviewHtml = $derived.by(() => {
+		if (!printTemplateReady || !printBootstrap?.document?.documentText) {
+			return '';
+		}
+		if (!showBillPrintPreview) return '';
+		const opts = billPreviewDocumentMasterOpts();
+		if (!opts) return '';
+		try {
+			return buildPrintHtmlFromDocumentMasterBootstrap(
+				printBootstrap,
+				opts,
+				'browser'
+			);
+		} catch (err) {
+			console.error('Bill print preview failed', err);
+			return '';
+		}
+	});
+
+	const billPrintPreviewTitle = 'Print Bill';
+
+	$effect(() => {
+		if (!hospitalId) return;
+		void loadPrintBootstrap(billPrintDocumentId);
+	});
+
+	$effect(() => {
+		if (!hospitalId || !billingViewAll) {
+			allVisitsPrintVisit = null;
+			return;
+		}
+		const first = openBillDetails.find((d) => d.groups.length > 0);
+		if (!first?.row.visitId) {
+			allVisitsPrintVisit = null;
+			return;
+		}
+		let cancelled = false;
+		void fetchVisitLikeForDocumentPrint(hospitalId, first.row.visitId).then(
+			(v) => {
+				if (!cancelled) allVisitsPrintVisit = v;
+			}
+		);
+		return () => {
+			cancelled = true;
+		};
+	});
 
 	async function loadHistoryBills(
 		currentVisitId: string | null
@@ -849,173 +952,6 @@
 			historyError = tr(undefined, 'Failed to load bill history.');
 		} finally {
 			historyLoading = false;
-		}
-	}
-
-	async function printHistoryBill(billingId: number): Promise<void> {
-		if (!browser) return;
-		if (!billingId || !Number.isFinite(billingId) || billingId <= 0)
-			return;
-
-		historyPrintLoadingId = billingId;
-		try {
-			const res = await fetch(`${billApiBase}/bills`, {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ billingId })
-			});
-			if (!res.ok) {
-				historyError = tr(
-					undefined,
-					'Failed to load bill details for printing.'
-				);
-				return;
-			}
-			const data = (await res.json()) as {
-				bill?: {
-					id: number;
-					billNo: string | null;
-					linesSubtotal: string | number | null;
-					discountAmount: string | number | null;
-					totalAmount: string | number | null;
-					advanceAppliedAmount?: string | number | null;
-					amountPaid?: string | number | null;
-					createdAt?: string | null;
-					printedAt?: string | null;
-					visit?: {
-						id: number;
-						visitNo: string | null;
-						createdAt?: string | null;
-					} | null;
-					hospital?: { name: string | null } | null;
-					branch?: { name: string | null } | null;
-				} | null;
-				lines?: BillingDetailLine[];
-			};
-
-			const bill = data.bill ?? null;
-			if (!bill) {
-				historyError = tr(
-					undefined,
-					'Failed to load bill details for printing.'
-				);
-				return;
-			}
-
-			const detailLines = Array.isArray(data.lines) ? data.lines : [];
-			const printLines: BillingLine[] = detailLines.map((l) => ({
-				id: l.id,
-				serviceId: l.serviceId,
-				serviceName: l.serviceName,
-				orderNo: l.orderNo,
-				subCategoryId: l.subCategoryId,
-				subCategoryName: l.subCategoryName,
-				categoryName: l.categoryName ?? null,
-				serviceAmount: l.serviceAmount,
-				serviceTaxAmount: l.serviceTaxAmount,
-				discount: l.discount,
-				serviceUnit: l.serviceUnit
-			}));
-			const printGroups = groupLines(printLines);
-			const linesSubtotal = printGroups.reduce(
-				(sum, g) => sum + g.subtotal,
-				0
-			);
-			const discountAmt = Number(bill.discountAmount ?? 0) || 0;
-			const net = Math.max(
-				0,
-				linesSubtotal -
-					Math.min(linesSubtotal, Math.max(0, discountAmt))
-			);
-			const hasDisc = discountAmt > 0;
-			let advanceCollected = 0;
-			let advanceApplied = 0;
-			let historyRefundDue = 0;
-			let historyBalanceDue: number | undefined;
-
-			const historyVisitUuid =
-				bill.visit?.id != null
-					? parseUuid(String(bill.visit.id)) ?? ''
-					: parseUuid(visitId) ?? '';
-
-			if (isIpBilling && historyVisitUuid) {
-				const linesRes = await fetch(
-					`${billApiBase}/visit-lines?visitId=${historyVisitUuid}`
-				);
-				if (linesRes.ok) {
-					const linesPayload =
-						(await linesRes.json()) as OpBillingVisitLinesGetResponse;
-					const totals = resolveVisitBillTotalsFromLinesResponse(
-						linesPayload,
-						VisitTypeEnum.IPD
-					);
-					advanceCollected = totals.advanceTotal;
-					advanceApplied = totals.advanceCredit;
-					historyRefundDue = totals.advanceRefundDue;
-					historyBalanceDue = totals.balanceDue;
-				}
-			}
-
-			if (isIpBilling && advanceCollected <= 0) {
-				advanceApplied =
-					bill.advanceAppliedAmount != null
-						? Number(bill.advanceAppliedAmount) || 0
-						: 0;
-				historyBalanceDue =
-					advanceApplied > 0
-						? bill.amountPaid != null
-							? Number(bill.amountPaid) || 0
-							: Math.max(0, net - advanceApplied)
-						: undefined;
-			}
-
-			const v: VisitSummary = {
-				id: bill.visit?.id ?? (parseUuid(visitId) ?? ''),
-				visitNo:
-					bill.visit?.visitNo?.trim() ||
-					(bill.visit?.id ? String(bill.visit.id) : String(bill.id)),
-				hospitalName: bill.hospital?.name?.trim() || null,
-				branchName: bill.branch?.name?.trim() || null,
-				patientName: visitSummary?.patientName ?? null,
-				patientCode: visitSummary?.patientCode ?? null,
-				visitDateIso:
-					bill.visit?.createdAt ?? visitSummary?.visitDateIso ?? null,
-				doctorName: visitSummary?.doctorName ?? null
-			};
-
-			historyError = '';
-			void printBill({
-				groups: printGroups,
-				visitSummary: v,
-				grandTotal: linesSubtotal,
-				discountValue: Math.min(
-					linesSubtotal,
-					Math.max(0, discountAmt)
-				),
-				netTotal: net,
-				hasDiscount: hasDisc,
-				advanceDepositCollected:
-					isIpBilling && advanceCollected > 0
-						? advanceCollected
-						: undefined,
-				advanceAppliedToBill:
-					isIpBilling && advanceCollected > 0
-						? advanceApplied
-						: undefined,
-				advanceRefundDue:
-					isIpBilling && historyRefundDue > 0
-						? historyRefundDue
-						: undefined,
-				balanceDue: historyBalanceDue
-			});
-		} catch (err) {
-			console.error(err);
-			historyError = tr(
-				undefined,
-				'Failed to load bill details for printing.'
-			);
-		} finally {
-			historyPrintLoadingId = null;
 		}
 	}
 
@@ -1068,15 +1004,6 @@
 			refundDue: 'Refund due',
 			balanceDue: 'Balance due'
 		};
-	}
-
-	async function printAllVisitsInCard() {
-		if (!hospitalId || !openBillDetails.length) return;
-		await printAllOpenBillsCombined({
-			hospitalId,
-			details: openBillDetails,
-			labels: allVisitsPrintLabels()
-		});
 	}
 
 	function syncGrandTotalFromDetails() {
@@ -1192,26 +1119,6 @@
 			{#if visitId && billingViewAll}
 				<div class="flex flex-wrap items-center gap-2">
 					<WashTooltip
-						tooltipText={scopeMsg(
-							'billing_scope_print_all',
-							'Print all visits'
-						)}
-						className=""
-					>
-						<WashButton
-							className="btn-outline btn-sm gap-2"
-							disabled={openBillDetailsLoading ||
-								openBillDetails.length === 0}
-							onClick={() => void printAllVisitsInCard()}
-						>
-							<LucidePrinter className="size-4" />
-							{scopeMsg(
-								'billing_scope_print_all',
-								'Print all visits'
-							)}
-						</WashButton>
-					</WashTooltip>
-					<WashTooltip
 						tooltipText={canCloseAllBills
 							? scopeMsg(
 									'billing_scope_close_all',
@@ -1259,21 +1166,6 @@
 						</WashButton>
 					</WashTooltip>
 
-					<WashTooltip
-						tooltipText={tr(bm('print_bill'), 'Print bill')}
-						className=""
-					>
-						<WashButton
-							className="btn-outline btn-sm gap-2"
-							disabled={isLoading ||
-								!!loadError ||
-								groups.length === 0}
-							onClick={() => printCurrentBill()}
-						>
-							<LucidePrinter className="size-4" />
-							{tr(bm('print_bill'), 'Print bill')}
-						</WashButton>
-					</WashTooltip>
 				</div>
 			{/if}
 		</div>
@@ -1493,6 +1385,36 @@
 				{/if}
 			</div>
 		{/if}
+
+		{#if visitId && hospitalId && showBillPrintPreview}
+			<div class="no-print mt-6 border-t border-base-300 pt-4">
+				<h3 class="mb-2 text-sm font-semibold">
+					{billPrintPreviewTitle}
+				</h3>
+				{#if !printTemplateReady}
+					<p class="text-sm text-error">
+						{tr(
+							undefined,
+							'Bill print template not found. Configure BILL_PRINT in Document Master.'
+						)}
+					</p>
+				{:else}
+					<PrintPreview
+						html={billPreviewHtml}
+						title={billPrintPreviewTitle}
+						minHeight="min-h-[50vh]"
+						showMeta={true}
+						showDownloadButton={false}
+						documentTemplateHospitalId={hospitalId}
+						documentTemplateTypeId={DocumentTypeId.BILL_PRINT}
+						bind:selectedDocumentTemplateId={billPrintDocumentId}
+						emptyMessage={billPreviewHtml
+							? tr(undefined, 'No preview')
+							: tr(undefined, 'Loading preview…')}
+					/>
+				{/if}
+			</div>
+		{/if}
 	</WashCardBody>
 </WashCard>
 
@@ -1683,14 +1605,13 @@
 							<th class="text-right">{tr(undefined, 'Discount')}</th>
 							<th class="text-right">{tr(undefined, 'Total')}</th>
 							<th>{tr(undefined, 'Status')}</th>
-							<th class="text-right">{tr(undefined, 'Actions')}</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#if historyLoading}
 							<tr>
 								<td
-									colspan="8"
+									colspan="7"
 									class="py-6 text-center text-base-content/60"
 								>
 									{tr(undefined, 'Loading history…')}
@@ -1699,7 +1620,7 @@
 						{:else if historyBills.length === 0}
 							<tr>
 								<td
-									colspan="8"
+									colspan="7"
 									class="py-6 text-center text-base-content/60"
 								>
 									{tr(undefined, 'No bills found for this visit.')}
@@ -1755,16 +1676,6 @@
 												{tr(undefined, 'Open')}
 											</span>
 										{/if}
-									</td>
-									<td class="text-right whitespace-nowrap">
-										<WashButton
-											className="btn-outline btn-sm gap-2"
-											disabled={historyPrintLoadingId === b.id}
-											onClick={() => void printHistoryBill(b.id)}
-										>
-											<LucidePrinter className="size-4" />
-											{tr(undefined, 'Print')}
-										</WashButton>
 									</td>
 								</tr>
 							{/each}

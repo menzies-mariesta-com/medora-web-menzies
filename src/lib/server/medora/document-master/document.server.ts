@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, eq, inArray, isNull, ne, or } from 'drizzle-orm';
+import { and, count, eq, inArray, ne } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -7,10 +7,6 @@ import type {
 	DocumentSchemaInsert,
 	DocumentSchemaUpdate
 } from '$lib/server/db/schema-type';
-import {
-	CLINICAL_DOCUMENT_TYPE_NAMES,
-	isSystemPrintDocumentCode
-} from '$lib/model/constant/document-print.constant';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type {
 	PaginatedResult,
@@ -20,17 +16,26 @@ import { normalizePagination } from '$lib/model/type/pagination.type';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { assertDocumentSettingAccessible } from '$lib/server/medora/document-master/document-setting.server';
 import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
+import {
+	attachHospitalDocumentType,
+	type DocumentHospitalView
+} from '$lib/server/medora/document-master/document-hospital-view.server';
+import {
+	isClinicalDocumentTypeId,
+	parseClinicalDocumentSection
+} from '$lib/model/constant/clinical-document-section.constant';
+import type { ClinicalDocumentSectionEnum } from '$lib/model/enum/clinical-document-section.enum';
 
 const documentWithRelationsWith = {
-	documentType: true,
-	documentSetting: true,
 	status: true,
 	patientDocuments: true
 } as const;
 
-export type DocumentWithRelations = Awaited<
-	ReturnType<typeof getDocumentsWithRelations>
->[number];
+export type DocumentWithRelations = DocumentHospitalView & {
+	documentSetting?: Record<string, unknown> | null;
+	status?: Record<string, unknown> | null;
+	patientDocuments?: unknown[];
+};
 
 function requireUser(event: RequestEvent): void {
 	if (!event.locals?.user) throw error(401, 'Unauthorized');
@@ -60,34 +65,47 @@ export async function getClinicalFormDocuments(
 
 	if (opts?.hospitalId) {
 		const { listEnabledClinicalDocuments } = await import(
-			'$lib/server/medora/document-master/hospital-document-template.server'
+			'$lib/server/medora/document-master/hospital-document.server'
 		);
 		const { documents } = await listEnabledClinicalDocuments(opts.hospitalId);
-		if (documents.length > 0) {
-			const ids = documents.map((d) => d.id);
-			return ensureDb().query.documentTable.findMany({
-				where: and(
-					inArray(table.documentTable.id, ids),
-					ne(table.documentTable.statusId, StatusEnum.DELETED)
-				),
-				with: documentWithRelationsWith,
-				orderBy: (t, { asc }) => [asc(t.documentNumber), asc(t.id)]
-			});
-		}
+		const ids = documents.map((d) => d.id);
+		if (ids.length === 0) return [];
+		const rows = await ensureDb().query.documentTable.findMany({
+			where: and(
+				inArray(table.documentTable.id, ids),
+				ne(table.documentTable.statusId, StatusEnum.DELETED)
+			),
+			with: documentWithRelationsWith,
+			orderBy: (t, { asc }) => [asc(t.documentNumber), asc(t.id)]
+		});
+		return attachHospitalDocumentType(opts.hospitalId, rows) as DocumentWithRelations[];
 	}
 
-	const clinicalTypeSet = new Set<string>(CLINICAL_DOCUMENT_TYPE_NAMES);
-	const rows = await ensureDb().query.documentTable.findMany({
-		where: ne(table.documentTable.statusId, StatusEnum.DELETED),
-		with: documentWithRelationsWith,
-		orderBy: (t, { asc }) => [asc(t.documentNumber), asc(t.id)]
-	});
+	return [];
+}
 
-	return rows.filter((row) => {
-		if (isSystemPrintDocumentCode(row.code)) return false;
-		const typeName = row.documentType?.documentType?.toLowerCase() ?? '';
-		return clinicalTypeSet.has(typeName);
+export async function getDocumentById(
+	event: RequestEvent,
+	id: number,
+	opts?: { hospitalId?: string }
+): Promise<DocumentWithRelations | null> {
+	requireUser(event);
+	if (opts?.hospitalId) await ensureCanAccessHospital(event, opts.hospitalId);
+	const row = await ensureDb().query.documentTable.findFirst({
+		where: and(
+			eq(table.documentTable.id, id),
+			ne(table.documentTable.statusId, StatusEnum.DELETED)
+		),
+		with: documentWithRelationsWith
 	});
+	if (!row) return null;
+	if (!opts?.hospitalId) return row as DocumentWithRelations;
+	const { assertHospitalLinkedDocument } = await import(
+		'$lib/server/medora/document-master/hospital-document.server'
+	);
+	await assertHospitalLinkedDocument(opts.hospitalId, id);
+	const [view] = await attachHospitalDocumentType(opts.hospitalId, [row]);
+	return (view ?? null) as DocumentWithRelations | null;
 }
 
 export async function getDocumentByCode(
@@ -101,7 +119,7 @@ export async function getDocumentByCode(
 
 	if (opts?.hospitalId) {
 		const { resolveDocumentForHospital } = await import(
-			'$lib/server/medora/document-master/hospital-document-template.server'
+			'$lib/server/medora/document-master/hospital-document.server'
 		);
 		const docId = await resolveDocumentForHospital({
 			hospitalId: opts.hospitalId,
@@ -115,18 +133,17 @@ export async function getDocumentByCode(
 				),
 				with: documentWithRelationsWith
 			});
-			if (row) return row;
+			if (row) {
+				const [view] = await attachHospitalDocumentType(
+					opts.hospitalId,
+					[row]
+				);
+				return view as DocumentWithRelations;
+			}
 		}
 	}
 
-	const row = await ensureDb().query.documentTable.findFirst({
-		where: and(
-			eq(table.documentTable.code, trimmed),
-			ne(table.documentTable.statusId, StatusEnum.DELETED)
-		),
-		with: documentWithRelationsWith
-	});
-	return row ?? null;
+	return null;
 }
 
 export async function getDocumentsPaginatedWithRelations(
@@ -142,23 +159,24 @@ export async function getDocumentsPaginatedWithRelations(
 
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
-	const hospitalCustomFilter = params?.hospitalId
-		? and(
-				eq(table.documentTable.isSystemCatalog, false),
-				isNull(table.documentTable.catalogCode),
-				or(
-					eq(table.documentTable.hospitalId, params.hospitalId),
-					isNull(table.documentTable.hospitalId)
-				)
+	const hospitalScope = params?.hospitalId
+		? inArray(
+				table.documentTable.id,
+				ensureDb()
+					.select({ id: table.hospitalDocumentTable.documentId })
+					.from(table.hospitalDocumentTable)
+					.where(
+						eq(table.hospitalDocumentTable.hospitalId, params.hospitalId)
+					)
 			)
-		: and(eq(table.documentTable.isSystemCatalog, false), isNull(table.documentTable.catalogCode));
+		: undefined;
 
 	const whereExpr = and(
 		paginatedEntityStatusEq(
 			table.documentTable.statusId,
 			params?.statusId
 		),
-		hospitalCustomFilter
+		hospitalScope
 	);
 
 	const [data, countResult] = await Promise.all([
@@ -176,8 +194,11 @@ export async function getDocumentsPaginatedWithRelations(
 	]);
 
 	const total = countResult[0]?.count ?? 0;
+	const enriched = params?.hospitalId
+		? await attachHospitalDocumentType(params.hospitalId, data)
+		: data;
 	return {
-		data,
+		data: enriched as DocumentWithRelations[],
 		total,
 		page,
 		pageSize,
@@ -204,62 +225,133 @@ async function validateDocumentSettingId(
 	return documentSettingId;
 }
 
+function normalizeClinicalSectionForType(
+	documentTypeId: number,
+	clinicalSection: unknown
+): ClinicalDocumentSectionEnum | null {
+	if (!isClinicalDocumentTypeId(documentTypeId)) {
+		return null;
+	}
+	const parsed = parseClinicalDocumentSection(clinicalSection);
+	if (!parsed) {
+		throw error(
+			400,
+			'Clinical section is required for Clinical Document (consent, instruction, form, or certificate)'
+		);
+	}
+	return parsed;
+}
+
 export async function createDocument(
 	event: RequestEvent,
-	payload: DocumentSchemaInsert & { hospitalId?: string }
-): Promise<DocumentSchema> {
+	payload: DocumentSchemaInsert & {
+		hospitalId?: string;
+		documentTypeId: number;
+	}
+): Promise<DocumentWithRelations> {
 	requireUser(event);
-	if (payload.hospitalId)
-		await ensureCanAccessHospital(event, payload.hospitalId);
+	if (!payload.hospitalId) {
+		throw error(400, 'hospitalId is required');
+	}
+	if (!Number.isFinite(payload.documentTypeId) || payload.documentTypeId <= 0) {
+		throw error(400, 'documentTypeId is required');
+	}
+	await ensureCanAccessHospital(event, payload.hospitalId);
 
-	const { hospitalId, ...data } = payload;
+	const {
+		hospitalId,
+		documentTypeId,
+		documentSettingId: layoutId,
+		...data
+	} = payload;
 	const documentSettingId = await validateDocumentSettingId(
 		event,
 		hospitalId,
-		data.documentSettingId
+		layoutId
+	);
+	const clinicalSection = normalizeClinicalSectionForType(
+		documentTypeId,
+		data.clinicalSection
 	);
 	const [row] = await ensureDb()
 		.insert(table.documentTable)
 		.values({
 			...data,
-			documentSettingId,
-			hospitalId: hospitalId ?? null,
-			isSystemCatalog: false,
-			catalogCode: null
+			clinicalSection,
+			documentSettingId: null
 		})
 		.returning();
 	if (!row) throw error(500, 'Insert failed');
-	return row;
+	await ensureDb().insert(table.hospitalDocumentTable).values({
+		hospitalId,
+		documentId: row.id,
+		documentTypeId,
+		documentSettingId
+	});
+	const [view] = await attachHospitalDocumentType(hospitalId, [row]);
+	return view as DocumentWithRelations;
 }
 
 export async function updateDocument(
 	event: RequestEvent,
-	payload: DocumentSchemaUpdate & { id: number; hospitalId?: string }
-): Promise<DocumentSchema> {
+	payload: DocumentSchemaUpdate & {
+		id: number;
+		hospitalId?: string;
+		documentTypeId?: number;
+	}
+): Promise<DocumentWithRelations> {
 	requireUser(event);
 	if (payload.hospitalId)
 		await ensureCanAccessHospital(event, payload.hospitalId);
 
-	const { id, hospitalId, ...rest } = payload;
-	const [existing] = await ensureDb()
-		.select({
-			isSystemCatalog: table.documentTable.isSystemCatalog,
-			catalogCode: table.documentTable.catalogCode
-		})
-		.from(table.documentTable)
-		.where(eq(table.documentTable.id, id))
-		.limit(1);
-	if (existing?.isSystemCatalog || existing?.catalogCode) {
-		throw error(
-			400,
-			'System and catalog templates are edited under Master Templates'
-		);
-	}
+	const { id, hospitalId, documentTypeId, ...rest } = payload;
+	if (!hospitalId) throw error(400, 'hospitalId is required');
+	const { assertHospitalLinkedDocument } = await import(
+		'$lib/server/medora/document-master/hospital-document.server'
+	);
+	await assertHospitalLinkedDocument(hospitalId, id);
+	let layoutId: number | null | undefined;
 	if (rest.documentSettingId !== undefined) {
-		rest.documentSettingId = await validateDocumentSettingId(
+		layoutId = await validateDocumentSettingId(
 			event,
 			hospitalId,
 			rest.documentSettingId
+		);
+		delete rest.documentSettingId;
+	}
+	const hospitalPatch: {
+		documentSettingId?: number | null;
+		documentTypeId?: number;
+	} = {};
+	if (layoutId !== undefined) hospitalPatch.documentSettingId = layoutId;
+	if (documentTypeId !== undefined) {
+		if (!Number.isFinite(documentTypeId) || documentTypeId <= 0) {
+			throw error(400, 'Invalid documentTypeId');
+		}
+		hospitalPatch.documentTypeId = documentTypeId;
+	}
+	if (documentTypeId !== undefined) {
+		rest.clinicalSection = normalizeClinicalSectionForType(
+			documentTypeId,
+			rest.clinicalSection
+		);
+	} else if (rest.clinicalSection !== undefined) {
+		const [link] = await ensureDb()
+			.select({
+				documentTypeId: table.hospitalDocumentTable.documentTypeId
+			})
+			.from(table.hospitalDocumentTable)
+			.where(
+				and(
+					eq(table.hospitalDocumentTable.hospitalId, hospitalId),
+					eq(table.hospitalDocumentTable.documentId, id)
+				)
+			)
+			.limit(1);
+		const linkedTypeId = link?.documentTypeId ?? 0;
+		rest.clinicalSection = normalizeClinicalSectionForType(
+			linkedTypeId,
+			rest.clinicalSection
 		);
 	}
 	const [row] = await ensureDb()
@@ -267,8 +359,20 @@ export async function updateDocument(
 		.set(rest)
 		.where(eq(table.documentTable.id, id))
 		.returning();
+	if (Object.keys(hospitalPatch).length > 0) {
+		await ensureDb()
+			.update(table.hospitalDocumentTable)
+			.set(hospitalPatch)
+			.where(
+				and(
+					eq(table.hospitalDocumentTable.hospitalId, hospitalId),
+					eq(table.hospitalDocumentTable.documentId, id)
+				)
+			);
+	}
 	if (!row) throw error(500, 'Update failed');
-	return row;
+	const [view] = await attachHospitalDocumentType(hospitalId, [row]);
+	return view as DocumentWithRelations;
 }
 
 export async function deleteDocument(

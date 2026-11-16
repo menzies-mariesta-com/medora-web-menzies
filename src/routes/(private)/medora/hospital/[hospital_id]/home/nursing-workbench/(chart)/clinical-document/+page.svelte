@@ -7,7 +7,6 @@
 	import LucideFileText from '$lib/component/own/library/lucide/LucideFileText.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import type { DocumentSettingWithRelations } from '$lib/model/type/document-setting.type';
 	import type { ClinicalDocumentRow } from '$lib/model/type/medora/document-print.type';
 	import {
 		buildVisitServiceLinesTableHtml,
@@ -24,6 +23,8 @@
 	import { fetchVisitServiceLinePrintRows } from '$lib/util/visit-service-lines-print.util';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { ClinicalDocumentSectionEnum } from '$lib/model/enum/clinical-document-section.enum';
+	import { printByFromPage } from '$lib/tool/emr/document-master-client-print.util';
 
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -40,7 +41,7 @@
 	);
 	let visit = $state<VisitLike | null>(null);
 	let documents = $state<ClinicalDocumentRow[]>([]);
-	let documentSettings = $state<DocumentSettingWithRelations[]>([]);
+	let textPlaceholders = $state<Record<string, string>>({});
 	let isLoading = $state(false);
 	let isPrinting = $state(false);
 	let savingDocumentId = $state<number | null>(null);
@@ -48,28 +49,25 @@
 	let lastLoadedVisitId = $state<number | null>(null);
 	let serviceLinesTableHtml = $state('');
 
-	const printByName = $derived(
-		typeof page.data?.printByName === 'string'
-			? page.data.printByName
-			: ''
-	);
+	const printByName = $derived(printByFromPage(page));
 
 	const consentDocuments = $derived(
 		documents.filter(
-			(d) => d.documentType?.documentType?.toLowerCase() === 'consent'
+			(d) => d.clinicalSection === ClinicalDocumentSectionEnum.CONSENT
 		)
 	);
 	const instructionDocuments = $derived(
 		documents.filter(
 			(d) =>
-				d.documentType?.documentType?.toLowerCase() === 'instruction'
+				d.clinicalSection === ClinicalDocumentSectionEnum.INSTRUCTION
 		)
 	);
 	const formDocuments = $derived(
-		documents.filter((d) => {
-			const type = d.documentType?.documentType?.toLowerCase() ?? '';
-			return type === 'form' || type === 'certificate';
-		})
+		documents.filter(
+			(d) =>
+				d.clinicalSection === ClinicalDocumentSectionEnum.FORM ||
+				d.clinicalSection === ClinicalDocumentSectionEnum.CERTIFICATE
+		)
 	);
 
 	const canAct = $derived(
@@ -89,16 +87,14 @@
 			const payload = (await res.json()) as {
 				visit?: VisitLike | null;
 				documents?: ClinicalDocumentRow[];
-				documentSettings?: DocumentSettingWithRelations[];
+				textPlaceholders?: Record<string, string>;
 			};
 
 			if (visitId) visit = payload.visit ?? null;
 			documents = Array.isArray(payload.documents)
 				? payload.documents
 				: [];
-			documentSettings = Array.isArray(payload.documentSettings)
-				? payload.documentSettings
-				: [];
+			textPlaceholders = payload.textPlaceholders ?? {};
 
 			if (visitId && payload.visit?.hospitalId) {
 				const printRows = await fetchVisitServiceLinePrintRows({
@@ -144,7 +140,7 @@
 		return buildClinicalFormPrintHtml({
 			doc,
 			visit,
-			documentSettings,
+			textPlaceholders,
 			printBy: printByName,
 			serviceLinesTableHtml,
 			variant
@@ -198,7 +194,7 @@
 
 		savingDocumentId = doc.id;
 		try {
-			const htmlPdf = buildPrintHtml(doc, 'pdfRaster');
+			const htmlPdf = buildPrintHtml(doc, 'browser');
 			const blob = await htmlStringToPdfBlob(htmlPdf);
 			const label =
 				doc.documentNumber?.replace(/[^\w.-]+/g, '_').slice(0, 60) ||

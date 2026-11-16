@@ -26,8 +26,11 @@
 	import { tick } from 'svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
-	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
+	import { DocumentTypeId } from '$lib/model/constant/document-type-id.constant';
 	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
+	import { fetchHospitalPrintPlaceholders } from '$lib/tool/emr/visit-print-context.util';
+	import { printByFromPage } from '$lib/tool/emr/document-master-client-print.util';
+	import { page } from '$app/state';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	/** Slot shape: date (YYYY-MM-DD), startTime/endTime (HH:mm or HH:mm:ss). */
@@ -467,29 +470,34 @@
 				? `${patientCode} – ${patientName}`
 				: patientName || patientCode || '';
 
+		const hospitalPlaceholders =
+			await fetchHospitalPrintPlaceholders(hospitalId);
+
 		await printFromDocumentMaster({
 			hospitalId,
-			documentCode: DOCUMENT_PRINT_CODE.APPOINTMENT_SLIP,
+			documentTypeId: DocumentTypeId.APPOINTMENT_SLIP_PRINT,
+			printBy: printByFromPage(page),
 			extraPlaceholders: {
-				'{{hospital.logo}}': '',
-				'{{appointment.patient}}': patientLabel,
-				'{{appointment.doctor}}': selectedDoctorName,
-				'{{appointment.date}}': slot.date,
-				'{{appointment.start_time}}': formatTimeForDisplay(
+				...hospitalPlaceholders,
+				'{{doctor_name}}': selectedDoctorName || '—',
+				'{{appointment_patient}}': patientLabel,
+				'{{appointment_doctor}}': selectedDoctorName,
+				'{{appointment_date}}': slot.date,
+				'{{appointment_start_time}}': formatTimeForDisplay(
 					toHHmm(slot.startTime)
 				),
-				'{{appointment.end_time}}': formatTimeForDisplay(
+				'{{appointment_end_time}}': formatTimeForDisplay(
 					toHHmm(slot.endTime)
 				),
-				'{{print.datetime}}': new Date().toLocaleString(),
-				'{{print.label_title}}': 'Appointment Slip',
-				'{{print.label_subtitle}}':
+				'{{print_datetime}}': new Date().toLocaleString(),
+				'{{print_label_title}}': 'Appointment Slip',
+				'{{print_label_subtitle}}':
 					'Please present this slip at the counter.',
-				'{{print.label_patient}}': 'Patient',
-				'{{print.label_doctor}}': 'Doctor',
-				'{{print.label_date}}': 'Date',
-				'{{print.label_start_time}}': 'Start time',
-				'{{print.label_end_time}}': 'End time'
+				'{{print_label_patient}}': 'Patient',
+				'{{print_label_doctor}}': 'Doctor',
+				'{{print_label_date}}': 'Date',
+				'{{print_label_start_time}}': 'Start time',
+				'{{print_label_end_time}}': 'End time'
 			},
 			iframeId: 'appointment-slip-print-iframe'
 		});
