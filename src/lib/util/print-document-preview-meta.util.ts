@@ -1,3 +1,5 @@
+import { sanitizeDownloadFileBase } from '$lib/util/print-download-filename.util';
+
 /** Meta from buildPrintDocumentHtml `<html data-*>` — shared by preview, PDF, and print. */
 export type PrintDocumentPreviewMeta = {
 	captureWidthPx: number;
@@ -68,9 +70,30 @@ export function readPrintDocumentPreviewMeta(
 const DATA_ATTR_RE =
 	/data-(?:capture-width-px|page-width-mm|page-height-mm|jspdf-format|jspdf-orientation|print-chrome)="[^"]*"/g;
 
-function readAttrFromHtml(html: string, name: string): string | null {
-	const m = html.match(new RegExp(`${name}="([^"]*)"`));
+function escapeRegExp(text: string): string {
+	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Read a root `<html …>` attribute only (ignore duplicate attrs in template body). */
+function readHtmlRootAttr(html: string, name: string): string | null {
+	const m = html.match(
+		new RegExp(
+			`<html\\s[^>]*\\b${escapeRegExp(name)}="([^"]*)"`,
+			'i'
+		)
+	);
 	return m?.[1] ?? null;
+}
+
+function readAttrFromHtml(html: string, name: string): string | null {
+	return readHtmlRootAttr(html, name);
+}
+
+function readHtmlHeadTitle(html: string): string | null {
+	const m = html.match(
+		/<head[^>]*>[\s\S]*?<title[^>]*>([^<]*)<\/title>/i
+	);
+	return m?.[1]?.trim() ?? null;
 }
 
 /** Parse shell meta from a full HTML string (no DOM; safe in vitest node). */
@@ -101,4 +124,31 @@ export function mmToPreviewPx(
 export function printPreviewLayoutKey(html: string): string {
 	const m = html.match(DATA_ATTR_RE);
 	return m ? m.join('|') : html.slice(0, 120);
+}
+
+function decodeHtmlTextEntities(text: string): string {
+	return text
+		.replace(/&amp;/g, '&')
+		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>')
+		.replace(/&quot;/g, '"')
+		.replace(/&#39;/g, "'");
+}
+
+/**
+ * PDF download basename from print HTML (`data-download-filename` or `<title>`).
+ */
+export function resolvePrintDownloadFileBaseFromHtml(
+	html: string,
+	fallback?: string
+): string {
+	const fromData = readHtmlRootAttr(html, 'data-download-filename');
+	if (fromData?.trim()) {
+		return sanitizeDownloadFileBase(decodeHtmlTextEntities(fromData));
+	}
+	const headTitle = readHtmlHeadTitle(html);
+	if (headTitle) {
+		return sanitizeDownloadFileBase(decodeHtmlTextEntities(headTitle));
+	}
+	return sanitizeDownloadFileBase(fallback ?? 'print-preview');
 }

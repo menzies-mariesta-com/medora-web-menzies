@@ -7,6 +7,7 @@
 		pageHeightPx,
 		parsePrintDocumentPreviewMetaFromHtml,
 		printPreviewLayoutKey,
+		resolvePrintDownloadFileBaseFromHtml,
 		type PrintDocumentPreviewMeta
 	} from '$lib/util/print-document-preview-meta.util';
 	import {
@@ -199,18 +200,26 @@
 		if (!hasContent || isDownloading) return;
 		isDownloading = true;
 		try {
+			const base = resolvePrintDownloadFileBaseFromHtml(
+				html,
+				downloadFileName || title
+			);
+			const fileName = `${base}.pdf`;
 			const { htmlStringToPdfBlob } =
 				await import('$lib/util/html-to-pdf.util');
-			const blob = await htmlStringToPdfBlob(html);
-			const base = (downloadFileName || title || 'print-preview')
-				.replace(/[^\w.-]+/g, '_')
-				.slice(0, 120);
+			const blob = await htmlStringToPdfBlob(html, {
+				documentTitle: base
+			});
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement('a');
 			a.href = url;
-			a.download = `${base}.pdf`;
+			a.download = fileName;
+			a.rel = 'noopener';
+			a.style.display = 'none';
+			document.body.appendChild(a);
 			a.click();
-			URL.revokeObjectURL(url);
+			a.remove();
+			window.setTimeout(() => URL.revokeObjectURL(url), 200);
 		} finally {
 			isDownloading = false;
 		}

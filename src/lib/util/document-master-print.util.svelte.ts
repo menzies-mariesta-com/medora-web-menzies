@@ -11,6 +11,8 @@ import {
 	buildPrintDocumentHtml,
 	preprocessDocumentBodyForLayout
 } from '$lib/util/print-document-html.util';
+import { buildDocumentMasterDownloadFileBase } from '$lib/util/print-download-filename.util';
+import { resolvePrintDownloadFileBaseFromHtml } from '$lib/util/print-document-preview-meta.util';
 import type {
 	ClinicalDocumentRow,
 	DocumentMasterPrintBootstrap
@@ -204,6 +206,10 @@ export function buildPrintHtmlFromDocumentMasterBootstrap(
 	return buildPrintDocumentHtml({
 		documentHtml,
 		documentTitle,
+		downloadFileBase: buildDocumentMasterDownloadFileBase(
+			masterDoc,
+			opts.visit ?? null
+		),
 		headerHtml,
 		footerHtml,
 		setting,
@@ -256,12 +262,27 @@ export async function printHtmlInIframe(
 		await opts.onReady(doc, win);
 	}
 
+	const printDialogTitle = resolvePrintDownloadFileBaseFromHtml(html);
+	doc.title = printDialogTitle;
+
 	window.setTimeout(() => {
+		const parentTitle = document.title;
+		document.title = printDialogTitle;
+
+		const restoreParentTitle = () => {
+			document.title = parentTitle;
+		};
+		win.addEventListener('afterprint', restoreParentTitle, { once: true });
+		window.addEventListener('afterprint', restoreParentTitle, {
+			once: true
+		});
+		window.setTimeout(restoreParentTitle, 120_000);
+
 		try {
 			win.focus();
 			win.print();
 		} catch {
-			// ignore
+			restoreParentTitle();
 		}
 	}, 200);
 }
