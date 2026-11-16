@@ -5,6 +5,7 @@
  */
 
 import caseSheetDocumentCss from '$lib/asset/style/case-sheet-document.css?raw';
+import { sanitizeDownloadFileBase } from '$lib/util/print-download-filename.util';
 
 export type PrintDocumentHtmlVariant = 'browser' | 'pdfRaster';
 
@@ -299,6 +300,8 @@ export function preprocessDocumentBodyForLayout(
 export function buildPrintDocumentHtml(params: {
 	documentHtml: string;
 	documentTitle: string;
+	/** Overrides default basename derived from `documentTitle`. */
+	downloadFileBase?: string;
 	headerHtml: string;
 	footerHtml: string;
 	setting: PrintDocumentLayoutInput | null;
@@ -307,6 +310,7 @@ export function buildPrintDocumentHtml(params: {
 	const {
 		documentHtml,
 		documentTitle,
+		downloadFileBase,
 		headerHtml,
 		footerHtml,
 		setting,
@@ -322,6 +326,9 @@ export function buildPrintDocumentHtml(params: {
 	const paddingLeft = setting?.paddingLeft ?? 10;
 	const paddingRight = setting?.paddingRight ?? 10;
 	const pageSpec = resolvePrintPageSpec(setting);
+	const downloadBase = sanitizeDownloadFileBase(
+		downloadFileBase ?? documentTitle
+	);
 	const pageSizeCss =
 		(setting?.pageSize ?? 'A4').includes('mm') ||
 		(setting?.pageSize ?? 'A4').includes('in')
@@ -531,10 +538,11 @@ export function buildPrintDocumentHtml(params: {
 				data-padding-bottom-mm="${paddingBottom}"
 				data-padding-left-mm="${paddingLeft}"
 				data-padding-right-mm="${paddingRight}"
+				data-download-filename="${escapeHtml(downloadBase)}"
 			>
 			<head>
 				<meta charset="utf-8"/>
-				<title>${escapeHtml(documentTitle)}</title>
+				<title>${escapeHtml(downloadBase)}</title>
 				<style>
 					body {
 						font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif;

@@ -3,7 +3,8 @@ import { buildPrintDocumentHtml } from '$lib/util/print-document-html.util';
 import {
 	mmToPreviewPx,
 	pageHeightPx,
-	parsePrintDocumentPreviewMetaFromHtml
+	parsePrintDocumentPreviewMetaFromHtml,
+	resolvePrintDownloadFileBaseFromHtml
 } from '$lib/util/print-document-preview-meta.util';
 
 describe('print document preview meta', () => {
@@ -39,5 +40,33 @@ describe('print document preview meta', () => {
 		expect(meta?.captureWidthPx).toBeGreaterThan(700);
 		expect(pageHeightPx(meta!)).toBeGreaterThan(1000);
 		expect(mmToPreviewPx(10, meta!)).toBeGreaterThan(30);
+	});
+
+	it('resolves PDF basename from data-download-filename', () => {
+		const html = buildPrintDocumentHtml({
+			documentHtml: '<p>Body</p>',
+			documentTitle: 'Ignored title',
+			downloadFileBase: 'CASE-01-P1-V9',
+			headerHtml: '',
+			footerHtml: '',
+			setting: null,
+			variant: 'browser'
+		});
+		expect(resolvePrintDownloadFileBaseFromHtml(html)).toBe('CASE-01-P1-V9');
+	});
+
+	it('ignores template body title when root data-download-filename is set', () => {
+		const html = buildPrintDocumentHtml({
+			documentHtml: '<p><title>Medora</title></p>',
+			documentTitle: 'Medora',
+			downloadFileBase: 'bill_print-P001-V9',
+			headerHtml: '',
+			footerHtml: '',
+			setting: null,
+			variant: 'browser'
+		});
+		expect(resolvePrintDownloadFileBaseFromHtml(html)).toBe(
+			'bill_print-P001-V9'
+		);
 	});
 });

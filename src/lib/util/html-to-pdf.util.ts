@@ -5,6 +5,8 @@ export type HtmlToPdfOptions = {
 	format?: 'a4' | 'a5' | 'letter' | 'legal';
 	orientation?: 'portrait' | 'landscape';
 	captureWidthPx?: number;
+	/** PDF document / suggested download title (not the host page title). */
+	documentTitle?: string;
 };
 
 type PageInsetsMm = {
@@ -59,6 +61,16 @@ function readPdfOptionsFromHtml(doc: Document): HtmlToPdfOptions {
 
 const CANVAS_SCALE = 2;
 
+function applyPdfDocumentTitle(pdf: jsPDF, title?: string): void {
+	const t = title?.trim();
+	if (!t) return;
+	try {
+		pdf.setProperties({ title: t });
+	} catch {
+		// ignore: older jsPDF builds
+	}
+}
+
 async function rasterizeElement(
 	el: HTMLElement,
 	captureWidthPx: number
@@ -110,7 +122,8 @@ async function pdfBlobWithPaginatedChrome(
 	doc: Document,
 	captureWidthPx: number,
 	format: HtmlToPdfOptions['format'],
-	orientation: HtmlToPdfOptions['orientation']
+	orientation: HtmlToPdfOptions['orientation'],
+	documentTitle?: string
 ): Promise<Blob> {
 	const header =
 		doc.querySelector<HTMLElement>('.print-layout-table thead .print-header') ??
@@ -203,6 +216,7 @@ async function pdfBlobWithPaginatedChrome(
 		offsetMm += sliceMm;
 	}
 
+	applyPdfDocumentTitle(pdf, documentTitle);
 	return pdf.output('blob');
 }
 
@@ -210,7 +224,8 @@ async function pdfBlobFromFullRaster(
 	surface: HTMLElement,
 	captureWidthPx: number,
 	format: HtmlToPdfOptions['format'],
-	orientation: HtmlToPdfOptions['orientation']
+	orientation: HtmlToPdfOptions['orientation'],
+	documentTitle?: string
 ): Promise<Blob> {
 	const scrollHeight = Math.max(surface.scrollHeight, surface.offsetHeight);
 	const canvas = await html2canvas(surface, {
@@ -247,6 +262,7 @@ async function pdfBlobFromFullRaster(
 		heightLeft -= pageHeight;
 	}
 
+	applyPdfDocumentTitle(pdf, documentTitle);
 	return pdf.output('blob');
 }
 
@@ -279,6 +295,11 @@ export async function htmlStringToPdfBlob(
 		const orientation = opts?.orientation ?? fromHtml.orientation ?? 'portrait';
 		const captureWidthPx =
 			opts?.captureWidthPx ?? fromHtml.captureWidthPx ?? 794;
+		const documentTitle =
+			opts?.documentTitle?.trim() ||
+			doc.documentElement.getAttribute('data-download-filename')?.trim() ||
+			doc.title?.trim() ||
+			undefined;
 
 		iframe.style.width = `${captureWidthPx}px`;
 		iframe.style.minHeight = '400px';
@@ -300,7 +321,8 @@ export async function htmlStringToPdfBlob(
 				doc,
 				captureWidthPx,
 				format,
-				orientation
+				orientation,
+				documentTitle
 			);
 		}
 
@@ -308,7 +330,13 @@ export async function htmlStringToPdfBlob(
 			doc.querySelector<HTMLElement>('.print-page') ??
 			doc.querySelector<HTMLElement>('.print-surface') ??
 			doc.body;
-		return pdfBlobFromFullRaster(surface, captureWidthPx, format, orientation);
+		return pdfBlobFromFullRaster(
+			surface,
+			captureWidthPx,
+			format,
+			orientation,
+			documentTitle
+		);
 	} finally {
 		iframe.remove();
 	}

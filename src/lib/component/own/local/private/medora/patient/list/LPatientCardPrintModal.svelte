@@ -8,6 +8,7 @@
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import { buildPrintDocumentHtml } from '$lib/util/print-document-html.util';
+	import { sanitizeDownloadFileBase } from '$lib/util/print-download-filename.util';
 	import { printHtmlInIframe } from '$lib/util/document-master-print.util.svelte';
 	import { page } from '$app/state';
 	import type { PatientWithRelations } from '$lib/model/type/medora/patient.type';
@@ -202,9 +203,13 @@
 	 */
 	const printHtml = $derived.by(() => {
 		if (!patient) return '';
+		const name = patientFullName !== '—' ? patientFullName : 'patient';
 		return buildPrintDocumentHtml({
 			documentHtml: buildPatientCardBodyHtml(),
 			documentTitle: 'Patient card',
+			downloadFileBase: sanitizeDownloadFileBase(
+				`patient_card_${name}`
+			),
 			headerHtml: '',
 			footerHtml: '',
 			setting: {
