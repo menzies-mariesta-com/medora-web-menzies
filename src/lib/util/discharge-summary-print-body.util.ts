@@ -30,7 +30,7 @@ function sectionHtml(
 	return `<section class="case-sheet-section"><h3>${escapeHtml(title)}</h3>${content}</section>`;
 }
 
-/** Body HTML for Document Master `{{print.body_html}}` on discharge summary. */
+/** Body HTML for Document Master `{{print_body_html}}` on discharge summary. */
 export function buildDischargeSummaryPrintBodyHtml(opts: {
 	labels: DischargeSummaryPrintLabels;
 	hospitalCourse: string;

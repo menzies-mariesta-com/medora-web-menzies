@@ -70,6 +70,8 @@
 				return paraglideMsg('admin_nav_monitoring', 'Monitoring');
 			case AdminPageKeyEnum.ICD:
 				return paraglideMsg('admin_nav_icd', 'ICD codes');
+			case AdminPageKeyEnum.GLOBAL_DOCUMENTS:
+				return paraglideMsg('admin_nav_global_documents', 'Global documents');
 			case AdminPageKeyEnum.TEAM:
 				return paraglideMsg('admin_nav_team', 'Team');
 			default:

@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, desc, eq, isNull, ne, or } from 'drizzle-orm';
+import { and, count, desc, eq, ne } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -24,14 +24,21 @@ export async function assertDocumentSettingAccessible(
 ): Promise<void> {
 	await ensureCanAccessHospital(event, hospitalId);
 
-	const row = await ensureDb().query.documentSettingTable.findFirst({
-		where: and(
-			eq(table.documentSettingTable.id, documentSettingId),
-			ne(table.documentSettingTable.statusId, StatusEnum.DELETED)
+	const [row] = await ensureDb()
+		.select({
+			id: table.hospitalDocumentSettingsTable.id,
+			hospitalId: table.hospitalDocumentSettingsTable.hospitalId
+		})
+		.from(table.hospitalDocumentSettingsTable)
+		.where(
+			and(
+				eq(table.hospitalDocumentSettingsTable.id, documentSettingId),
+				ne(table.hospitalDocumentSettingsTable.statusId, StatusEnum.DELETED)
+			)
 		)
-	});
+		.limit(1);
 	if (!row) throw error(404, 'Document setting not found');
-	if (row.hospitalId != null && row.hospitalId !== hospitalId) {
+	if (row.hospitalId !== hospitalId) {
 		throw error(400, 'Document setting is not available for this hospital');
 	}
 }
@@ -41,7 +48,6 @@ export async function getDocumentSettingsPaginated(
 	params: PaginationParams & {
 		hospitalId: string;
 		statusId?: number | null;
-		includeGlobal?: boolean;
 	}
 ): Promise<PaginatedResult<DocumentSettingWithRelations>> {
 	await ensureCanAccessHospital(event, params.hospitalId, {
@@ -51,31 +57,25 @@ export async function getDocumentSettingsPaginated(
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
 
-	const hospitalFilter = params.includeGlobal
-		? or(
-				eq(table.documentSettingTable.hospitalId, params.hospitalId),
-				isNull(table.documentSettingTable.hospitalId)
-			)
-		: eq(table.documentSettingTable.hospitalId, params.hospitalId);
 	const whereExpr = and(
-		hospitalFilter,
+		eq(table.hospitalDocumentSettingsTable.hospitalId, params.hospitalId),
 		paginatedEntityStatusEq(
-			table.documentSettingTable.statusId,
+			table.hospitalDocumentSettingsTable.statusId,
 			params.statusId
 		)
 	);
 
 	const [data, countResult] = await Promise.all([
-		ensureDb().query.documentSettingTable.findMany({
-			where: whereExpr,
-			with: { documentType: true, hospital: true, status: true },
-			orderBy: (t) => desc(t.createdAt),
-			limit,
-			offset
-		}) as unknown as Promise<DocumentSettingWithRelations[]>,
+		ensureDb()
+			.select()
+			.from(table.hospitalDocumentSettingsTable)
+			.where(whereExpr)
+			.orderBy(desc(table.hospitalDocumentSettingsTable.createdAt))
+			.limit(limit)
+			.offset(offset),
 		ensureDb()
 			.select({ count: count() })
-			.from(table.documentSettingTable)
+			.from(table.hospitalDocumentSettingsTable)
 			.where(whereExpr)
 	]);
 	const total = countResult[0]?.count ?? 0;
@@ -99,7 +99,7 @@ export async function createDocumentSetting(
 			'You can only manage document settings of your own hospitals'
 	});
 	const [inserted] = await ensureDb()
-		.insert(table.documentSettingTable)
+		.insert(table.hospitalDocumentSettingsTable)
 		.values(input)
 		.returning();
 	if (!inserted) throw new Error('Failed to create document setting');
@@ -111,21 +111,18 @@ export async function updateDocumentSetting(
 	input: DocumentSettingSchemaUpdate & { id: number }
 ): Promise<DocumentSettingSchema> {
 	const [row] = await ensureDb()
-		.select({ hospitalId: table.documentSettingTable.hospitalId })
-		.from(table.documentSettingTable)
-		.where(eq(table.documentSettingTable.id, input.id))
+		.select({ hospitalId: table.hospitalDocumentSettingsTable.hospitalId })
+		.from(table.hospitalDocumentSettingsTable)
+		.where(eq(table.hospitalDocumentSettingsTable.id, input.id))
 		.limit(1);
 	if (!row) throw error(404, 'Document setting not found');
-	if (row.hospitalId == null) {
-		throw error(403, 'System document settings cannot be edited');
-	}
 	await ensureCanAccessHospital(event, row.hospitalId);
 
 	const { id, ...data } = input;
 	const [updated] = await ensureDb()
-		.update(table.documentSettingTable)
+		.update(table.hospitalDocumentSettingsTable)
 		.set(data)
-		.where(eq(table.documentSettingTable.id, id))
+		.where(eq(table.hospitalDocumentSettingsTable.id, id))
 		.returning();
 	if (!updated) throw new Error('Failed to update document setting');
 	return updated;
@@ -136,18 +133,15 @@ export async function deleteDocumentSetting(
 	input: { id: number }
 ): Promise<void> {
 	const [row] = await ensureDb()
-		.select({ hospitalId: table.documentSettingTable.hospitalId })
-		.from(table.documentSettingTable)
-		.where(eq(table.documentSettingTable.id, input.id))
+		.select({ hospitalId: table.hospitalDocumentSettingsTable.hospitalId })
+		.from(table.hospitalDocumentSettingsTable)
+		.where(eq(table.hospitalDocumentSettingsTable.id, input.id))
 		.limit(1);
 	if (!row) throw error(404, 'Document setting not found');
-	if (row.hospitalId == null) {
-		throw error(403, 'System document settings cannot be deleted');
-	}
 	await ensureCanAccessHospital(event, row.hospitalId);
 
 	await ensureDb()
-		.update(table.documentSettingTable)
+		.update(table.hospitalDocumentSettingsTable)
 		.set({ statusId: StatusEnum.INACTIVE })
-		.where(eq(table.documentSettingTable.id, input.id));
+		.where(eq(table.hospitalDocumentSettingsTable.id, input.id));
 }

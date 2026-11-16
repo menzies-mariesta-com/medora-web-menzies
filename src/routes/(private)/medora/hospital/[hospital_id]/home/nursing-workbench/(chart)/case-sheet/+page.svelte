@@ -2,7 +2,7 @@
 	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
-	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
+	import PrintPreview from '$lib/component/own/library/menzies/PrintPreview.svelte';
 	import LucideSave from '$lib/component/own/library/lucide/LucideSave.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { CaseSheetGetResponse } from '$lib/model/type/medora/case-sheet.type';
@@ -12,7 +12,7 @@
 		ServiceOrderDetailListRow
 	} from '$lib/model/type/medora/ui-rows.type';
 	import { m } from '$lib/paraglide/messages';
-	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
+	import { DocumentTypeId } from '$lib/model/constant/document-type-id.constant';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import type { CaseSheetPrintFormatters } from '$lib/util/case-sheet-print-body.util';
 	import type { CaseSheetPrintLabels } from '$lib/util/case-sheet-print-body.util';
@@ -22,8 +22,7 @@
 	} from '$lib/util/case-sheet-document-preview.util';
 	import {
 		buildPrintHtmlFromDocumentMasterBootstrap,
-		fetchDocumentPrintBootstrap,
-		printFromDocumentMasterBootstrap
+		fetchDocumentPrintBootstrap
 	} from '$lib/util/document-master-print.util.svelte';
 	import { persistEmrPrintPdf } from '$lib/util/emr-print-persist.util';
 	import {
@@ -33,6 +32,7 @@
 	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { printByFromPage } from '$lib/tool/emr/document-master-client-print.util';
 
 	type PatientVisitWithRelations = any;
 	type PatientAllergyWithRelations = any;
@@ -69,21 +69,19 @@
 		PatientFormEntryWithRelations[]
 	>([]);
 
-	let printBootstrap = $state<DocumentMasterPrintBootstrap | null>(null);
+	let printBootstrap = $state<DocumentMasterPrintBootstrap | null>(
+		null
+	);
 	let printTemplateReady = $state(false);
+	let selectedPrintDocumentId = $state<number | null>(null);
 
 	let isLoading = $state(false);
-	let isPrinting = $state(false);
 	let isSaving = $state(false);
 	let mounted = $state(false);
 
 	const toastService = new ToastService();
 
-	const printByName = $derived(
-		typeof page.data?.printByName === 'string'
-			? page.data.printByName
-			: ''
-	);
+	const printByName = $derived(printByFromPage(page));
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	lifeCycleUtil.onMount(() => {
@@ -149,7 +147,8 @@
 			orderColDescription: m.observation_emr_instruction(),
 			orderColTaxAmount: m.observation_emr_tax_amount(),
 			orderColDiscount: m.op_billing_print_discount(),
-			orderColNursingComplete: m.nursing_case_sheet_col_nursing_complete(),
+			orderColNursingComplete:
+				m.nursing_case_sheet_col_nursing_complete(),
 			generatedFooter: m.nursing_case_sheet_generated()
 		};
 	}
@@ -157,7 +156,8 @@
 	function caseSheetFormatters(): CaseSheetPrintFormatters {
 		return {
 			formatText,
-			formatDateTime: (value) => formatMenziesTableDateTime(value, '–'),
+			formatDateTime: (value) =>
+				formatMenziesTableDateTime(value, '–'),
 			formatVital,
 			formatNumberDisplay,
 			getVitalDisplayDate
@@ -202,7 +202,10 @@
 	}
 
 	const caseSheetPreviewHtml = $derived.by(() => {
-		if (!printTemplateReady || !printBootstrap?.document?.documentText) {
+		if (
+			!printTemplateReady ||
+			!printBootstrap?.document?.documentText
+		) {
 			return '';
 		}
 		if (!visitRow) return '';
@@ -218,13 +221,26 @@
 		}
 	});
 
-	async function ensurePrintBootstrap(): Promise<DocumentMasterPrintBootstrap | null> {
-		if (printBootstrap?.document?.documentText) return printBootstrap;
+	function bootstrapMatchesSelection(
+		bootstrap: DocumentMasterPrintBootstrap | null
+	): boolean {
+		const doc = bootstrap?.document;
+		if (!doc?.documentText) return false;
+		if (selectedPrintDocumentId == null) return true;
+		return doc.id === selectedPrintDocumentId;
+	}
+
+	async function loadPrintBootstrap(
+		documentId: number | null = selectedPrintDocumentId
+	): Promise<DocumentMasterPrintBootstrap | null> {
 		if (!hospitalId) return null;
 		try {
 			const bootstrap = await fetchDocumentPrintBootstrap(
 				hospitalId,
-				DOCUMENT_PRINT_CODE.CASE_SHEET
+				{
+					documentTypeId: DocumentTypeId.CASE_SHEET_PRINT,
+					documentId
+				}
 			);
 			printBootstrap = bootstrap;
 			printTemplateReady = Boolean(bootstrap.document?.documentText);
@@ -235,6 +251,11 @@
 			printTemplateReady = false;
 			return null;
 		}
+	}
+
+	async function ensurePrintBootstrap(): Promise<DocumentMasterPrintBootstrap | null> {
+		if (bootstrapMatchesSelection(printBootstrap)) return printBootstrap;
+		return loadPrintBootstrap();
 	}
 
 	async function loadCaseSheet() {
@@ -296,7 +317,7 @@
 
 	$effect(() => {
 		if (!mounted || !hospitalId) return;
-		void ensurePrintBootstrap();
+		void loadPrintBootstrap(selectedPrintDocumentId);
 	});
 
 	$effect(() => {
@@ -314,41 +335,6 @@
 		}
 		void loadCaseSheet();
 	});
-
-	async function printCaseSheet() {
-		if (!visitId || !visitRow || !hospitalId) {
-			toastService.addToast(
-				'Select a visit to print.',
-				StatusColorEnum.WARNING
-			);
-			return;
-		}
-
-		isPrinting = true;
-		try {
-			const bootstrap = await ensurePrintBootstrap();
-			if (!bootstrap?.document?.documentText) {
-				toastService.addToast(
-					'Failed to prepare case sheet print. Run DB seed or configure CASE_SHEET_PRINT in Document Master.',
-					StatusColorEnum.ERROR
-				);
-				return;
-			}
-
-			await printFromDocumentMasterBootstrap(
-				bootstrap,
-				buildCaseSheetPrintOpts()
-			);
-		} catch (err) {
-			console.error('Case sheet print failed', err);
-			toastService.addToast(
-				'Failed to prepare case sheet print. Run DB seed or configure CASE_SHEET_PRINT in Document Master.',
-				StatusColorEnum.ERROR
-			);
-		} finally {
-			isPrinting = false;
-		}
-	}
 
 	async function saveCaseSheet() {
 		if (!visitId || !visitRow || !hospitalId) {
@@ -383,7 +369,7 @@
 			const htmlPdf = buildPrintHtmlFromDocumentMasterBootstrap(
 				bootstrap,
 				printOpts,
-				'pdfRaster'
+				'browser'
 			);
 			const blob = await htmlStringToPdfBlob(htmlPdf);
 			const safeBase =
@@ -454,33 +440,15 @@
 						<button
 							type="button"
 							class="btn btn-ghost btn-square btn-primary"
-							class:cursor-pointer={!isSaving && !isPrinting}
-							class:cursor-not-allowed={isSaving || isPrinting}
+							class:cursor-pointer={!isSaving}
+							class:cursor-not-allowed={isSaving}
 							class:loading={isSaving}
-							disabled={isSaving || isPrinting}
+							disabled={isSaving}
 							aria-busy={isSaving}
 							aria-label={m.save()}
 							onclick={saveCaseSheet}
 						>
 							<LucideSave className="size-4" />
-						</button>
-					</div>
-					<div
-						class="tooltip tooltip-secondary"
-						data-tip={m.nursing_case_sheet_print()}
-					>
-						<button
-							type="button"
-							class="btn btn-ghost btn-square btn-secondary"
-							class:cursor-pointer={!isSaving && !isPrinting}
-							class:cursor-not-allowed={isSaving || isPrinting}
-							class:loading={isPrinting}
-							disabled={isSaving || isPrinting}
-							aria-busy={isPrinting}
-							aria-label={m.nursing_case_sheet_print()}
-							onclick={printCaseSheet}
-						>
-							<LucidePrinter className="size-4" />
 						</button>
 					</div>
 				</div>
@@ -492,34 +460,21 @@
 					message="Failed to prepare case sheet print. Run DB seed or configure CASE_SHEET_PRINT in Document Master."
 					className="z-0"
 				/>
-			{:else if !caseSheetPreviewHtml}
-				<div
-					class="flex min-h-[50vh] items-center justify-center text-sm text-base-content/60"
-					role="status"
-				>
-					<span class="loading loading-spinner loading-md"></span>
-				</div>
-			{:else}
-				<!-- Identical HTML to print dialog / saved PDF (Document Master + print shell) -->
-				<iframe
-					class="case-sheet-print-preview"
+			{:else if hospitalId}
+				<PrintPreview
+					html={caseSheetPreviewHtml}
 					title={m.nursing_case_sheet_title()}
-					srcdoc={caseSheetPreviewHtml}
-				></iframe>
+					minHeight="min-h-[75vh]"
+					showDownloadButton={false}
+					printLabel={m.nursing_case_sheet_print()}
+					documentTemplateHospitalId={hospitalId}
+					documentTemplateTypeId={DocumentTypeId.CASE_SHEET_PRINT}
+					bind:selectedDocumentTemplateId={selectedPrintDocumentId}
+					emptyMessage={caseSheetPreviewHtml
+						? 'No preview'
+						: 'Loading preview…'}
+				/>
 			{/if}
 		{/if}
 	{/if}
 </div>
-
-<style>
-	.case-sheet-print-preview {
-		display: block;
-		width: 100%;
-		max-width: 210mm;
-		min-height: 75vh;
-		margin: 0 auto;
-		border: 1px solid color-mix(in oklab, currentColor 18%, transparent);
-		border-radius: 0.25rem;
-		background: #fff;
-	}
-</style>

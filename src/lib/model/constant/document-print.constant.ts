@@ -1,8 +1,9 @@
-/** Master `document.code` values for system print templates (seeded). */
+import { DocumentTypeId } from '$lib/model/constant/document-type-id.constant';
+
+/** Hospital `document.code` values for transactional prints (provisioned per hospital). */
 export const DOCUMENT_PRINT_CODE = {
+	BILL: 'BILL_PRINT',
 	NURSING_COMPLETE: 'NURSING_COMPLETE_PRINT',
-	OP_BILL: 'OP_BILL_PRINT',
-	IP_BILL: 'IP_BILL_PRINT',
 	VISIT_LABEL: 'VISIT_LABEL_PRINT',
 	IPD_WRISTBAND: 'IPD_WRISTBAND_PRINT',
 	APPOINTMENT_SLIP: 'APPOINTMENT_SLIP_PRINT',
@@ -13,6 +14,24 @@ export const DOCUMENT_PRINT_CODE = {
 
 export type DocumentPrintCode =
 	(typeof DOCUMENT_PRINT_CODE)[keyof typeof DOCUMENT_PRINT_CODE];
+
+/** @deprecated Use DOCUMENT_PRINT_CODE.BILL */
+export const LEGACY_OP_BILL_PRINT = 'OP_BILL_PRINT';
+/** @deprecated Use DOCUMENT_PRINT_CODE.BILL */
+export const LEGACY_IP_BILL_PRINT = 'IP_BILL_PRINT';
+
+export const PRINT_CODE_TO_DOCUMENT_TYPE_ID: Record<string, number> = {
+	[DOCUMENT_PRINT_CODE.BILL]: DocumentTypeId.BILL_PRINT,
+	[DOCUMENT_PRINT_CODE.NURSING_COMPLETE]: DocumentTypeId.NURSING_COMPLETE_PRINT,
+	[DOCUMENT_PRINT_CODE.CASE_SHEET]: DocumentTypeId.CASE_SHEET_PRINT,
+	[DOCUMENT_PRINT_CODE.DISCHARGE_SUMMARY]: DocumentTypeId.DISCHARGE_SUMMARY_PRINT,
+	[DOCUMENT_PRINT_CODE.MED_ORDER_RECEIPT]: DocumentTypeId.MED_ORDER_RECEIPT_PRINT,
+	[DOCUMENT_PRINT_CODE.APPOINTMENT_SLIP]: DocumentTypeId.APPOINTMENT_SLIP_PRINT,
+	[DOCUMENT_PRINT_CODE.VISIT_LABEL]: DocumentTypeId.VISIT_LABEL_PRINT,
+	[DOCUMENT_PRINT_CODE.IPD_WRISTBAND]: DocumentTypeId.IPD_WRISTBAND_PRINT,
+	[LEGACY_OP_BILL_PRINT]: DocumentTypeId.BILL_PRINT,
+	[LEGACY_IP_BILL_PRINT]: DocumentTypeId.BILL_PRINT
+};
 
 /** Seeded blank clinical forms for pen-fill print on the EMR clinical document page. */
 export const CLINICAL_FORM_CODE = {
@@ -31,23 +50,24 @@ export const CLINICAL_FORM_CODE = {
 export type ClinicalFormCode =
 	(typeof CLINICAL_FORM_CODE)[keyof typeof CLINICAL_FORM_CODE];
 
-const SYSTEM_PRINT_CODE_SET = new Set<string>(
-	Object.values(DOCUMENT_PRINT_CODE)
-);
-
-/** Document types shown on the clinical document page (excludes Help). */
-export const CLINICAL_DOCUMENT_TYPE_NAMES = [
-	'consent',
-	'instruction',
-	'form',
-	'certificate'
-] as const;
+const SYSTEM_PRINT_CODE_SET = new Set<string>([
+	...Object.values(DOCUMENT_PRINT_CODE),
+	LEGACY_OP_BILL_PRINT,
+	LEGACY_IP_BILL_PRINT
+]);
 
 export function isSystemPrintDocumentCode(
 	code: string | null | undefined
 ): boolean {
 	if (!code) return false;
 	return SYSTEM_PRINT_CODE_SET.has(code);
+}
+
+export function documentTypeIdForPrintCode(
+	code: string | null | undefined
+): number | null {
+	if (!code) return null;
+	return PRINT_CODE_TO_DOCUMENT_TYPE_ID[code] ?? null;
 }
 
 /** @deprecated Use DOCUMENT_PRINT_CODE.NURSING_COMPLETE */

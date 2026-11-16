@@ -222,6 +222,14 @@ export async function createHospital(
 		.values(values)
 		.returning();
 	if (!inserted) throw error(500, 'Failed to create hospital');
+	try {
+		const { provisionDefaultHospitalDocuments } = await import(
+			'$lib/server/medora/document-master/provision-hospital-documents.server'
+		);
+		await provisionDefaultHospitalDocuments(inserted.id);
+	} catch {
+		// Hospital is usable; document templates can be enabled manually.
+	}
 	return inserted;
 }
 

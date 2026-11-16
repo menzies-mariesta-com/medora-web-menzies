@@ -24,7 +24,8 @@ export enum AdminPageKeyEnum {
 	STAFF = 'staff',
 	MONITORING = 'monitoring',
 	ICD = 'icd',
-	TEAM = 'team'
+	TEAM = 'team',
+	GLOBAL_DOCUMENTS = 'global_documents'
 }
 
 export type AdminPermissionAction =

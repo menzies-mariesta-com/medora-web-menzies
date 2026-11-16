@@ -11,6 +11,8 @@ import type {
 	countryTable,
 	craftGroupTable,
 	diagnosisTypeTable,
+	documentTable,
+	documentTypeTable,
 	formNameTable,
 	genderTable,
 	identityTypeTable,
@@ -234,3 +236,13 @@ export type VisitTypeSchemaInsert = InferInsertModel<
 	typeof visitTypeTable
 >;
 export type VisitTypeSchemaUpdate = Partial<VisitTypeSchemaInsert>;
+
+export type DocumentTypeSchema = InferSelectModel<typeof documentTypeTable>;
+export type DocumentTypeSchemaInsert = InferInsertModel<
+	typeof documentTypeTable
+>;
+export type DocumentTypeSchemaUpdate = Partial<DocumentTypeSchemaInsert>;
+
+export type DocumentSchema = InferSelectModel<typeof documentTable>;
+export type DocumentSchemaInsert = InferInsertModel<typeof documentTable>;
+export type DocumentSchemaUpdate = Partial<DocumentSchemaInsert>;

@@ -1,6 +1,7 @@
 import type { CaseSheetPrintFormatters } from '$lib/util/case-sheet-print-body.util';
 import { buildCaseSheetPrintBodyHtml } from '$lib/util/case-sheet-print-body.util';
 import type { CaseSheetPrintLabels } from '$lib/util/case-sheet-print-body.util';
+import { extraPrintBodyHtml } from '$lib/util/document-placeholder.util';
 import type { PrintFromDocumentMasterOptions } from '$lib/util/document-master-print.util.svelte';
 import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 
@@ -61,15 +62,15 @@ export function buildCaseSheetDocumentMasterPrintOptions(input: {
 		visit: input.visit,
 		printBy: input.printBy,
 		extraPlaceholders: {
-			'{{print.body_html}}': input.bodyHtml,
-			'{{print.datetime}}': printedAt,
-			'{{print.label_title}}': input.labels.title,
-			'{{print.label_visit_no}}': input.labels.visitNo,
-			'{{print.label_patient}}': input.labels.patient,
-			'{{print.label_patient_code}}': input.labels.patientCode,
-			'{{print.label_visit_date}}': input.labels.visitDate,
-			'{{print.label_doctor}}': input.labels.doctor,
-			'{{print.label_generated}}': input.labels.generated
+			...extraPrintBodyHtml(input.bodyHtml),
+			'{{print_datetime}}': printedAt,
+			'{{print_label_title}}': input.labels.title,
+			'{{print_label_visit_no}}': input.labels.visitNo,
+			'{{print_label_patient}}': input.labels.patient,
+			'{{print_label_patient_code}}': input.labels.patientCode,
+			'{{print_label_visit_date}}': input.labels.visitDate,
+			'{{print_label_doctor}}': input.labels.doctor,
+			'{{print_label_generated}}': input.labels.generated
 		}
 	};
 }

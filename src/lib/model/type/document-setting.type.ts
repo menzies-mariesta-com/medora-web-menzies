@@ -9,7 +9,6 @@ export type DocumentTypeRow = PatientRegMasterTimestamps & {
 export type DocumentSettingRow = PatientRegMasterTimestamps & {
 	id: number;
 	name: string;
-	documentTypeId: number | null;
 	hospitalId: string | null;
 	marginTop: number | null;
 	marginBottom: number | null;
@@ -42,7 +41,6 @@ export type DocumentStatusRelationRow = PatientRegMasterTimestamps & {
 };
 
 export type DocumentSettingWithRelations = DocumentSettingRow & {
-	documentType?: DocumentTypeRow | null;
 	hospital?: DocumentHospitalRelationRow | null;
 	status?: DocumentStatusRelationRow | null;
 };
