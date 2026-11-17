@@ -1,10 +1,10 @@
 ---
 title: "Trauma Log"
-description: "How to use Trauma Log in Nursing Workbench."
+description: "How to use Trauma Log in Emergency."
 docType: workflow
 slug: workflows/nursing-workbench-trauma-log
 pageId: 400112
-moduleId: 4
+moduleId: 12
 pageUrl: "/medora/home/nursing-workbench/trauma-log"
 generated: true
 sinceVersion: "1.5.0"
@@ -13,7 +13,7 @@ lastReviewed: "2026-03-21"
 
 ## What you will do
 
-Use **Trauma Log** in **Nursing Workbench** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
+Use **Trauma Log** in **Emergency** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
 
 ## Before you start
 
@@ -23,7 +23,7 @@ Use **Trauma Log** in **Nursing Workbench** for everyday hospital tasks. A full 
 
 ## Steps
 
-1. Open **Nursing Workbench** from the home menu.
+1. Open **Emergency** from the home menu.
 2. Open **Trauma Log**.
 3. Follow the on-screen forms and save when you are done.
 
@@ -31,7 +31,7 @@ Use **Trauma Log** in **Nursing Workbench** for everyday hospital tasks. A full 
 
 ```mermaid
 flowchart LR
-  signIn[Sign in] --> module[Open Nursing Workbench]
+  signIn[Sign in] --> module[Open Emergency]
   module --> screen[Open Trauma Log]
   screen --> done[Finish task]
 ```

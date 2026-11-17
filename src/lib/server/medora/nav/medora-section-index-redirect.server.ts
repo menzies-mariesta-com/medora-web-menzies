@@ -3,6 +3,7 @@ import {
 	medoraHospitalPageUrl,
 	requestPathToDbPageUrl
 } from '$lib/model/enum/routes.enum';
+import { SECTION_INDEX_SELF_RENDERING_PAGE_URLS } from '$lib/model/const/section-index-self-rendering.const';
 
 export type MedoraNavPageRow = {
 	id: number;
@@ -32,7 +33,16 @@ export function medoraSectionIndexRedirectTarget(
 ): string | null {
 	if (!hospitalId) return null;
 	const dbPageUrl = requestPathToDbPageUrl(pathname, hospitalId);
-	if (!dbPageUrl || normPath(dbPageUrl) === normPath('/medora/home')) {
+	if (
+		!dbPageUrl ||
+		normPath(dbPageUrl) === normPath('/medora/home')
+	) {
+		return null;
+	}
+	// Self-rendering section pages keep their own tab active instead of bouncing to a child.
+	if (
+		SECTION_INDEX_SELF_RENDERING_PAGE_URLS.has(normPath(dbPageUrl))
+	) {
 		return null;
 	}
 
@@ -44,7 +54,9 @@ export function medoraSectionIndexRedirectTarget(
 	const children = pages
 		.filter((p) => p.parentId === indexPage.id)
 		.sort((a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0));
-	const first = children.find((p) => p.pageUrl?.startsWith('/medora/home'));
+	const first = children.find((p) =>
+		p.pageUrl?.startsWith('/medora/home')
+	);
 	if (!first?.pageUrl) return null;
 
 	const target = medoraHospitalPageUrl(hospitalId, first.pageUrl);
@@ -69,12 +81,9 @@ export function medoraMaybeRedirectSectionIndex(input: {
 	if (target) throw redirect(302, target);
 }
 
-function withSectionIndexRedirect<T extends { pageData: MedoraNavPageRow[] }>(
-	hospitalId: string,
-	pathname: string,
-	payload: T,
-	search = ''
-): T {
+function withSectionIndexRedirect<
+	T extends { pageData: MedoraNavPageRow[] }
+>(hospitalId: string, pathname: string, payload: T, search = ''): T {
 	if (payload.pageData.length > 0) {
 		medoraMaybeRedirectSectionIndex({
 			hospitalId,

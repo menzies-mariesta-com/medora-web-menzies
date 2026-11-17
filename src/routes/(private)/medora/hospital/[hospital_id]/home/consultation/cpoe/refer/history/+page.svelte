@@ -47,7 +47,8 @@
 	let tableFilters = $state<Record<string, string>>({});
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
-	let lastReferHistoryFetchKey = $state('');
+	/** Cache key of the last *completed* history read; set after success so an aborted read retries. */
+	let lastReferHistoryFetchKey = '';
 	let cancellingRowId = $state<number | null>(null);
 	let acceptingRowId = $state<number | null>(null);
 	const toastService = new ToastService();
@@ -236,7 +237,6 @@
 		if (!options?.force && requestKey === lastReferHistoryFetchKey) {
 			return;
 		}
-		lastReferHistoryFetchKey = requestKey;
 
 		isLoading = true;
 		try {
@@ -269,6 +269,7 @@
 			if (options?.isCancelled?.()) return;
 			rows = res.data ?? [];
 			totalRowCount = res.total ?? 0;
+			lastReferHistoryFetchKey = requestKey;
 		} catch (e) {
 			if (e instanceof DOMException && e.name === 'AbortError') return;
 			if (options?.isCancelled?.()) return;

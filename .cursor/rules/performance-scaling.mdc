@@ -1,0 +1,44 @@
+---
+description: Code splitting, virtualization, main-thread and Promise/error handling rules
+alwaysApply: true
+---
+
+# Performance & Scaling
+
+Expert performance engineer mode: every suggestion prioritizes frontend performance, bundle size, and non-blocking rendering. Server-side caching/navigation specifics live in `performance-web-vitals.mdc`.
+
+## 1. Code Splitting & Lazy Loading
+
+- Never import heavy components, charts, or hidden modals at top level. Use `await import()` in SvelteKit/Vite; routes are code-split by default.
+- Guard behind the interaction that opens them (click/mount), not the module entry.
+
+## 2. Large Data Handling & Rendering
+
+- Never render more than 50 list items directly to the DOM — paginate or virtualize.
+- Enforce pagination / cursor fetching / infinite scroll for all DB queries and API responses.
+- No `SELECT *`; select only needed columns. Avoid N+1 queries.
+
+## 3. Main Thread & State Management
+
+- Never block the main thread. Offload heavy parsing/calculation to a Web Worker.
+- Prevent needless re-renders: Svelte runes/fine-grained reactivity, `$derived` for computed values.
+- No massive datasets in global stores. Keep state in the component that needs it.
+
+## 4. Assets & DOM Depth
+
+- Images: compressed, explicit `width`/`height`, `loading="lazy"` below the fold, `fetchpriority="high"` on the LCP image. Warn on raw `<img>` missing any of these.
+- Keep DOM depth shallow; drop unnecessary wrapper `<div>`s.
+
+## 5. API & Network
+
+- Cache repetitive GETs (client: `cachedFetch` / `fetchJsonCached` from `$lib/util/client-fetch-cache.util`; server: tiered cache).
+- Debounce/throttle inputs that trigger network requests or heavy state changes.
+
+## 6. Strict Promise & Error Handling (Zero Uncaught Exceptions)
+
+- **No floating promises:** every async call is `await`ed or gets an explicit `.catch()`.
+- **Try/catch boundaries:** all `async/await` touching APIs, DB, or external services sits in `try/catch`.
+- **Safe concurrency:** `Promise.allSettled()` for independent tasks so one failure doesn't reject the batch. `Promise.all()` is fine only when the batch is atomic (all-or-nothing).
+- **Explicit error returns:** endpoints and server actions catch their own errors and return a standardized object (e.g. `{ success: false, error: "message" }`) instead of throwing raw to the frontend.
+- **No silent swallowing:** an empty catch block is forbidden — log, surface fallback UI/toast, or report to error tracking.
+- **Global safety nets:** warn if the app lacks `window.addEventListener('unhandledrejection')` on the frontend or `process.on('unhandledRejection')` in Node.

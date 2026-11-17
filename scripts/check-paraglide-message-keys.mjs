@@ -17,6 +17,13 @@ const compiled = readFileSync(compiledPath, 'utf8');
 const keys = new Set(
 	[...compiled.matchAll(/^export const ([A-Za-z0-9_$]+) =/gm)].map((m) => m[1])
 );
+// Camel-case keys (`?poId=`) compile to a sanitised identifier exported under
+// their original name: `export { inv_po_approve_need_poid1 as "inv_po_approve_need_poId" }`.
+for (const [, name] of compiled.matchAll(
+	/^export \{ [A-Za-z0-9_$]+ as "([^"]+)" \}/gm
+)) {
+	keys.add(name);
+}
 
 const SKIP_DIRS = new Set(['node_modules', 'paraglide', '.svelte-kit', 'build']);
 const IMPORT_RE = /from ['"]\$lib\/paraglide\/messages['"]/;

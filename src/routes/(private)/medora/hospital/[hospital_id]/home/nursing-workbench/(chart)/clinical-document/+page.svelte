@@ -46,7 +46,7 @@
 	let isPrinting = $state(false);
 	let savingDocumentId = $state<number | null>(null);
 	const printLock = createActionLock();
-	let lastLoadedVisitId = $state<number | null>(null);
+	let lastLoadedVisitId = '';
 	let serviceLinesTableHtml = $state('');
 
 	const printByName = $derived(printByFromPage(page));
@@ -132,13 +132,16 @@
 		if (!mounted) return;
 
 		if (visitId !== lastLoadedVisitId) {
-			lastLoadedVisitId = visitId;
 			let cancelled = false;
 			const ac = new AbortController();
-			void fetchAllData({
-				signal: ac.signal,
-				isCancelled: () => cancelled
-			});
+			void (async () => {
+				await fetchAllData({
+					signal: ac.signal,
+					isCancelled: () => cancelled
+				});
+				// Only a finished load counts: a superseded attempt aborts before this.
+				if (!cancelled) lastLoadedVisitId = visitId;
+			})();
 			return () => {
 				cancelled = true;
 				ac.abort();

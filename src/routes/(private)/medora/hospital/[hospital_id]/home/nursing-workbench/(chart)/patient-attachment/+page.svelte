@@ -25,7 +25,7 @@
 		hospitalId: string;
 	} | null>(null);
 	let isLoadingVisit = $state(false);
-	let lastLoadedVisitId = $state<number | null>(null);
+	let lastLoadedVisitId = '';
 	let mounted = $state(false);
 	const lifeCycleUtil = new LifeCycleUtil();
 
@@ -77,19 +77,22 @@
 		if (!mounted) return;
 		if (visitId) {
 			if (visitId === lastLoadedVisitId) return;
-			lastLoadedVisitId = visitId;
 			let cancelled = false;
 			const ac = new AbortController();
-			void fetchVisit({
-				signal: ac.signal,
-				isCancelled: () => cancelled
-			});
+			void (async () => {
+				await fetchVisit({
+					signal: ac.signal,
+					isCancelled: () => cancelled
+				});
+				// Only a finished load counts: a superseded attempt aborts before this.
+				if (!cancelled) lastLoadedVisitId = visitId;
+			})();
 			return () => {
 				cancelled = true;
 				ac.abort();
 			};
 		} else {
-			lastLoadedVisitId = null;
+			lastLoadedVisitId = '';
 			visit = null;
 		}
 	});
