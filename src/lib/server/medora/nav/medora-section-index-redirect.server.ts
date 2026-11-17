@@ -3,8 +3,6 @@ import {
 	medoraHospitalPageUrl,
 	requestPathToDbPageUrl
 } from '$lib/model/enum/routes.enum';
-import { SECTION_INDEX_SELF_RENDERING_PAGE_URLS } from '$lib/model/const/section-index-self-rendering.const';
-
 export type MedoraNavPageRow = {
 	id: number;
 	parentId?: number | null;
@@ -39,13 +37,6 @@ export function medoraSectionIndexRedirectTarget(
 	) {
 		return null;
 	}
-	// Self-rendering section pages keep their own tab active instead of bouncing to a child.
-	if (
-		SECTION_INDEX_SELF_RENDERING_PAGE_URLS.has(normPath(dbPageUrl))
-	) {
-		return null;
-	}
-
 	const indexPage = pages.find(
 		(p) => normPath(p.pageUrl) === normPath(dbPageUrl)
 	);

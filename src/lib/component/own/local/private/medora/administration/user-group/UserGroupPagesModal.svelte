@@ -176,6 +176,31 @@
 		});
 	});
 
+	/** Module picked in the left column; `undefined` until one is chosen. */
+	let selectedModuleId = $state<number | null | undefined>(undefined);
+
+	/** A search hides every module without a hit, so the list follows `filteredPages`. */
+	const visibleModules = $derived.by(() => {
+		const withHits = new Set(
+			filteredPages.map((p) => p.moduleId ?? null)
+		);
+		return modulesForSelection.filter((m) => withHits.has(m.id));
+	});
+
+	/** Falls back to the first visible module when the selected one is filtered out. */
+	const activeModuleId = $derived(
+		selectedModuleId !== undefined &&
+			visibleModules.some((m) => m.id === selectedModuleId)
+			? selectedModuleId
+			: visibleModules[0]?.id
+	);
+
+	const activeModulePages = $derived(
+		filteredPages.filter(
+			(p) => (p.moduleId ?? null) === activeModuleId
+		)
+	);
+
 	$effect(() => {
 		const g = group;
 		if (!g) return;
@@ -395,123 +420,121 @@
 		<p class="py-4 text-base-content/70">Loading…</p>
 	{:else}
 		<WashCard
-			className="min-h-0 min-w-0 w-full max-w-7xl flex-1 flex flex-col overflow-hidden bg-base-200 shadow-sm"
+			className="min-h-0 min-w-0 w-full flex-1 flex flex-col overflow-hidden bg-base-200 shadow-sm"
 		>
-			<WashCardBody className="gap-3 overflow-hidden p-4 min-w-0">
-				<div class="flex flex-col gap-3">
-					<div
-						class="flex flex-wrap items-center justify-between gap-3"
-					>
-						<p
-							class="min-w-0 text-sm break-words text-base-content/70"
-						>
-							Tick the actions <strong>{group?.name ?? '—'}</strong> may
-							perform. A module header ticks that action on every page offering
-							it; a page row ticks all of its actions.
-						</p>
-						<div class="w-full sm:w-72">
-							<WashInputField
-								inputType="text"
-								inputPlaceholderText="Search pages by name or URL…"
-								bind:value={searchText}
-								className="w-full"
-							/>
-						</div>
-					</div>
-
-					{#if modulesForSelection.length > 0}
-						<div class="flex flex-wrap items-center gap-2 text-sm">
-							<span class="mr-1 font-semibold text-base-content/70">
-								Allow all in module:
-							</span>
-							{#each modulesForSelection as mod (mod.id ?? 'other')}
-								{@const state = moduleState(mod.id)}
-								<button
-									type="button"
-									class={`flex items-center gap-1 rounded-full border px-3 py-1 ${state.on > 0 ? 'border-primary bg-primary/10' : ''}`}
-									onclick={() => toggleModule(mod.id)}
-									aria-label={`Toggle all pages in ${mod.name}`}
-								>
-									<input
-										type="checkbox"
-										class="checkbox checkbox-xs"
-										checked={state.all}
-										indeterminate={state.on > 0 && !state.all}
-										readOnly
-										tabindex="-1"
-									/>
-									<span class="whitespace-nowrap">
-										{mod.name}
-										<span class="opacity-60">({state.total})</span>
-									</span>
-								</button>
-							{/each}
-						</div>
-					{/if}
+			<WashCardBody
+				className="min-h-0 min-w-0 flex-1 gap-3 overflow-hidden p-4"
+			>
+				<div class="shrink-0">
+					<WashInputField
+						inputType="text"
+						inputPlaceholderText="Search pages by name or URL…"
+						bind:value={searchText}
+						className="w-full"
+					/>
 				</div>
 
-				<div class="min-h-0 min-w-0 flex-1 overflow-auto">
-					<table class="table-sm table w-full">
-						<thead class="sticky top-0 z-10 bg-base-100">
-							<tr>
-								<th class="min-w-56">Module / page</th>
-								{#each ACTIONS as action (action)}
-									<th class="w-20 text-center text-xs font-semibold">
-										{ACTION_LABEL[action]}
-									</th>
-								{/each}
-							</tr>
-						</thead>
-						<tbody>
-							{#each modulesForSelection as mod (mod.id ?? 'other')}
-								{@const modState = moduleState(mod.id)}
-								{@const modPages = filteredPages.filter(
-									(p) => (p.moduleId ?? null) === mod.id
-								)}
-								{#if modPages.length > 0}
-									<tr class="bg-base-200">
-										<th scope="row" class="font-semibold">
-											<label
-												class="flex cursor-pointer items-center gap-2"
+				{#if visibleModules.length === 0}
+					<p class="py-6 text-center text-sm text-base-content/60">
+						No page matches “{searchText.trim()}”.
+					</p>
+				{:else}
+					<div
+						class="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-hidden lg:grid-cols-[minmax(14rem,18rem)_minmax(0,1fr)]"
+					>
+						<nav
+							class="rounded-box min-h-0 overflow-auto border border-base-300 bg-base-100"
+							aria-label="Modules"
+						>
+							<ul class="w-full p-1">
+								{#each visibleModules as mod (mod.id ?? 'other')}
+									{@const state = moduleState(mod.id)}
+									{@const active = mod.id === activeModuleId}
+									<li
+										class="rounded-box flex items-center gap-1 {active
+											? 'bg-primary/10'
+											: ''}"
+									>
+										<input
+											type="checkbox"
+											class="checkbox checkbox-sm ml-2 shrink-0"
+											checked={state.all}
+											indeterminate={state.on > 0 && !state.all}
+											onchange={() => toggleModule(mod.id)}
+											aria-label={`Toggle all pages in ${mod.name}`}
+										/>
+										<button
+											type="button"
+											class="rounded-box flex min-w-0 flex-1 items-center justify-between gap-2 px-2 py-2 text-left text-sm hover:bg-base-200 {active
+												? 'font-semibold'
+												: ''}"
+											aria-current={active ? 'true' : undefined}
+											onclick={() => (selectedModuleId = mod.id)}
+										>
+											<span class="truncate">{mod.name}</span>
+											<span
+												class="shrink-0 text-xs text-base-content/50"
 											>
-												<input
-													type="checkbox"
-													class="checkbox checkbox-sm"
-													checked={modState.all}
-													indeterminate={modState.on > 0 &&
-														!modState.all}
-													onchange={() => toggleModule(mod.id)}
-												/>
-												<span>{mod.name}</span>
-											</label>
-										</th>
+												{state.on}/{state.total}
+											</span>
+										</button>
+									</li>
+								{/each}
+							</ul>
+						</nav>
+
+						<div class="min-h-0 min-w-0 overflow-auto">
+							<table class="table-sm table w-full">
+								<thead class="sticky top-0 z-10 bg-base-100">
+									<tr>
+										<th class="min-w-56">Page</th>
 										{#each ACTIONS as action (action)}
-											{@const offered = modPages.some((p) =>
-												actionsOffered(p).includes(action)
-											)}
-											{@const actionState = moduleActionState(
-												mod.id,
-												action
-											)}
-											<td class="text-center">
-												{#if offered}
-													<input
-														type="checkbox"
-														class="checkbox checkbox-sm"
-														checked={actionState.all}
-														indeterminate={actionState.on > 0 &&
-															!actionState.all}
-														onchange={() =>
-															toggleModuleAction(mod.id, action)}
-														aria-label={`${ACTION_LABEL[action]} for all of ${mod.name}`}
-													/>
-												{:else}
-													<span class="text-base-content/30">—</span>
-												{/if}
-											</td>
+											<th
+												class="w-20 text-center text-xs font-semibold"
+											>
+												{ACTION_LABEL[action]}
+											</th>
 										{/each}
 									</tr>
-									{#each modPages as p (p.id)}
+								</thead>
+								<tbody>
+									{#if activeModulePages.length > 1}
+										<tr class="bg-base-200">
+											<th scope="row" class="font-semibold">
+												All pages in this module
+											</th>
+											{#each ACTIONS as action (action)}
+												{@const offered = activeModulePages.some(
+													(p) => actionsOffered(p).includes(action)
+												)}
+												{@const actionState = moduleActionState(
+													activeModuleId ?? null,
+													action
+												)}
+												<td class="text-center">
+													{#if offered}
+														<input
+															type="checkbox"
+															class="checkbox checkbox-sm"
+															checked={actionState.all}
+															indeterminate={actionState.on > 0 &&
+																!actionState.all}
+															onchange={() =>
+																toggleModuleAction(
+																	activeModuleId ?? null,
+																	action
+																)}
+															aria-label={`${ACTION_LABEL[action]} for every page in this module`}
+														/>
+													{:else}
+														<span class="text-base-content/30">—</span
+														>
+													{/if}
+												</td>
+											{/each}
+										</tr>
+									{/if}
+									{#each activeModulePages as p (p.id)}
 										{@const offered = actionsOffered(p)}
 										{@const depth = depthByPageId.get(p.id) ?? 0}
 										{@const pageOn = (grants[p.id]?.length ?? 0) > 0}
@@ -565,11 +588,11 @@
 											{/each}
 										</tr>
 									{/each}
-								{/if}
-							{/each}
-						</tbody>
-					</table>
-				</div>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				{/if}
 			</WashCardBody>
 		</WashCard>
 		<WashDialogFooter className="gap-2">

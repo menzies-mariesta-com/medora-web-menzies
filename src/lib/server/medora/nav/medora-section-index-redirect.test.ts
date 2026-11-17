@@ -31,8 +31,9 @@ const containerPages = [
 ];
 
 /**
- * The Dashboard page owns Journal / Visual as tabs but renders content itself,
- * so it is on the self-rendering skip list.
+ * The Dashboard page owns Journal / Visual as tabs. Journal is the section
+ * index (sequenceNo 1), so the Dashboard URL redirects there and the Dashboard
+ * tab stays visible with Journal highlighted.
  */
 const DASHBOARD =
 	'/medora/hospital/' +
@@ -133,15 +134,15 @@ describe('medoraSectionIndexRedirectTarget', () => {
 		).toBeNull();
 	});
 
-	/** Regression: the Dashboard tab bounced to its first child, so it could never stay active. */
-	it('never redirects the self-rendering Dashboard index', () => {
+	/** Journal is the Dashboard's index page, so the index URL opens Journal. */
+	it('sends the Dashboard index to its first child (Journal)', () => {
 		expect(
 			medoraSectionIndexRedirectTarget(
 				DASHBOARD,
 				HOSPITAL_ID,
 				dashboardPages
 			)
-		).toBeNull();
+		).toBe(`${DASHBOARD}/journal`);
 		expect(
 			medoraSectionIndexRedirectTarget(
 				DASHBOARD,
@@ -149,10 +150,10 @@ describe('medoraSectionIndexRedirectTarget', () => {
 				dashboardPages,
 				'?visitId=abc'
 			)
-		).toBeNull();
+		).toBe(`${DASHBOARD}/journal?visitId=abc`);
 	});
 
-	it('still renders the Dashboard child tabs', () => {
+	it('still returns null on the Dashboard child tabs', () => {
 		expect(
 			medoraSectionIndexRedirectTarget(
 				`${DASHBOARD}/visual`,

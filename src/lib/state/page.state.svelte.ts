@@ -5,8 +5,6 @@ import type {
 	PageWithRelations
 } from '$lib/model/type/medora/page.type';
 import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
-import { SECTION_INDEX_SELF_RENDERING_PAGE_URLS } from '$lib/model/const/section-index-self-rendering.const';
-
 export type PageTreeItem = MedoraPageRow & {
 	children: PageTreeItem[];
 };
@@ -162,12 +160,6 @@ export function getSectionIndexRedirectTarget(
 	if (!hospitalId) return null;
 	const logicalPath = pathnameForPageMatch();
 	if (normPath(logicalPath) === normPath('/medora/home')) return null;
-	// Same skip list as the server helper: these pages render their own content.
-	if (
-		SECTION_INDEX_SELF_RENDERING_PAGE_URLS.has(normPath(logicalPath))
-	) {
-		return null;
-	}
 	const indexPage = getPageData().find(
 		(p) => normPath(p.pageUrl) === normPath(logicalPath)
 	);

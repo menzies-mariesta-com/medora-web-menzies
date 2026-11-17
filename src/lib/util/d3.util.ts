@@ -28,6 +28,15 @@ export interface BaseChartOptions<T> {
 	theme?: Partial<ChartTheme>;
 }
 
+export interface LineSeries<T> {
+	data: T[];
+	yAccessor: (d: T) => number;
+	color: string;
+	label?: string;
+	/** `dots` skips the connecting path (sparse readings, e.g. weight). */
+	drawAs?: 'line' | 'dots';
+}
+
 export interface LineChartOptions<T> extends BaseChartOptions<T> {
 	xAccessor: (d: T) => Date | number;
 	yAccessor: (d: T) => number;
@@ -37,6 +46,14 @@ export interface LineChartOptions<T> extends BaseChartOptions<T> {
 	strokeWidth?: number;
 	showPoints?: boolean;
 	showGrid?: boolean;
+	/** Include 0 on the y axis (BP, heart rate) instead of hugging the data. */
+	includeZero?: boolean;
+	/** `dots` skips the connecting path for `data` (sparse readings). */
+	drawAs?: 'line' | 'dots';
+	/** Extra series drawn over `data` (e.g. diastolic beside systolic). */
+	series?: LineSeries<T>[];
+	/** Shaded normal-range rect behind the lines. */
+	band?: { min: number; max: number; color?: string };
 	tooltipFormatter?: (d: T) => string;
 }
 
@@ -46,6 +63,10 @@ export interface BarChartOptions<T> extends BaseChartOptions<T> {
 	paddingInner?: number;
 	paddingOuter?: number;
 	showGrid?: boolean;
+	/** Cap x labels; a long series would otherwise overlap them all. */
+	maxXTicks?: number;
+	/** Shaded normal-range rect behind the bars (e.g. glucose reference). */
+	band?: { min: number; max: number; color?: string };
 	tooltipFormatter?: (d: T) => string;
 }
 
@@ -86,6 +107,39 @@ function resolveTheme(theme?: Partial<ChartTheme>): ChartTheme {
 		fontFamily: theme?.fontFamily ?? DEFAULT_THEME.fontFamily,
 		fontSize: theme?.fontSize ?? DEFAULT_THEME.fontSize
 	};
+}
+
+/**
+ * Y domain for a trend. A vital reading of 36.8 °C must not sit on a 0-40 axis,
+ * so this hugs the data (5% padding) and only widens for `include`, `includeZero`
+ * or a single reading that would otherwise collapse to a zero-height domain.
+ */
+export function resolveNumericDomain(
+	values: number[],
+	opts: {
+		includeZero?: boolean;
+		include?: { min: number; max: number };
+	} = {}
+): [number, number] {
+	const finite = values.filter((v) => Number.isFinite(v));
+	const candidates = opts.include
+		? [opts.include.min, opts.include.max, ...finite]
+		: finite;
+	if (candidates.length === 0) return [0, 1];
+
+	let min = Math.min(...candidates);
+	let max = Math.max(...candidates);
+
+	if (opts.includeZero) {
+		min = Math.min(0, min);
+		max = Math.max(0, max);
+	}
+
+	const span = max - min;
+	// A lone reading has no span, so pad it by 2% of its own value instead.
+	const pad =
+		span > 0 ? span * 0.05 : Math.max(Math.abs(max) * 0.02, 1);
+	return [min - pad, max + pad];
 }
 
 function getTooltipElement(): HTMLDivElement {
@@ -133,11 +187,25 @@ export class D3Util {
 			strokeWidth = 2,
 			showPoints = true,
 			showGrid = true,
+			includeZero = false,
+			series = [],
+			band,
 			tooltipFormatter
 		} = options;
 
+		const allSeries: LineSeries<T>[] = [
+			{
+				data,
+				yAccessor,
+				color: themeInput?.lineColor ?? DEFAULT_THEME.lineColor,
+				drawAs: options.drawAs ?? 'line'
+			},
+			...series
+		];
+		const hasData = allSeries.some((s) => s.data.length > 0);
+
 		if (!container) return;
-		if (!data.length) {
+		if (!hasData) {
 			this.clear(container);
 			return;
 		}
@@ -166,35 +234,47 @@ export class D3Util {
 		// Scales
 		let xScale: any;
 
+		// The x domain must span every series, or the extra series clips off-axis.
+		const allData = allSeries.flatMap((s) => s.data);
+
 		if (xScaleType === 'time') {
-			const xExtent = d3.extent(data, (d: T) => xAccessor(d) as Date);
-			xScale = d3
-				.scaleTime()
-				.domain(xExtent as [Date, Date])
-				.range([0, innerWidth])
-				.nice();
+			const xExtent = d3.extent(
+				allData,
+				(d: T) => xAccessor(d) as Date
+			);
+			// One instant would collapse the domain; pad it by a minute.
+			const [x0, x1] = xExtent as [Date, Date];
+			const padded: [Date, Date] =
+				+x0 === +x1
+					? [new Date(+x0 - 60_000), new Date(+x1 + 60_000)]
+					: [x0, x1];
+			xScale = d3.scaleTime().domain(padded).range([0, innerWidth]);
 		} else {
-			const xExtent = d3.extent(data, (d: T) =>
+			const xExtent = d3.extent(allData, (d: T) =>
 				Number(xAccessor(d))
 			) as [number, number];
 			xScale = d3
 				.scaleLinear()
-				.domain(xExtent)
+				.domain(
+					xExtent[0] === xExtent[1]
+						? [xExtent[0] - 1, xExtent[1] + 1]
+						: xExtent
+				)
 				.range([0, innerWidth])
 				.nice();
 		}
 
 		let yScale: any;
 
-		const yMax = d3.max(data, (d: T) => yAccessor(d)) ?? 0;
-		const yMin = d3.min(data, (d: T) => yAccessor(d)) ?? 0;
+		const yValues = allSeries.flatMap((s) =>
+			s.data.map((d) => s.yAccessor(d))
+		);
+		const yMax = d3.max(yValues) ?? 0;
 
 		if (yScaleType === 'log') {
 			const minPositive = Math.max(
 				Number.MIN_VALUE,
-				d3.min(data, (d: T) =>
-					yAccessor(d) > 0 ? yAccessor(d) : Number.POSITIVE_INFINITY
-				) ?? 1
+				d3.min(yValues.filter((v) => v > 0)) ?? 1
 			);
 			yScale = d3
 				.scaleLog()
@@ -204,9 +284,27 @@ export class D3Util {
 		} else {
 			yScale = d3
 				.scaleLinear()
-				.domain([Math.min(0, yMin), yMax || 1])
-				.range([innerHeight, 0])
-				.nice();
+				.domain(
+					resolveNumericDomain(yValues, {
+						includeZero,
+						include: band
+					})
+				)
+				.range([innerHeight, 0]);
+		}
+
+		// Normal-range band sits under the grid so the lines stay readable.
+		if (band) {
+			const top = yScale(band.max);
+			const bottom = yScale(band.min);
+			g.append('rect')
+				.attr('class', 'reference-band')
+				.attr('x', 0)
+				.attr('y', top)
+				.attr('width', innerWidth)
+				.attr('height', Math.max(0, bottom - top))
+				.attr('fill', band.color ?? 'var(--color-success, #36d399)')
+				.attr('opacity', 0.12);
 		}
 
 		// Grid
@@ -227,7 +325,11 @@ export class D3Util {
 		}
 
 		// Axes
-		const xAxis = d3.axisBottom(xScale as any).tickSizeOuter(0);
+		// A single reading (plus its padding) needs fewer ticks than a long trend.
+		const xAxis = d3
+			.axisBottom(xScale as any)
+			.ticks(Math.min(6, allData.length + 1))
+			.tickSizeOuter(0);
 		const yAxis = d3
 			.axisLeft(yScale as any)
 			.ticks(5)
@@ -254,55 +356,61 @@ export class D3Util {
 				selection.selectAll('text').attr('fill', theme.axisColor);
 			});
 
-		// Line generator
-		const line = d3
-			.line()
-			.curve(curve)
-			.x((d: T) => {
-				const x = xAccessor(d);
-				return xScale(x as any);
-			})
-			.y((d: T) => yScale(yAccessor(d)));
+		const tooltip = tooltipFormatter ? getTooltipElement() : null;
+		const showTooltip = (event: MouseEvent, d: T) => {
+			if (!tooltip || !tooltipFormatter) return;
+			tooltip.textContent = tooltipFormatter(d);
+			tooltip.style.opacity = '1';
+			tooltip.style.left = `${event.clientX + 8}px`;
+			tooltip.style.top = `${event.clientY + 8}px`;
+		};
+		const moveTooltip = (event: MouseEvent) => {
+			if (!tooltip) return;
+			tooltip.style.left = `${event.clientX + 8}px`;
+			tooltip.style.top = `${event.clientY + 8}px`;
+		};
+		const hideTooltip = () => {
+			if (tooltip) tooltip.style.opacity = '0';
+		};
 
-		g.append('path')
-			.datum(data)
-			.attr('fill', 'none')
-			.attr('stroke', theme.lineColor)
-			.attr('stroke-width', strokeWidth)
-			.attr('d', line as any);
+		for (const s of allSeries) {
+			if (s.data.length === 0) continue;
+			const pointX = (d: T) => xScale(xAccessor(d) as any);
+			const pointY = (d: T) => yScale(s.yAccessor(d));
 
-		// Points + tooltip
-		if (showPoints) {
-			const tooltip = tooltipFormatter ? getTooltipElement() : null;
+			// A single reading has no line to draw, so its dot is the chart.
+			const drawLine = s.drawAs !== 'dots' && s.data.length > 1;
+			if (drawLine) {
+				const line = d3
+					.line<T>()
+					.curve(curve as any)
+					.x(pointX)
+					.y(pointY);
+				g.append('path')
+					.datum(s.data)
+					.attr('class', 'series-line')
+					.attr('fill', 'none')
+					.attr('stroke', s.color)
+					.attr('stroke-width', strokeWidth)
+					.attr('d', line as any);
+			}
 
-			g.selectAll('.point')
-				.data(data)
-				.enter()
-				.append('circle')
-				.attr('class', 'point')
-				.attr('r', 3)
-				.attr('fill', theme.lineColor)
-				.attr('cx', (d: T) => {
-					const x = xAccessor(d);
-					return xScale(x as any);
-				})
-				.attr('cy', (d: T) => yScale(yAccessor(d)))
-				.on('mouseenter', (event: MouseEvent, d: T) => {
-					if (!tooltip || !tooltipFormatter) return;
-					tooltip.textContent = tooltipFormatter(d);
-					tooltip.style.opacity = '1';
-					tooltip.style.left = `${event.clientX + 8}px`;
-					tooltip.style.top = `${event.clientY + 8}px`;
-				})
-				.on('mouseleave', () => {
-					if (!tooltip) return;
-					tooltip.style.opacity = '0';
-				})
-				.on('mousemove', (event: MouseEvent) => {
-					if (!tooltip) return;
-					tooltip.style.left = `${event.clientX + 8}px`;
-					tooltip.style.top = `${event.clientY + 8}px`;
-				});
+			// Dots on sparse data (always for dots-only series) so a lone reading shows.
+			if (showPoints || s.drawAs === 'dots' || s.data.length === 1) {
+				g.append('g')
+					.selectAll('.point')
+					.data(s.data)
+					.enter()
+					.append('circle')
+					.attr('class', 'point')
+					.attr('r', s.data.length === 1 ? 4 : 3)
+					.attr('fill', s.color)
+					.attr('cx', pointX)
+					.attr('cy', pointY)
+					.on('mouseenter', showTooltip)
+					.on('mouseleave', hideTooltip)
+					.on('mousemove', moveTooltip);
+			}
 		}
 	}
 
@@ -319,6 +427,8 @@ export class D3Util {
 			paddingInner = 0.2,
 			paddingOuter = 0.1,
 			showGrid = true,
+			maxXTicks = 8,
+			band,
 			tooltipFormatter
 		} = options;
 
@@ -349,7 +459,9 @@ export class D3Util {
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`);
 
-		const xDomain = data.map((d: T) => xAccessor(d));
+		// Band positions, not labels: several readings can share one day label.
+		const xDomain = data.map((_d: T, i: number) => String(i));
+		const labels = data.map((d: T) => xAccessor(d));
 		const xScale = d3
 			.scaleBand()
 			.domain(xDomain)
@@ -357,12 +469,31 @@ export class D3Util {
 			.paddingInner(paddingInner)
 			.paddingOuter(paddingOuter);
 
-		const yMax = d3.max(data, (d: T) => yAccessor(d)) ?? 0;
+		const yValues = data.map((d: T) => yAccessor(d));
+		const [domainMin, domainMax] = resolveNumericDomain(yValues, {
+			includeZero: true,
+			include: band
+		});
 		const yScale = d3
 			.scaleLinear()
-			.domain([0, yMax || 1])
+			// Bars grow from the chart floor, so padding below zero is wasted space.
+			.domain([Math.min(0, domainMin), domainMax])
 			.range([innerHeight, 0])
 			.nice();
+
+		// Normal-range band sits under the grid so the bars stay readable.
+		if (band) {
+			const top = yScale(band.max);
+			const bottom = yScale(band.min);
+			g.append('rect')
+				.attr('class', 'reference-band')
+				.attr('x', 0)
+				.attr('y', top)
+				.attr('width', innerWidth)
+				.attr('height', Math.max(0, bottom - top))
+				.attr('fill', band.color ?? 'var(--color-success, #36d399)')
+				.attr('opacity', 0.12);
+		}
 
 		// Grid
 		if (showGrid) {
@@ -382,7 +513,12 @@ export class D3Util {
 		}
 
 		// Axes
-		const xAxis = d3.axisBottom(xScale).tickSizeOuter(0);
+		const labelStep = Math.ceil(data.length / Math.max(1, maxXTicks));
+		const xAxis = d3
+			.axisBottom(xScale)
+			.tickSizeOuter(0)
+			.tickValues(xDomain.filter((_d, i) => i % labelStep === 0))
+			.tickFormat((value) => labels[Number(value)] ?? '');
 		const yAxis = d3.axisLeft(yScale).ticks(5).tickSizeOuter(0);
 
 		g.append('g')
@@ -414,7 +550,7 @@ export class D3Util {
 			.enter()
 			.append('rect')
 			.attr('class', 'bar')
-			.attr('x', (d: T) => xScale(xAccessor(d)) ?? 0)
+			.attr('x', (_d: T, i: number) => xScale(String(i)) ?? 0)
 			.attr('y', (d: T) => yScale(yAccessor(d)))
 			.attr('width', xScale.bandwidth())
 			.attr('height', (d: T) => innerHeight - yScale(yAccessor(d)))

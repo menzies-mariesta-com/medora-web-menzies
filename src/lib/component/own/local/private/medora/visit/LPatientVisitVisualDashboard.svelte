@@ -62,6 +62,12 @@
 	const systolicSeries = $derived(buildVitalSeries(series, 'bpSystolic'));
 	const diastolicSeries = $derived(buildVitalSeries(series, 'bpDiastolic'));
 
+	/** BP spans diastolic min to systolic max so one band covers both lines. */
+	const BP_BAND = {
+		min: VITAL_REFERENCE_RANGES[VitalEnum.BP_DIASTOLIC as VitalKey].min,
+		max: VITAL_REFERENCE_RANGES[VitalEnum.BP_SYSTOLIC as VitalKey].max
+	};
+
 	type CardKey =
 		| 'bp'
 		| 'heartRate'
@@ -416,6 +422,8 @@
 						seriesALabel={m.visit_visual_legend_systolic()}
 						seriesBLabel={m.visit_visual_legend_diastolic()}
 						yUnit="mmHg"
+						includeZero={false}
+						band={BP_BAND}
 						emptyMessage={m.visit_visual_no_trend()}
 					/>
 				</div>
@@ -424,6 +432,8 @@
 						title={m.visit_visual_chart_heart_rate()}
 						seriesA={pulseSeries}
 						yUnit="bpm"
+						includeZero={false}
+						band={VITAL_REFERENCE_RANGES[VitalEnum.PULSE as VitalKey]}
 						emptyMessage={m.visit_visual_no_trend()}
 					/>
 				</div>
@@ -433,6 +443,11 @@
 						seriesA={temperatureSeries}
 						yUnit="°C"
 						includeZero={false}
+						band={
+							VITAL_REFERENCE_RANGES[
+								VitalEnum.TEMPERATURE as VitalKey
+							]
+						}
 						emptyMessage={m.visit_visual_no_trend()}
 					/>
 				</div>
@@ -442,6 +457,7 @@
 						seriesA={weightSeries}
 						yUnit="kg"
 						includeZero={false}
+						drawAs="dots"
 						emptyMessage={m.visit_visual_no_trend()}
 					/>
 				</div>
@@ -451,6 +467,7 @@
 						seriesA={spo2Series}
 						yUnit="%"
 						includeZero={false}
+						band={VITAL_REFERENCE_RANGES[VitalEnum.SP_O2 as VitalKey]}
 						emptyMessage={m.visit_visual_no_trend()}
 					/>
 				</div>
@@ -459,6 +476,8 @@
 						title={m.visit_visual_chart_glucose()}
 						seriesA={glucoseSeries}
 						yUnit="mg/dL"
+						drawAs="bars"
+						band={VITAL_REFERENCE_RANGES[VitalEnum.RBS as VitalKey]}
 						emptyMessage={m.visit_visual_no_trend()}
 					/>
 				</div>

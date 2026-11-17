@@ -219,7 +219,7 @@
 			title: m.manage_page_access(),
 			component: UserGroupPagesModal,
 			modalClassName:
-				'max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto'
+				'max-w-[min(96vw,84rem)] w-[96vw] h-[88vh] max-h-[92vh]! overflow-hidden'
 		});
 		if (result.confirmed) fetchGroups();
 	}
