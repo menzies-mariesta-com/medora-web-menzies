@@ -11,6 +11,8 @@
 	import type { MedicationScheduleRow } from '$lib/model/type/medora/clinical-platform.type';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
+	import { can } from '$lib/state/page-permission.state.svelte';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 	const toastService = new ToastService();
@@ -147,6 +149,7 @@
 					className="btn-primary cursor-pointer"
 					loading={isSubmitting}
 					disabled={isSubmitting ||
+						!can(PageActionEnum.CREATE) ||
 						!scanPatient.trim() ||
 						!scanProduct.trim() ||
 						!scanNurse.trim()}

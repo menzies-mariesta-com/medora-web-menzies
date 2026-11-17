@@ -7,7 +7,7 @@ import { RoleEnum } from '$lib/model/enum/db-link';
 /**
  * Authorization helper for "hospital-scoped" modules.
  *
- * - SYSTEM_ADMIN: always allowed
+ * - SYSTEM_ADMIN / ADMIN_TEAM: always allowed (absolute permission, all hospitals)
  * - OWNER: only for hospitals they own
  * - STAFF: only for hospitals in `event.locals.allowedHospitalIds`
  */
@@ -24,6 +24,8 @@ export async function ensureCanAccessHospital(
 	const allowedHospitalIds = event.locals.allowedHospitalIds ?? [];
 
 	if (userRoleId === RoleEnum.SYSTEM_ADMIN) return;
+	// Admin team holds absolute permission across every hospital.
+	if (userRoleId === RoleEnum.ADMIN_TEAM) return;
 
 	if (userRoleId === RoleEnum.OWNER && userId) {
 		const [h] = await ensureDb()

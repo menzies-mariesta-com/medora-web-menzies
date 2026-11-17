@@ -24,6 +24,8 @@
 	import InventoryCancelReasonDialogContent from '$lib/component/own/local/private/medora/inventory/InventoryCancelReasonDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
+	import { can } from '$lib/state/page-permission.state.svelte';
 const dt = new DateTimeUtil();
 	const toast = new ToastService();
 
@@ -335,7 +337,8 @@ const dt = new DateTimeUtil();
 						>
 							<WashButton
 								className="btn-xs btn-ghost btn-square text-accent"
-								disabled={actId != null}
+								disabled={actId != null ||
+									!can(PageActionEnum.APPROVE)}
 								loading={actId === r.id}
 								onClick={() =>
 									void approveRow(r, InvApprovalActionEnum.APPROVED)}
@@ -349,7 +352,8 @@ const dt = new DateTimeUtil();
 						>
 							<WashButton
 								className="btn-xs btn-ghost btn-square text-error"
-								disabled={actId != null}
+								disabled={actId != null ||
+									!can(PageActionEnum.APPROVE)}
 								loading={actId === r.id}
 								onClick={() =>
 									void approveRow(r, InvApprovalActionEnum.REJECTED)}
@@ -365,7 +369,9 @@ const dt = new DateTimeUtil();
 					>
 						<WashButton
 							className="btn-xs btn-ghost btn-square text-error"
-							disabled={actId != null || r.canCancel !== true}
+							disabled={actId != null ||
+								r.canCancel !== true ||
+								!can(PageActionEnum.CANCEL)}
 							onClick={() => void openCancelDialog(r)}
 						>
 							<LucideCircleX className="size-3.5" />

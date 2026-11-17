@@ -27,7 +27,9 @@
 	} from '$lib/tool/inventory/pr-workflow.util';
 	import { toastError } from '$lib/util/toast-copy.util';
 	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
-const dt = new DateTimeUtil();
+	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
+	import { can } from '$lib/state/page-permission.state.svelte';
+	const dt = new DateTimeUtil();
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
@@ -164,8 +166,8 @@ const dt = new DateTimeUtil();
 			return false;
 		if ((row.poCount ?? 0) > 0) return false;
 		if (!canCancelPr(row.statusTaggingId)) return false;
-		if (!currentUserId) return false;
-		return row.createdBy === currentUserId;
+		// Matches the server: the CANCEL page grant decides, not who created the PR.
+		return can(PageActionEnum.CANCEL);
 	}
 
 	async function openCancelDialog(row: PrRow) {
@@ -201,7 +203,8 @@ const dt = new DateTimeUtil();
 			const t = await userFacingDetailFromResponse(res);
 			toastService.addToast(
 				m.inv_pr_cancel(),
-				StatusColorEnum.ERROR, t
+				StatusColorEnum.ERROR,
+				t
 			);
 			throw new Error('cancel_failed');
 		}
@@ -363,7 +366,10 @@ const dt = new DateTimeUtil();
 		>
 			{#snippet rowActions(row, rowIndex)}
 				{@const r = row as PrRow}
-				{@const cancelDisabled = loading || !prRowCanCancel(r)}
+				{@const cancelDisabled =
+					loading ||
+					!can(PageActionEnum.CANCEL) ||
+					!prRowCanCancel(r)}
 				<div class="flex items-center justify-center gap-1">
 					<WashTooltip
 						tooltipText={m.inv_common_view()}
@@ -379,7 +385,10 @@ const dt = new DateTimeUtil();
 					</WashTooltip>
 
 					{#if prRowEditVisible(r)}
-						{@const editDisabled = loading || !prRowCanEdit(r)}
+						{@const editDisabled =
+							loading ||
+							!can(PageActionEnum.EDIT) ||
+							!prRowCanEdit(r)}
 						<WashTooltip
 							tooltipText={editDisabled
 								? 'Edit not available (only the creator can edit)'
@@ -398,7 +407,9 @@ const dt = new DateTimeUtil();
 
 					{#if r.statusTaggingId === InvPrStatusTaggingEnum.PENDING}
 						{@const approveDisabled =
-							loading || r.canApprove !== true}
+							!can(PageActionEnum.APPROVE) ||
+							loading ||
+							r.canApprove !== true}
 						<WashTooltip
 							tooltipText={approveDisabled
 								? 'Approval not available (no permission for this level)'

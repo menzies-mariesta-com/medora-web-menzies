@@ -24,6 +24,7 @@ import {
 	getStaffIdForUser
 } from './inventory-scope.server';
 import { postStoreTransfer } from './transfer.server';
+import { hasAbsolutePermission } from '$lib/server/medora/permission/absolute-permission.server';
 import {
 	assertStaffAssignedForModule,
 	listAssignedStoreIdsForStaff
@@ -33,7 +34,10 @@ import {
 	parseNonNegativeIntQty,
 	parsePositiveIntQty
 } from './inv-validate.server';
-import { addDeltaToInvStock, findOrCreateItemBatch } from './item-batch.server';
+import {
+	addDeltaToInvStock,
+	findOrCreateItemBatch
+} from './item-batch.server';
 import {
 	issueQtyStringFromAnyUnit,
 	issueQtyStringFromPurchaseReceipt,
@@ -55,7 +59,9 @@ function parseGrnMoney(s: string | null | undefined): number {
 }
 
 function parseOptionalIumId(v: unknown): number | null {
-	return typeof v === 'number' && Number.isInteger(v) && v > 0 ? v : null;
+	return typeof v === 'number' && Number.isInteger(v) && v > 0
+		? v
+		: null;
 }
 
 type GrnInvoiceChargeInput = {
@@ -292,6 +298,8 @@ export async function canCurrentStaffPostGrn(
 	input: { hospitalId: string; storeId: number }
 ): Promise<boolean> {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
+	if (hasAbsolutePermission(event.locals.userRoleId ?? null))
+		return true;
 	const userId = event.locals.user?.id ?? null;
 	const staffId = userId ? await getStaffIdForUser(userId) : null;
 	if (!staffId) return false;
@@ -312,7 +320,10 @@ export async function getGoodsReceiptNoteById(
 		table.userTable,
 		'grn_detail_received_by_user'
 	);
-	const freeUnitTable = alias(table.unitTable, 'grn_detail_free_unit');
+	const freeUnitTable = alias(
+		table.unitTable,
+		'grn_detail_free_unit'
+	);
 	const [row] = await ensureDb()
 		.select({
 			grn: table.goodsReceiptNoteTable,
@@ -381,10 +392,7 @@ export async function getGoodsReceiptNoteById(
 		)
 		.leftJoin(
 			freeUnitTable,
-			eq(
-				table.goodsReceiptLineTable.freeUnitId,
-				freeUnitTable.id
-			)
+			eq(table.goodsReceiptLineTable.freeUnitId, freeUnitTable.id)
 		)
 		.where(
 			and(
@@ -449,12 +457,17 @@ export async function createAndPostGoodsReceipt(
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
 	const staffId = await getStaffIdForUser(userId);
-	if (!staffId) throw error(403, 'Staff account required');
+	if (
+		!staffId &&
+		!hasAbsolutePermission(event.locals.userRoleId ?? null)
+	)
+		throw error(403, 'Staff account required');
 	await assertStaffAssignedForModule(
 		input.hospitalId,
 		input.storeId,
 		'GRN',
-		staffId
+		staffId ?? '',
+		event.locals.userRoleId ?? null
 	);
 	if (input.lines.length === 0)
 		throw error(400, 'At least one line required');
@@ -583,7 +596,10 @@ export async function createAndPostGoodsReceipt(
 				)
 				.limit(1);
 			if (!poLine) throw error(400, `Invalid PO line ${ln.poLineId}`);
-			const recv = parsePositiveIntQty(ln.purchasedQty, 'purchasedQty');
+			const recv = parsePositiveIntQty(
+				ln.purchasedQty,
+				'purchasedQty'
+			);
 			const prev = Number(poLine.qtyReceivedCumulative);
 			const ordered = Number(poLine.quantity);
 			if (prev + recv > ordered + 1e-9) {
@@ -807,12 +823,17 @@ export async function createAndPostDirectGoodsReceipt(
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
 	const staffId = await getStaffIdForUser(userId);
-	if (!staffId) throw error(403, 'Staff account required');
+	if (
+		!staffId &&
+		!hasAbsolutePermission(event.locals.userRoleId ?? null)
+	)
+		throw error(403, 'Staff account required');
 	await assertStaffAssignedForModule(
 		input.hospitalId,
 		input.storeId,
 		'GRN',
-		staffId
+		staffId ?? '',
+		event.locals.userRoleId ?? null
 	);
 	if (input.lines.length === 0)
 		throw error(400, 'At least one line required');
@@ -1008,7 +1029,11 @@ export async function transferGrnToRequestingStore(
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
 	const staffId = await getStaffIdForUser(userId);
-	if (!staffId) throw error(403, 'Staff account required');
+	if (
+		!staffId &&
+		!hasAbsolutePermission(event.locals.userRoleId ?? null)
+	)
+		throw error(403, 'Staff account required');
 
 	const grn = await getGoodsReceiptNoteById(event, {
 		hospitalId: input.hospitalId,
@@ -1060,7 +1085,8 @@ export async function transferGrnToRequestingStore(
 		input.hospitalId,
 		grn.storeId,
 		'GRN',
-		staffId
+		staffId ?? '',
+		event.locals.userRoleId ?? null
 	);
 
 	// Ensure the GRN was posted into the PR destination store.

@@ -5,6 +5,7 @@ import { uuidV7 } from '$lib/util/id.util';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import { hasAbsolutePermission } from '$lib/server/medora/permission/absolute-permission.server';
 import { assertHospitalDepartmentForStaff } from '$lib/server/medora/administration/hospital-department.server';
 import { PasswordHashUtil } from '$lib/server/auth/password-hash.server';
 import { requireOptionalDateOfBirth } from '$lib/server/medora/date-of-birth-range.server';
@@ -103,14 +104,10 @@ async function ensureCanRegisterStaff(
 	await ensureCanAccessHospital(event, hospitalId);
 	if (!event.locals?.user) throw error(401, 'Unauthorized');
 	const roleId = event.locals.userRoleId ?? null;
-	if (
-		roleId !== RoleEnum.OWNER &&
-		roleId !== RoleEnum.SYSTEM_ADMIN &&
-		roleId !== RoleEnum.STAFF
-	) {
+	if (!hasAbsolutePermission(roleId) && roleId !== RoleEnum.STAFF) {
 		throw error(
 			403,
-			'Only owner, system admin, or staff can register staff'
+			'Only owner, system admin, admin team, or staff can register staff'
 		);
 	}
 }
@@ -239,7 +236,9 @@ export async function getStaffRegistrationLookups(
 		ensureDb()
 			.select()
 			.from(table.staffEmploymentTypeTable)
-			.where(activeEntityStatusEq(table.staffEmploymentTypeTable.statusId))
+			.where(
+				activeEntityStatusEq(table.staffEmploymentTypeTable.statusId)
+			)
 			.orderBy(table.staffEmploymentTypeTable.name),
 		ensureDb()
 			.select()
@@ -476,18 +475,9 @@ export async function createStaffRegistration(
 					.from(table.userGroupTable)
 					.where(
 						and(
-							eq(
-								table.userGroupTable.hospitalId,
-								input.hospitalId
-							),
-							inArray(
-								table.userGroupTable.id,
-								uniqueUserGroupIds
-							),
-							ne(
-								table.userGroupTable.statusId,
-								StatusEnum.DELETED
-							)
+							eq(table.userGroupTable.hospitalId, input.hospitalId),
+							inArray(table.userGroupTable.id, uniqueUserGroupIds),
+							ne(table.userGroupTable.statusId, StatusEnum.DELETED)
 						)
 					);
 				if (groups.length > 0) {
@@ -518,10 +508,7 @@ export async function createStaffRegistration(
 								table.hospitalBranchTable.hospitalId,
 								input.hospitalId
 							),
-							inArray(
-								table.hospitalBranchTable.id,
-								uniqueBranchIds
-							),
+							inArray(table.hospitalBranchTable.id, uniqueBranchIds),
 							eq(
 								table.hospitalBranchTable.statusId,
 								StatusEnum.ACTIVE

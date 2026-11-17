@@ -59,10 +59,23 @@ Click the **edit** (pencil) icon on a row to change an existing record.
 ![Edit form](/docs/capture/workflows/administration-user-group/step-04-edit.png)
 *Edit form*
 
+### Step 3: Grant page actions
+
+Click the **list** icon on a row to open **Manage page access**. The matrix lists every module, the pages inside it, and a column per action (**View**, **Create**, **Edit**, **Delete**, plus **Approve**, **Cancel**, **Issue**, **Receive**, **Print**, **Export**, **Upload** on the pages that have them). A page shows a dash for an action it does not offer.
+
+- Tick the module header to allow every action on every page in that module.
+- Tick an action header inside a module to allow that one action across the module.
+- Tick a page name to allow all of that page's actions.
+- **View** is granted automatically with any other action, and clearing **View** clears the rest of the page.
+
+Saving replaces the group's grants immediately; staff in that group pick up the change on their next request. Only the hospital owner, a system administrator, or an admin team member can change access rights.
+
 ## If something goes wrong
 
 - **Blank screen:** run `npm run db:seed:demo:docs` for Testing Hospital 1, then open the sub-tab under the section (for example Document Type under Document Master).
 - **Cannot save:** check required fields marked with a red star.
+- **A button is missing on a page:** the group has no grant for that action. Re-open **Manage page access** and tick it.
+- **A staff member sees "Missing … permission"** when saving: the group has **View** but not **Create**/**Edit**/**Delete** for that page. The server rejects the write even if the button was visible.
 
 ## Legal
 
