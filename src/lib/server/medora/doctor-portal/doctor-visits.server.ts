@@ -388,8 +388,22 @@ async function listVisitDocuments(
 		),
 		orderBy: [desc(table.patientDocumentTable.createdAt)],
 		with: {
-			document: true,
-			patientAttachment: true
+			document: {
+				columns: {
+					id: true,
+					code: true,
+					documentNumber: true
+				}
+			},
+			patientAttachment: {
+				columns: {
+					id: true,
+					patientId: true,
+					fileUrl: true,
+					description: true,
+					statusId: true
+				}
+			}
 		}
 	});
 

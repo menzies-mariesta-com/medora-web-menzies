@@ -9,8 +9,7 @@ import {
 	hospitalApiGetTag,
 	hospitalMetaTag
 } from '$lib/server/cache/cache-keys.server';
-import { invalidateMedoraPagesNavCache } from '$lib/server/medora/page-nav-cache.server';
-import { invalidateStaffSessionCache } from '$lib/server/medora/staff-session-cache.server';
+// Lazy import in invalidateAfterApiMutation — page-nav pulls ensureDb/$env (breaks tsx seeds).
 
 const MUTATION_METHODS = new Set([
 	'POST',
@@ -79,10 +78,16 @@ export async function invalidateAfterApiMutation(
 		pathname.includes('/administration/user-group') ||
 		pathname.includes('/page')
 	) {
+		const { invalidateMedoraPagesNavCache } = await import(
+			'$lib/server/medora/page-nav-cache.server'
+		);
 		await invalidateMedoraPagesNavCache();
 	}
 
 	if (pathname.includes('/staff') && event.locals.user?.id) {
+		const { invalidateStaffSessionCache } = await import(
+			'$lib/server/medora/staff-session-cache.server'
+		);
 		await invalidateStaffSessionCache(event.locals.user.id);
 	}
 

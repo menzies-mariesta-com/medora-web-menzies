@@ -83,4 +83,21 @@ describe('medoraSectionIndexRedirectTarget', () => {
 	it('returns null without a hospital id', () => {
 		expect(medoraSectionIndexRedirectTarget(SECTION, '', pages)).toBeNull();
 	});
+
+	it('skips children whose pageUrl is not under /medora/home', () => {
+		const withDash = [
+			...pages,
+			{
+				id: 400109,
+				parentId: 400108,
+				pageUrl: '-',
+				sequenceNo: 0
+			}
+		];
+		expect(
+			medoraSectionIndexRedirectTarget(SECTION, HOSPITAL_ID, withDash)
+		).toBe(
+			`/medora/hospital/${HOSPITAL_ID}/home/nursing-workbench/patient-visit-history-dashboard/journal`
+		);
+	});
 });
