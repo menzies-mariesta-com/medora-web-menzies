@@ -57,11 +57,12 @@
 	});
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
-	let lastLoadedVisitKey = $state('');
+	let lastLoadedVisitKey = '';
 	let lastHandledPageSize = $state(
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
 	);
-	let lastVitalsFetchKey = $state('');
+	/** Cache key of the last *completed* vitals read; set after success so an aborted read retries. */
+	let lastVitalsFetchKey = '';
 	let mounted = $state(false);
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -254,7 +255,6 @@
 		if (!options?.force && requestKey === lastVitalsFetchKey) {
 			return;
 		}
-		lastVitalsFetchKey = requestKey;
 		isLoadingVitals = true;
 		try {
 			const statusIdStr = tableFilters.status?.trim() || '';
@@ -276,6 +276,7 @@
 			if (options?.isCancelled?.()) return;
 			vitals = result.data;
 			totalVitals = result.total;
+			lastVitalsFetchKey = requestKey;
 		} catch (_err) {
 			if (options?.isCancelled?.()) return;
 			vitals = [];
@@ -293,7 +294,6 @@
 			if (lastLoadedVisitKey === visitKey) {
 				return;
 			}
-			lastLoadedVisitKey = visitKey;
 			let cancelled = false;
 			const ac = new AbortController();
 			void (async () => {
@@ -312,6 +312,9 @@
 						}
 					);
 				}
+				// Only a finished load counts: a superseded attempt aborts before this,
+				// so the replacement run is not blocked by the guard.
+				if (!cancelled) lastLoadedVisitKey = visitKey;
 			})();
 			return () => {
 				cancelled = true;

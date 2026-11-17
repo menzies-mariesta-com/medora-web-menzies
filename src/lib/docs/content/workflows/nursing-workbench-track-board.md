@@ -1,10 +1,10 @@
 ---
 title: "Track Board"
-description: "How to use Track Board in Nursing Workbench."
+description: "How to use Track Board in Emergency."
 docType: workflow
 slug: workflows/nursing-workbench-track-board
 pageId: 400110
-moduleId: 4
+moduleId: 12
 pageUrl: "/medora/home/nursing-workbench/track-board"
 generated: true
 sinceVersion: "1.5.0"
@@ -13,7 +13,7 @@ lastReviewed: "2026-03-21"
 
 ## What you will do
 
-Use **Track Board** in **Nursing Workbench** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
+Use **Track Board** in **Emergency** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
 
 ## Before you start
 
@@ -23,7 +23,7 @@ Use **Track Board** in **Nursing Workbench** for everyday hospital tasks. A full
 
 ## Steps
 
-1. Open **Nursing Workbench** from the home menu.
+1. Open **Emergency** from the home menu.
 2. Open **Track Board**.
 3. Follow the on-screen forms and save when you are done.
 
@@ -31,7 +31,7 @@ Use **Track Board** in **Nursing Workbench** for everyday hospital tasks. A full
 
 ```mermaid
 flowchart LR
-  signIn[Sign in] --> module[Open Nursing Workbench]
+  signIn[Sign in] --> module[Open Emergency]
   module --> screen[Open Track Board]
   screen --> done[Finish task]
 ```

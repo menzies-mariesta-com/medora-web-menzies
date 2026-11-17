@@ -2,9 +2,44 @@ import { describe, expect, it } from 'vitest';
 import { medoraSectionIndexRedirectTarget } from '$lib/server/medora/nav/medora-section-index-redirect.server';
 
 const HOSPITAL_ID = '01900000-0000-7000-8000-000000000001';
-const SECTION = '/medora/hospital/' + HOSPITAL_ID + '/home/nursing-workbench/patient-visit-history-dashboard';
 
-const pages = [
+/** A genuine container-only index: its children are the tabs. */
+const CONTAINER =
+	'/medora/hospital/' +
+	HOSPITAL_ID +
+	'/home/adt/bed-transfer-requisition';
+
+const containerPages = [
+	{
+		id: 700400,
+		parentId: null,
+		pageUrl: '/medora/home/adt/bed-transfer-requisition',
+		sequenceNo: 4
+	},
+	{
+		id: 700402,
+		parentId: 700400,
+		pageUrl: '/medora/home/adt/bed-transfer-requisition/list',
+		sequenceNo: 2
+	},
+	{
+		id: 700401,
+		parentId: 700400,
+		pageUrl: '/medora/home/adt/bed-transfer-requisition/new',
+		sequenceNo: 1
+	}
+];
+
+/**
+ * The Dashboard page owns Journal / Visual as tabs but renders content itself,
+ * so it is on the self-rendering skip list.
+ */
+const DASHBOARD =
+	'/medora/hospital/' +
+	HOSPITAL_ID +
+	'/home/nursing-workbench/patient-visit-history-dashboard';
+
+const dashboardPages = [
 	{
 		id: 400108,
 		parentId: 400100,
@@ -13,91 +48,138 @@ const pages = [
 		sequenceNo: 1
 	},
 	{
-		id: 400117,
-		parentId: 400108,
-		pageUrl:
-			'/medora/home/nursing-workbench/patient-visit-history-dashboard/visual',
-		sequenceNo: 2
-	},
-	{
 		id: 400116,
 		parentId: 400108,
 		pageUrl:
 			'/medora/home/nursing-workbench/patient-visit-history-dashboard/journal',
 		sequenceNo: 1
+	},
+	{
+		id: 400117,
+		parentId: 400108,
+		pageUrl:
+			'/medora/home/nursing-workbench/patient-visit-history-dashboard/visual',
+		sequenceNo: 2
 	}
 ];
 
 describe('medoraSectionIndexRedirectTarget', () => {
 	it('targets the first child by sequenceNo', () => {
 		expect(
-			medoraSectionIndexRedirectTarget(SECTION, HOSPITAL_ID, pages)
+			medoraSectionIndexRedirectTarget(
+				CONTAINER,
+				HOSPITAL_ID,
+				containerPages
+			)
 		).toBe(
-			`/medora/hospital/${HOSPITAL_ID}/home/nursing-workbench/patient-visit-history-dashboard/journal`
+			`/medora/hospital/${HOSPITAL_ID}/home/adt/bed-transfer-requisition/new`
 		);
 	});
 
 	it('keeps the query string so the selected visit survives', () => {
 		expect(
 			medoraSectionIndexRedirectTarget(
-				SECTION,
+				CONTAINER,
 				HOSPITAL_ID,
-				pages,
+				containerPages,
 				'?visitId=abc'
 			)
 		).toBe(
-			`/medora/hospital/${HOSPITAL_ID}/home/nursing-workbench/patient-visit-history-dashboard/journal?visitId=abc`
+			`/medora/hospital/${HOSPITAL_ID}/home/adt/bed-transfer-requisition/new?visitId=abc`
 		);
 	});
 
 	it('ignores the query when it is empty', () => {
 		expect(
-			medoraSectionIndexRedirectTarget(SECTION, HOSPITAL_ID, pages, '?')
+			medoraSectionIndexRedirectTarget(
+				CONTAINER,
+				HOSPITAL_ID,
+				containerPages,
+				'?'
+			)
 		).not.toContain('?');
 	});
 
 	it('returns null when the section has no children', () => {
 		expect(
 			medoraSectionIndexRedirectTarget(
-				SECTION,
+				CONTAINER,
 				HOSPITAL_ID,
-				pages.filter((p) => p.id === 400108)
+				containerPages.filter((p) => p.id === 700400)
 			)
 		).toBeNull();
 	});
 
 	it('returns null for a leaf page or the hospital home', () => {
-		const journal = `${SECTION}/journal`;
 		expect(
-			medoraSectionIndexRedirectTarget(journal, HOSPITAL_ID, pages)
+			medoraSectionIndexRedirectTarget(
+				`${CONTAINER}/new`,
+				HOSPITAL_ID,
+				containerPages
+			)
 		).toBeNull();
 		expect(
 			medoraSectionIndexRedirectTarget(
 				`/medora/hospital/${HOSPITAL_ID}/home`,
 				HOSPITAL_ID,
-				pages
+				containerPages
 			)
 		).toBeNull();
 	});
 
 	it('returns null without a hospital id', () => {
-		expect(medoraSectionIndexRedirectTarget(SECTION, '', pages)).toBeNull();
+		expect(
+			medoraSectionIndexRedirectTarget(CONTAINER, '', containerPages)
+		).toBeNull();
+	});
+
+	/** Regression: the Dashboard tab bounced to its first child, so it could never stay active. */
+	it('never redirects the self-rendering Dashboard index', () => {
+		expect(
+			medoraSectionIndexRedirectTarget(
+				DASHBOARD,
+				HOSPITAL_ID,
+				dashboardPages
+			)
+		).toBeNull();
+		expect(
+			medoraSectionIndexRedirectTarget(
+				DASHBOARD,
+				HOSPITAL_ID,
+				dashboardPages,
+				'?visitId=abc'
+			)
+		).toBeNull();
+	});
+
+	it('still renders the Dashboard child tabs', () => {
+		expect(
+			medoraSectionIndexRedirectTarget(
+				`${DASHBOARD}/visual`,
+				HOSPITAL_ID,
+				dashboardPages
+			)
+		).toBeNull();
 	});
 
 	it('skips children whose pageUrl is not under /medora/home', () => {
 		const withDash = [
-			...pages,
+			...containerPages,
 			{
-				id: 400109,
-				parentId: 400108,
+				id: 700403,
+				parentId: 700400,
 				pageUrl: '-',
 				sequenceNo: 0
 			}
 		];
 		expect(
-			medoraSectionIndexRedirectTarget(SECTION, HOSPITAL_ID, withDash)
+			medoraSectionIndexRedirectTarget(
+				CONTAINER,
+				HOSPITAL_ID,
+				withDash
+			)
 		).toBe(
-			`/medora/hospital/${HOSPITAL_ID}/home/nursing-workbench/patient-visit-history-dashboard/journal`
+			`/medora/hospital/${HOSPITAL_ID}/home/adt/bed-transfer-requisition/new`
 		);
 	});
 });

@@ -149,7 +149,7 @@
 	let categoryNameById = $state<Map<number, string>>(new Map());
 	let serviceFilterSubCategoryPromise: Promise<void> | null = null;
 
-	let lastLoadedVisitId = $state<number | null>(null);
+	let lastLoadedVisitId = '';
 
 	let historyItems = $state<HistoryItem[]>([]);
 	let historyTableFilters = $state<Record<string, string>>({});
@@ -254,19 +254,23 @@
 		if (!mounted) return;
 
 		if (visitId !== lastLoadedVisitId) {
-			lastLoadedVisitId = visitId;
 			if (visitId) {
 				let cancelled = false;
 				const ac = new AbortController();
-				void fetchVisit({
-					signal: ac.signal,
-					isCancelled: () => cancelled
-				});
+				void (async () => {
+					await fetchVisit({
+						signal: ac.signal,
+						isCancelled: () => cancelled
+					});
+					// Only a finished load counts: a superseded attempt aborts before this.
+					if (!cancelled) lastLoadedVisitId = visitId;
+				})();
 				return () => {
 					cancelled = true;
 					ac.abort();
 				};
 			} else {
+				lastLoadedVisitId = '';
 				visit = null;
 				currentOrder = null;
 				pendingItems = [];

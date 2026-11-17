@@ -48,11 +48,12 @@
 	});
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
-	let lastLoadedVisitKey = $state('');
+	let lastLoadedVisitKey = '';
 	let lastHandledPageSize = $state(
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
 	);
-	let lastAllergiesFetchKey = $state('');
+	/** Cache key of the last *completed* allergies read; set after success so an aborted read retries. */
+	let lastAllergiesFetchKey = '';
 	let mounted = $state(false);
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -246,7 +247,6 @@
 		if (!options?.force && requestKey === lastAllergiesFetchKey) {
 			return;
 		}
-		lastAllergiesFetchKey = requestKey;
 		isLoadingAllergies = true;
 		try {
 			const statusId = tableFilters.status
@@ -276,6 +276,7 @@
 			if (options?.isCancelled?.()) return;
 			patientAllergies = result.data;
 			totalAllergies = result.total;
+			lastAllergiesFetchKey = requestKey;
 		} catch (err) {
 			if (options?.isCancelled?.()) return;
 			console.error(err);
@@ -294,7 +295,6 @@
 			if (lastLoadedVisitKey === visitKey) {
 				return;
 			}
-			lastLoadedVisitKey = visitKey;
 			let cancelled = false;
 			const ac = new AbortController();
 			void (async () => {
@@ -313,6 +313,8 @@
 						}
 					);
 				}
+				// Only a finished load counts: a superseded attempt aborts before this.
+				if (!cancelled) lastLoadedVisitKey = visitKey;
 			})();
 			return () => {
 				cancelled = true;

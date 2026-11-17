@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-11-15T04:50:46.720Z",
+  "generatedAt": "2026-11-17T07:51:43.893Z",
   "version": "1.5.0",
   "stats": {
     "modules": 15,
-    "workflows": 136,
-    "apis": 207,
+    "workflows": 140,
+    "apis": 212,
     "templates": 381,
     "journalSections": 13
   },
@@ -32,10 +32,11 @@
         "administration-document-master-document-type",
         "administration-document-master-document",
         "administration-document-master-document-setting",
-        "administration-document-master-template-library",
-        "administration-document-master-hospital-templates",
+        "administration-document-master-placeholder-setup",
+        "administration-document-master-reusable-global-documents",
         "administration-financial-year",
         "administration-prefix-configuration",
+        "administration-color-configuration",
         "administration-departments",
         "administration-medication-order-setup",
         "administration-medication-order-setup-frequency",
@@ -57,7 +58,8 @@
         "administration-billing-setup-ip-billing",
         "administration-billing-setup-ed-billing",
         "administration-billing-setup-settings",
-        "administration-er-triage-level"
+        "administration-er-triage-level",
+        "administration-trauma-activation-setup"
       ]
     },
     {
@@ -87,20 +89,19 @@
       "moduleUrl": "/medora/home/nursing-workbench",
       "workflows": [
         "nursing-workbench",
+        "nursing-workbench-patient-visit-history-dashboard",
+        "nursing-workbench-patient-visit-history-dashboard-journal",
+        "nursing-workbench-patient-visit-history-dashboard-visual",
         "nursing-workbench-vital",
         "nursing-workbench-allergy",
-        "nursing-workbench-patient-attachment",
-        "nursing-workbench-clinical-document",
-        "nursing-workbench-case-sheet",
         "nursing-workbench-order",
         "nursing-workbench-nursing-complete",
-        "nursing-workbench-patient-visit-history-dashboard",
-        "nursing-workbench-census",
-        "nursing-workbench-track-board",
-        "nursing-workbench-triage",
-        "nursing-workbench-trauma-log",
+        "nursing-workbench-case-sheet",
+        "nursing-workbench-clinical-document",
+        "nursing-workbench-patient-attachment",
         "nursing-workbench-emar",
         "nursing-workbench-care-plan",
+        "nursing-workbench-triage",
         "nursing-workbench-mlc-documentation"
       ]
     },
@@ -146,7 +147,8 @@
         "adt-booking-list",
         "adt-bed-transfer-requisition",
         "adt-bed-transfer-requisition-new",
-        "adt-bed-transfer-requisition-list"
+        "adt-bed-transfer-requisition-list",
+        "nursing-workbench-census"
       ]
     },
     {
@@ -220,7 +222,9 @@
         "emergency-admission",
         "emergency-admission-new",
         "emergency-admission-new-patient",
-        "emergency-bed-status"
+        "emergency-bed-status",
+        "nursing-workbench-track-board",
+        "nursing-workbench-trauma-log"
       ]
     },
     {
@@ -522,34 +526,34 @@
       "contentFile": "workflows/administration-document-master-document-setting.md"
     },
     {
-      "slug": "administration-document-master-template-library",
-      "path": "/docs/workflows/administration-document-master-template-library",
-      "title": "Master Templates",
-      "pageId": 100704,
+      "slug": "administration-document-master-placeholder-setup",
+      "path": "/docs/workflows/administration-document-master-placeholder-setup",
+      "title": "Placeholder setup",
+      "pageId": 100706,
       "moduleId": 1,
       "moduleName": "Administration",
       "moduleSlug": "administration",
-      "pageUrl": "/medora/home/administration/document-master/template-library",
-      "capturePageUrl": "/medora/home/administration/document-master/template-library",
+      "pageUrl": "/medora/home/administration/document-master/placeholder-setup",
+      "capturePageUrl": "/medora/home/administration/document-master/placeholder-setup",
       "sectionTitle": null,
       "subTabTitle": null,
       "parentPageTitle": "Document Master",
-      "contentFile": "workflows/administration-document-master-template-library.md"
+      "contentFile": "workflows/administration-document-master-placeholder-setup.md"
     },
     {
-      "slug": "administration-document-master-hospital-templates",
-      "path": "/docs/workflows/administration-document-master-hospital-templates",
-      "title": "Hospital Template Access",
-      "pageId": 100705,
+      "slug": "administration-document-master-reusable-global-documents",
+      "path": "/docs/workflows/administration-document-master-reusable-global-documents",
+      "title": "Reusable Global Documents",
+      "pageId": 100707,
       "moduleId": 1,
       "moduleName": "Administration",
       "moduleSlug": "administration",
-      "pageUrl": "/medora/home/administration/document-master/hospital-templates",
-      "capturePageUrl": "/medora/home/administration/document-master/hospital-templates",
+      "pageUrl": "/medora/home/administration/document-master/reusable-global-documents",
+      "capturePageUrl": "/medora/home/administration/document-master/reusable-global-documents",
       "sectionTitle": null,
       "subTabTitle": null,
       "parentPageTitle": "Document Master",
-      "contentFile": "workflows/administration-document-master-hospital-templates.md"
+      "contentFile": "workflows/administration-document-master-reusable-global-documents.md"
     },
     {
       "slug": "administration-financial-year",
@@ -580,6 +584,21 @@
       "subTabTitle": null,
       "parentPageTitle": null,
       "contentFile": "workflows/administration-prefix-configuration.md"
+    },
+    {
+      "slug": "administration-color-configuration",
+      "path": "/docs/workflows/administration-color-configuration",
+      "title": "Color Configuration",
+      "pageId": 100905,
+      "moduleId": 1,
+      "moduleName": "Administration",
+      "moduleSlug": "administration",
+      "pageUrl": "/medora/home/administration/color-configuration",
+      "capturePageUrl": "/medora/home/administration/color-configuration",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": null,
+      "contentFile": "workflows/administration-color-configuration.md"
     },
     {
       "slug": "administration-departments",
@@ -912,6 +931,21 @@
       "contentFile": "workflows/administration-er-triage-level.md"
     },
     {
+      "slug": "administration-trauma-activation-setup",
+      "path": "/docs/workflows/administration-trauma-activation-setup",
+      "title": "Trauma activation setup",
+      "pageId": 101610,
+      "moduleId": 1,
+      "moduleName": "Administration",
+      "moduleSlug": "administration",
+      "pageUrl": "/medora/home/administration/trauma-activation-setup",
+      "capturePageUrl": "/medora/home/administration/trauma-activation-setup",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": null,
+      "contentFile": "workflows/administration-trauma-activation-setup.md"
+    },
+    {
       "slug": "registration-patient",
       "path": "/docs/workflows/registration-patient",
       "title": "Patient",
@@ -980,11 +1014,56 @@
       "moduleName": "Nursing Workbench",
       "moduleSlug": "nursing-workbench",
       "pageUrl": "/medora/home/nursing-workbench",
-      "capturePageUrl": "/medora/home/nursing-workbench/vital",
+      "capturePageUrl": "/medora/home/nursing-workbench/patient-visit-history-dashboard",
       "sectionTitle": "Nursing Workbench",
-      "subTabTitle": "Vital",
+      "subTabTitle": "Dashboard",
       "parentPageTitle": null,
       "contentFile": "workflows/nursing-workbench.md"
+    },
+    {
+      "slug": "nursing-workbench-patient-visit-history-dashboard",
+      "path": "/docs/workflows/nursing-workbench-patient-visit-history-dashboard",
+      "title": "Dashboard",
+      "pageId": 400108,
+      "moduleId": 4,
+      "moduleName": "Nursing Workbench",
+      "moduleSlug": "nursing-workbench",
+      "pageUrl": "/medora/home/nursing-workbench/patient-visit-history-dashboard",
+      "capturePageUrl": "/medora/home/nursing-workbench/patient-visit-history-dashboard/journal",
+      "sectionTitle": "Dashboard",
+      "subTabTitle": "Journal",
+      "parentPageTitle": "Nursing Workbench",
+      "contentFile": "workflows/nursing-workbench-patient-visit-history-dashboard.md"
+    },
+    {
+      "slug": "nursing-workbench-patient-visit-history-dashboard-journal",
+      "path": "/docs/workflows/nursing-workbench-patient-visit-history-dashboard-journal",
+      "title": "Journal",
+      "pageId": 400116,
+      "moduleId": 4,
+      "moduleName": "Nursing Workbench",
+      "moduleSlug": "nursing-workbench",
+      "pageUrl": "/medora/home/nursing-workbench/patient-visit-history-dashboard/journal",
+      "capturePageUrl": "/medora/home/nursing-workbench/patient-visit-history-dashboard/journal",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": "Dashboard",
+      "contentFile": "workflows/nursing-workbench-patient-visit-history-dashboard-journal.md"
+    },
+    {
+      "slug": "nursing-workbench-patient-visit-history-dashboard-visual",
+      "path": "/docs/workflows/nursing-workbench-patient-visit-history-dashboard-visual",
+      "title": "Visual",
+      "pageId": 400117,
+      "moduleId": 4,
+      "moduleName": "Nursing Workbench",
+      "moduleSlug": "nursing-workbench",
+      "pageUrl": "/medora/home/nursing-workbench/patient-visit-history-dashboard/visual",
+      "capturePageUrl": "/medora/home/nursing-workbench/patient-visit-history-dashboard/visual",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": "Dashboard",
+      "contentFile": "workflows/nursing-workbench-patient-visit-history-dashboard-visual.md"
     },
     {
       "slug": "nursing-workbench-vital",
@@ -1017,51 +1096,6 @@
       "contentFile": "workflows/nursing-workbench-allergy.md"
     },
     {
-      "slug": "nursing-workbench-patient-attachment",
-      "path": "/docs/workflows/nursing-workbench-patient-attachment",
-      "title": "Patient Attachment",
-      "pageId": 400103,
-      "moduleId": 4,
-      "moduleName": "Nursing Workbench",
-      "moduleSlug": "nursing-workbench",
-      "pageUrl": "/medora/home/nursing-workbench/patient-attachment",
-      "capturePageUrl": "/medora/home/nursing-workbench/patient-attachment",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": "Nursing Workbench",
-      "contentFile": "workflows/nursing-workbench-patient-attachment.md"
-    },
-    {
-      "slug": "nursing-workbench-clinical-document",
-      "path": "/docs/workflows/nursing-workbench-clinical-document",
-      "title": "Clinical Document",
-      "pageId": 400104,
-      "moduleId": 4,
-      "moduleName": "Nursing Workbench",
-      "moduleSlug": "nursing-workbench",
-      "pageUrl": "/medora/home/nursing-workbench/clinical-document",
-      "capturePageUrl": "/medora/home/nursing-workbench/clinical-document",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": "Nursing Workbench",
-      "contentFile": "workflows/nursing-workbench-clinical-document.md"
-    },
-    {
-      "slug": "nursing-workbench-case-sheet",
-      "path": "/docs/workflows/nursing-workbench-case-sheet",
-      "title": "Case Sheet",
-      "pageId": 400105,
-      "moduleId": 4,
-      "moduleName": "Nursing Workbench",
-      "moduleSlug": "nursing-workbench",
-      "pageUrl": "/medora/home/nursing-workbench/case-sheet",
-      "capturePageUrl": "/medora/home/nursing-workbench/case-sheet",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": "Nursing Workbench",
-      "contentFile": "workflows/nursing-workbench-case-sheet.md"
-    },
-    {
       "slug": "nursing-workbench-order",
       "path": "/docs/workflows/nursing-workbench-order",
       "title": "Order",
@@ -1092,79 +1126,49 @@
       "contentFile": "workflows/nursing-workbench-nursing-complete.md"
     },
     {
-      "slug": "nursing-workbench-patient-visit-history-dashboard",
-      "path": "/docs/workflows/nursing-workbench-patient-visit-history-dashboard",
-      "title": "Patient Visit History Dashboard",
-      "pageId": 400108,
+      "slug": "nursing-workbench-case-sheet",
+      "path": "/docs/workflows/nursing-workbench-case-sheet",
+      "title": "Case Sheet",
+      "pageId": 400105,
       "moduleId": 4,
       "moduleName": "Nursing Workbench",
       "moduleSlug": "nursing-workbench",
-      "pageUrl": "/medora/home/nursing-workbench/patient-visit-history-dashboard",
-      "capturePageUrl": "/medora/home/nursing-workbench/patient-visit-history-dashboard",
+      "pageUrl": "/medora/home/nursing-workbench/case-sheet",
+      "capturePageUrl": "/medora/home/nursing-workbench/case-sheet",
       "sectionTitle": null,
       "subTabTitle": null,
       "parentPageTitle": "Nursing Workbench",
-      "contentFile": "workflows/nursing-workbench-patient-visit-history-dashboard.md"
+      "contentFile": "workflows/nursing-workbench-case-sheet.md"
     },
     {
-      "slug": "nursing-workbench-census",
-      "path": "/docs/workflows/nursing-workbench-census",
-      "title": "Census",
-      "pageId": 400109,
+      "slug": "nursing-workbench-clinical-document",
+      "path": "/docs/workflows/nursing-workbench-clinical-document",
+      "title": "Clinical Document",
+      "pageId": 400104,
       "moduleId": 4,
       "moduleName": "Nursing Workbench",
       "moduleSlug": "nursing-workbench",
-      "pageUrl": "/medora/home/nursing-workbench/census",
-      "capturePageUrl": "/medora/home/nursing-workbench/census",
+      "pageUrl": "/medora/home/nursing-workbench/clinical-document",
+      "capturePageUrl": "/medora/home/nursing-workbench/clinical-document",
       "sectionTitle": null,
       "subTabTitle": null,
       "parentPageTitle": "Nursing Workbench",
-      "contentFile": "workflows/nursing-workbench-census.md"
+      "contentFile": "workflows/nursing-workbench-clinical-document.md"
     },
     {
-      "slug": "nursing-workbench-track-board",
-      "path": "/docs/workflows/nursing-workbench-track-board",
-      "title": "Track Board",
-      "pageId": 400110,
+      "slug": "nursing-workbench-patient-attachment",
+      "path": "/docs/workflows/nursing-workbench-patient-attachment",
+      "title": "Patient Attachment",
+      "pageId": 400103,
       "moduleId": 4,
       "moduleName": "Nursing Workbench",
       "moduleSlug": "nursing-workbench",
-      "pageUrl": "/medora/home/nursing-workbench/track-board",
-      "capturePageUrl": "/medora/home/nursing-workbench/track-board",
+      "pageUrl": "/medora/home/nursing-workbench/patient-attachment",
+      "capturePageUrl": "/medora/home/nursing-workbench/patient-attachment",
       "sectionTitle": null,
       "subTabTitle": null,
       "parentPageTitle": "Nursing Workbench",
-      "contentFile": "workflows/nursing-workbench-track-board.md"
-    },
-    {
-      "slug": "nursing-workbench-triage",
-      "path": "/docs/workflows/nursing-workbench-triage",
-      "title": "Triage",
-      "pageId": 400111,
-      "moduleId": 4,
-      "moduleName": "Nursing Workbench",
-      "moduleSlug": "nursing-workbench",
-      "pageUrl": "/medora/home/nursing-workbench/triage",
-      "capturePageUrl": "/medora/home/nursing-workbench/triage",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": "Nursing Workbench",
-      "contentFile": "workflows/nursing-workbench-triage.md"
-    },
-    {
-      "slug": "nursing-workbench-trauma-log",
-      "path": "/docs/workflows/nursing-workbench-trauma-log",
-      "title": "Trauma Log",
-      "pageId": 400112,
-      "moduleId": 4,
-      "moduleName": "Nursing Workbench",
-      "moduleSlug": "nursing-workbench",
-      "pageUrl": "/medora/home/nursing-workbench/trauma-log",
-      "capturePageUrl": "/medora/home/nursing-workbench/trauma-log",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": "Nursing Workbench",
-      "contentFile": "workflows/nursing-workbench-trauma-log.md"
+      "contentFile": "workflows/nursing-workbench-patient-attachment.md"
     },
     {
       "slug": "nursing-workbench-emar",
@@ -1195,6 +1199,21 @@
       "subTabTitle": null,
       "parentPageTitle": "Nursing Workbench",
       "contentFile": "workflows/nursing-workbench-care-plan.md"
+    },
+    {
+      "slug": "nursing-workbench-triage",
+      "path": "/docs/workflows/nursing-workbench-triage",
+      "title": "Triage",
+      "pageId": 400111,
+      "moduleId": 4,
+      "moduleName": "Nursing Workbench",
+      "moduleSlug": "nursing-workbench",
+      "pageUrl": "/medora/home/nursing-workbench/triage",
+      "capturePageUrl": "/medora/home/nursing-workbench/triage",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": "Nursing Workbench",
+      "contentFile": "workflows/nursing-workbench-triage.md"
     },
     {
       "slug": "nursing-workbench-mlc-documentation",
@@ -1540,6 +1559,21 @@
       "subTabTitle": null,
       "parentPageTitle": "Bed Transfer Requisition",
       "contentFile": "workflows/adt-bed-transfer-requisition-list.md"
+    },
+    {
+      "slug": "nursing-workbench-census",
+      "path": "/docs/workflows/nursing-workbench-census",
+      "title": "Census",
+      "pageId": 400109,
+      "moduleId": 7,
+      "moduleName": "ADT",
+      "moduleSlug": "adt",
+      "pageUrl": "/medora/home/nursing-workbench/census",
+      "capturePageUrl": "/medora/home/nursing-workbench/census",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": null,
+      "contentFile": "workflows/nursing-workbench-census.md"
     },
     {
       "slug": "billing-bill",
@@ -2052,6 +2086,36 @@
       "contentFile": "workflows/emergency-bed-status.md"
     },
     {
+      "slug": "nursing-workbench-track-board",
+      "path": "/docs/workflows/nursing-workbench-track-board",
+      "title": "Track Board",
+      "pageId": 400110,
+      "moduleId": 12,
+      "moduleName": "Emergency",
+      "moduleSlug": "emergency",
+      "pageUrl": "/medora/home/nursing-workbench/track-board",
+      "capturePageUrl": "/medora/home/nursing-workbench/track-board",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": null,
+      "contentFile": "workflows/nursing-workbench-track-board.md"
+    },
+    {
+      "slug": "nursing-workbench-trauma-log",
+      "path": "/docs/workflows/nursing-workbench-trauma-log",
+      "title": "Trauma Log",
+      "pageId": 400112,
+      "moduleId": 12,
+      "moduleName": "Emergency",
+      "moduleSlug": "emergency",
+      "pageUrl": "/medora/home/nursing-workbench/trauma-log",
+      "capturePageUrl": "/medora/home/nursing-workbench/trauma-log",
+      "sectionTitle": null,
+      "subTabTitle": null,
+      "parentPageTitle": null,
+      "contentFile": "workflows/nursing-workbench-trauma-log.md"
+    },
+    {
       "slug": "perioperative-ot-board",
       "path": "/docs/workflows/perioperative-ot-board",
       "title": "OT Board",
@@ -2514,6 +2578,7 @@
     "/api/(private)/doctor/v1/visits/[visitId]",
     "/api/(private)/grn-invoice/[...path]",
     "/api/(private)/hospital-logo/[...path]",
+    "/api/(private)/medora/admin/global-documents",
     "/api/(private)/medora/admin/icd",
     "/api/(private)/medora/admin/ops",
     "/api/(private)/medora/admin/plans",
@@ -2533,13 +2598,14 @@
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/billing-setup/settings",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/billing-setup/settings/accommodation-policy",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/branches",
+    "/api/(private)/medora/hospital/[hospital_id]/home/administration/color-configuration",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/departments",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/diagnosis-codes",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/document-master/document",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/document-master/document-setting",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/document-master/document-type",
-    "/api/(private)/medora/hospital/[hospital_id]/home/administration/document-master/hospital-templates",
-    "/api/(private)/medora/hospital/[hospital_id]/home/administration/document-master/template-library",
+    "/api/(private)/medora/hospital/[hospital_id]/home/administration/document-master/placeholder-setup",
+    "/api/(private)/medora/hospital/[hospital_id]/home/administration/document-master/reusable-global-documents",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/er-triage-level",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/external-refer-master",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/financial-year",
@@ -2554,6 +2620,7 @@
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/service-order/sub-category-master",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/staff/list",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/staff/registration",
+    "/api/(private)/medora/hospital/[hospital_id]/home/administration/trauma-activation-setup",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/user-group",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/ward-master",
     "/api/(private)/medora/hospital/[hospital_id]/home/administration/ward-master/billing-policy",
@@ -2654,8 +2721,10 @@
     "/api/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/emr/order",
     "/api/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/emr/patient-attachment",
     "/api/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/emr/patient-visit-history-dashboard",
+    "/api/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/emr/patient-visit-history-dashboard/visual",
     "/api/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/emr/vital",
     "/api/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/ipd/census",
+    "/api/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/trauma-log",
     "/api/(private)/medora/hospital/[hospital_id]/home/obstetrics",
     "/api/(private)/medora/hospital/[hospital_id]/home/perioperative/events",
     "/api/(private)/medora/hospital/[hospital_id]/home/perioperative/ot-room",
@@ -2805,16 +2874,16 @@
       "keywords": "Administration /medora/home/administration/document-master/document-setting"
     },
     {
-      "title": "Master Templates",
-      "href": "/docs/workflows/administration-document-master-template-library",
+      "title": "Placeholder setup",
+      "href": "/docs/workflows/administration-document-master-placeholder-setup",
       "category": "Workflow",
-      "keywords": "Administration /medora/home/administration/document-master/template-library"
+      "keywords": "Administration /medora/home/administration/document-master/placeholder-setup"
     },
     {
-      "title": "Hospital Template Access",
-      "href": "/docs/workflows/administration-document-master-hospital-templates",
+      "title": "Reusable Global Documents",
+      "href": "/docs/workflows/administration-document-master-reusable-global-documents",
       "category": "Workflow",
-      "keywords": "Administration /medora/home/administration/document-master/hospital-templates"
+      "keywords": "Administration /medora/home/administration/document-master/reusable-global-documents"
     },
     {
       "title": "Financial Year",
@@ -2827,6 +2896,12 @@
       "href": "/docs/workflows/administration-prefix-configuration",
       "category": "Workflow",
       "keywords": "Administration /medora/home/administration/prefix-configuration"
+    },
+    {
+      "title": "Color Configuration",
+      "href": "/docs/workflows/administration-color-configuration",
+      "category": "Workflow",
+      "keywords": "Administration /medora/home/administration/color-configuration"
     },
     {
       "title": "Departments",
@@ -2961,6 +3036,12 @@
       "keywords": "Administration /medora/home/administration/er-triage-level"
     },
     {
+      "title": "Trauma activation setup",
+      "href": "/docs/workflows/administration-trauma-activation-setup",
+      "category": "Workflow",
+      "keywords": "Administration /medora/home/administration/trauma-activation-setup"
+    },
+    {
       "title": "Patient",
       "href": "/docs/workflows/registration-patient",
       "category": "Workflow",
@@ -2991,6 +3072,24 @@
       "keywords": "Nursing Workbench /medora/home/nursing-workbench"
     },
     {
+      "title": "Dashboard",
+      "href": "/docs/workflows/nursing-workbench-patient-visit-history-dashboard",
+      "category": "Workflow",
+      "keywords": "Nursing Workbench /medora/home/nursing-workbench/patient-visit-history-dashboard"
+    },
+    {
+      "title": "Journal",
+      "href": "/docs/workflows/nursing-workbench-patient-visit-history-dashboard-journal",
+      "category": "Workflow",
+      "keywords": "Nursing Workbench /medora/home/nursing-workbench/patient-visit-history-dashboard/journal"
+    },
+    {
+      "title": "Visual",
+      "href": "/docs/workflows/nursing-workbench-patient-visit-history-dashboard-visual",
+      "category": "Workflow",
+      "keywords": "Nursing Workbench /medora/home/nursing-workbench/patient-visit-history-dashboard/visual"
+    },
+    {
       "title": "Vital",
       "href": "/docs/workflows/nursing-workbench-vital",
       "category": "Workflow",
@@ -3001,24 +3100,6 @@
       "href": "/docs/workflows/nursing-workbench-allergy",
       "category": "Workflow",
       "keywords": "Nursing Workbench /medora/home/nursing-workbench/allergy"
-    },
-    {
-      "title": "Patient Attachment",
-      "href": "/docs/workflows/nursing-workbench-patient-attachment",
-      "category": "Workflow",
-      "keywords": "Nursing Workbench /medora/home/nursing-workbench/patient-attachment"
-    },
-    {
-      "title": "Clinical Document",
-      "href": "/docs/workflows/nursing-workbench-clinical-document",
-      "category": "Workflow",
-      "keywords": "Nursing Workbench /medora/home/nursing-workbench/clinical-document"
-    },
-    {
-      "title": "Case Sheet",
-      "href": "/docs/workflows/nursing-workbench-case-sheet",
-      "category": "Workflow",
-      "keywords": "Nursing Workbench /medora/home/nursing-workbench/case-sheet"
     },
     {
       "title": "Order",
@@ -3033,34 +3114,22 @@
       "keywords": "Nursing Workbench /medora/home/nursing-workbench/nursing-complete"
     },
     {
-      "title": "Patient Visit History Dashboard",
-      "href": "/docs/workflows/nursing-workbench-patient-visit-history-dashboard",
+      "title": "Case Sheet",
+      "href": "/docs/workflows/nursing-workbench-case-sheet",
       "category": "Workflow",
-      "keywords": "Nursing Workbench /medora/home/nursing-workbench/patient-visit-history-dashboard"
+      "keywords": "Nursing Workbench /medora/home/nursing-workbench/case-sheet"
     },
     {
-      "title": "Census",
-      "href": "/docs/workflows/nursing-workbench-census",
+      "title": "Clinical Document",
+      "href": "/docs/workflows/nursing-workbench-clinical-document",
       "category": "Workflow",
-      "keywords": "Nursing Workbench /medora/home/nursing-workbench/census"
+      "keywords": "Nursing Workbench /medora/home/nursing-workbench/clinical-document"
     },
     {
-      "title": "Track Board",
-      "href": "/docs/workflows/nursing-workbench-track-board",
+      "title": "Patient Attachment",
+      "href": "/docs/workflows/nursing-workbench-patient-attachment",
       "category": "Workflow",
-      "keywords": "Nursing Workbench /medora/home/nursing-workbench/track-board"
-    },
-    {
-      "title": "Triage",
-      "href": "/docs/workflows/nursing-workbench-triage",
-      "category": "Workflow",
-      "keywords": "Nursing Workbench /medora/home/nursing-workbench/triage"
-    },
-    {
-      "title": "Trauma Log",
-      "href": "/docs/workflows/nursing-workbench-trauma-log",
-      "category": "Workflow",
-      "keywords": "Nursing Workbench /medora/home/nursing-workbench/trauma-log"
+      "keywords": "Nursing Workbench /medora/home/nursing-workbench/patient-attachment"
     },
     {
       "title": "eMAR",
@@ -3073,6 +3142,12 @@
       "href": "/docs/workflows/nursing-workbench-care-plan",
       "category": "Workflow",
       "keywords": "Nursing Workbench /medora/home/nursing-workbench/care-plan"
+    },
+    {
+      "title": "Triage",
+      "href": "/docs/workflows/nursing-workbench-triage",
+      "category": "Workflow",
+      "keywords": "Nursing Workbench /medora/home/nursing-workbench/triage"
     },
     {
       "title": "MLC documentation",
@@ -3211,6 +3286,12 @@
       "href": "/docs/workflows/adt-bed-transfer-requisition-list",
       "category": "Workflow",
       "keywords": "ADT /medora/home/adt/bed-transfer-requisition/list"
+    },
+    {
+      "title": "Census",
+      "href": "/docs/workflows/nursing-workbench-census",
+      "category": "Workflow",
+      "keywords": "ADT /medora/home/nursing-workbench/census"
     },
     {
       "title": "Bill",
@@ -3415,6 +3496,18 @@
       "href": "/docs/workflows/emergency-bed-status",
       "category": "Workflow",
       "keywords": "Emergency /medora/home/emergency/bed-status"
+    },
+    {
+      "title": "Track Board",
+      "href": "/docs/workflows/nursing-workbench-track-board",
+      "category": "Workflow",
+      "keywords": "Emergency /medora/home/nursing-workbench/track-board"
+    },
+    {
+      "title": "Trauma Log",
+      "href": "/docs/workflows/nursing-workbench-trauma-log",
+      "category": "Workflow",
+      "keywords": "Emergency /medora/home/nursing-workbench/trauma-log"
     },
     {
       "title": "OT Board",
@@ -3713,10 +3806,11 @@
     "/docs/workflows/administration-document-master-document-type",
     "/docs/workflows/administration-document-master-document",
     "/docs/workflows/administration-document-master-document-setting",
-    "/docs/workflows/administration-document-master-template-library",
-    "/docs/workflows/administration-document-master-hospital-templates",
+    "/docs/workflows/administration-document-master-placeholder-setup",
+    "/docs/workflows/administration-document-master-reusable-global-documents",
     "/docs/workflows/administration-financial-year",
     "/docs/workflows/administration-prefix-configuration",
+    "/docs/workflows/administration-color-configuration",
     "/docs/workflows/administration-departments",
     "/docs/workflows/administration-medication-order-setup",
     "/docs/workflows/administration-medication-order-setup-frequency",
@@ -3739,25 +3833,25 @@
     "/docs/workflows/administration-billing-setup-ed-billing",
     "/docs/workflows/administration-billing-setup-settings",
     "/docs/workflows/administration-er-triage-level",
+    "/docs/workflows/administration-trauma-activation-setup",
     "/docs/workflows/registration-patient",
     "/docs/workflows/registration-patient-registration",
     "/docs/workflows/registration-patient-list",
     "/docs/workflows/appointment-doctor-appointment",
     "/docs/workflows/nursing-workbench",
+    "/docs/workflows/nursing-workbench-patient-visit-history-dashboard",
+    "/docs/workflows/nursing-workbench-patient-visit-history-dashboard-journal",
+    "/docs/workflows/nursing-workbench-patient-visit-history-dashboard-visual",
     "/docs/workflows/nursing-workbench-vital",
     "/docs/workflows/nursing-workbench-allergy",
-    "/docs/workflows/nursing-workbench-patient-attachment",
-    "/docs/workflows/nursing-workbench-clinical-document",
-    "/docs/workflows/nursing-workbench-case-sheet",
     "/docs/workflows/nursing-workbench-order",
     "/docs/workflows/nursing-workbench-nursing-complete",
-    "/docs/workflows/nursing-workbench-patient-visit-history-dashboard",
-    "/docs/workflows/nursing-workbench-census",
-    "/docs/workflows/nursing-workbench-track-board",
-    "/docs/workflows/nursing-workbench-triage",
-    "/docs/workflows/nursing-workbench-trauma-log",
+    "/docs/workflows/nursing-workbench-case-sheet",
+    "/docs/workflows/nursing-workbench-clinical-document",
+    "/docs/workflows/nursing-workbench-patient-attachment",
     "/docs/workflows/nursing-workbench-emar",
     "/docs/workflows/nursing-workbench-care-plan",
+    "/docs/workflows/nursing-workbench-triage",
     "/docs/workflows/nursing-workbench-mlc-documentation",
     "/docs/workflows/consultation-emr",
     "/docs/workflows/consultation-cpoe",
@@ -3781,6 +3875,7 @@
     "/docs/workflows/adt-bed-transfer-requisition",
     "/docs/workflows/adt-bed-transfer-requisition-new",
     "/docs/workflows/adt-bed-transfer-requisition-list",
+    "/docs/workflows/nursing-workbench-census",
     "/docs/workflows/billing-bill",
     "/docs/workflows/billing-advance-deposit",
     "/docs/workflows/inventory-setup-stores",
@@ -3815,6 +3910,8 @@
     "/docs/workflows/emergency-admission-new",
     "/docs/workflows/emergency-admission-new-patient",
     "/docs/workflows/emergency-bed-status",
+    "/docs/workflows/nursing-workbench-track-board",
+    "/docs/workflows/nursing-workbench-trauma-log",
     "/docs/workflows/perioperative-ot-board",
     "/docs/workflows/perioperative-cases",
     "/docs/workflows/perioperative-pre-op",
