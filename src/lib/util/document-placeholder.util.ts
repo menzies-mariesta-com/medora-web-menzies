@@ -1,3 +1,9 @@
+import {
+	placeholderGroupsForUi,
+	syncLegacyPlaceholderContextKeys,
+	SYSTEM_DATA_PLACEHOLDER_REGISTRY
+} from '$lib/model/constant/document-placeholder.registry';
+
 export type PlaceholderItem = {
 	key: string;
 	desc: string;
@@ -8,122 +14,11 @@ export type PlaceholderGroup = {
 	placeholders: PlaceholderItem[];
 };
 
-export const DOCUMENT_TEMPLATE_PLACEHOLDERS: PlaceholderGroup[] = [
-	{
-		category: 'Patient',
-		placeholders: [
-			{ key: '{{patient.name}}', desc: 'Full patient name' },
-			{ key: '{{patient.code}}', desc: 'Patient code/ID' },
-			{ key: '{{patient.dob}}', desc: 'Date of birth' },
-			{ key: '{{patient.age}}', desc: 'Patient age (years)' },
-			{ key: '{{patient.gender}}', desc: 'Gender' },
-			{ key: '{{patient.address}}', desc: 'Patient address' },
-			{ key: '{{patient.phone}}', desc: 'Phone number' },
-			{
-				key: '{{patient.email}}',
-				desc: 'Email address (if available)'
-			}
-		]
-	},
-	{
-		category: 'Visit',
-		placeholders: [
-			{ key: '{{visit.no}}', desc: 'Visit number' },
-			{ key: '{{visit.date}}', desc: 'Visit date' },
-			{ key: '{{visit.time}}', desc: 'Visit time' },
-			{ key: '{{visit.datetime}}', desc: 'Visit date and time' },
-			{ key: '{{visit.type}}', desc: 'Visit type (OPD/IPD/ED)' },
-			{ key: '{{visit.department}}', desc: 'Department/branch name' },
-			{
-				key: '{{visit.service_lines_table}}',
-				desc: 'HTML table of service order lines for this visit (when loaded for print)'
-			}
-		]
-	},
-	{
-		category: 'Doctor',
-		placeholders: [
-			{ key: '{{doctor.name}}', desc: 'Doctor full name' },
-			{ key: '{{doctor.title}}', desc: 'Doctor title' },
-			{ key: '{{doctor.specialty}}', desc: 'Specialty' },
-			{ key: '{{doctor.license}}', desc: 'License number' },
-			{ key: '{{doctor.signature}}', desc: 'Signature text' }
-		]
-	},
-	{
-		category: 'Hospital',
-		placeholders: [
-			{ key: '{{hospital.name}}', desc: 'Hospital name' },
-			{ key: '{{hospital.logo}}', desc: 'Hospital logo URL' },
-			{ key: '{{hospital.address}}', desc: 'Hospital address' },
-			{ key: '{{hospital.phone}}', desc: 'Hospital phone' },
-			{ key: '{{hospital.email}}', desc: 'Hospital email' }
-		]
-	},
-	{
-		category: 'Document / Print',
-		placeholders: [
-			{ key: '{{document.title}}', desc: 'Document title' },
-			{ key: '{{document.code}}', desc: 'Document code' },
-			{ key: '{{document.number}}', desc: 'Document number/name' },
-			{ key: '{{document.date}}', desc: 'Document date (today)' },
-			{ key: '{{print.date}}', desc: 'Print date (today)' },
-			{ key: '{{print.time}}', desc: 'Print time (now)' },
-			{ key: '{{print.by}}', desc: 'Printed by user name' },
-			{
-				key: '{{print.body_html}}',
-				desc: 'Dynamic HTML body injected at print time (tables, totals, etc.)'
-			},
-			{
-				key: '{{print.barcode_html}}',
-				desc: 'Barcode SVG/HTML injected at print time'
-			},
-			{
-				key: '{{print.datetime}}',
-				desc: 'Print date and time (locale string)'
-			},
-			{ key: '{{page.number}}', desc: 'Current page number' },
-			{ key: '{{page.total}}', desc: 'Total pages' }
-		]
-	},
-	{
-		category: 'Appointment',
-		placeholders: [
-			{ key: '{{appointment.patient}}', desc: 'Patient label on slip' },
-			{ key: '{{appointment.doctor}}', desc: 'Doctor name' },
-			{ key: '{{appointment.date}}', desc: 'Appointment date' },
-			{ key: '{{appointment.start_time}}', desc: 'Start time' },
-			{ key: '{{appointment.end_time}}', desc: 'End time' }
-		]
-	},
-	{
-		category: 'Legacy aliases',
-		placeholders: [
-			{ key: '{{patient_name}}', desc: 'Alias of {{patient.name}}' },
-			{ key: '{{patient_code}}', desc: 'Alias of {{patient.code}}' },
-			{ key: '{{patient_dob}}', desc: 'Alias of {{patient.dob}}' },
-			{ key: '{{patient_age}}', desc: 'Alias of {{patient.age}}' },
-			{
-				key: '{{patient_gender}}',
-				desc: 'Alias of {{patient.gender}}'
-			},
-			{ key: '{{doctor}}', desc: 'Alias of {{doctor.name}}' },
-			{ key: '{{doctor_name}}', desc: 'Alias of {{doctor.name}}' },
-			{ key: '{{visit_no}}', desc: 'Alias of {{visit.no}}' },
-			{ key: '{{visit_date}}', desc: 'Alias of {{visit.date}}' },
-			{ key: '{{visit_time}}', desc: 'Alias of {{visit.time}}' },
-			{
-				key: '{{visit_datetime}}',
-				desc: 'Alias of {{visit.datetime}}'
-			},
-			{
-				key: '{{hospital_name}}',
-				desc: 'Alias of {{hospital.name}}'
-			},
-			{ key: '{{hospital_logo}}', desc: 'Alias of {{hospital.logo}}' }
-		]
-	}
-];
+/** @deprecated Use placeholderGroupsForUi() from document-placeholder.registry */
+export const DOCUMENT_TEMPLATE_PLACEHOLDERS: PlaceholderGroup[] =
+	placeholderGroupsForUi();
+
+const PLACEHOLDER_EMPTY = '-';
 
 type NameParts = {
 	firstName?: string | null;
@@ -219,7 +114,7 @@ function escapeHtmlCell(text: string): string {
 		.replace(/"/g, '&quot;');
 }
 
-/** Builds an HTML table for {{visit.service_lines_table}} in document templates. */
+/** Builds an HTML table for {{visit_service_lines_table}} in document templates. */
 export function buildVisitServiceLinesTableHtml(
 	rows: VisitServiceLinePrintRow[]
 ): string {
@@ -251,119 +146,152 @@ export function buildVisitServiceLinesTableHtml(
 	return `<table>${head}<tbody>${bodyRows.join('')}</tbody></table>`;
 }
 
+function orDash(value: string | null | undefined): string {
+	const t = value?.trim() ?? '';
+	return t === '' ? PLACEHOLDER_EMPTY : t;
+}
+
 export function buildDocumentPlaceholderContext(
 	visit: VisitLike | null | undefined,
 	document: DocumentLike,
 	options?: {
 		now?: Date;
 		printBy?: string | null;
-		/** Merged after base map (e.g. {{visit.service_lines_table}} HTML). */
 		extraPlaceholders?: Record<string, string>;
 	}
 ): Record<string, string> {
 	const now = options?.now ?? new Date();
-	const patientName = fullName(visit?.patient);
-	const patientCode = visit?.patient?.code ?? '';
-	const patientDob = visit?.patient?.dateOfBirth ?? '';
-	const patientAge = calcAgeLabel(visit?.patient?.dateOfBirth);
-	const patientGender = visit?.patient?.gender?.name ?? '';
-	const patientAddress = visit?.patient?.address ?? '';
-	const patientPhone = visit?.patient?.phonePrimary ?? '';
-	const patientEmail = visit?.patient?.email ?? '';
-	const visitNo = visit?.visitNo ?? '';
-	const visitDate = visit?.createdAt
-		? new Date(visit.createdAt).toLocaleDateString()
-		: '';
-	const visitTime = visit?.createdAt
-		? new Date(visit.createdAt).toLocaleTimeString()
-		: '';
-	const doctorTitle = visit?.doctor?.title?.name ?? '';
+	const patientName = orDash(fullName(visit?.patient));
+	const patientCode = orDash(visit?.patient?.code);
+	const patientDob = orDash(visit?.patient?.dateOfBirth);
+	const patientAge = orDash(calcAgeLabel(visit?.patient?.dateOfBirth));
+	const patientGender = orDash(visit?.patient?.gender?.name);
+	const patientAddress = orDash(visit?.patient?.address);
+	const patientPhone = orDash(visit?.patient?.phonePrimary);
+	const patientEmail = orDash(visit?.patient?.email);
+	const visitCode = orDash(visit?.visitNo);
+	const visitDate =
+		visit?.createdAt != null
+			? orDash(new Date(visit.createdAt).toLocaleDateString())
+			: PLACEHOLDER_EMPTY;
+	const visitTime =
+		visit?.createdAt != null
+			? orDash(new Date(visit.createdAt).toLocaleTimeString())
+			: PLACEHOLDER_EMPTY;
+	const doctorTitle = orDash(visit?.doctor?.title?.name);
 	const doctorNameCore = fullName(visit?.doctor);
-	const doctorName = [doctorTitle, doctorNameCore]
-		.filter((v) => Boolean(v))
-		.join(' ')
-		.trim();
-	const doctorSpecialty = visit?.doctor?.specialization?.name ?? '';
-	const doctorLicense = visit?.doctor?.staffDetail?.licenseNo ?? '';
-	const doctorSignature =
-		visit?.doctor?.staffDetail?.signatureText ?? '';
-	const hospitalName = visit?.hospital?.name ?? '';
-	const hospitalLogo = visit?.hospital?.logoUrl ?? '';
-	const hospitalAddress = visit?.hospital?.address ?? '';
-	const hospitalPhone = visit?.hospital?.phone ?? '';
-	const hospitalEmail = visit?.hospital?.email ?? '';
-	const documentTitle =
+	const doctorName = orDash(
+		[doctorTitle !== PLACEHOLDER_EMPTY ? doctorTitle : '', doctorNameCore]
+			.filter((v) => v && v !== PLACEHOLDER_EMPTY)
+			.join(' ')
+			.trim() || doctorNameCore
+	);
+	const doctorSpecialty = orDash(visit?.doctor?.specialization?.name);
+	const doctorLicense = orDash(visit?.doctor?.staffDetail?.licenseNo);
+	const doctorSignature = orDash(
+		visit?.doctor?.staffDetail?.signatureText
+	);
+	const hospitalName = orDash(visit?.hospital?.name);
+	const hospitalLogo = orDash(visit?.hospital?.logoUrl);
+	const hospitalAddress = orDash(visit?.hospital?.address);
+	const hospitalPhone = orDash(visit?.hospital?.phone);
+	const hospitalEmail = orDash(visit?.hospital?.email);
+	const documentTitle = orDash(
 		document.documentNumber ||
-		document.documentType?.documentType ||
-		'Document';
+			document.documentType?.documentType ||
+			'Document'
+	);
 
-	const visitDateTime = `${visitDate} ${visitTime}`.trim();
-	const printBy = options?.printBy ?? '';
+	const visitDateTime =
+		visitDate === PLACEHOLDER_EMPTY && visitTime === PLACEHOLDER_EMPTY
+			? PLACEHOLDER_EMPTY
+			: `${visitDate === PLACEHOLDER_EMPTY ? '' : visitDate} ${visitTime === PLACEHOLDER_EMPTY ? '' : visitTime}`.trim() ||
+				PLACEHOLDER_EMPTY;
+	const printBy = orDash(options?.printBy);
 
-	const base = {
-		'{{patient.name}}': patientName,
-		'{{patient.code}}': patientCode,
-		'{{patient.dob}}': patientDob,
-		'{{patient.age}}': patientAge,
-		'{{patient.gender}}': patientGender,
-		'{{patient.address}}': patientAddress,
-		'{{patient.phone}}': patientPhone,
-		'{{patient.email}}': patientEmail,
-		'{{visit.no}}': visitNo,
-		'{{visit.date}}': visitDate,
-		'{{visit.time}}': visitTime,
-		'{{visit.datetime}}': visitDateTime,
-		'{{visit.type}}': visit?.visitType?.name ?? '',
-		'{{visit.department}}': visit?.branch?.name ?? '',
-		'{{visit.service_lines_table}}': '',
-		'{{doctor.name}}': doctorName,
-		'{{doctor.title}}': doctorTitle,
-		'{{doctor.specialty}}': doctorSpecialty,
-		'{{doctor.license}}': doctorLicense,
-		'{{doctor.signature}}': doctorSignature,
-		'{{hospital.name}}': hospitalName,
-		'{{hospital.logo}}': hospitalLogo,
-		'{{hospital.address}}': hospitalAddress,
-		'{{hospital.phone}}': hospitalPhone,
-		'{{hospital.email}}': hospitalEmail,
-		'{{document.title}}': documentTitle,
-		'{{document.code}}': document.code ?? '',
-		'{{document.number}}': document.documentNumber ?? '',
-		'{{document.date}}': now.toLocaleDateString(),
-		'{{print.date}}': now.toLocaleDateString(),
-		'{{print.time}}': now.toLocaleTimeString(),
-		'{{print.by}}': printBy,
-		'{{print.body_html}}': '',
-		'{{print.barcode_html}}': '',
-		'{{print.datetime}}': now.toLocaleString(),
-		'{{print.customer}}': '',
-		'{{print.doctor}}': '',
-		'{{appointment.patient}}': '',
-		'{{appointment.doctor}}': '',
-		'{{appointment.date}}': '',
-		'{{appointment.start_time}}': '',
-		'{{appointment.end_time}}': '',
-		'{{page.number}}': '',
-		'{{page.total}}': '',
-
-		// Backward-compatible aliases
+	return {
 		'{{patient_name}}': patientName,
 		'{{patient_code}}': patientCode,
 		'{{patient_dob}}': patientDob,
 		'{{patient_age}}': patientAge,
 		'{{patient_gender}}': patientGender,
-		'{{doctor}}': doctorName,
-		'{{doctor_name}}': doctorName,
-		'{{visit_no}}': visitNo,
+		'{{patient_address}}': patientAddress,
+		'{{patient_phone}}': patientPhone,
+		'{{patient_email}}': patientEmail,
+		'{{visit_code}}': visitCode,
 		'{{visit_date}}': visitDate,
 		'{{visit_time}}': visitTime,
 		'{{visit_datetime}}': visitDateTime,
+		'{{visit_type}}': orDash(visit?.visitType?.name),
+		'{{visit_department}}': orDash(visit?.branch?.name),
+		'{{visit_service_lines_table}}': PLACEHOLDER_EMPTY,
+		'{{doctor_name}}': doctorName,
+		'{{doctor_title}}': doctorTitle,
+		'{{doctor_specialty}}': doctorSpecialty,
+		'{{doctor_license}}': doctorLicense,
+		'{{doctor_signature}}': doctorSignature,
 		'{{hospital_name}}': hospitalName,
-		'{{hospital_logo}}': hospitalLogo
+		'{{hospital_logo}}': hospitalLogo,
+		'{{hospital_address}}': hospitalAddress,
+		'{{hospital_phone}}': hospitalPhone,
+		'{{hospital_email}}': hospitalEmail,
+		'{{document_title}}': documentTitle,
+		'{{document_code}}': orDash(document.code),
+		'{{document_number}}': orDash(document.documentNumber),
+		'{{document_date}}': orDash(now.toLocaleDateString()),
+		'{{print_date}}': orDash(now.toLocaleDateString()),
+		'{{print_time}}': orDash(now.toLocaleTimeString()),
+		'{{print_by}}': printBy,
+		'{{print_body_html}}': PLACEHOLDER_EMPTY,
+		'{{print_barcode_html}}': PLACEHOLDER_EMPTY,
+		'{{print_datetime}}': orDash(now.toLocaleString()),
+		'{{appointment_patient}}': PLACEHOLDER_EMPTY,
+		'{{appointment_doctor}}': PLACEHOLDER_EMPTY,
+		'{{appointment_date}}': PLACEHOLDER_EMPTY,
+		'{{appointment_start_time}}': PLACEHOLDER_EMPTY,
+		'{{appointment_end_time}}': PLACEHOLDER_EMPTY,
+		'{{page_number}}': PLACEHOLDER_EMPTY,
+		'{{page_total}}': PLACEHOLDER_EMPTY,
+		'{{bill_care_setting}}': PLACEHOLDER_EMPTY,
+		...options?.extraPlaceholders
 	};
+}
 
-	const extra = options?.extraPlaceholders ?? {};
-	return { ...base, ...extra };
+export type NormalizePrintContextInput = {
+	visit?: VisitLike | null;
+	document: DocumentLike;
+	printBy?: string | null;
+	extraPlaceholders?: Record<string, string>;
+	textPlaceholders?: Record<string, string>;
+	now?: Date;
+};
+
+/** Full map for resolveDocumentTemplate: system data + hospital text tokens. */
+export function normalizePrintContext(
+	input: NormalizePrintContextInput
+): Record<string, string> {
+	const dashMap: Record<string, string> = {};
+	for (const entry of SYSTEM_DATA_PLACEHOLDER_REGISTRY) {
+		dashMap[entry.token] = PLACEHOLDER_EMPTY;
+	}
+
+	const fromVisit = buildDocumentPlaceholderContext(
+		input.visit ?? null,
+		input.document,
+		{
+			now: input.now,
+			printBy: input.printBy,
+			extraPlaceholders: input.extraPlaceholders
+		}
+	);
+
+	const merged = { ...dashMap, ...fromVisit };
+	for (const [code, text] of Object.entries(input.textPlaceholders ?? {})) {
+		const key = code.startsWith('{{') ? code : `{{${code}}}`;
+		merged[key] = orDash(text);
+	}
+	syncLegacyPlaceholderContextKeys(merged, PLACEHOLDER_EMPTY);
+	return merged;
 }
 
 export function resolveDocumentTemplate(
@@ -374,10 +302,21 @@ export function resolveDocumentTemplate(
 	if (!template) return '';
 	let result = template;
 	for (const [key, value] of Object.entries(context)) {
-		result = result.split(key).join(value ?? '');
+		result = result.split(key).join(value ?? PLACEHOLDER_EMPTY);
 	}
-	if (options?.stripUnknown !== false) {
-		result = result.replace(/\{\{[^}]+\}\}/g, '');
+	if (options?.stripUnknown === true) {
+		result = result.replace(/\{\{[^}]+\}\}/g, PLACEHOLDER_EMPTY);
+	} else {
+		result = result.replace(/\{\{[a-z][a-z0-9_]*\}\}/g, (token) =>
+			context[token] ?? PLACEHOLDER_EMPTY
+		);
 	}
 	return result;
+}
+
+/** Canonical token for EMR/billing dynamic print sections (`{{print_body_html}}` in templates). */
+export const PRINT_BODY_HTML_TOKEN = '{{print_body_html}}';
+
+export function extraPrintBodyHtml(html: string): Record<string, string> {
+	return { [PRINT_BODY_HTML_TOKEN]: html };
 }

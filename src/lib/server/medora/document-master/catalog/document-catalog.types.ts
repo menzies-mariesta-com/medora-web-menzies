@@ -3,6 +3,7 @@ import type {
 	DocumentCatalogKindEnum,
 	DocumentCatalogSurfaceEnum
 } from '$lib/model/enum/document-catalog.enum';
+import type { ClinicalDocumentSectionEnum } from '$lib/model/enum/clinical-document-section.enum';
 
 export type CatalogLocaleBody = {
 	locale: string;
@@ -11,7 +12,6 @@ export type CatalogLocaleBody = {
 };
 
 export type CatalogTemplateDef = {
-	catalogCode: string;
 	kind: DocumentCatalogKindEnum | string;
 	category: DocumentCatalogCategoryEnum | string;
 	title: string;
@@ -19,6 +19,7 @@ export type CatalogTemplateDef = {
 	tags?: string[];
 	surfaces?: DocumentCatalogSurfaceEnum[] | string[];
 	documentTypeId: number;
+	clinicalSection?: ClinicalDocumentSectionEnum | null;
 	defaultDocumentSettingId?: number;
 	/** Stable system document id when migrating legacy seeds */
 	legacyDocumentId?: number;

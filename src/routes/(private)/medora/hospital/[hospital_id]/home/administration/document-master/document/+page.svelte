@@ -24,6 +24,13 @@
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+	import {
+		CLINICAL_DOCUMENT_SECTION_OPTIONS,
+		clinicalSectionLabel,
+		isClinicalDocumentTypeId,
+		parseClinicalDocumentSection
+	} from '$lib/model/constant/clinical-document-section.constant';
+	import type { ClinicalDocumentSectionEnum } from '$lib/model/enum/clinical-document-section.enum';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -46,11 +53,22 @@
 	let documentCodeInput = $state('');
 	let documentNumberInput = $state('');
 	let documentTextInput = $state('');
+	let clinicalSectionInput = $state<ClinicalDocumentSectionEnum | ''>('');
+
+	const isClinicalDocumentType = $derived(
+		isClinicalDocumentTypeId(Number(documentTypeIdInput))
+	);
+
+	const selectedDocumentSetting = $derived.by(
+		(): DocumentSettingWithRelations | null => {
+			const id = Number(documentSettingIdInput);
+			if (!Number.isFinite(id) || id <= 0) return null;
+			return documentSettings.find((s) => s.id === id) ?? null;
+		}
+	);
 
 	const selectedPrintLayout = $derived.by((): PrintDocumentLayoutInput | null => {
-		const id = Number(documentSettingIdInput);
-		if (!Number.isFinite(id) || id <= 0) return null;
-		const row = documentSettings.find((s) => s.id === id);
+		const row = selectedDocumentSetting;
 		if (!row) return null;
 		return {
 			marginTop: row.marginTop,
@@ -68,8 +86,11 @@
 		};
 	});
 
+	const selectedHeaderHtml = $derived(selectedDocumentSetting?.headerHtml ?? '');
+	const selectedFooterHtml = $derived(selectedDocumentSetting?.footerHtml ?? '');
+
 	function documentSettingLabel(ds: DocumentSettingWithRelations): string {
-		return ds.hospitalId == null ? `(System) ${ds.name}` : ds.name;
+		return ds.name;
 	}
 
 	type DocumentTypeRow = { id: number; documentType: string | null };
@@ -77,6 +98,7 @@
 		id: number;
 		documentTypeId: number;
 		documentSettingId: number | null;
+		clinicalSection?: ClinicalDocumentSectionEnum | null;
 		code: string | null;
 		documentNumber: string | null;
 		documentText: string | null;
@@ -141,7 +163,6 @@
 			);
 			url.searchParams.set('page', '1');
 			url.searchParams.set('pageSize', '200');
-			url.searchParams.set('includeGlobal', 'true');
 			url.searchParams.set('_t', String(Date.now()));
 
 			const res = await fetch(url, { method: 'GET' });
@@ -168,6 +189,7 @@
 		documentCodeInput = '';
 		documentNumberInput = '';
 		documentTextInput = '';
+		clinicalSectionInput = '';
 	}
 
 	function startEdit(item: DocumentWithRelations) {
@@ -182,6 +204,8 @@
 		documentCodeInput = item.code ?? '';
 		documentNumberInput = item.documentNumber ?? '';
 		documentTextInput = item.documentText ?? '';
+		clinicalSectionInput =
+			parseClinicalDocumentSection(item.clinicalSection) ?? '';
 	}
 
 	function startView(item: DocumentWithRelations) {
@@ -196,6 +220,8 @@
 		documentCodeInput = item.code ?? '';
 		documentNumberInput = item.documentNumber ?? '';
 		documentTextInput = item.documentText ?? '';
+		clinicalSectionInput =
+			parseClinicalDocumentSection(item.clinicalSection) ?? '';
 	}
 
 	function startCreate() {
@@ -225,6 +251,13 @@
 			);
 			return;
 		}
+		if (isClinicalDocumentType && !clinicalSectionInput.trim()) {
+			toastService.addToast(
+				'Clinical section is required for Clinical Document',
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
 		try {
 			const hospitalId = page.params.hospital_id;
 			const baseUrl = `/api/medora/hospital/${hospitalId}/home/administration/document-master/document`;
@@ -233,7 +266,10 @@
 				documentSettingId: Number(documentSettingIdInput),
 				code: documentCodeInput.trim() || null,
 				documentNumber: documentNumberInput.trim(),
-				documentText: documentTextInput || null
+				documentText: documentTextInput || null,
+				clinicalSection: isClinicalDocumentType
+					? clinicalSectionInput.trim()
+					: null
 			};
 
 			if (editingId) {
@@ -358,6 +394,13 @@
 			widthClass: 'w-32 min-w-[8rem]',
 			filterable: false,
 			format: (_value, row) => row.documentType?.documentType ?? '—'
+		},
+		{
+			id: 'clinicalSection',
+			header: 'Clinical section',
+			widthClass: 'w-36 min-w-[9rem]',
+			filterable: false,
+			format: (_value, row) => clinicalSectionLabel(row.clinicalSection)
 		},
 		{
 			id: 'documentSetting',
@@ -493,6 +536,38 @@
 							</WashSelect>
 						</div>
 					</div>
+					{#if isClinicalDocumentType}
+						<div
+							class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+						>
+							<label
+								for="clinicalSection"
+								class="shrink-0 sm:w-32"
+							>
+								Clinical section
+								<span class="text-error">*</span>
+							</label>
+							<div class="flex-1">
+								<WashSelect
+									bind:value={clinicalSectionInput}
+									optionHeader="Select section on Clinical Document page..."
+									disabled={viewMode === 'view'}
+								>
+									{#each CLINICAL_DOCUMENT_SECTION_OPTIONS as opt (opt.value)}
+										<option value={opt.value}
+											>{opt.label}</option
+										>
+									{/each}
+								</WashSelect>
+								<p class="mt-1 text-xs text-base-content/60">
+									{CLINICAL_DOCUMENT_SECTION_OPTIONS.find(
+										(o) => o.value === clinicalSectionInput
+									)?.description ??
+										'Controls which card group shows this form.'}
+								</p>
+							</div>
+						</div>
+					{/if}
 					<div
 						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 					>
@@ -558,6 +633,8 @@
 						bind:html={documentTextInput}
 						documentTitle={documentNumberInput || 'Document'}
 						setting={selectedPrintLayout}
+						headerHtml={selectedHeaderHtml}
+						footerHtml={selectedFooterHtml}
 						readOnly={viewMode === 'view'}
 						placeholder="Edit document HTML with placeholders..."
 					/>

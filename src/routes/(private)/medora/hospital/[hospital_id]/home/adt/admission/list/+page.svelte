@@ -10,7 +10,7 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
+	import { DocumentTypeId } from '$lib/model/constant/document-type-id.constant';
 	import {
 		medoraHospitalPageUrl,
 		WebRoutesEnum
@@ -20,6 +20,8 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
+	import { fetchVisitLikeForDocumentPrint } from '$lib/tool/emr/visit-print-context.util';
+	import { printByFromPage } from '$lib/tool/emr/document-master-client-print.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
@@ -33,6 +35,7 @@
 			? page.params.hospital_id
 			: ''
 	);
+	const printByName = $derived(printByFromPage(page));
 	const api = $derived(
 		hospitalId
 			? `/api/medora/hospital/${hospitalId}/home/adt/admission`
@@ -181,26 +184,37 @@
 		if (!hospitalId) return;
 		const payload = wristbandBarcodeValue(row);
 		const wardBed = [row.wardName, row.bedName].filter(Boolean).join(' / ');
+		const visitDateLabel = row.admittedAt
+			? new Date(row.admittedAt).toLocaleString()
+			: '—';
+		const visitForPrint = await fetchVisitLikeForDocumentPrint(
+			hospitalId,
+			row.visitId
+		);
+		const slimVisitPlaceholders = visitForPrint
+			? {}
+			: {
+					'{{patient_name}}': row.patientName,
+					'{{patient_code}}': row.patientCode ?? '—',
+					'{{visit_code}}': row.visitNo ?? '—',
+					'{{visit_date}}': visitDateLabel,
+					'{{doctor_name}}': row.admittingDoctorName ?? '—'
+				};
 		try {
 			await printFromDocumentMaster({
 				hospitalId,
-				documentCode: DOCUMENT_PRINT_CODE.IPD_WRISTBAND,
+				documentTypeId: DocumentTypeId.IPD_WRISTBAND_PRINT,
+				visit: visitForPrint,
+				printBy: printByName,
 				extraPlaceholders: {
-					'{{patient.name}}': row.patientName,
-					'{{patient.code}}': row.patientCode ?? '',
-					'{{patient.dob}}': '',
-					'{{visit.no}}': row.visitNo ?? '',
-					'{{visit.date}}': row.admittedAt
-						? new Date(row.admittedAt).toLocaleString()
-						: '',
-					'{{visit.department}}': wardBed,
-					'{{doctor.name}}': row.admittingDoctorName ?? '',
-					'{{document.number}}': row.admissionNo ?? `A-${row.admissionId}`,
-					'{{hospital.logo}}': '',
-					'{{print.label_patient}}': 'Patient',
-					'{{print.label_dob}}': 'DOB',
-					'{{print.label_patient_code}}': 'MRN',
-					'{{print.label_visit_no}}': 'Visit'
+					...slimVisitPlaceholders,
+					'{{visit_department}}': wardBed,
+					'{{document_number}}':
+						row.admissionNo ?? `A-${row.admissionId}`,
+					'{{print_label_patient}}': 'Patient',
+					'{{print_label_dob}}': 'DOB',
+					'{{print_label_patient_code}}': 'MRN',
+					'{{print_label_visit_no}}': 'Visit'
 				},
 				iframeId: 'ipd-wristband-print-iframe',
 				onIframeReady: async (doc) => {

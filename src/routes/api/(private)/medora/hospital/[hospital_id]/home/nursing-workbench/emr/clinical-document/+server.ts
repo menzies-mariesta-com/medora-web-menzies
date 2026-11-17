@@ -1,7 +1,7 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { getClinicalFormDocuments } from '$lib/server/medora/document-master/document.server';
-import { getDocumentSettingsForPrint } from '$lib/server/medora/document-master/document-print.server';
+import { listTextPlaceholdersAsMap } from '$lib/server/medora/document-master/text-placeholder.server';
 import * as obs from '$lib/server/medora/observation/observation-emr.server';
 import { parseUuid } from '$lib/util/id.util';
 
@@ -19,15 +19,15 @@ export async function GET(event: RequestEvent) {
 
 	if (mode !== 'bootstrap') throw error(400, `Unknown mode: ${mode}`);
 
-	const [visit, documents, documentSettings] = await Promise.all([
+	const [visit, documents, textPlaceholders] = await Promise.all([
 		Boolean(visitId)
 			? obs.getPatientVisitById({ id: visitId, hospitalId })
 			: Promise.resolve(null),
 		getClinicalFormDocuments(event, { hospitalId }),
-		getDocumentSettingsForPrint(event, hospitalId)
+		listTextPlaceholdersAsMap(hospitalId)
 	]);
 
-	return json({ visit, documents, documentSettings });
+	return json({ visit, documents, textPlaceholders });
 }
 
 export async function POST(event: RequestEvent) {

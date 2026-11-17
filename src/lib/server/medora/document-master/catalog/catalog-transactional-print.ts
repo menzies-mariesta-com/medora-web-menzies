@@ -1,115 +1,170 @@
 import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
 import { DocumentCatalogKindEnum } from '$lib/model/enum/document-catalog.enum';
 import type { CatalogTemplateDef } from './document-catalog.types';
+import { TRANSACTIONAL_PRINT_TEMPLATE_BODIES } from './transactional-print-template-bodies';
 
-/** Transactional prints reference existing seeded document codes and IDs. */
+const P = {
+	CLINICAL: 1,
+	BILL: 2,
+	NURSING: 3,
+	CASE: 4,
+	DISCHARGE: 5,
+	MED: 6,
+	APPT: 7,
+	LABEL: 8,
+	WRIST: 9
+} as const;
+
+/** Transactional print catalog entries (HTML copied per hospital on provision). */
 export const TRANSACTIONAL_CATALOG_TEMPLATES: CatalogTemplateDef[] = [
 	{
-		catalogCode: 'CATALOG_TX_NURSING_COMPLETE',
 		kind: DocumentCatalogKindEnum.TRANSACTIONAL_PRINT,
 		category: 'transactional',
 		title: 'Nursing complete print',
-		documentTypeId: 2,
+		documentTypeId: P.NURSING,
 		legacyDocumentId: 90001,
 		legacyDocumentCode: DOCUMENT_PRINT_CODE.NURSING_COMPLETE,
 		defaultDocumentSettingId: 5,
 		surfaces: ['print_only'],
-		locales: [{ locale: 'en', documentNumber: 'Nursing complete (OP)', documentText: '' }]
+		locales: [
+			{
+				locale: 'en',
+				documentNumber: 'Nursing complete',
+				documentText:
+					TRANSACTIONAL_PRINT_TEMPLATE_BODIES[
+						DOCUMENT_PRINT_CODE.NURSING_COMPLETE
+					]
+			}
+		]
 	},
 	{
-		catalogCode: 'CATALOG_TX_OP_BILL',
 		kind: DocumentCatalogKindEnum.TRANSACTIONAL_PRINT,
 		category: 'transactional',
-		title: 'OP bill print',
-		documentTypeId: 2,
+		title: 'Bill print',
+		documentTypeId: P.BILL,
 		legacyDocumentId: 90002,
-		legacyDocumentCode: DOCUMENT_PRINT_CODE.OP_BILL,
+		legacyDocumentCode: DOCUMENT_PRINT_CODE.BILL,
 		defaultDocumentSettingId: 5,
 		surfaces: ['print_only'],
-		locales: [{ locale: 'en', documentNumber: 'OP Bill', documentText: '' }]
+		locales: [
+			{
+				locale: 'en',
+				documentNumber: 'Bill',
+				documentText:
+					TRANSACTIONAL_PRINT_TEMPLATE_BODIES[DOCUMENT_PRINT_CODE.BILL]
+			}
+		]
 	},
 	{
-		catalogCode: 'CATALOG_TX_IP_BILL',
-		kind: DocumentCatalogKindEnum.TRANSACTIONAL_PRINT,
-		category: 'transactional',
-		title: 'IP bill print',
-		documentTypeId: 2,
-		legacyDocumentId: 90007,
-		legacyDocumentCode: DOCUMENT_PRINT_CODE.IP_BILL,
-		defaultDocumentSettingId: 5,
-		surfaces: ['print_only'],
-		locales: [{ locale: 'en', documentNumber: 'IP Bill', documentText: '' }]
-	},
-	{
-		catalogCode: 'CATALOG_TX_VISIT_LABEL',
 		kind: DocumentCatalogKindEnum.TRANSACTIONAL_PRINT,
 		category: 'transactional',
 		title: 'Visit label',
-		documentTypeId: 2,
+		documentTypeId: P.LABEL,
 		legacyDocumentId: 90003,
 		legacyDocumentCode: DOCUMENT_PRINT_CODE.VISIT_LABEL,
 		defaultDocumentSettingId: 7,
 		surfaces: ['print_only'],
-		locales: [{ locale: 'en', documentNumber: 'Visit label', documentText: '' }]
+		locales: [
+			{
+				locale: 'en',
+				documentNumber: 'Visit label',
+				documentText:
+					TRANSACTIONAL_PRINT_TEMPLATE_BODIES[DOCUMENT_PRINT_CODE.VISIT_LABEL]
+			}
+		]
 	},
 	{
-		catalogCode: 'CATALOG_TX_IPD_WRISTBAND',
 		kind: DocumentCatalogKindEnum.TRANSACTIONAL_PRINT,
 		category: 'transactional',
 		title: 'IPD wristband',
-		documentTypeId: 2,
+		documentTypeId: P.WRIST,
 		legacyDocumentId: 90008,
 		legacyDocumentCode: DOCUMENT_PRINT_CODE.IPD_WRISTBAND,
 		defaultDocumentSettingId: 7,
 		surfaces: ['print_only'],
-		locales: [{ locale: 'en', documentNumber: 'IPD Wristband', documentText: '' }]
+		locales: [
+			{
+				locale: 'en',
+				documentNumber: 'IPD Wristband',
+				documentText:
+					TRANSACTIONAL_PRINT_TEMPLATE_BODIES[DOCUMENT_PRINT_CODE.IPD_WRISTBAND]
+			}
+		]
 	},
 	{
-		catalogCode: 'CATALOG_TX_APPOINTMENT_SLIP',
 		kind: DocumentCatalogKindEnum.TRANSACTIONAL_PRINT,
 		category: 'transactional',
 		title: 'Appointment slip',
-		documentTypeId: 2,
+		documentTypeId: P.APPT,
 		legacyDocumentId: 90004,
 		legacyDocumentCode: DOCUMENT_PRINT_CODE.APPOINTMENT_SLIP,
 		defaultDocumentSettingId: 9,
 		surfaces: ['print_only'],
-		locales: [{ locale: 'en', documentNumber: 'Appointment slip', documentText: '' }]
+		locales: [
+			{
+				locale: 'en',
+				documentNumber: 'Appointment slip',
+				documentText:
+					TRANSACTIONAL_PRINT_TEMPLATE_BODIES[DOCUMENT_PRINT_CODE.APPOINTMENT_SLIP]
+			}
+		]
 	},
 	{
-		catalogCode: 'CATALOG_TX_MED_ORDER_RECEIPT',
 		kind: DocumentCatalogKindEnum.TRANSACTIONAL_PRINT,
 		category: 'transactional',
 		title: 'Medication order receipt',
-		documentTypeId: 2,
+		documentTypeId: P.MED,
 		legacyDocumentId: 90005,
 		legacyDocumentCode: DOCUMENT_PRINT_CODE.MED_ORDER_RECEIPT,
 		defaultDocumentSettingId: 5,
 		surfaces: ['print_only'],
-		locales: [{ locale: 'en', documentNumber: 'Med order receipt', documentText: '' }]
+		locales: [
+			{
+				locale: 'en',
+				documentNumber: 'Med order receipt',
+				documentText:
+					TRANSACTIONAL_PRINT_TEMPLATE_BODIES[
+						DOCUMENT_PRINT_CODE.MED_ORDER_RECEIPT
+					]
+			}
+		]
 	},
 	{
-		catalogCode: 'CATALOG_TX_CASE_SHEET',
 		kind: DocumentCatalogKindEnum.TRANSACTIONAL_PRINT,
 		category: 'transactional',
 		title: 'Case sheet print',
-		documentTypeId: 2,
+		documentTypeId: P.CASE,
 		legacyDocumentId: 90006,
 		legacyDocumentCode: DOCUMENT_PRINT_CODE.CASE_SHEET,
 		defaultDocumentSettingId: 5,
 		surfaces: ['print_only'],
-		locales: [{ locale: 'en', documentNumber: 'Case sheet', documentText: '' }]
+		locales: [
+			{
+				locale: 'en',
+				documentNumber: 'Case sheet',
+				documentText:
+					TRANSACTIONAL_PRINT_TEMPLATE_BODIES[DOCUMENT_PRINT_CODE.CASE_SHEET]
+			}
+		]
 	},
 	{
-		catalogCode: 'CATALOG_TX_DISCHARGE_SUMMARY',
 		kind: DocumentCatalogKindEnum.TRANSACTIONAL_PRINT,
 		category: 'transactional',
 		title: 'Discharge summary print',
-		documentTypeId: 2,
+		documentTypeId: P.DISCHARGE,
 		legacyDocumentId: 90009,
 		legacyDocumentCode: DOCUMENT_PRINT_CODE.DISCHARGE_SUMMARY,
 		defaultDocumentSettingId: 5,
 		surfaces: ['print_only'],
-		locales: [{ locale: 'en', documentNumber: 'Discharge summary', documentText: '' }]
+		locales: [
+			{
+				locale: 'en',
+				documentNumber: 'Discharge summary',
+				documentText:
+					TRANSACTIONAL_PRINT_TEMPLATE_BODIES[
+						DOCUMENT_PRINT_CODE.DISCHARGE_SUMMARY
+					]
+			}
+		]
 	}
 ];

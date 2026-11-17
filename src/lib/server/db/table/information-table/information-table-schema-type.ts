@@ -51,9 +51,7 @@ import type {
 	storeUserGroupTable,
 	supportTicketTable,
 	allergyTable,
-	documentTypeTable,
-	documentSettingTable,
-	documentTable,
+	hospitalDocumentSettingsTable,
 	opBillingLineTable,
 	opBillingTable,
 	patientDocumentTable,
@@ -83,7 +81,7 @@ import type {
 	ipdAdmissionOrderTable,
 	ipAdvanceDepositTable
 } from './information-table';
-import { edTriageLevelTable } from './er-master-table';
+import { edTriageLevelTable } from './information-table';
 
 type OptionalAuditKeys =
 	| 'createdBy'
@@ -482,20 +480,14 @@ export type AllergySchemaInsert = InferInsertModel<
 >;
 export type AllergySchemaUpdate = Partial<AllergySchemaInsert>;
 
-export type DocumentTypeSchema = InferSelectModel<
-	typeof documentTypeTable
->;
-export type DocumentTypeSchemaInsert = InferInsertModel<
-	typeof documentTypeTable
->;
-export type DocumentTypeSchemaUpdate =
-	Partial<DocumentTypeSchemaInsert>;
-
-export type DocumentSchema = InferSelectModel<typeof documentTable>;
-export type DocumentSchemaInsert = InferInsertModel<
-	typeof documentTable
->;
-export type DocumentSchemaUpdate = Partial<DocumentSchemaInsert>;
+export type {
+	DocumentSchema,
+	DocumentSchemaInsert,
+	DocumentSchemaUpdate,
+	DocumentTypeSchema,
+	DocumentTypeSchemaInsert,
+	DocumentTypeSchemaUpdate
+} from '../master-table/master-table-schema-type';
 
 export type PatientDocumentSchema = InferSelectModel<
 	typeof patientDocumentTable
@@ -540,10 +532,10 @@ export type OpBillingLineSchemaUpdate =
 	Partial<OpBillingLineSchemaInsert>;
 
 export type DocumentSettingSchema = InferSelectModel<
-	typeof documentSettingTable
+	typeof hospitalDocumentSettingsTable
 >;
 export type DocumentSettingSchemaInsert = InferInsertModel<
-	typeof documentSettingTable
+	typeof hospitalDocumentSettingsTable
 >;
 export type DocumentSettingSchemaUpdate =
 	Partial<DocumentSettingSchemaInsert>;
