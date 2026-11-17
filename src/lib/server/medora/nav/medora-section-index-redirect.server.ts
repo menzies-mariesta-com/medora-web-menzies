@@ -19,10 +19,16 @@ function normPath(path: string | null | undefined): string {
  * When the current URL is a section index that has child pages in nav data,
  * return the hospital URL for the first child (by sequenceNo).
  */
+function appendSearch(target: string, search: string): string {
+	if (!search || search === '?') return target;
+	return target + (search.startsWith('?') ? search : `?${search}`);
+}
+
 export function medoraSectionIndexRedirectTarget(
 	pathname: string,
 	hospitalId: string,
-	pages: MedoraNavPageRow[]
+	pages: MedoraNavPageRow[],
+	search = ''
 ): string | null {
 	if (!hospitalId) return null;
 	const dbPageUrl = requestPathToDbPageUrl(pathname, hospitalId);
@@ -38,21 +44,27 @@ export function medoraSectionIndexRedirectTarget(
 	const children = pages
 		.filter((p) => p.parentId === indexPage.id)
 		.sort((a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0));
-	const first = children[0];
+	const first = children.find((p) => p.pageUrl?.startsWith('/medora/home'));
 	if (!first?.pageUrl) return null;
 
-	return medoraHospitalPageUrl(hospitalId, first.pageUrl);
+	const target = medoraHospitalPageUrl(hospitalId, first.pageUrl);
+	if (!target.startsWith(`/medora/hospital/${hospitalId}/home`)) {
+		return null;
+	}
+	return appendSearch(target, search);
 }
 
 export function medoraMaybeRedirectSectionIndex(input: {
 	pathname: string;
 	hospitalId: string;
 	pages: MedoraNavPageRow[];
+	search?: string;
 }): void {
 	const target = medoraSectionIndexRedirectTarget(
 		input.pathname,
 		input.hospitalId,
-		input.pages
+		input.pages,
+		input.search ?? ''
 	);
 	if (target) throw redirect(302, target);
 }
@@ -60,13 +72,15 @@ export function medoraMaybeRedirectSectionIndex(input: {
 function withSectionIndexRedirect<T extends { pageData: MedoraNavPageRow[] }>(
 	hospitalId: string,
 	pathname: string,
-	payload: T
+	payload: T,
+	search = ''
 ): T {
 	if (payload.pageData.length > 0) {
 		medoraMaybeRedirectSectionIndex({
 			hospitalId,
 			pathname,
-			pages: payload.pageData
+			pages: payload.pageData,
+			search
 		});
 	}
 	return payload;

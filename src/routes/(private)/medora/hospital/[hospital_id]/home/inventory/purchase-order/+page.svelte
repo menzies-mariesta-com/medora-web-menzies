@@ -17,6 +17,8 @@
 	import { InvPoStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
+	import { can } from '$lib/state/page-permission.state.svelte';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 
@@ -303,7 +305,9 @@
 						InvPoStatusTaggingEnum.PARTIALLY_RECEIVED ||
 					r.statusTaggingId === InvPoStatusTaggingEnum.CLOSED}
 				{@const approveDisabled =
-					loading || r.canApprove !== true}
+					loading ||
+					r.canApprove !== true ||
+					!can(PageActionEnum.APPROVE)}
 				<MenziesTableRowActionGroup>
 					<MenziesTableIconAction
 						tooltipText={m.inv_common_view()}
@@ -316,7 +320,7 @@
 						{/snippet}
 					</MenziesTableIconAction>
 
-					{#if canPrint}
+					{#if canPrint && can(PageActionEnum.PRINT)}
 						<MenziesTableIconAction
 							tooltipText="Print"
 							disabled={loading}

@@ -40,6 +40,8 @@
 		type MenziesTableFilterMasterKey
 	} from '$lib/tool/menzies/menzies-table-master-filter-options.util.svelte.ts';
 	import { normalizeMenziesTableColumns } from '$lib/tool/menzies/menzies-table-columns.util';
+	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
+	import { can } from '$lib/state/page-permission.state.svelte';
 
 	export type { MenziesTableFilterMasterKey };
 
@@ -270,6 +272,15 @@
 	let masterFilterOptions = $state<
 		Partial<Record<MenziesTableFilterMasterKey, MenziesSelectFilterOption[]>>
 	>({});
+
+	/**
+	 * Permission defaults: hides Add / row Edit / Delete when the page has no
+	 * grant. Unrestricted callers get `true` from `can()`, so owner/system-admin
+	 * behaviour is unchanged and pages need no extra props.
+	 */
+	const canCreate = $derived(can(PageActionEnum.CREATE));
+	const canEdit = $derived(can(PageActionEnum.EDIT));
+	const canDelete = $derived(can(PageActionEnum.DELETE));
 	let masterFilterLoadId = 0;
 
 	$effect(() => {
@@ -566,11 +577,14 @@
 		dispatch('rowClick', row);
 	}
 
+	/** Add control renders only when the page grants `create`. */
+	const hasAddPermission = $derived(showAddButton && canCreate);
+
 	const hasChromeActions = $derived(
 		exportEnabled ||
 			showRefreshButton ||
-			addAction != null ||
-			showAddButton
+			(addAction != null && canCreate) ||
+			hasAddPermission
 	);
 
 	const hasHeader = $derived(
@@ -706,9 +720,9 @@
 							</WashButton>
 						</WashTooltip>
 					{/if}
-					{#if addAction}
+					{#if addAction && canCreate}
 						{@render addAction()}
-					{:else if showAddButton}
+					{:else if hasAddPermission}
 						<WashTooltip tooltipText={addLabel} className="tooltip-primary">
 							<WashButton
 								type="button"
@@ -855,26 +869,30 @@
 													{/snippet}
 												</MenziesTableIconAction>
 											{/if}
-											<MenziesTableIconAction
-												tooltipText={m.menzies_table_tooltip_edit()}
-												color="secondary"
-												disabled={editLocked}
-												onClick={() => dispatch('edit', row)}
-											>
-												{#snippet icon()}
-													<LucidePencil className="size-3.5" />
-												{/snippet}
-											</MenziesTableIconAction>
-											<MenziesTableIconAction
-												tooltipText={m.menzies_table_crud_inactivate_tooltip()}
-												color="error"
-												disabled={deleteLocked}
-												onClick={() => dispatch('delete', row)}
-											>
-												{#snippet icon()}
-													<LucideTrash2 className="size-3.5" />
-												{/snippet}
-											</MenziesTableIconAction>
+											{#if canEdit}
+												<MenziesTableIconAction
+													tooltipText={m.menzies_table_tooltip_edit()}
+													color="secondary"
+													disabled={editLocked}
+													onClick={() => dispatch('edit', row)}
+												>
+													{#snippet icon()}
+														<LucidePencil className="size-3.5" />
+													{/snippet}
+												</MenziesTableIconAction>
+											{/if}
+											{#if canDelete}
+												<MenziesTableIconAction
+													tooltipText={m.menzies_table_crud_inactivate_tooltip()}
+													color="error"
+													disabled={deleteLocked}
+													onClick={() => dispatch('delete', row)}
+												>
+													{#snippet icon()}
+														<LucideTrash2 className="size-3.5" />
+													{/snippet}
+												</MenziesTableIconAction>
+											{/if}
 										</MenziesTableRowActionGroup>
 									{:else if actionsVariant === 'select'}
 										<MenziesTableIconAction

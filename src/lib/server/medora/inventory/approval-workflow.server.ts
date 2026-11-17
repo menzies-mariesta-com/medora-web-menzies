@@ -3,18 +3,22 @@ import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { hasAbsolutePermission } from '$lib/server/medora/permission/absolute-permission.server';
 import type { InvApprovalModule } from './approval-config.server';
 
 /**
  * Permission-style check: staff must be assigned to ANY level for the store+module.
  * Used for GRN posting/transfer where we don't run a multi-level workflow.
+ * Absolute-permission roles (owner / system admin / admin team) are exempt.
  */
 export async function assertStaffAssignedForModule(
 	hospitalId: string,
 	storeId: number,
 	module: InvApprovalModule,
-	staffId: string
+	staffId: string,
+	roleId?: number | null
 ): Promise<void> {
+	if (hasAbsolutePermission(roleId)) return;
 	const [asg] = await ensureDb()
 		.select({ id: table.invApprovalAssigneeTable.id })
 		.from(table.invApprovalAssigneeTable)
@@ -66,8 +70,10 @@ export async function assertStaffCanApproveLevel(
 	storeId: number,
 	module: InvApprovalModule,
 	level: number,
-	staffId: string
+	staffId: string,
+	roleId?: number | null
 ): Promise<void> {
+	if (hasAbsolutePermission(roleId)) return;
 	const [lvl] = await ensureDb()
 		.select({ id: table.invApprovalLevelTable.id })
 		.from(table.invApprovalLevelTable)

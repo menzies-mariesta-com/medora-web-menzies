@@ -56,6 +56,8 @@
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { medoraHospitalPageUrl, WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
+	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
+	import { can } from '$lib/state/page-permission.state.svelte';
 const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 	const routerUtil = new RouterUtil();
@@ -1195,7 +1197,7 @@ const lifeCycleUtil = new LifeCycleUtil();
 					<WashButton
 						className="btn-error btn-ghost btn-sm cursor-pointer"
 						onClick={deleteCurrentBatch}
-						disabled={isBusy}
+						disabled={isBusy || !can(PageActionEnum.DELETE)}
 					>
 						<LucideTrash2 className="size-4" />
 						{m.delete_data()}
@@ -1634,6 +1636,7 @@ const lifeCycleUtil = new LifeCycleUtil();
 					onClick={persistBatch}
 					disabled={batchIsPaid ||
 						!storeId ||
+						!can(PageActionEnum.CREATE) ||
 						draftLines.length === 0 ||
 						isBusy ||
 						!partyReady}

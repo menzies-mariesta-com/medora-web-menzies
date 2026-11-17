@@ -16,16 +16,28 @@ export function setPageData(data: PageWithRelations[]) {
 	fullPageData = data;
 }
 
-/** Use in reactive context, e.g. $derived(getPageData()) */
+/** Use in reactive context, e.g. `$derived(getPageData())` */
 export function getPageData(): MedoraPageRow[] {
-	return fullPageData.map(({ module: _m, status: _s, ...p }) => p);
+	return pageRowsFrom(fullPageData);
 }
 
-/** Use in reactive context, e.g. $derived(getUniqueModuleData()) */
+/** Nav rows from the raw page list (drops the `module` / `status` relations). */
+export function pageRowsFrom(full: PageWithRelations[]): MedoraPageRow[] {
+	return full.map(({ module: _m, status: _s, ...p }) => p);
+}
+
+/** Use in reactive context, e.g. `$derived(getUniqueModuleData())` */
 export function getUniqueModuleData(): MedoraPageModuleRow[] {
+	return uniqueModulesFrom(fullPageData);
+}
+
+/** One row per module referenced by a page, in first-seen order. */
+export function uniqueModulesFrom(
+	full: PageWithRelations[]
+): MedoraPageModuleRow[] {
 	return Array.from(
 		new Map(
-			fullPageData
+			full
 				.filter(
 					(
 						p
@@ -141,13 +153,23 @@ function getSubPagesForParentId(parentId: number): MedoraPageRow[] {
  * (same rules as {@link medoraSectionIndexRedirectTarget} on the server).
  */
 export function getSectionIndexRedirectTarget(
-	hospitalId: string
+	hospitalId: string,
+	search = ''
 ): string | null {
 	if (!hospitalId) return null;
 	const logicalPath = pathnameForPageMatch();
 	if (normPath(logicalPath) === normPath('/medora/home')) return null;
-	const subs = getSubPagesForPageUrl(logicalPath);
-	const first = subs[0];
+	const indexPage = getPageData().find(
+		(p) => normPath(p.pageUrl) === normPath(logicalPath)
+	);
+	if (!indexPage) return null;
+	const subs = getSubPagesForParentId(indexPage.id);
+	const first = subs.find((p) => p.pageUrl?.startsWith('/medora/home'));
 	if (!first?.pageUrl) return null;
-	return medoraHospitalPageUrl(hospitalId, first.pageUrl);
+	const target = medoraHospitalPageUrl(hospitalId, first.pageUrl);
+	if (!target.startsWith(`/medora/hospital/${hospitalId}/home`)) {
+		return null;
+	}
+	if (!search || search === '?') return target;
+	return target + (search.startsWith('?') ? search : `?${search}`);
 }

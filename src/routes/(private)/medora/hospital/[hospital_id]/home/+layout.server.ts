@@ -17,6 +17,13 @@ import {
 	hospitalMetaTag
 } from '$lib/server/cache/cache-keys.server';
 import { withSectionIndexRedirect } from '$lib/server/medora/nav/medora-section-index-redirect.server';
+import type { PageGrantMap } from '$lib/server/medora/permission/page-permission.server';
+import {
+	loadStaffPageGrants,
+	toPagePermissionFlags
+} from '$lib/server/medora/permission/page-permission.server';
+import { hasAbsolutePermission } from '$lib/server/medora/permission/absolute-permission.server';
+import { PageActionEnum } from '$lib/model/enum/page-action.enum';
 import { loadOwnerEntitlementLayoutFields } from '$lib/server/medora/plan/owner-entitlement-layout.server';
 import type { Cookies, RequestEvent } from '@sveltejs/kit';
 
@@ -104,6 +111,10 @@ async function inventoryFromStoreNavContext(
  *   expanded with ancestors/descendants.
  *
  * For STAFF, also enforces page access: if the current URL maps to a page not allowed for the selected group, redirect to hospital home.
+ *
+ * Only the page list is fatal. Every other query here is an enrichment: when one
+ * fails the shell keeps its module bar and flags `navLoadError` instead of
+ * returning `pageData: []` (which silently removed the whole nav until refresh).
  */
 export const load: LayoutServerLoad = async (event) => {
 	const { locals, url, params, cookies } = event;
@@ -118,24 +129,54 @@ export const load: LayoutServerLoad = async (event) => {
 				: null;
 		const staffId = locals.staff?.id ?? null;
 
+		let navDegraded = false;
+		let grantsFailed = false;
+		async function safe<T>(
+			label: string,
+			factory: () => Promise<T>,
+			fallback: T,
+			onFail?: () => void
+		): Promise<T> {
+			try {
+				return await factory();
+			} catch (err) {
+				navDegraded = true;
+				onFail?.();
+				console.error(
+					`[medora hospital home] ${label} failed; nav degraded`,
+					err
+				);
+				return fallback;
+			}
+		}
+
 		const [fullPages, hospitalRow] = await Promise.all([
 			getMedoraPagesForNav(),
 			hospitalId
-				? cacheGetOrSet({
-						key: cacheKeys.hospitalMeta(hospitalId),
-						ttlSeconds: 300,
-						tags: [hospitalMetaTag(hospitalId)],
-						factory: () =>
-							ensureDb()
-								.select({
-									name: table.hospitalTable.name,
-									logoUrl: table.hospitalTable.logoUrl,
-									countryId: table.hospitalTable.countryId
-								})
-								.from(table.hospitalTable)
-								.where(eq(table.hospitalTable.id, hospitalId))
-								.limit(1)
-					})
+				? safe(
+						'hospital meta',
+						() =>
+							cacheGetOrSet({
+								key: cacheKeys.hospitalMeta(hospitalId),
+								ttlSeconds: 300,
+								tags: [hospitalMetaTag(hospitalId)],
+								factory: () =>
+									ensureDb()
+										.select({
+											name: table.hospitalTable.name,
+											logoUrl: table.hospitalTable.logoUrl,
+											countryId: table.hospitalTable.countryId
+										})
+										.from(table.hospitalTable)
+										.where(eq(table.hospitalTable.id, hospitalId))
+										.limit(1)
+							}),
+						[] as {
+							name: string | null;
+							logoUrl: string | null;
+							countryId: number | null;
+						}[]
+					)
 				: Promise.resolve(
 						[] as {
 							name: string | null;
@@ -149,27 +190,36 @@ export const load: LayoutServerLoad = async (event) => {
 		const currentHospitalLogoUrl = hospital?.logoUrl ?? null;
 		const currentHospitalCountryId = hospital?.countryId ?? null;
 
-		const entitlementFields = await loadOwnerEntitlementLayoutFields(
-			hospitalId,
-			userRoleId
+		const entitlementFields = await safe(
+			'owner entitlement',
+			() => loadOwnerEntitlementLayoutFields(hospitalId, userRoleId),
+			{
+				entitlementPhase: null,
+				entitlementRibbonLabel: null,
+				entitlementShowRibbon: false,
+				ownerWorkspaceReadOnly: false
+			}
 		);
 
-		// OWNER or SYSTEM_ADMIN: show all pages, all branches for this hospital
-		if (
-			userRoleId === RoleEnum.OWNER ||
-			userRoleId === RoleEnum.SYSTEM_ADMIN
-		) {
+		// Absolute-permission roles (owner, system admin, admin team): all pages,
+		// all branches, no grant matrix for this hospital.
+		if (hasAbsolutePermission(userRoleId)) {
 			const allHospitalBranches = hospitalId
-				? await ensureDb()
-						.select({
-							id: table.hospitalBranchTable.id,
-							name: table.hospitalBranchTable.name
-						})
-						.from(table.hospitalBranchTable)
-						.where(
-							eq(table.hospitalBranchTable.hospitalId, hospitalId)
-						)
-						.orderBy(table.hospitalBranchTable.name)
+				? await safe(
+						'hospital branches',
+						() =>
+							ensureDb()
+								.select({
+									id: table.hospitalBranchTable.id,
+									name: table.hospitalBranchTable.name
+								})
+								.from(table.hospitalBranchTable)
+								.where(
+									eq(table.hospitalBranchTable.hospitalId, hospitalId)
+								)
+								.orderBy(table.hospitalBranchTable.name),
+						[] as { id: string; name: string | null }[]
+					)
 				: [];
 			const branchCookieValue = cookies.get(
 				COOKIE_SELECTED_BRANCH_ID
@@ -192,31 +242,48 @@ export const load: LayoutServerLoad = async (event) => {
 						? (staffBranchesForNav[0]?.id ?? null)
 						: null;
 
-			const invNav = await inventoryFromStoreNavContext(
-				event,
-				hospitalId,
-				url.pathname,
-				cookies,
-				selectedBranchId,
-				null
+			const invNav = await safe(
+				'inventory store nav',
+				() =>
+					inventoryFromStoreNavContext(
+						event,
+						hospitalId,
+						url.pathname,
+						cookies,
+						selectedBranchId,
+						null
+					),
+				{
+					inventoryFromStoresForNav: [],
+					selectedInventoryFromStoreId: null
+				}
 			);
 
-			return withSectionIndexRedirect(hospitalId, url.pathname, {
-				pageData: fullPages,
-				currentHospitalName,
-				currentHospitalLogoUrl,
-				currentHospitalCountryId,
-				currentUserId,
-				currentUserName,
-				staffUserGroupsForNav: [],
-				selectedUserGroupId: null,
-				staffBranchesForNav,
-				selectedBranchId,
-				/** All branches the user is allowed to use (this hospital only). For OWNER/SYSTEM_ADMIN = all hospital branches. */
-				allowedBranches: allHospitalBranches,
-				...invNav,
-				...entitlementFields
-			});
+			return withSectionIndexRedirect(
+				hospitalId,
+				url.pathname,
+				{
+					pageData: fullPages,
+					currentHospitalName,
+					currentHospitalLogoUrl,
+					currentHospitalCountryId,
+					currentUserId,
+					currentUserName,
+					staffUserGroupsForNav: [],
+					selectedUserGroupId: null,
+					staffBranchesForNav,
+					selectedBranchId,
+					/** All branches the user is allowed to use (this hospital only). For OWNER/SYSTEM_ADMIN = all hospital branches. */
+					allowedBranches: allHospitalBranches,
+					/** null = unrestricted (owner / system admin). */
+					pagePermissions: null,
+					currentUserRoleId: userRoleId,
+					navLoadError: navDegraded,
+					...invNav,
+					...entitlementFields
+				},
+				url.search
+			);
 		}
 
 		// STAFF: filter by **selected** user group (cookie), enforce access for that group only
@@ -226,50 +293,67 @@ export const load: LayoutServerLoad = async (event) => {
 				staffBranchesForNavRaw,
 				allHospitalBranches
 			] = await Promise.all([
-				ensureDb()
-					.select({
-						id: table.userGroupTable.id,
-						name: table.userGroupTable.name
-					})
-					.from(table.staffUserGroupTable)
-					.innerJoin(
-						table.userGroupTable,
-						eq(
-							table.staffUserGroupTable.userGroupId,
-							table.userGroupTable.id
-						)
-					)
-					.where(
-						and(
-							eq(table.staffUserGroupTable.staffId, staffId),
-							eq(table.userGroupTable.hospitalId, hospitalId)
-						)
-					)
-					.orderBy(table.userGroupTable.name),
-				ensureDb()
-					.select({
-						id: table.hospitalBranchTable.id,
-						name: table.hospitalBranchTable.name
-					})
-					.from(table.staffBranchTable)
-					.innerJoin(
-						table.hospitalBranchTable,
-						eq(
-							table.staffBranchTable.branchId,
-							table.hospitalBranchTable.id
-						)
-					)
-					.where(
-						and(
-							eq(table.staffBranchTable.staffId, staffId),
-							eq(table.hospitalBranchTable.hospitalId, hospitalId)
-						)
-					)
-					.orderBy(table.hospitalBranchTable.name),
-				ensureDb()
-					.select({ id: table.hospitalBranchTable.id })
-					.from(table.hospitalBranchTable)
-					.where(eq(table.hospitalBranchTable.hospitalId, hospitalId))
+				safe(
+					'staff user groups',
+					() =>
+						ensureDb()
+							.select({
+								id: table.userGroupTable.id,
+								name: table.userGroupTable.name
+							})
+							.from(table.staffUserGroupTable)
+							.innerJoin(
+								table.userGroupTable,
+								eq(
+									table.staffUserGroupTable.userGroupId,
+									table.userGroupTable.id
+								)
+							)
+							.where(
+								and(
+									eq(table.staffUserGroupTable.staffId, staffId),
+									eq(table.userGroupTable.hospitalId, hospitalId)
+								)
+							)
+							.orderBy(table.userGroupTable.name),
+					[] as { id: number; name: string | null }[]
+				),
+				safe(
+					'staff branches',
+					() =>
+						ensureDb()
+							.select({
+								id: table.hospitalBranchTable.id,
+								name: table.hospitalBranchTable.name
+							})
+							.from(table.staffBranchTable)
+							.innerJoin(
+								table.hospitalBranchTable,
+								eq(
+									table.staffBranchTable.branchId,
+									table.hospitalBranchTable.id
+								)
+							)
+							.where(
+								and(
+									eq(table.staffBranchTable.staffId, staffId),
+									eq(table.hospitalBranchTable.hospitalId, hospitalId)
+								)
+							)
+							.orderBy(table.hospitalBranchTable.name),
+					[] as { id: string; name: string | null }[]
+				),
+				safe(
+					'all hospital branches',
+					() =>
+						ensureDb()
+							.select({ id: table.hospitalBranchTable.id })
+							.from(table.hospitalBranchTable)
+							.where(
+								eq(table.hospitalBranchTable.hospitalId, hospitalId)
+							),
+					[] as { id: string }[]
+				)
 			]);
 
 			const staffUserGroupsForNav = [
@@ -283,7 +367,13 @@ export const load: LayoutServerLoad = async (event) => {
 					url.pathname,
 					hospitalId
 				);
-				if (dbPageUrl && dbPageUrl !== '/medora/home') {
+				// A failed group lookup is not "no groups": stay put and offer retry
+				// instead of bouncing the user to home on a transient DB error.
+				if (
+					!navDegraded &&
+					dbPageUrl &&
+					dbPageUrl !== '/medora/home'
+				) {
 					throw redirect(302, medoraHospitalHome(hospitalId));
 				}
 				return {
@@ -298,8 +388,12 @@ export const load: LayoutServerLoad = async (event) => {
 					staffBranchesForNav: [],
 					selectedBranchId: null,
 					allowedBranches: [],
+					pagePermissions: [],
+					currentUserRoleId: userRoleId,
+					navLoadError: navDegraded,
 					inventoryFromStoresForNav: [],
-					selectedInventoryFromStoreId: null
+					selectedInventoryFromStoreId: null,
+					...entitlementFields
 				};
 			}
 
@@ -347,21 +441,35 @@ export const load: LayoutServerLoad = async (event) => {
 						: (branchNavIds[0] ?? null);
 
 			// 2. Page ids from all staff user groups in this hospital.
-			// Use user_group_page as source of truth for allowed pages.
+			// `user_group_page` is the source of truth; only `view` opens a page.
 			const effectiveGroupIds = staffUserGroupsForNav.map(
 				(g) => g.id
 			);
-			const userGroupPages = await ensureDb()
-				.select({ pageId: table.userGroupPageTable.pageId })
-				.from(table.userGroupPageTable)
-				.where(
-					effectiveGroupIds.length > 0
-						? inArray(
-								table.userGroupPageTable.userGroupId,
-								effectiveGroupIds
+			const userGroupPages = await safe(
+				'user group page grants',
+				() =>
+					ensureDb()
+						.select({ pageId: table.userGroupPageTable.pageId })
+						.from(table.userGroupPageTable)
+						.where(
+							and(
+								eq(
+									table.userGroupPageTable.actionCode,
+									PageActionEnum.VIEW
+								),
+								effectiveGroupIds.length > 0
+									? inArray(
+											table.userGroupPageTable.userGroupId,
+											effectiveGroupIds
+										)
+									: eq(table.userGroupPageTable.userGroupId, -1)
 							)
-						: eq(table.userGroupPageTable.userGroupId, -1)
-				);
+						),
+				[] as { pageId: number | null }[],
+				() => {
+					grantsFailed = true;
+				}
+			);
 			const allowedPageIds = new Set(
 				userGroupPages.map((r) => r.pageId).filter((id) => id != null)
 			);
@@ -415,52 +523,86 @@ export const load: LayoutServerLoad = async (event) => {
 				}
 			}
 
-			const filtered = fullPages.filter((p) =>
-				allowedPageIds.has(p.id)
+			// Grants unavailable (degraded) means "unknown", not "none": keep the full
+			// nav rather than filtering every page away, and let the flags gate buttons.
+			const filtered = grantsFailed
+				? fullPages
+				: fullPages.filter((p) => allowedPageIds.has(p.id));
+			const pagePermissions = toPagePermissionFlags(
+				await safe(
+					'staff page grants',
+					() => loadStaffPageGrants(staffId, hospitalId),
+					{} as PageGrantMap
+				),
+				filtered
 			);
-			const invNav = await inventoryFromStoreNavContext(
-				event,
+			const invNav = await safe(
+				'inventory store nav',
+				() =>
+					inventoryFromStoreNavContext(
+						event,
+						hospitalId,
+						url.pathname,
+						cookies,
+						selectedBranchId,
+						selectedUserGroupId
+					),
+				{
+					inventoryFromStoresForNav: [],
+					selectedInventoryFromStoreId: null
+				}
+			);
+			return withSectionIndexRedirect(
 				hospitalId,
 				url.pathname,
-				cookies,
-				selectedBranchId,
-				selectedUserGroupId
+				{
+					pageData: filtered,
+					currentHospitalName,
+					currentHospitalLogoUrl,
+					currentHospitalCountryId,
+					currentUserId,
+					currentUserName,
+					staffUserGroupsForNav,
+					selectedUserGroupId,
+					staffBranchesForNav: staffBranchesForNavWithAll,
+					selectedBranchId,
+					/** All branches the user is allowed to use. For STAFF = branches they are assigned to. */
+					allowedBranches: staffBranchesForNav,
+					pagePermissions,
+					currentUserRoleId: userRoleId,
+					navLoadError: navDegraded,
+					...invNav,
+					...entitlementFields
+				},
+				url.search
 			);
-			return withSectionIndexRedirect(hospitalId, url.pathname, {
-				pageData: filtered,
+		}
+
+		// Fallback (e.g. no role or no staff): show all
+		return withSectionIndexRedirect(
+			hospitalId,
+			url.pathname,
+			{
+				pageData: fullPages,
 				currentHospitalName,
 				currentHospitalLogoUrl,
 				currentHospitalCountryId,
 				currentUserId,
 				currentUserName,
-				staffUserGroupsForNav,
-				selectedUserGroupId,
-				staffBranchesForNav: staffBranchesForNavWithAll,
-				selectedBranchId,
-				/** All branches the user is allowed to use. For STAFF = branches they are assigned to. */
-				allowedBranches: staffBranchesForNav,
-				...invNav,
+				staffUserGroupsForNav: [],
+				selectedUserGroupId: null,
+				staffBranchesForNav: [],
+				selectedBranchId: null,
+				allowedBranches: [],
+				pagePermissions: null,
+				currentUserRoleId: userRoleId,
+				navLoadError: navDegraded,
+				inventoryFromStoresForNav: [],
+				selectedInventoryFromStoreId: null,
 				...entitlementFields
-			});
-		}
-
-		// Fallback (e.g. no role or no staff): show all
-		return withSectionIndexRedirect(hospitalId, url.pathname, {
-			pageData: fullPages,
-			currentHospitalName,
-			currentHospitalLogoUrl,
-			currentHospitalCountryId,
-			currentUserId,
-			currentUserName,
-			staffUserGroupsForNav: [],
-			selectedUserGroupId: null,
-			staffBranchesForNav: [],
-			selectedBranchId: null,
-			allowedBranches: [],
-			inventoryFromStoresForNav: [],
-			selectedInventoryFromStoreId: null,
-			...entitlementFields
-		});
+			},
+			url.search
+		);
 	} catch (err) {
 		// Let SvelteKit redirects/errors bubble up unchanged.
 		const maybe = err as Record<string, unknown>;
@@ -472,26 +614,18 @@ export const load: LayoutServerLoad = async (event) => {
 		) {
 			throw err;
 		}
+		// Also let `error(...)` from authz helpers surface with its own status.
+		if (
+			typeof maybe === 'object' &&
+			maybe != null &&
+			typeof maybe.status === 'number'
+		) {
+			throw err;
+		}
 
-		console.error(
-			'[heka hospital home] DB/navigation load failed',
-			err
-		);
-
-		return {
-			pageData: [],
-			currentHospitalName: null,
-			currentHospitalLogoUrl: null,
-			currentHospitalCountryId: null,
-			currentUserId: null,
-			currentUserName: null,
-			staffUserGroupsForNav: [],
-			selectedUserGroupId: null,
-			staffBranchesForNav: [],
-			selectedBranchId: null,
-			allowedBranches: [],
-			inventoryFromStoresForNav: [],
-			selectedInventoryFromStoreId: null
-		};
+		// The nav query itself failed. Surface it instead of returning
+		// `pageData: []`, which left the shell with no module bar until refresh.
+		console.error('[medora hospital home] nav load failed', err);
+		throw err;
 	}
 };

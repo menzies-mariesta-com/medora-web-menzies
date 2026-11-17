@@ -612,10 +612,7 @@ export async function seedInformationTables() {
 	`);
 	seedLogger.info('Seeded: allergy');
 
-	const { afterGlobalMasterCatalogMutation } = await import(
-		'$lib/server/cache/on-master-mutation.server'
-	);
-	await afterGlobalMasterCatalogMutation();
+	// No app cache invalidation here — seeds run under tsx, not SvelteKit ($env).
 
 	try {
 		const { seedEdTriageLevelsForHospitals } = await import(

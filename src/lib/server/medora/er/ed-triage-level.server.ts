@@ -102,7 +102,7 @@ export async function createEdTriageLevel(
 		.values(payload)
 		.returning();
 	if (!row) throw new Error('Insert failed');
-	void notifyHospitalMasterWrite(hospitalId);
+	void notifyHospitalMasterWrite(row.hospitalId);
 
 	return row;
 }

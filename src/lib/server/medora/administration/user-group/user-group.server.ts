@@ -17,6 +17,11 @@ import type {
 } from '$lib/model/type/pagination.type';
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { isPageAction } from '$lib/model/enum/page-action.enum';
+import { pageActionsFor } from '$lib/model/const/page-action-catalog.const';
+import type { UserGroupPageGrantInput } from '$lib/model/type/medora/page-permission.type';
+import { invalidateStaffPageGrants } from '$lib/server/medora/permission/page-permission.server';
+import { hasAbsolutePermission } from '$lib/server/medora/permission/absolute-permission.server';
 import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 
@@ -189,15 +194,28 @@ export async function getUserGroupPageAssignments(
 	return { pages, modules, assignments };
 }
 
+/**
+ * Replace every grant for a group. Absolute-permission roles only: a group
+ * holding `edit` here could otherwise widen its own permissions.
+ * Actions not offered by the page catalog are dropped (allowlist).
+ */
 export async function setPagesForUserGroup(
 	event: RequestEvent,
 	input: {
 		hospitalId: string;
 		userGroupId: number;
-		pageIds: number[];
+		grants: UserGroupPageGrantInput[];
 	}
 ): Promise<void> {
 	await ensureCanAccessHospital(event, input.hospitalId);
+
+	const roleId = event.locals.userRoleId ?? null;
+	if (!hasAbsolutePermission(roleId)) {
+		throw error(
+			403,
+			'Only the hospital owner can change access rights'
+		);
+	}
 
 	const [group] = await ensureDb()
 		.select({
@@ -211,9 +229,37 @@ export async function setPagesForUserGroup(
 	if (group.hospitalId !== input.hospitalId)
 		throw error(400, 'User group does not belong to this hospital');
 
-	const uniquePageIds = [...new Set(input.pageIds)].filter((n) =>
-		Number.isFinite(n)
-	);
+	const pageRows = await ensureDb()
+		.select({
+			id: table.pageTable.id,
+			pageUrl: table.pageTable.pageUrl
+		})
+		.from(table.pageTable);
+	const pageUrlById = new Map(pageRows.map((p) => [p.id, p.pageUrl]));
+
+	const rows: {
+		userGroupId: number;
+		pageId: number;
+		actionCode: string;
+	}[] = [];
+	const seen = new Set<string>();
+	for (const grant of input.grants) {
+		const pageUrl = pageUrlById.get(grant.pageId);
+		if (pageUrl == null) continue;
+		const offered = pageActionsFor(pageUrl) as string[];
+		for (const action of grant.actions) {
+			if (!isPageAction(action) || !offered.includes(action))
+				continue;
+			const key = `${grant.pageId}:${action}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			rows.push({
+				userGroupId: input.userGroupId,
+				pageId: grant.pageId,
+				actionCode: action
+			});
+		}
+	}
 
 	await ensureDb().transaction(async (tx) => {
 		await tx
@@ -221,13 +267,10 @@ export async function setPagesForUserGroup(
 			.where(
 				eq(table.userGroupPageTable.userGroupId, input.userGroupId)
 			);
-		if (uniquePageIds.length > 0) {
-			await tx.insert(table.userGroupPageTable).values(
-				uniquePageIds.map((pageId) => ({
-					userGroupId: input.userGroupId,
-					pageId
-				}))
-			);
+		if (rows.length > 0) {
+			await tx.insert(table.userGroupPageTable).values(rows);
 		}
 	});
+
+	await invalidateStaffPageGrants();
 }

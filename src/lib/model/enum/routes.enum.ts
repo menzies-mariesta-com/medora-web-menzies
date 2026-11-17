@@ -142,8 +142,7 @@ export function medoraHospitalPageUrl(
 	hospitalId: string,
 	pageUrl: string | null
 ): string {
-	if (!pageUrl || !pageUrl.startsWith('/medora/home'))
-		return pageUrl ?? '';
+	if (!pageUrl?.startsWith('/medora/home')) return '';
 	return `/medora/hospital/${hospitalId}/home${pageUrl.slice('/medora/home'.length) || ''}`;
 }
 

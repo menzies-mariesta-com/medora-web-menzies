@@ -10,6 +10,7 @@ import type { StaffSessionRow } from '$lib/model/type/medora/staff.type';
 import { RoleEnum } from '$lib/model/enum/db-link';
 import { rejectMutatingMedoraApiWithoutTwoFactor } from '$lib/server/medora/auth/require-two-factor-for-mutation.server';
 import { loadAdminPagePermissions } from '$lib/server/medora/admin/admin-permission.server';
+import { pagePermissionDeniedResponse } from '$lib/server/http/page-permission-gate.server';
 import { redirect } from '@sveltejs/kit';
 import { applySecurityHeaders } from '$lib/server/http/security-headers.server';
 import {
@@ -41,10 +42,15 @@ const NOISE_404_PATHS = new Set([
 function probeResponseForPath(pathname: string): Response | null {
 	switch (pathname) {
 		case '/json/version':
-			return new Response(JSON.stringify({ ok: true, service: 'medora-web' }), {
-				status: 200,
-				headers: { 'content-type': 'application/json; charset=utf-8' }
-			});
+			return new Response(
+				JSON.stringify({ ok: true, service: 'medora-web' }),
+				{
+					status: 200,
+					headers: {
+						'content-type': 'application/json; charset=utf-8'
+					}
+				}
+			);
 		default:
 			return null;
 	}
@@ -183,55 +189,70 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	return runWithRequestAuditUser(event.locals.user?.id ?? null, async () => {
-	const ownerReadOnly = await ownerApiReadOnlyResponseIfNeeded(event);
-	if (ownerReadOnly) return applySecurityHeaders(ownerReadOnly, event);
+	return runWithRequestAuditUser(
+		event.locals.user?.id ?? null,
+		async () => {
+			const ownerReadOnly =
+				await ownerApiReadOnlyResponseIfNeeded(event);
+			if (ownerReadOnly)
+				return applySecurityHeaders(ownerReadOnly, event);
 
-	const twoFactorGate =
-		rejectMutatingMedoraApiWithoutTwoFactor(event);
-	if (twoFactorGate)
-		return applySecurityHeaders(twoFactorGate, event);
+			const twoFactorGate =
+				rejectMutatingMedoraApiWithoutTwoFactor(event);
+			if (twoFactorGate)
+				return applySecurityHeaders(twoFactorGate, event);
 
-	const basePath =
-		(auth as { options?: { basePath?: string } }).options?.basePath ??
-		'/api/auth';
-	const authPrefix = basePath.endsWith('/')
-		? basePath
-		: `${basePath}/`;
+			const basePath =
+				(auth as { options?: { basePath?: string } }).options
+					?.basePath ?? '/api/auth';
+			const authPrefix = basePath.endsWith('/')
+				? basePath
+				: `${basePath}/`;
 
-	if (
-		!building &&
-		(pathname === basePath || pathname.startsWith(authPrefix))
-	) {
-		const authResponse = await auth.handler(event.request);
-		const withCors = applyCorsToResponse(authResponse, event.request);
-		return applySecurityHeaders(withCors, event);
-	}
+			if (
+				!building &&
+				(pathname === basePath || pathname.startsWith(authPrefix))
+			) {
+				const authResponse = await auth.handler(event.request);
+				const withCors = applyCorsToResponse(
+					authResponse,
+					event.request
+				);
+				return applySecurityHeaders(withCors, event);
+			}
 
-	const earlyApi = await tryEarlyCachedApiGet(event);
-	if (earlyApi) return earlyApi;
+			// Page-level authorization must run before the cached GET shortcut, otherwise
+			// a cached body could be served to a caller without the grant.
+			const permissionDenied =
+				await pagePermissionDeniedResponse(event);
+			if (permissionDenied)
+				return applySecurityHeaders(permissionDenied, event);
 
-	const response = await paraglideMiddleware(
-		event.request,
-		({
-			request,
-			locale
-		}: {
-			request: globalThis.Request;
-			locale: string;
-		}) => {
-			event.request = request;
-			return resolve(event, {
-				transformPageChunk: ({ html }) =>
-					html.replace('%paraglide.lang%', locale)
-			}).then((resolved) => finalizeAppResponse(event, resolved));
+			const earlyApi = await tryEarlyCachedApiGet(event);
+			if (earlyApi) return earlyApi;
+
+			const response = await paraglideMiddleware(
+				event.request,
+				({
+					request,
+					locale
+				}: {
+					request: globalThis.Request;
+					locale: string;
+				}) => {
+					event.request = request;
+					return resolve(event, {
+						transformPageChunk: ({ html }) =>
+							html.replace('%paraglide.lang%', locale)
+					}).then((resolved) => finalizeAppResponse(event, resolved));
+				}
+			);
+			if (pathname.startsWith('/api/doctor/')) {
+				return applyCorsToResponse(response, event.request);
+			}
+			return response;
 		}
 	);
-	if (pathname.startsWith('/api/doctor/')) {
-		return applyCorsToResponse(response, event.request);
-	}
-	return response;
-	});
 };
 
 export const handleError: HandleServerError = ({

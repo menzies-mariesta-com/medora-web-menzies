@@ -29,6 +29,8 @@
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
+	import { can } from '$lib/state/page-permission.state.svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -452,7 +454,9 @@
 					<WashButton
 						type="submit"
 						variant="primary"
-						disabled={isSubmitting || loadingOrder}
+						disabled={isSubmitting ||
+							loadingOrder ||
+							!can(PageActionEnum.CREATE)}
 						loading={isSubmitting}
 					>
 						Admit
