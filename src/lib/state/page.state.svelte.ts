@@ -153,13 +153,23 @@ function getSubPagesForParentId(parentId: number): MedoraPageRow[] {
  * (same rules as {@link medoraSectionIndexRedirectTarget} on the server).
  */
 export function getSectionIndexRedirectTarget(
-	hospitalId: string
+	hospitalId: string,
+	search = ''
 ): string | null {
 	if (!hospitalId) return null;
 	const logicalPath = pathnameForPageMatch();
 	if (normPath(logicalPath) === normPath('/medora/home')) return null;
-	const subs = getSubPagesForPageUrl(logicalPath);
-	const first = subs[0];
+	const indexPage = getPageData().find(
+		(p) => normPath(p.pageUrl) === normPath(logicalPath)
+	);
+	if (!indexPage) return null;
+	const subs = getSubPagesForParentId(indexPage.id);
+	const first = subs.find((p) => p.pageUrl?.startsWith('/medora/home'));
 	if (!first?.pageUrl) return null;
-	return medoraHospitalPageUrl(hospitalId, first.pageUrl);
+	const target = medoraHospitalPageUrl(hospitalId, first.pageUrl);
+	if (!target.startsWith(`/medora/hospital/${hospitalId}/home`)) {
+		return null;
+	}
+	if (!search || search === '?') return target;
+	return target + (search.startsWith('?') ? search : `?${search}`);
 }

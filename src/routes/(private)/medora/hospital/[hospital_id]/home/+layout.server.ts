@@ -259,26 +259,31 @@ export const load: LayoutServerLoad = async (event) => {
 				}
 			);
 
-			return withSectionIndexRedirect(hospitalId, url.pathname, {
-				pageData: fullPages,
-				currentHospitalName,
-				currentHospitalLogoUrl,
-				currentHospitalCountryId,
-				currentUserId,
-				currentUserName,
-				staffUserGroupsForNav: [],
-				selectedUserGroupId: null,
-				staffBranchesForNav,
-				selectedBranchId,
-				/** All branches the user is allowed to use (this hospital only). For OWNER/SYSTEM_ADMIN = all hospital branches. */
-				allowedBranches: allHospitalBranches,
-				/** null = unrestricted (owner / system admin). */
-				pagePermissions: null,
-				currentUserRoleId: userRoleId,
-				navLoadError: navDegraded,
-				...invNav,
-				...entitlementFields
-			});
+			return withSectionIndexRedirect(
+				hospitalId,
+				url.pathname,
+				{
+					pageData: fullPages,
+					currentHospitalName,
+					currentHospitalLogoUrl,
+					currentHospitalCountryId,
+					currentUserId,
+					currentUserName,
+					staffUserGroupsForNav: [],
+					selectedUserGroupId: null,
+					staffBranchesForNav,
+					selectedBranchId,
+					/** All branches the user is allowed to use (this hospital only). For OWNER/SYSTEM_ADMIN = all hospital branches. */
+					allowedBranches: allHospitalBranches,
+					/** null = unrestricted (owner / system admin). */
+					pagePermissions: null,
+					currentUserRoleId: userRoleId,
+					navLoadError: navDegraded,
+					...invNav,
+					...entitlementFields
+				},
+				url.search
+			);
 		}
 
 		// STAFF: filter by **selected** user group (cookie), enforce access for that group only
@@ -547,47 +552,57 @@ export const load: LayoutServerLoad = async (event) => {
 					selectedInventoryFromStoreId: null
 				}
 			);
-			return withSectionIndexRedirect(hospitalId, url.pathname, {
-				pageData: filtered,
+			return withSectionIndexRedirect(
+				hospitalId,
+				url.pathname,
+				{
+					pageData: filtered,
+					currentHospitalName,
+					currentHospitalLogoUrl,
+					currentHospitalCountryId,
+					currentUserId,
+					currentUserName,
+					staffUserGroupsForNav,
+					selectedUserGroupId,
+					staffBranchesForNav: staffBranchesForNavWithAll,
+					selectedBranchId,
+					/** All branches the user is allowed to use. For STAFF = branches they are assigned to. */
+					allowedBranches: staffBranchesForNav,
+					pagePermissions,
+					currentUserRoleId: userRoleId,
+					navLoadError: navDegraded,
+					...invNav,
+					...entitlementFields
+				},
+				url.search
+			);
+		}
+
+		// Fallback (e.g. no role or no staff): show all
+		return withSectionIndexRedirect(
+			hospitalId,
+			url.pathname,
+			{
+				pageData: fullPages,
 				currentHospitalName,
 				currentHospitalLogoUrl,
 				currentHospitalCountryId,
 				currentUserId,
 				currentUserName,
-				staffUserGroupsForNav,
-				selectedUserGroupId,
-				staffBranchesForNav: staffBranchesForNavWithAll,
-				selectedBranchId,
-				/** All branches the user is allowed to use. For STAFF = branches they are assigned to. */
-				allowedBranches: staffBranchesForNav,
-				pagePermissions,
+				staffUserGroupsForNav: [],
+				selectedUserGroupId: null,
+				staffBranchesForNav: [],
+				selectedBranchId: null,
+				allowedBranches: [],
+				pagePermissions: null,
 				currentUserRoleId: userRoleId,
 				navLoadError: navDegraded,
-				...invNav,
+				inventoryFromStoresForNav: [],
+				selectedInventoryFromStoreId: null,
 				...entitlementFields
-			});
-		}
-
-		// Fallback (e.g. no role or no staff): show all
-		return withSectionIndexRedirect(hospitalId, url.pathname, {
-			pageData: fullPages,
-			currentHospitalName,
-			currentHospitalLogoUrl,
-			currentHospitalCountryId,
-			currentUserId,
-			currentUserName,
-			staffUserGroupsForNav: [],
-			selectedUserGroupId: null,
-			staffBranchesForNav: [],
-			selectedBranchId: null,
-			allowedBranches: [],
-			pagePermissions: null,
-			currentUserRoleId: userRoleId,
-			navLoadError: navDegraded,
-			inventoryFromStoresForNav: [],
-			selectedInventoryFromStoreId: null,
-			...entitlementFields
-		});
+			},
+			url.search
+		);
 	} catch (err) {
 		// Let SvelteKit redirects/errors bubble up unchanged.
 		const maybe = err as Record<string, unknown>;

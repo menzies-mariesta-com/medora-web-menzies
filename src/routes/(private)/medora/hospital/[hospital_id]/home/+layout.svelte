@@ -182,8 +182,10 @@ import {
 		if (!browser || !hospitalId) return;
 		// `getSectionIndexRedirectTarget` reads the nav store; keep it the dependency.
 		getPageData();
-		const target = getSectionIndexRedirectTarget(hospitalId);
-		if (!target) return;
+		const target = getSectionIndexRedirectTarget(hospitalId, page.url.search);
+		if (!target?.startsWith(`/medora/hospital/${hospitalId}/home`)) {
+			return;
+		}
 		try {
 			const targetPath = new URL(target, page.url.origin).pathname;
 			if (page.url.pathname === targetPath) return;
