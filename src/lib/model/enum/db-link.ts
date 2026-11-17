@@ -25,6 +25,7 @@ export enum AdminPageKeyEnum {
 	MONITORING = 'monitoring',
 	ICD = 'icd',
 	TEAM = 'team',
+	GLOBAL_DOCUMENTS = 'global_documents',
 	PLANS = 'plans'
 }
 

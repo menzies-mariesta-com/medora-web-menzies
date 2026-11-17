@@ -2,7 +2,7 @@ import {
 	BillingStatusTaggingEnum,
 	VisitTypeEnum
 } from '$lib/model/enum/db-link';
-import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
+import { DocumentTypeId } from '$lib/model/constant/document-type-id.constant';
 import type { PatientOpenBillRow } from '$lib/model/type/medora/billing-context.type';
 import type {
 	OpBillingLine,
@@ -11,6 +11,7 @@ import type {
 } from '$lib/model/type/medora/op-billing.type';
 import { formatBillingCategorySubCategoryHeading } from '$lib/util/billing-group-heading.util';
 import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
+import { fetchVisitLikeForDocumentPrint } from '$lib/tool/emr/visit-print-context.util';
 import {
 	buildMultiVisitBillsPrintBodyHtml,
 	opBillingLineToPrintLine
@@ -275,15 +276,20 @@ export async function closeAllOpenBills(input: {
 	return { closed, failed };
 }
 
-export async function printAllOpenBillsCombined(input: {
-	hospitalId: string;
+export function buildOpenBillsCombinedDocumentMasterOpts(input: {
 	details: OpenBillVisitDetail[];
 	labels: BillingPrintLabels;
-}): Promise<{ error?: string }> {
+	visitForPrint: import('$lib/util/document-placeholder.util').VisitLike | null;
+	printBy?: string;
+	iframeId?: string;
+}): {
+	visit: import('$lib/util/document-placeholder.util').VisitLike | null;
+	printBy?: string;
+	extraPlaceholders: Record<string, string>;
+	iframeId: string;
+} | null {
 	const withLines = input.details.filter((d) => d.groups.length > 0);
-	if (!withLines.length) {
-		return { error: 'No billable lines to print.' };
-	}
+	if (!withLines.length) return null;
 
 	const visitSections = withLines.map((d) => {
 		const isIp = d.row.visitTypeId === VisitTypeEnum.IPD;
@@ -345,35 +351,72 @@ export async function printAllOpenBillsCombined(input: {
 	const hasIp = withLines.some(
 		(d) => d.row.visitTypeId === VisitTypeEnum.IPD
 	);
-	const documentCode = hasIp
-		? DOCUMENT_PRINT_CODE.IP_BILL
-		: DOCUMENT_PRINT_CODE.OP_BILL;
 	const printedAt = `${input.labels.generated}: ${new Date().toLocaleString()}`;
+	const visitDate = formatPrintDate(v?.visitDateIso);
+	const visitForPrint = input.visitForPrint;
+	const slimVisitPlaceholders = visitForPrint
+		? {}
+		: {
+				'{{patient_name}}': v?.patientName?.trim() || '—',
+				'{{patient_code}}': v?.patientCode?.trim() || '—',
+				'{{visit_code}}': visitNos || '—',
+				'{{doctor_name}}': v?.doctorName?.trim() || '—',
+				'{{visit_department}}': v?.branchName?.trim() || '—',
+				'{{hospital_name}}':
+					v?.hospitalName?.trim() ||
+					(hasIp ? input.labels.ipTitle : input.labels.opTitle)
+			};
+
+	return {
+		visit: visitForPrint,
+		printBy: input.printBy,
+		iframeId: input.iframeId ?? 'billing-all-visits-print-iframe',
+		extraPlaceholders: {
+			...slimVisitPlaceholders,
+			'{{visit_code}}': visitNos || '—',
+			'{{visit_date}}': visitDate,
+			'{{document_number}}': visitNos || '—',
+			'{{document_date}}': visitDate,
+			'{{bill_care_setting}}': hasIp ? 'IP' : 'OP',
+			'{{print_body_html}}': bodyHtml,
+			'{{print_datetime}}': printedAt,
+			'{{print_label_patient}}': input.labels.patient,
+			'{{print_label_patient_code}}': input.labels.patientCode,
+			'{{print_label_visit_no}}': input.labels.visitNo,
+			'{{print_label_date}}': input.labels.date,
+			'{{print_label_doctor}}': input.labels.doctor,
+			'{{print_label_branch}}': input.labels.branch,
+			'{{print_label_thank_you}}': input.labels.thankYou
+		}
+	};
+}
+
+export async function printAllOpenBillsCombined(input: {
+	hospitalId: string;
+	details: OpenBillVisitDetail[];
+	labels: BillingPrintLabels;
+	printBy?: string;
+	documentId?: number;
+}): Promise<{ error?: string }> {
+	const visitForPrint = await fetchVisitLikeForDocumentPrint(
+		input.hospitalId,
+		input.details.find((d) => d.groups.length > 0)?.row.visitId ?? ''
+	);
+	const opts = buildOpenBillsCombinedDocumentMasterOpts({
+		details: input.details,
+		labels: input.labels,
+		visitForPrint,
+		printBy: input.printBy
+	});
+	if (!opts) {
+		return { error: 'No billable lines to print.' };
+	}
 
 	await printFromDocumentMaster({
 		hospitalId: input.hospitalId,
-		documentCode,
-		extraPlaceholders: {
-			'{{patient.name}}': v?.patientName?.trim() || '—',
-			'{{patient.code}}': v?.patientCode?.trim() || '—',
-			'{{visit.no}}': visitNos || '—',
-			'{{visit.date}}': formatPrintDate(v?.visitDateIso),
-			'{{doctor.name}}': v?.doctorName?.trim() || '—',
-			'{{visit.department}}': v?.branchName?.trim() || '—',
-			'{{hospital.name}}':
-				v?.hospitalName?.trim() ||
-				(hasIp ? input.labels.ipTitle : input.labels.opTitle),
-			'{{print.body_html}}': bodyHtml,
-			'{{print.datetime}}': printedAt,
-			'{{print.label_patient}}': input.labels.patient,
-			'{{print.label_patient_code}}': input.labels.patientCode,
-			'{{print.label_visit_no}}': input.labels.visitNo,
-			'{{print.label_date}}': input.labels.date,
-			'{{print.label_doctor}}': input.labels.doctor,
-			'{{print.label_branch}}': input.labels.branch,
-			'{{print.label_thank_you}}': input.labels.thankYou
-		},
-		iframeId: 'billing-all-visits-print-iframe'
+		documentTypeId: DocumentTypeId.BILL_PRINT,
+		documentId: input.documentId,
+		...opts
 	});
 
 	return {};

@@ -17,6 +17,7 @@ export const ADMIN_PAGE_KEYS: AdminPageKeyEnum[] = [
 	AdminPageKeyEnum.STAFF,
 	AdminPageKeyEnum.MONITORING,
 	AdminPageKeyEnum.ICD,
+	AdminPageKeyEnum.GLOBAL_DOCUMENTS,
 	AdminPageKeyEnum.TEAM,
 	AdminPageKeyEnum.PLANS
 ];
@@ -56,6 +57,9 @@ export function adminPathToPageKey(
 	}
 	if (path.startsWith(WebRoutesEnum.MEDORA_ADMIN_ICD)) {
 		return AdminPageKeyEnum.ICD;
+	}
+	if (path.startsWith(WebRoutesEnum.MEDORA_ADMIN_GLOBAL_DOCUMENTS)) {
+		return AdminPageKeyEnum.GLOBAL_DOCUMENTS;
 	}
 	if (path.startsWith(WebRoutesEnum.MEDORA_ADMIN_TEAM)) {
 		return AdminPageKeyEnum.TEAM;

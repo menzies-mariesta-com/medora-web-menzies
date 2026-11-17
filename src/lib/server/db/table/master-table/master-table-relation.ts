@@ -4,8 +4,11 @@ import {
 	doctorScheduleTable,
 	externalReferTable,
 	hospitalDepartmentTable,
+	hospitalDocumentSettingsTable,
+	hospitalDocumentTable,
 	hospitalTable,
 	moduleTable,
+	patientDocumentTable,
 	pageTable,
 	patientTable,
 	patientVisitTable,
@@ -19,6 +22,7 @@ import {
 	statusTaggingTypeTable,
 	userGroupTable
 } from '../information-table/information-table';
+import { userTable } from '../auth-table/auth-table';
 import {
 	bloodTypeTable,
 	billingDiscountTypeTable,
@@ -26,6 +30,8 @@ import {
 	countryTable,
 	craftGroupTable,
 	diagnosisTypeTable,
+	documentTable,
+	documentTypeTable,
 	formNameTable,
 	genderTable,
 	identityTypeTable,
@@ -391,5 +397,35 @@ export const visitTypeTableRelations = relations(
 			references: [statusTable.id]
 		}),
 		patientVisits: many(patientVisitTable)
+	})
+);
+
+export const documentTypeTableRelations = relations(
+	documentTypeTable,
+	({ one, many }) => ({
+		status: one(statusTable, {
+			fields: [documentTypeTable.statusId],
+			references: [statusTable.id]
+		}),
+		createdByUser: one(userTable, {
+			fields: [documentTypeTable.createdBy],
+			references: [userTable.id]
+		}),
+		hospitalDocuments: many(hospitalDocumentTable)
+	})
+);
+
+export const documentTableRelations = relations(
+	documentTable,
+	({ one, many }) => ({
+		status: one(statusTable, {
+			fields: [documentTable.statusId],
+			references: [statusTable.id]
+		}),
+		createdByUser: one(userTable, {
+			fields: [documentTable.createdBy],
+			references: [userTable.id]
+		}),
+		patientDocuments: many(patientDocumentTable)
 	})
 );

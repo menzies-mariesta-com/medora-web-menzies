@@ -225,7 +225,7 @@ VALUES (
 	90007,
 	2,
 	'IP_BILL_PRINT',
-	'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>IP Bill No: {{document.number}} | Date: {{document.date}}<br/>Patient: {{patient.name}} ({{patient.code}})</header><dl class="meta"><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div><div><dt>{{print.label_branch}}</dt><dd>{{visit.department}}</dd></div></dl>{{print.body_html}}',
+	'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>IP Bill No: {{document.number}} | Date: {{document.date}}<br/>Patient: {{patient.name}} ({{patient.code}})</header><dl class="meta"><div><dt>{{print_label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print_label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print_label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print_label_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print_label_doctor}}</dt><dd>{{doctor.name}}</dd></div><div><dt>{{print_label_branch}}</dt><dd>{{visit.department}}</dd></div></dl>{{print.body_html}}',
 	'IP Bill',
 	5,
 	1

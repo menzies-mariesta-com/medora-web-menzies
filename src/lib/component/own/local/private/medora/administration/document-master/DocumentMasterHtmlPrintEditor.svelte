@@ -3,6 +3,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.util';
+	import PrintPreview from '$lib/component/own/library/menzies/PrintPreview.svelte';
 	import { buildDocumentMasterPreviewHtml } from '$lib/util/document-master-preview.util.svelte';
 	import {
 		appendPlaceholderToHtml,
@@ -36,8 +37,6 @@
 
 	const toastService = new ToastService();
 	let showPlaceholderPanel = $state(false);
-	let previewIframe = $state<HTMLIFrameElement | null>(null);
-
 	const previewHtml = $derived(
 		buildDocumentMasterPreviewHtml({
 			documentHtml: html,
@@ -47,17 +46,6 @@
 			setting
 		})
 	);
-
-	$effect(() => {
-		const iframe = previewIframe;
-		const content = previewHtml;
-		if (!iframe) return;
-		const doc = iframe.contentDocument;
-		if (!doc) return;
-		doc.open();
-		doc.write(content);
-		doc.close();
-	});
 
 	function handleFormatHtml() {
 		html = formatHtmlForEditor(html);
@@ -110,8 +98,8 @@
 			<span class="text-sm font-medium">HTML</span>
 			{#if readOnly}
 				<pre
-					class="textarea-bordered textarea {minHeightClass} w-full overflow-auto font-mono text-xs whitespace-pre-wrap"
-				>{html || 'No content'}</pre>
+					class="textarea-bordered textarea {minHeightClass} w-full overflow-auto font-mono text-xs whitespace-pre-wrap">{html ||
+						'No content'}</pre>
 			{:else}
 				<textarea
 					class="textarea-bordered textarea {minHeightClass} w-full font-mono text-sm"
@@ -123,16 +111,11 @@
 
 		<div class="flex min-h-0 flex-col gap-2">
 			<span class="text-sm font-medium">Print preview</span>
-			<div
-				class="overflow-hidden rounded-lg border border-base-300 bg-white"
-			>
-				<iframe
-					bind:this={previewIframe}
-					title="Document print preview"
-					class="{minHeightClass} w-full border-0 bg-white"
-					sandbox="allow-same-origin"
-				></iframe>
-			</div>
+			<PrintPreview
+				html={previewHtml}
+				title="Document print preview"
+				minHeight={minHeightClass}
+			/>
 		</div>
 	</div>
 
@@ -142,7 +125,9 @@
 			<div class="max-h-64 space-y-4 overflow-y-auto">
 				{#each DOCUMENT_TEMPLATE_PLACEHOLDERS as category (category.category)}
 					<div>
-						<h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-base-content/70">
+						<h4
+							class="mb-2 text-xs font-semibold tracking-wide text-base-content/70 uppercase"
+						>
 							{category.category}
 						</h4>
 						<div class="flex flex-wrap gap-2">

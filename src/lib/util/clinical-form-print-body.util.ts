@@ -1,17 +1,18 @@
 import { CLINICAL_FORM_CODE } from '$lib/model/constant/document-print.constant';
+import { ClinicalDocumentSectionEnum } from '$lib/model/enum/clinical-document-section.enum';
 
 /** Shared patient/visit header block (placeholders resolved at print time). */
 export const CLINICAL_FORM_PATIENT_HEADER_HTML = `<dl class="meta clinical-form-meta">
-<div><dt>Patient name</dt><dd>{{patient.name}}</dd></div>
-<div><dt>Patient code</dt><dd>{{patient.code}}</dd></div>
-<div><dt>Date of birth</dt><dd>{{patient.dob}}</dd></div>
-<div><dt>Age</dt><dd>{{patient.age}}</dd></div>
-<div><dt>Gender</dt><dd>{{patient.gender}}</dd></div>
-<div><dt>Visit no.</dt><dd>{{visit.no}}</dd></div>
-<div><dt>Visit date</dt><dd>{{visit.date}}</dd></div>
-<div><dt>Visit type</dt><dd>{{visit.type}}</dd></div>
-<div><dt>Department</dt><dd>{{visit.department}}</dd></div>
-<div><dt>Attending doctor</dt><dd>{{doctor.name}}</dd></div>
+<div><dt>Patient name</dt><dd>{{patient_name}}</dd></div>
+<div><dt>Patient code</dt><dd>{{patient_code}}</dd></div>
+<div><dt>Date of birth</dt><dd>{{patient_dob}}</dd></div>
+<div><dt>Age</dt><dd>{{patient_age}}</dd></div>
+<div><dt>Gender</dt><dd>{{patient_gender}}</dd></div>
+<div><dt>Visit no.</dt><dd>{{visit_code}}</dd></div>
+<div><dt>Visit date</dt><dd>{{visit_date}}</dd></div>
+<div><dt>Visit type</dt><dd>{{visit_type}}</dd></div>
+<div><dt>Department</dt><dd>{{visit_department}}</dd></div>
+<div><dt>Attending doctor</dt><dd>{{doctor_name}}</dd></div>
 </dl>`;
 
 function lines(count: number): string {
@@ -46,15 +47,15 @@ function consentIntro(text: string): string {
 }
 
 function buildFormShell(bodyHtml: string): string {
-	return `<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>{{hospital.address}} | Tel: {{hospital.phone}}</header>
-<h2 class="clinical-form-title">{{document.number}}</h2>
+	return `<header class="print-doc-header"><strong>{{hospital_name}}</strong><br/>{{hospital_address}} | Tel: {{hospital_phone}}</header>
+<h2 class="clinical-form-title">{{document_number}}</h2>
 ${CLINICAL_FORM_PATIENT_HEADER_HTML}
 <section class="clinical-form-body">${bodyHtml}</section>`;
 }
 
 const FORM_BODIES: Record<string, string> = {
 	[CLINICAL_FORM_CODE.GENERAL_TREATMENT_CONSENT]: `
-${consentIntro('I hereby authorize the physicians and staff of {{hospital.name}} to perform diagnostic procedures, medical treatment, nursing care, and other services deemed necessary for my evaluation and treatment. I understand the nature of my condition and the proposed care has been explained to me.')}
+${consentIntro('I hereby authorize the physicians and staff of {{hospital_name}} to perform diagnostic procedures, medical treatment, nursing care, and other services deemed necessary for my evaluation and treatment. I understand the nature of my condition and the proposed care has been explained to me.')}
 ${checkboxRow('I consent to routine laboratory, imaging, and diagnostic tests as ordered.')}
 ${checkboxRow('I consent to administration of medications as prescribed.')}
 ${checkboxRow('I have been given the opportunity to ask questions and my questions have been answered.')}
@@ -66,7 +67,7 @@ ${signatureBlock([
 	{ label: 'Physician / provider signature' }
 ])}`,
 	[CLINICAL_FORM_CODE.OPD_REGISTRATION_CONSENT]: `
-${consentIntro('I confirm that the registration information provided is accurate. I consent to outpatient evaluation and treatment at {{hospital.name}} for this visit.')}
+${consentIntro('I confirm that the registration information provided is accurate. I consent to outpatient evaluation and treatment at {{hospital_name}} for this visit.')}
 ${labeledLine('Emergency contact name')}
 ${labeledLine('Emergency contact phone')}
 ${labeledLine('Relationship to patient')}
@@ -113,7 +114,7 @@ ${signatureBlock([
 	{ label: 'Nurse signature' }
 ])}`,
 	[CLINICAL_FORM_CODE.PRIVACY_ACKNOWLEDGMENT]: `
-${consentIntro('I acknowledge that I have received information regarding how {{hospital.name}} collects, uses, and protects my personal and medical information.')}
+${consentIntro('I acknowledge that I have received information regarding how {{hospital_name}} collects, uses, and protects my personal and medical information.')}
 ${checkboxRow('I understand my information may be shared with authorized healthcare providers involved in my care.')}
 ${checkboxRow('I understand I may request access to my medical records according to hospital policy.')}
 ${checkboxRow('I understand I may refuse certain uses of my information as permitted by law.')}
@@ -154,7 +155,7 @@ ${signatureBlock([
 ])}`,
 	[CLINICAL_FORM_CODE.MEDICAL_CERTIFICATE]: `
 ${consentIntro('To whom it may concern,')}
-<p class="clinical-form-paragraph">This is to certify that the above-named patient was examined at {{hospital.name}} on {{visit.date}}.</p>
+<p class="clinical-form-paragraph">This is to certify that the above-named patient was examined at {{hospital_name}} on {{visit_date}}.</p>
 ${labeledLine('Diagnosis / clinical impression')}
 ${lines(2)}
 ${labeledLine('Recommendation / fitness for work or travel')}
@@ -181,61 +182,61 @@ export function buildClinicalFormDocumentText(code: string): string {
 export const CLINICAL_FORM_SEED_ROWS = [
 	{
 		id: 90101,
-		documentTypeId: 1,
+		clinicalSection: 'consent',
 		code: CLINICAL_FORM_CODE.GENERAL_TREATMENT_CONSENT,
 		documentNumber: 'General Treatment Consent'
 	},
 	{
 		id: 90102,
-		documentTypeId: 1,
+		clinicalSection: 'consent',
 		code: CLINICAL_FORM_CODE.OPD_REGISTRATION_CONSENT,
 		documentNumber: 'OPD Registration Consent'
 	},
 	{
 		id: 90103,
-		documentTypeId: 1,
+		clinicalSection: 'consent',
 		code: CLINICAL_FORM_CODE.MINOR_GUARDIAN_CONSENT,
 		documentNumber: 'Minor Patient Guardian Consent'
 	},
 	{
 		id: 90104,
-		documentTypeId: 1,
+		clinicalSection: 'consent',
 		code: CLINICAL_FORM_CODE.VACCINATION_CONSENT,
 		documentNumber: 'Vaccination Consent'
 	},
 	{
 		id: 90105,
-		documentTypeId: 1,
+		clinicalSection: 'consent',
 		code: CLINICAL_FORM_CODE.MEDICATION_CONSENT,
 		documentNumber: 'Medication Consent'
 	},
 	{
 		id: 90106,
-		documentTypeId: 3,
+		clinicalSection: 'instruction',
 		code: CLINICAL_FORM_CODE.PRIVACY_ACKNOWLEDGMENT,
 		documentNumber: 'Privacy / Data Protection Acknowledgment'
 	},
 	{
 		id: 90107,
-		documentTypeId: 3,
+		clinicalSection: 'instruction',
 		code: CLINICAL_FORM_CODE.FINANCIAL_RESPONSIBILITY,
 		documentNumber: 'Financial Responsibility Agreement'
 	},
 	{
 		id: 90108,
-		documentTypeId: 2,
+		clinicalSection: ClinicalDocumentSectionEnum.FORM,
 		code: CLINICAL_FORM_CODE.REFUSAL_OF_TREATMENT,
 		documentNumber: 'Refusal of Treatment'
 	},
 	{
 		id: 90109,
-		documentTypeId: 1,
+		clinicalSection: 'consent',
 		code: CLINICAL_FORM_CODE.TRANSFER_REFERRAL_CONSENT,
 		documentNumber: 'Transfer / Referral Consent'
 	},
 	{
 		id: 90110,
-		documentTypeId: 4,
+		clinicalSection: ClinicalDocumentSectionEnum.CERTIFICATE,
 		code: CLINICAL_FORM_CODE.MEDICAL_CERTIFICATE,
 		documentNumber: 'Medical Certificate (blank)'
 	}

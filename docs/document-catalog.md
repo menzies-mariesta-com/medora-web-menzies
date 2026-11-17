@@ -1,23 +1,14 @@
-# Hospital document template catalog
+# Document templates (code catalog)
 
-Phase 1 ships a versioned HTML print catalog in code under `src/lib/server/medora/document-master/catalog/`. System rows sync into `document` and `document_catalog` via `ensureDocumentCatalogSynced()`.
+Shipped HTML print templates live in **code** under `src/lib/server/medora/document-master/catalog/`.  
+`getAllCatalogTemplates()` is the source of truth for **seed/provision** only.
 
-## Admin
+Hospital runtime data:
 
-- **Template library**: enable/disable catalog entries per hospital (fork on enable).
-- **Hospital templates**: enabled forks and custom hospital documents.
-- **Document Master**: edit forked HTML and layout like custom documents.
+- `document` — global HTML templates; **primary key `id`**; optional `code` only for legacy print aliases (`BILL_PRINT`, …)
+- `hospital_document` — link row `(hospital_id, document_id)` after provision
+- No `document_catalog` database table
 
-## Runtime
+Provision: `provision-templates.server.ts` / `document-master-provision.seed.ts` on hospital create and information seed.
 
-- EMR clinical-document lists enabled hospital templates plus custom hospital documents.
-- Transactional print codes resolve through hospital bindings when enabled.
-
-## Maintenance
-
-```bash
-pnpm run verify-document-catalog
-pnpm run db:seed:init:information   # runs catalog sync after legacy document seeds
-```
-
-See `docs/document-catalog-qa-checklist.md` for manual print QA.
+Print surfaces resolve templates by **`document_type.id`** via `GET .../document-print?documentTypeId=`.

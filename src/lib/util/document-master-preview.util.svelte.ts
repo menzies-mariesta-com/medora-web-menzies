@@ -1,10 +1,13 @@
+import { flattenLegacyPlaceholderTokens } from '$lib/model/constant/document-placeholder.registry';
 import {
 	buildDocumentPlaceholderContext,
+	extraPrintBodyHtml,
 	resolveDocumentTemplate,
 	type DocumentLike
 } from '$lib/util/document-placeholder.util';
 import {
 	buildPrintDocumentHtml,
+	preprocessDocumentBodyForLayout,
 	type PrintDocumentLayoutInput
 } from '$lib/util/print-document-html.util';
 
@@ -57,26 +60,27 @@ export function buildSampleDocumentPreviewContext(
 		{
 			printBy: 'Preview User',
 			extraPlaceholders: {
-				'{{visit.service_lines_table}}':
+				'{{visit_service_lines_table}}':
 					'<table><thead><tr><th>Service</th><th>Amount</th></tr></thead><tbody><tr><td>Sample service</td><td>100.00</td></tr></tbody></table>',
-				'{{print.body_html}}':
-					'<section class="cat-block"><h3 class="cat-title">Sample category</h3><table class="line-table"><thead><tr><th>Service</th><th>Order</th><th class="num">Amount</th></tr></thead><tbody><tr><td>Consultation</td><td>ORD-1</td><td class="amt">50.00</td></tr></tbody></table></section>',
-				'{{print.label_patient}}': 'Patient',
-				'{{print.label_patient_code}}': 'Patient code',
-				'{{print.label_visit_no}}': 'Visit no',
-				'{{print.label_date}}': 'Date',
-				'{{print.label_doctor}}': 'Doctor',
-				'{{print.label_branch}}': 'Branch',
-				'{{print.label_thank_you}}': 'Thank you',
-				'{{print.label_heading}}': 'Visit label',
-				'{{print.label_dob}}': 'DOB',
-				'{{print.label_visit_date}}': 'Visit date',
-				'{{print.label_title}}': 'Appointment slip',
-				'{{print.label_subtitle}}': 'Please arrive 10 minutes early',
-				'{{print.label_start_time}}': 'Start',
-				'{{print.label_end_time}}': 'End',
-				'{{print.customer}}': 'Walk-in customer',
-				'{{print.doctor}}': 'Dr. John Smith',
+				...extraPrintBodyHtml(
+					'<section class="cat-block"><h3 class="cat-title">Sample category</h3><table class="line-table"><thead><tr><th>Service</th><th>Order</th><th class="num">Amount</th></tr></thead><tbody><tr><td>Consultation</td><td>ORD-1</td><td class="amt">50.00</td></tr></tbody></table></section>'
+				),
+				'{{print_label_patient}}': 'Patient',
+				'{{print_label_patient_code}}': 'Patient code',
+				'{{print_label_visit_no}}': 'Visit no',
+				'{{print_label_date}}': 'Date',
+				'{{print_label_doctor}}': 'Doctor',
+				'{{print_label_branch}}': 'Branch',
+				'{{print_label_thank_you}}': 'Thank you',
+				'{{print_label_heading}}': 'Visit label',
+				'{{print_label_dob}}': 'DOB',
+				'{{print_label_visit_date}}': 'Visit date',
+				'{{print_label_title}}': 'Appointment slip',
+				'{{print_label_subtitle}}': 'Please arrive 10 minutes early',
+				'{{print_label_start_time}}': 'Start',
+				'{{print_label_end_time}}': 'End',
+				'{{print_customer}}': 'Walk-in customer',
+				'{{print_doctor}}': 'Dr. John Smith',
 				'{{appointment.patient}}': 'Jane Doe',
 				'{{appointment.doctor}}': 'Dr. John Smith',
 				'{{appointment.date}}': new Date().toLocaleDateString(),
@@ -99,18 +103,24 @@ export function buildDocumentMasterPreviewHtml(params: {
 	const context = buildSampleDocumentPreviewContext(
 		params.extraPlaceholders
 	);
-	const documentHtml = resolveDocumentTemplate(
-		params.documentHtml,
-		context
-	).trim();
 	const headerHtml = resolveDocumentTemplate(
-		params.headerHtml ?? '',
+		flattenLegacyPlaceholderTokens(params.headerHtml ?? ''),
 		context
 	).trim();
 	const footerHtml = resolveDocumentTemplate(
-		params.footerHtml ?? '',
+		flattenLegacyPlaceholderTokens(params.footerHtml ?? ''),
 		context
 	).trim();
+	const showLayoutHeader =
+		(params.setting?.showHeader ?? true) && Boolean(headerHtml.trim());
+	let documentHtml = resolveDocumentTemplate(
+		flattenLegacyPlaceholderTokens(params.documentHtml),
+		context
+	).trim();
+	documentHtml = preprocessDocumentBodyForLayout(documentHtml, {
+		layoutHeaderHtml: headerHtml,
+		showLayoutHeader
+	});
 
 	return buildPrintDocumentHtml({
 		documentHtml,

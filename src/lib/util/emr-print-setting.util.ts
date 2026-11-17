@@ -12,14 +12,19 @@ function embeddedDocumentSetting(
 	return embedded;
 }
 
-/** Picks document_setting row for a master document by explicit id only. */
+/** Layout row for print: embedded on document or from bootstrap.documentSetting. */
 export function resolveDocumentSettingForDoc(
-	documentSettings: DocumentSettingWithRelations[],
+	documentSettings: DocumentSettingWithRelations[] | DocumentSettingRow | null | undefined,
 	doc: DocumentForPrintSetting
 ): DocumentSettingRow | null {
+	if (documentSettings && !Array.isArray(documentSettings)) {
+		return documentSettings;
+	}
+	if (doc.documentSetting?.id) return doc.documentSetting;
+
 	if (!doc.documentSettingId) return null;
 
-	const fromList = documentSettings.find(
+	const fromList = (documentSettings ?? []).find(
 		(x) => x.id === doc.documentSettingId
 	);
 	if (fromList) return fromList;

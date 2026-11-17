@@ -8,14 +8,6 @@ import {
 	buildStandardFormBody
 } from './document-catalog.shell';
 
-function slugify(name: string): string {
-	return name
-		.toUpperCase()
-		.replace(/[^A-Z0-9]+/g, '_')
-		.replace(/^_|_$/g, '')
-		.slice(0, 48);
-}
-
 export function defineConsentTemplates(input: {
 	category: string;
 	documentTypeId: number;
@@ -24,13 +16,11 @@ export function defineConsentTemplates(input: {
 	items: { title: string; intro: string; checkboxes?: string[] }[];
 }): CatalogTemplateDef[] {
 	return input.items.map((item) => {
-		const slug = slugify(item.title);
 		const body = buildStandardConsentBody({
 			intro: item.intro,
 			checkboxes: item.checkboxes
 		});
 		return {
-			catalogCode: `CATALOG_${input.prefix}_${slug}`,
 			kind: DocumentCatalogKindEnum.HTML_PRINT,
 			category: input.category,
 			title: item.title,
@@ -55,13 +45,11 @@ export function defineFormTemplates(input: {
 	items: { title: string; intro?: string; fields: string[] }[];
 }): CatalogTemplateDef[] {
 	return input.items.map((item) => {
-		const slug = slugify(item.title);
 		const body = buildStandardFormBody({
 			intro: item.intro,
 			fields: item.fields
 		});
 		return {
-			catalogCode: `CATALOG_${input.prefix}_${slug}`,
 			kind: DocumentCatalogKindEnum.HTML_PRINT,
 			category: input.category,
 			title: item.title,
@@ -84,10 +72,8 @@ export function defineFinanceTemplates(input: {
 	items: { title: string; intro: string }[];
 }): CatalogTemplateDef[] {
 	return input.items.map((item) => {
-		const slug = slugify(item.title);
 		const body = buildFinanceAckBody({ intro: item.intro });
 		return {
-			catalogCode: `CATALOG_${input.prefix}_${slug}`,
 			kind: DocumentCatalogKindEnum.HTML_PRINT,
 			category: input.category,
 			title: item.title,
@@ -109,13 +95,11 @@ export function defineCertificateTemplates(input: {
 	items: { title: string; opening: string; fields: string[] }[];
 }): CatalogTemplateDef[] {
 	return input.items.map((item) => {
-		const slug = slugify(item.title);
 		const body = buildCertificateBody({
 			opening: item.opening,
 			fields: item.fields
 		});
 		return {
-			catalogCode: `CATALOG_${input.prefix}_${slug}`,
 			kind: DocumentCatalogKindEnum.HTML_PRINT,
 			category: 'certificates',
 			title: item.title,

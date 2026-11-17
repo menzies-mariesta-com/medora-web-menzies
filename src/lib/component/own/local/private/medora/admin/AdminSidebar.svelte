@@ -3,6 +3,7 @@
 	import LucideActivity from '$lib/component/own/library/lucide/LucideActivity.svelte';
 	import LucideAppWindow from '$lib/component/own/library/lucide/LucideAppWindow.svelte';
 	import LucideBookMarked from '$lib/component/own/library/lucide/LucideBookMarked.svelte';
+	import LucideFileText from '$lib/component/own/library/lucide/LucideFileText.svelte';
 	import LucideHouse from '$lib/component/own/library/lucide/LucideHouse.svelte';
 	import LucideLogOut from '$lib/component/own/library/lucide/LucideLogOut.svelte';
 	import LucideUserCog from '$lib/component/own/library/lucide/LucideUserCog.svelte';
@@ -106,6 +107,15 @@
 			icon: LucideBookMarked,
 			match: (pathname) =>
 				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_ICD)
+		},
+		{
+			href: WebRoutesEnum.MEDORA_ADMIN_GLOBAL_DOCUMENTS,
+			pageKey: AdminPageKeyEnum.GLOBAL_DOCUMENTS,
+			label: () =>
+				paraglideMsg('admin_nav_global_documents', 'Global documents'),
+			icon: LucideFileText,
+			match: (pathname) =>
+				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_GLOBAL_DOCUMENTS)
 		},
 		{
 			href: WebRoutesEnum.MEDORA_ADMIN_TEAM,

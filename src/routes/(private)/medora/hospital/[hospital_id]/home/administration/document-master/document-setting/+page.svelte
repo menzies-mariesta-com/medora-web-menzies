@@ -19,6 +19,7 @@
 		appendPlaceholderToHtml,
 		formatHtmlForEditor
 	} from '$lib/util/format-html.util';
+	import PrintPreview from '$lib/component/own/library/menzies/PrintPreview.svelte';
 	import { buildDocumentMasterPreviewHtml } from '$lib/util/document-master-preview.util.svelte';
 	import type { PrintDocumentLayoutInput } from '$lib/util/print-document-html.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -31,8 +32,7 @@
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type {
 		DocumentSettingRow,
-		DocumentSettingWithRelations,
-		DocumentTypeRow
+		DocumentSettingWithRelations
 	} from '$lib/model/type/document-setting.type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
@@ -74,10 +74,6 @@
 		return qs ? `${base}?${qs}` : base;
 	}
 
-	function documentTypeApiUrl() {
-		return `/api/medora/hospital/${hospitalId}/home/administration/document-master/document-type`;
-	}
-
 	const PAGE_SIZES = ['A4', 'A5', 'Letter', 'Legal'] as const;
 	const ORIENTATIONS = ['portrait', 'landscape'] as const;
 
@@ -85,7 +81,6 @@
 		$state<PaginatedResult<DocumentSettingWithRelations> | null>(
 			null
 		);
-	let documentTypes = $state<DocumentTypeRow[]>([]);
 	let currentPage = $state(1);
 	let filterPageSize = $state(
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
@@ -100,7 +95,6 @@
 	let editingId = $state<number | null>(null);
 
 	let nameInput = $state('');
-	let documentTypeIdInput = $state('');
 	let descriptionInput = $state('');
 
 	let marginTop = $state(20);
@@ -120,23 +114,24 @@
 
 	let showPlaceholderPanel = $state(false);
 	let activeEditorTarget = $state<'header' | 'footer' | null>(null);
-	let layoutPreviewIframe = $state<HTMLIFrameElement | null>(null);
 	let editingIsSystem = $state(false);
 
-	const currentPrintLayout = $derived.by((): PrintDocumentLayoutInput => ({
-		marginTop,
-		marginBottom,
-		marginLeft,
-		marginRight,
-		paddingTop,
-		paddingBottom,
-		paddingLeft,
-		paddingRight,
-		pageSize: pageSizeInput,
-		pageOrientation,
-		showHeader,
-		showFooter
-	}));
+	const currentPrintLayout = $derived.by(
+		(): PrintDocumentLayoutInput => ({
+			marginTop,
+			marginBottom,
+			marginLeft,
+			marginRight,
+			paddingTop,
+			paddingBottom,
+			paddingLeft,
+			paddingRight,
+			pageSize: pageSizeInput,
+			pageOrientation,
+			showHeader,
+			showFooter
+		})
+	);
 
 	const layoutPreviewHtml = $derived(
 		buildDocumentMasterPreviewHtml({
@@ -149,22 +144,15 @@
 		})
 	);
 
-	$effect(() => {
-		const iframe = layoutPreviewIframe;
-		const content = layoutPreviewHtml;
-		if (!iframe) return;
-		const doc = iframe.contentDocument;
-		if (!doc) return;
-		doc.open();
-		doc.write(content);
-		doc.close();
-	});
-
-	function settingDisplayName(item: DocumentSettingWithRelations): string {
-		return item.hospitalId == null ? `(System) ${item.name}` : item.name;
+	function settingDisplayName(
+		item: DocumentSettingWithRelations
+	): string {
+		return item.name;
 	}
 
-	function isSystemSetting(item: DocumentSettingWithRelations): boolean {
+	function isSystemSetting(
+		item: DocumentSettingWithRelations
+	): boolean {
 		return item.hospitalId == null;
 	}
 
@@ -187,7 +175,6 @@
 				documentSettingApiUrl({
 					page: currentPage,
 					pageSize,
-					includeGlobal: 'true',
 					...(parsedStatusId != null &&
 					Number.isFinite(parsedStatusId)
 						? { statusId: parsedStatusId }
@@ -200,27 +187,14 @@
 		}
 	}
 
-	async function fetchDocumentTypes() {
-		if (!hospitalId) return;
-		try {
-			documentTypes = await apiFetch<DocumentTypeRow[]>(
-				documentTypeApiUrl()
-			);
-		} catch (err) {
-			console.error('Failed to load document types', err);
-		}
-	}
-
 	lifeCycleUtil.onMount(() => {
 		fetchData();
-		fetchDocumentTypes();
 	});
 
 	function resetForm() {
 		viewMode = 'list';
 		editingId = null;
 		nameInput = '';
-		documentTypeIdInput = '';
 		descriptionInput = '';
 		marginTop = 20;
 		marginBottom = 20;
@@ -249,9 +223,6 @@
 	function loadFormFromItem(item: DocumentSettingWithRelations) {
 		editingId = item.id;
 		nameInput = item.name ?? '';
-		documentTypeIdInput = item.documentTypeId
-			? String(item.documentTypeId)
-			: '';
 		descriptionInput = item.description ?? '';
 		marginTop = item.marginTop ?? 20;
 		marginBottom = item.marginBottom ?? 20;
@@ -298,9 +269,6 @@
 				const payload = {
 					hospitalId,
 					name: nameInput.trim(),
-					documentTypeId: documentTypeIdInput
-						? Number(documentTypeIdInput)
-						: null,
 					description: descriptionInput.trim() || null,
 					marginTop,
 					marginBottom,
@@ -414,62 +382,56 @@
 		footerHtml = formatHtmlForEditor(footerHtml);
 	}
 
-	const columns: MenziesTableColumn<DocumentSettingWithRelations>[] = [
-		{
-			id: 'displayNo',
-			header: 'No',
-			widthClass: 'w-14 min-w-[3.5rem]',
-			filterable: false,
-			format: (_v, _row, rowIndex) =>
-				(currentPage - 1) *
-					(Number(filterPageSize) ||
-						AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE) +
-				rowIndex +
-				1
-		},
-		{
-			id: 'name',
-			header: 'Name',
-			widthClass: 'w-48 min-w-[12rem]',
-			filterable: false,
-			format: (_value, row) => settingDisplayName(row)
-		},
-		{
-			id: 'documentType',
-			header: 'Document Type',
-			widthClass: 'w-32 min-w-[8rem]',
-			filterable: false,
-			format: (_value, row) => row.documentType?.documentType ?? '—'
-		},
-		{
-			id: 'status',
-			header: 'Status',
-			widthClass: 'w-28 min-w-[7rem]',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: [
-				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
-				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
-			],
-			defaultFilterValue: String(StatusEnum.ACTIVE),
-			format: (_value, row) =>
-				row.statusId === StatusEnum.ACTIVE
-					? 'Active'
-					: row.statusId === StatusEnum.INACTIVE
-						? 'Inactive'
-						: row.statusId === StatusEnum.DELETED
-							? 'Deleted'
-							: `Status ${row.statusId ?? 'Unknown'}`
-		},
-		{
-			id: 'pageSize',
-			header: 'Page',
-			widthClass: 'w-24 min-w-[6rem]',
-			filterable: false,
-			format: (value, row) =>
-				`${value ?? 'A4'} ${row.pageOrientation === 'landscape' ? '↔' : '↕'}`
-		}
-	];
+	const columns: MenziesTableColumn<DocumentSettingWithRelations>[] =
+		[
+			{
+				id: 'displayNo',
+				header: 'No',
+				widthClass: 'w-14 min-w-[3.5rem]',
+				filterable: false,
+				format: (_v, _row, rowIndex) =>
+					(currentPage - 1) *
+						(Number(filterPageSize) ||
+							AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE) +
+					rowIndex +
+					1
+			},
+			{
+				id: 'name',
+				header: 'Name',
+				widthClass: 'w-48 min-w-[12rem]',
+				filterable: false,
+				format: (_value, row) => settingDisplayName(row)
+			},
+			{
+				id: 'status',
+				header: 'Status',
+				widthClass: 'w-28 min-w-[7rem]',
+				filterable: true,
+				filterType: 'select',
+				filterOptions: [
+					{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+					{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+				],
+				defaultFilterValue: String(StatusEnum.ACTIVE),
+				format: (_value, row) =>
+					row.statusId === StatusEnum.ACTIVE
+						? 'Active'
+						: row.statusId === StatusEnum.INACTIVE
+							? 'Inactive'
+							: row.statusId === StatusEnum.DELETED
+								? 'Deleted'
+								: `Status ${row.statusId ?? 'Unknown'}`
+			},
+			{
+				id: 'pageSize',
+				header: 'Page',
+				widthClass: 'w-24 min-w-[6rem]',
+				filterable: false,
+				format: (value, row) =>
+					`${value ?? 'A4'} ${row.pageOrientation === 'landscape' ? '↔' : '↕'}`
+			}
+		];
 </script>
 
 <div class="space-y-6">
@@ -501,8 +463,9 @@
 							<h3 class="mb-3 font-medium">Basic Information</h3>
 							<div class="space-y-3">
 								<div class="flex flex-col gap-1">
-									<label for="name">Name <span class="text-error">*</span
-										></label>
+									<label for="name"
+										>Name <span class="text-error">*</span></label
+									>
 									<WashInputField
 										id="name"
 										bind:value={nameInput}
@@ -510,20 +473,6 @@
 										inputPlaceholderText="e.g., OPD Consent Form"
 										disabled={viewMode === 'view'}
 									/>
-								</div>
-								<div class="flex flex-col gap-1">
-									<label for="documentType">Document Type</label>
-									<WashSelect
-										bind:value={documentTypeIdInput}
-										optionHeader="Select type..."
-										disabled={viewMode === 'view'}
-									>
-										{#each documentTypes as dt (dt.id)}
-											<option value={String(dt.id)}
-												>{dt.documentType}</option
-											>
-										{/each}
-									</WashSelect>
 								</div>
 								<div class="flex flex-col gap-1">
 									<label for="description">Description</label>
@@ -836,7 +785,7 @@
 													<div class="ml-2 flex items-center gap-1">
 														<button
 															type="button"
-															class="btn p-1 btn-ghost btn-xs"
+															class="btn btn-ghost btn-xs p-1"
 															onclick={() => copyPlaceholder(ph.key)}
 															title="Copy"
 														>
@@ -844,7 +793,7 @@
 														</button>
 														<button
 															type="button"
-															class="btn p-1 btn-xs btn-primary"
+															class="btn btn-xs btn-primary p-1"
 															onclick={() =>
 																insertPlaceholder(ph.key)}
 															title="Insert"
@@ -862,16 +811,10 @@
 
 						<div class="rounded-lg bg-base-200 p-4">
 							<h3 class="mb-3 font-medium">Layout preview</h3>
-							<div
-								class="overflow-hidden rounded-lg border border-base-300 bg-white"
-							>
-								<iframe
-									bind:this={layoutPreviewIframe}
-									title="Document setting layout preview"
-									class="min-h-[320px] w-full border-0 bg-white"
-									sandbox="allow-same-origin"
-								></iframe>
-							</div>
+							<PrintPreview
+								html={layoutPreviewHtml}
+								title="Document setting layout preview"
+							/>
 						</div>
 					</div>
 				</div>
@@ -939,7 +882,8 @@
 					onEdit={() => startEdit(typedRow)}
 					onDelete={() => handleDelete(typedRow)}
 					viewDisabled={deleteLock.pending}
-					editDisabled={deleteLock.pending || isSystemSetting(typedRow)}
+					editDisabled={deleteLock.pending ||
+						isSystemSetting(typedRow)}
 					deleteDisabled={deleteLock.pending ||
 						isLoading ||
 						isSystemSetting(typedRow)}
