@@ -9,6 +9,11 @@ import {
 	updateUserGroup
 } from '$lib/server/medora/administration/user-group/user-group.server';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import {
+	PageActionEnum,
+	isPageAction
+} from '$lib/model/enum/page-action.enum';
+import type { UserGroupPageGrantInput } from '$lib/model/type/medora/page-permission.type';
 
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = String(event.params.hospital_id ?? '');
@@ -28,12 +33,20 @@ export const GET: RequestHandler = async (event) => {
 			hospitalId,
 			userGroupId
 		});
+		const byPage = new Map<number, PageActionEnum[]>();
+		for (const row of data.assignments) {
+			if (row.pageId == null || !isPageAction(row.actionCode)) continue;
+			const list = byPage.get(row.pageId) ?? [];
+			if (!list.includes(row.actionCode)) list.push(row.actionCode);
+			byPage.set(row.pageId, list);
+		}
 		return json({
 			pages: data.pages,
 			modules: data.modules,
-			assignedPageIds: data.assignments
-				.map((a) => a.pageId)
-				.filter((id): id is number => id != null)
+			grants: [...byPage].map(([pageId, actions]) => ({
+				pageId,
+				actions
+			}))
 		});
 	}
 
@@ -112,17 +125,25 @@ export const PUT: RequestHandler = async (event) => {
 		if (!Number.isFinite(userGroupId))
 			throw error(400, 'Invalid userGroupId');
 
-		const pageIdsRaw = body.pageIds;
-		const pageIds = Array.isArray(pageIdsRaw)
-			? pageIdsRaw
-					.map((x) => Number(x))
-					.filter((n) => Number.isFinite(n))
-			: [];
+		const grantsRaw = body.grants;
+		if (!Array.isArray(grantsRaw))
+			throw error(400, 'grants must be an array');
+
+		const grants: UserGroupPageGrantInput[] = grantsRaw
+			.map((entry) => {
+				const record = (entry ?? {}) as Record<string, unknown>;
+				const pageId = Number(record.pageId);
+				const actions = Array.isArray(record.actions)
+					? record.actions.filter(isPageAction)
+					: [];
+				return { pageId, actions };
+			})
+			.filter((grant) => Number.isFinite(grant.pageId));
 
 		await setPagesForUserGroup(event, {
 			hospitalId,
 			userGroupId,
-			pageIds
+			grants
 		});
 		return json({ ok: true });
 	}

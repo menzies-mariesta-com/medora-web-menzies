@@ -38,6 +38,7 @@ import {
 	getStaffIdForUser
 } from './inventory-scope.server';
 import type { InvApprovalModule } from './approval-config.server';
+import { hasAbsolutePermission } from '$lib/server/medora/permission/absolute-permission.server';
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/medora/administration/item-master.server';
 import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
 import { resolveItemUnitMasterForItemPurchaseUnit } from './item-unit-inventory.server';
@@ -178,10 +179,7 @@ export async function listPurchaseOrders(
 			)
 			.leftJoin(
 				prFromStore,
-				eq(
-					table.purchaseRequisitionTable.fromStoreId,
-					prFromStore.id
-				)
+				eq(table.purchaseRequisitionTable.fromStoreId, prFromStore.id)
 			)
 			.leftJoin(
 				uCreated,
@@ -209,6 +207,7 @@ export async function listPurchaseOrders(
 
 	const userId = event.locals.user?.id ?? null;
 	const staffId = userId ? await getStaffIdForUser(userId) : null;
+	const roleId = event.locals.userRoleId ?? null;
 	let approverPairSet = new Set<string>();
 	if (staffId) {
 		const pairs = await listPoApproverStoreLevelsForStaff(
@@ -256,7 +255,8 @@ export async function listPurchaseOrders(
 			itemNames: itemNamesByPo.get(r.po.id) ?? '',
 			canApprove:
 				r.po.statusTaggingId === InvPoStatusTaggingEnum.PENDING &&
-				approverPairSet.has(`${r.po.storeId}:${r.po.currentLevel}`)
+				(hasAbsolutePermission(roleId) ||
+					approverPairSet.has(`${r.po.storeId}:${r.po.currentLevel}`))
 		})),
 		total,
 		page,
@@ -374,24 +374,26 @@ export async function getPurchaseOrderById(
 	const logs = await listApprovalLogs(input.hospitalId, input.id);
 
 	const userId = event.locals.user?.id ?? null;
+	const roleId = event.locals.userRoleId ?? null;
 	const staffIdForApprove = userId
 		? await getStaffIdForUser(userId)
 		: null;
 	let canApprove = false;
-	if (
-		staffIdForApprove &&
-		row.po.statusTaggingId === InvPoStatusTaggingEnum.PENDING
-	) {
-		const pairs = await listPoApproverStoreLevelsForStaff(
-			input.hospitalId,
-			staffIdForApprove
-		);
-		const approverPairSet = new Set(
-			pairs.map((p) => `${p.storeId}:${p.level}`)
-		);
-		canApprove = approverPairSet.has(
-			`${row.po.storeId}:${row.po.currentLevel}`
-		);
+	if (row.po.statusTaggingId === InvPoStatusTaggingEnum.PENDING) {
+		if (hasAbsolutePermission(roleId)) {
+			canApprove = true;
+		} else if (staffIdForApprove) {
+			const pairs = await listPoApproverStoreLevelsForStaff(
+				input.hospitalId,
+				staffIdForApprove
+			);
+			const approverPairSet = new Set(
+				pairs.map((p) => `${p.storeId}:${p.level}`)
+			);
+			canApprove = approverPairSet.has(
+				`${row.po.storeId}:${row.po.currentLevel}`
+			);
+		}
 	}
 
 	return {
@@ -821,8 +823,10 @@ export async function approvePurchaseOrder(
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
+	const roleId = event.locals.userRoleId ?? null;
 	const staffId = await getStaffIdForUser(userId);
-	if (!staffId) throw error(403, 'Staff profile required');
+	if (!staffId && !hasAbsolutePermission(roleId))
+		throw error(403, 'Staff profile required');
 
 	const [po] = await ensureDb()
 		.select()
@@ -845,7 +849,7 @@ export async function approvePurchaseOrder(
 		po.storeId,
 		'PO'
 	);
-	if (maxLevel < 1) {
+	if (maxLevel < 1 && !hasAbsolutePermission(roleId)) {
 		throw error(400, 'Configure approval levels for this store (PO)');
 	}
 
@@ -855,7 +859,8 @@ export async function approvePurchaseOrder(
 		po.storeId,
 		module,
 		po.currentLevel,
-		staffId
+		staffId ?? '',
+		roleId
 	);
 
 	await ensureDb().transaction(async (tx) => {
@@ -936,7 +941,12 @@ export async function approvePurchaseOrder(
 					statusTaggingId: InvPoStatusTaggingEnum.REJECTED,
 					updatedBy: userId
 				},
-				[eq(table.purchaseOrderTable.currentLevel, locked.currentLevel)]
+				[
+					eq(
+						table.purchaseOrderTable.currentLevel,
+						locked.currentLevel
+					)
+				]
 			);
 		} else if (input.action === InvApprovalActionEnum.SENT_BACK) {
 			await updateStatusTaggingIfCurrent(
@@ -949,7 +959,12 @@ export async function approvePurchaseOrder(
 					currentLevel: 1,
 					updatedBy: userId
 				},
-				[eq(table.purchaseOrderTable.currentLevel, locked.currentLevel)]
+				[
+					eq(
+						table.purchaseOrderTable.currentLevel,
+						locked.currentLevel
+					)
+				]
 			);
 		} else if (input.action === InvApprovalActionEnum.APPROVED) {
 			if (locked.currentLevel < maxLevel) {
@@ -962,10 +977,7 @@ export async function approvePurchaseOrder(
 					.where(
 						and(
 							eq(table.purchaseOrderTable.id, input.poId),
-							eq(
-								table.purchaseOrderTable.statusTaggingId,
-								pending
-							),
+							eq(table.purchaseOrderTable.statusTaggingId, pending),
 							eq(
 								table.purchaseOrderTable.currentLevel,
 								locked.currentLevel

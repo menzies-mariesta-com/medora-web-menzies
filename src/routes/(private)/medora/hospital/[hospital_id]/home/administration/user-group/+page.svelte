@@ -6,7 +6,7 @@
 	import { UserGroupPagesModalState } from '$lib/state/user-group-pages-modal.state.svelte';
 	import UserGroupFormModal from '$lib/component/own/local/private/medora/administration/user-group/UserGroupFormModal.svelte';
 	import UserGroupPagesModal from '$lib/component/own/local/private/medora/administration/user-group/UserGroupPagesModal.svelte';
-	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -27,11 +27,20 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
+	let { data } = $props();
+
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
 			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
+	);
+
+	// Grant writes need absolute permission: hide the matrix for everyone else.
+	const canManageAccess = $derived(
+		data.currentUserRoleId === RoleEnum.OWNER ||
+			data.currentUserRoleId === RoleEnum.SYSTEM_ADMIN ||
+			data.currentUserRoleId === RoleEnum.ADMIN_TEAM
 	);
 
 	let groups = $state<StaffRegUserGroupRow[]>([]);
@@ -44,43 +53,44 @@
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 
-	const userGroupColumns: MenziesTableColumn<StaffRegUserGroupRow>[] = [
-		{
-			id: 'id',
-			header: 'No.',
-			widthClass: 'w-16 min-w-[4rem]',
-			filterable: false,
-			format: (_value, _row, rowIndex) => {
-				const pageSize = Number(pageSizeStr) || 10;
-				return (currentPage - 1) * pageSize + rowIndex + 1;
+	const userGroupColumns: MenziesTableColumn<StaffRegUserGroupRow>[] =
+		[
+			{
+				id: 'id',
+				header: 'No.',
+				widthClass: 'w-16 min-w-[4rem]',
+				filterable: false,
+				format: (_value, _row, rowIndex) => {
+					const pageSize = Number(pageSizeStr) || 10;
+					return (currentPage - 1) * pageSize + rowIndex + 1;
+				}
+			},
+			{
+				id: 'name',
+				header: m.name(),
+				widthClass: 'w-64 min-w-[12rem]',
+				filterable: true,
+				field: 'name'
+			},
+			{
+				id: 'status',
+				header: m.status(),
+				widthClass: 'w-40 min-w-[10rem]',
+				filterable: true,
+				filterType: 'select',
+				filterOptions: [
+					{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+					{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+				],
+				defaultFilterValue: String(StatusEnum.ACTIVE),
+				format: (_value, row) =>
+					row.statusId === StatusEnum.ACTIVE
+						? 'Active'
+						: row.statusId === StatusEnum.INACTIVE
+							? 'Inactive'
+							: String(row.statusId)
 			}
-		},
-		{
-			id: 'name',
-			header: m.name(),
-			widthClass: 'w-64 min-w-[12rem]',
-			filterable: true,
-			field: 'name'
-		},
-		{
-			id: 'status',
-			header: m.status(),
-			widthClass: 'w-40 min-w-[10rem]',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: [
-				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
-				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
-			],
-			defaultFilterValue: String(StatusEnum.ACTIVE),
-			format: (_value, row) =>
-				row.statusId === StatusEnum.ACTIVE
-					? 'Active'
-					: row.statusId === StatusEnum.INACTIVE
-						? 'Inactive'
-						: String(row.statusId)
-		}
-	];
+		];
 
 	function apiUrl(path: string): string {
 		return `/api/medora/hospital/${hospitalId}/home/administration/user-group${path}`;
@@ -248,37 +258,39 @@
 				}, 350);
 			}}
 		>
-					{#snippet rowActions(row, rowIndex)}
-						<MenziesTableRowActionGroup>
-							<MenziesTableIconAction
-								tooltipText="Manage which pages this group can access"
-								color="info"
-								onClick={() => openPagesModal(row)}
-							>
-								{#snippet icon()}
-									<LucideList className="size-3.5" />
-								{/snippet}
-							</MenziesTableIconAction>
-							<MenziesTableIconAction
-								tooltipText={m.edit_data()}
-								color="secondary"
-								onClick={() => openEdit(row)}
-							>
-								{#snippet icon()}
-									<LucidePencil className="size-3.5" />
-								{/snippet}
-							</MenziesTableIconAction>
-							<MenziesTableIconAction
-								tooltipText={m.delete_data()}
-								color="error"
-								onClick={() => handleDelete(row)}
-							>
-								{#snippet icon()}
-									<LucideTrash2 className="size-3.5" />
-								{/snippet}
-							</MenziesTableIconAction>
-						</MenziesTableRowActionGroup>
-					{/snippet}
+			{#snippet rowActions(row, rowIndex)}
+				<MenziesTableRowActionGroup>
+					{#if canManageAccess}
+						<MenziesTableIconAction
+							tooltipText="Manage which pages this group can access"
+							color="info"
+							onClick={() => openPagesModal(row)}
+						>
+							{#snippet icon()}
+								<LucideList className="size-3.5" />
+							{/snippet}
+						</MenziesTableIconAction>
+					{/if}
+					<MenziesTableIconAction
+						tooltipText={m.edit_data()}
+						color="secondary"
+						onClick={() => openEdit(row)}
+					>
+						{#snippet icon()}
+							<LucidePencil className="size-3.5" />
+						{/snippet}
+					</MenziesTableIconAction>
+					<MenziesTableIconAction
+						tooltipText={m.delete_data()}
+						color="error"
+						onClick={() => handleDelete(row)}
+					>
+						{#snippet icon()}
+							<LucideTrash2 className="size-3.5" />
+						{/snippet}
+					</MenziesTableIconAction>
+				</MenziesTableRowActionGroup>
+			{/snippet}
 		</MenziesTable>
 	</div>
 	{#if totalPages > 1}

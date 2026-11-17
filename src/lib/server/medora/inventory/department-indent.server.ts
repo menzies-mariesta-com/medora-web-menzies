@@ -43,16 +43,26 @@ import { addDeltaToInvStock } from './item-batch.server';
 import { issueQtyStringFromPurchaseReceipt } from './item-unit-inventory.server';
 import { parsePositiveIntQty } from './inv-validate.server';
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/medora/administration/item-master.server';
+import { hasAbsolutePermission } from '$lib/server/medora/permission/absolute-permission.server';
 
-async function checkUserCanCancelDepartmentIndent(
+export async function checkUserCanCancelDepartmentIndent(
 	hospitalId: string,
 	indent: Pick<
 		typeof table.invDepartmentIndentTable.$inferSelect,
 		'requestedBy' | 'statusTaggingId'
 	>,
-	userId: string
+	userId: string | null,
+	roleId: number | null
 ): Promise<boolean> {
 	const st = indent.statusTaggingId;
+	// Absolute-permission roles may withdraw any indent in their scope.
+	if (hasAbsolutePermission(roleId)) {
+		return (
+			st === InvDepartmentIndentStatusTaggingEnum.PENDING ||
+			st === InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL
+		);
+	}
+	if (!userId) return false;
 	// Requester may withdraw while awaiting store approval, or while at central
 	// before a department issue document exists (see cancelDepartmentIndent).
 	if (st === InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL) {
@@ -210,6 +220,7 @@ export async function listDepartmentIndents(
 		}
 	}
 	const userId = event.locals.user?.id ?? null;
+	const roleId = event.locals.userRoleId ?? null;
 	let canApprovePairSet: Set<string> | null = null;
 	if (userId) {
 		const staffIdForApprove = await getStaffIdForUser(userId);
@@ -241,22 +252,24 @@ export async function listDepartmentIndents(
 	for (const r of data) {
 		let canCancel = false;
 		let canApprove = false;
-		if (userId) {
-			canCancel = await checkUserCanCancelDepartmentIndent(
-				input.hospitalId,
-				r.row,
-				userId
-			);
-		}
+		canCancel = await checkUserCanCancelDepartmentIndent(
+			input.hospitalId,
+			r.row,
+			userId,
+			roleId
+		);
 		if (
-			canApprovePairSet &&
 			r.row.statusTaggingId ===
-				InvDepartmentIndentStatusTaggingEnum.PENDING
+			InvDepartmentIndentStatusTaggingEnum.PENDING
 		) {
 			// From-store approvals use fromStoreId + currentLevel.
-			canApprove = canApprovePairSet.has(
-				`${r.row.fromStoreId}:${r.row.currentLevel}`
-			);
+			canApprove =
+				hasAbsolutePermission(roleId) ||
+				Boolean(
+					canApprovePairSet?.has(
+						`${r.row.fromStoreId}:${r.row.currentLevel}`
+					)
+				);
 		}
 		dataOut.push({
 			...r.row,
@@ -490,36 +503,37 @@ export async function getDepartmentIndentById(
 	}
 
 	const userId = event.locals.user?.id ?? null;
+	const roleId = event.locals.userRoleId ?? null;
 	const staffIdForApprove = userId
 		? await getStaffIdForUser(userId)
 		: null;
 
 	let canApprove = false;
 	if (
-		staffIdForApprove &&
 		joined.indent.statusTaggingId ===
-			InvDepartmentIndentStatusTaggingEnum.PENDING
+		InvDepartmentIndentStatusTaggingEnum.PENDING
 	) {
-		const pairs = await listDiApproverStoreLevelsForStaff(
-			input.hospitalId,
-			staffIdForApprove
-		);
-		const approverPairSet = new Set(
-			pairs.map((p) => `${p.storeId}:${p.level}`)
-		);
-		canApprove = approverPairSet.has(
-			`${joined.indent.fromStoreId}:${joined.indent.currentLevel}`
-		);
+		if (hasAbsolutePermission(roleId)) {
+			canApprove = true;
+		} else if (staffIdForApprove) {
+			const pairs = await listDiApproverStoreLevelsForStaff(
+				input.hospitalId,
+				staffIdForApprove
+			);
+			const approverPairSet = new Set(
+				pairs.map((p) => `${p.storeId}:${p.level}`)
+			);
+			canApprove = approverPairSet.has(
+				`${joined.indent.fromStoreId}:${joined.indent.currentLevel}`
+			);
+		}
 	}
 
-	let canCancel = false;
-	if (userId) {
-		canCancel = await checkUserCanCancelDepartmentIndent(
-			input.hospitalId,
-			joined.indent,
-			userId
-		);
-	}
+	const canCancel = await checkUserCanCancelDepartmentIndent(
+		input.hospitalId,
+		joined.indent,
+		userId
+	);
 
 	// Department issue is now a separate document/table.
 	const canIssue = false;
@@ -698,7 +712,9 @@ export async function approveDepartmentIndent(
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
 	const staffId = await getStaffIdForUser(userId);
-	if (!staffId) throw error(403, 'Staff profile required to approve');
+	const roleId = event.locals.userRoleId ?? null;
+	if (!staffId && !hasAbsolutePermission(roleId))
+		throw error(403, 'Staff profile required to approve');
 
 	const [ind] = await ensureDb()
 		.select()
@@ -728,7 +744,7 @@ export async function approveDepartmentIndent(
 		approvalStoreId,
 		'DI'
 	);
-	if (maxLevel < 1) {
+	if (maxLevel < 1 && !hasAbsolutePermission(roleId)) {
 		throw error(
 			400,
 			'Configure department-indent approvers (Inventory Setup → Approval) for this store'
@@ -739,7 +755,8 @@ export async function approveDepartmentIndent(
 		approvalStoreId,
 		'DI',
 		ind.currentLevel,
-		staffId
+		staffId ?? '',
+		roleId
 	);
 
 	const rejectReason =
@@ -760,10 +777,7 @@ export async function approveDepartmentIndent(
 						table.invDepartmentIndentTable.hospitalId,
 						input.hospitalId
 					),
-					eq(
-						table.invDepartmentIndentTable.statusTaggingId,
-						pending
-					),
+					eq(table.invDepartmentIndentTable.statusTaggingId, pending),
 					isNull(table.invDepartmentIndentTable.deletedAt)
 				)
 			)
@@ -802,10 +816,7 @@ export async function approveDepartmentIndent(
 					})
 					.where(
 						and(
-							eq(
-								table.invDepartmentIndentTable.id,
-								input.indentId
-							),
+							eq(table.invDepartmentIndentTable.id, input.indentId),
 							eq(
 								table.invDepartmentIndentTable.statusTaggingId,
 								pending
@@ -919,7 +930,8 @@ export async function cancelDepartmentIndent(
 	const allowed = await checkUserCanCancelDepartmentIndent(
 		input.hospitalId,
 		ind,
-		userId
+		userId,
+		event.locals.userRoleId ?? null
 	);
 	if (!allowed) {
 		throw error(403, 'You cannot cancel this indent');

@@ -6,22 +6,28 @@
 	import AnimatedPageContent from '$lib/component/own/library/gsap/AnimatedPageContent.svelte';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import { isNursingChartPath } from '$lib/tool/nursing/nursing-worklist.util';
-	import {
-		setPageData,
-		getUniqueModuleData,
-		getPageData,
-		pathnameForPageMatch,
-		getSectionIndexRedirectTarget
-	} from '$lib/state/page.state.svelte';
+import {
+	setPageData,
+	pageRowsFrom,
+	uniqueModulesFrom,
+	getPageData,
+	pathnameForPageMatch,
+	getSectionIndexRedirectTarget
+} from '$lib/state/page.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import type { StaffWithRelations } from '$lib/model/type/medora/staff.type';
 	import { scrollMedoraSubnavActiveTabsIntoView } from '$lib/util/medora-subnav-scroll.util';
 	import { isMedoraVisitScopedPagePath } from '$lib/util/medora-visit-scoped-nav.util';
-	import { replaceState } from '$app/navigation';
+	import { replaceState, invalidateAll } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import TrialExpiredRibbon from '$lib/component/own/global/plan/TrialExpiredRibbon.svelte';
 	import { setMedoraEntitlementFromLayout } from '$lib/state/medora-entitlement.state.svelte';
+	import { setPagePermissions } from '$lib/state/page-permission.state.svelte';
+	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { m } from '$lib/paraglide/messages';
 
 	let { children, data } = $props();
 
@@ -34,8 +40,15 @@
 			setPageData(data.pageData);
 	});
 
-	const uniqueModuleData = $derived(getUniqueModuleData());
-	const pageData = $derived(getPageData());
+	// Per-page action grants drive button gating everywhere under this layout.
+	$effect(() => {
+		setPagePermissions(data.pagePermissions ?? null);
+	});
+
+	// Derive directly from layout data: reading the module-level store here made
+	// the bar render one flush with `moduleList: []` before the effect populated it.
+	const uniqueModuleData = $derived(uniqueModulesFrom(data.pageData ?? []));
+	const pageData = $derived(pageRowsFrom(data.pageData ?? []));
 	const isEmbed = $derived(
 		page.url.searchParams.get('embed') === '1'
 	);
@@ -167,6 +180,7 @@
 	/** Section index → first sub-page (client navigations; mirrors home layout server redirect). */
 	$effect(() => {
 		if (!browser || !hospitalId) return;
+		// `getSectionIndexRedirectTarget` reads the nav store; keep it the dependency.
 		getPageData();
 		const target = getSectionIndexRedirectTarget(hospitalId);
 		if (!target) return;
@@ -199,6 +213,22 @@
 			ownerWorkspaceReadOnly: ownerWorkspaceReadOnly
 		});
 	});
+
+	/** An enrichment query in the layout load failed; the nav may be incomplete. */
+	const navLoadError = $derived(
+		Boolean((data as { navLoadError?: boolean })?.navLoadError)
+	);
+
+	async function retryNavLoad() {
+		navRetrying = true;
+		try {
+			await invalidateAll();
+		} finally {
+			navRetrying = false;
+		}
+	}
+
+	let navRetrying = $state(false);
 </script>
 
 <div class="my-app">
@@ -215,6 +245,25 @@
 	{/if}
 	{#if !isEmbed}
 		<GPrivateMedoraNavbar />
+		{#if navLoadError}
+			<div class="px-3 pt-2">
+				<WashAlert
+					type={StatusColorEnum.ERROR}
+					message={m.nav_load_degraded()}
+					className="z-0 border-l-4 border-error shadow-sm"
+				>
+					{#snippet trailing()}
+						<WashButton
+							className="btn-sm btn-outline"
+							onClick={() => void retryNavLoad()}
+							loading={navRetrying}
+						>
+							{m.nav_load_retry()}
+						</WashButton>
+					{/snippet}
+				</WashAlert>
+			</div>
+		{/if}
 		{#key `${hospitalId}-${((data as any)?.staffUserGroupsForNav ?? []).map((g: { id: number }) => g.id).join(',')}-${((data as any)?.staffBranchesForNav ?? []).map((b: { id: string }) => b.id).join(',')}-${(data as any)?.selectedInventoryFromStoreId ?? ''}-${(data as any)?.inventoryFromStoresForNav?.length ?? 0}`}
 			<GPrivateMedoraModuleBar
 				{hospitalId}
