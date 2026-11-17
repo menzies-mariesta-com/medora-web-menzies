@@ -24,6 +24,8 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
+	import { can } from '$lib/state/page-permission.state.svelte';
 const toast = new ToastService();
 
 	const hospitalId = $derived(
@@ -374,7 +376,9 @@ const toast = new ToastService();
 						>
 							<WashButton
 								className="btn-xs btn-ghost btn-square text-accent"
-								disabled={actId != null || r.canApprove !== true}
+								disabled={actId != null ||
+									r.canApprove !== true ||
+									!can(PageActionEnum.APPROVE)}
 								onClick={() =>
 									void approve(r, InvApprovalActionEnum.APPROVED)}
 							>
@@ -387,7 +391,9 @@ const toast = new ToastService();
 						>
 							<WashButton
 								className="btn-xs btn-ghost btn-square text-error"
-								disabled={actId != null || r.canApprove !== true}
+								disabled={actId != null ||
+									r.canApprove !== true ||
+									!can(PageActionEnum.APPROVE)}
 								onClick={() =>
 									void approve(r, InvApprovalActionEnum.REJECTED)}
 							>

@@ -35,6 +35,7 @@ import {
 	listAssignedStoreIdsForStaff,
 	listDissApproverStoreLevelsForStaff
 } from './approval-workflow.server';
+import { hasAbsolutePermission } from '$lib/server/medora/permission/absolute-permission.server';
 import {
 	assertStoreInHospital,
 	ensureHospitalInventoryAccess,
@@ -229,6 +230,8 @@ export async function listDepartmentIssues(
 	}
 
 	const userId = event.locals.user?.id ?? null;
+	const roleId = event.locals.userRoleId ?? null;
+	const absolute = hasAbsolutePermission(roleId);
 	const staffId = userId ? await getStaffIdForUser(userId) : null;
 	let approverPairSet = new Set<string>();
 	let receiveStoreSet = new Set<number>();
@@ -257,13 +260,15 @@ export async function listDepartmentIssues(
 			canApprove:
 				r.issue.statusTaggingId ===
 					InvDepartmentIssueStatusTaggingEnum.PENDING &&
-				approverPairSet.has(
-					`${r.issue.fromStoreId}:${r.issue.currentLevel}`
-				),
+				(absolute ||
+					approverPairSet.has(
+						`${r.issue.fromStoreId}:${r.issue.currentLevel}`
+					)),
 			canReceive:
-				r.issue.statusTaggingId ===
+				absolute ||
+				(r.issue.statusTaggingId ===
 					InvDepartmentIssueStatusTaggingEnum.ISSUED &&
-				receiveStoreSet.has(r.issue.toStoreId)
+					receiveStoreSet.has(r.issue.toStoreId))
 		})),
 		total,
 		page,
@@ -481,25 +486,28 @@ export async function getDepartmentIssueById(
 	const userId = event.locals.user?.id ?? null;
 	let canApprove = false;
 	if (
-		userId &&
 		joined.issue.statusTaggingId ===
-			InvDepartmentIssueStatusTaggingEnum.PENDING
+		InvDepartmentIssueStatusTaggingEnum.PENDING
 	) {
-		const staffId = await getStaffIdForUser(userId);
-		if (staffId) {
-			const pairs = await listDissApproverStoreLevelsForStaff(
-				input.hospitalId,
-				staffId
-			);
-			const set = new Set(
-				pairs.map(
-					(p: { storeId: number; level: number }) =>
-						`${p.storeId}:${p.level}`
-				)
-			);
-			canApprove = set.has(
-				`${joined.issue.fromStoreId}:${joined.issue.currentLevel}`
-			);
+		if (hasAbsolutePermission(event.locals.userRoleId ?? null)) {
+			canApprove = true;
+		} else if (userId) {
+			const staffId = await getStaffIdForUser(userId);
+			if (staffId) {
+				const pairs = await listDissApproverStoreLevelsForStaff(
+					input.hospitalId,
+					staffId
+				);
+				const set = new Set(
+					pairs.map(
+						(p: { storeId: number; level: number }) =>
+							`${p.storeId}:${p.level}`
+					)
+				);
+				canApprove = set.has(
+					`${joined.issue.fromStoreId}:${joined.issue.currentLevel}`
+				);
+			}
 		}
 	}
 
@@ -912,7 +920,9 @@ export async function approveDepartmentIssue(
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
 	const staffId = await getStaffIdForUser(userId);
-	if (!staffId) throw error(403, 'Staff profile required to approve');
+	const roleId = event.locals.userRoleId ?? null;
+	if (!staffId && !hasAbsolutePermission(roleId))
+		throw error(403, 'Staff profile required to approve');
 
 	const [iss] = await ensureDb()
 		.select()
@@ -941,7 +951,7 @@ export async function approveDepartmentIssue(
 		iss.fromStoreId,
 		'DISS'
 	);
-	if (maxLevel < 1) {
+	if (maxLevel < 1 && !hasAbsolutePermission(roleId)) {
 		throw error(
 			400,
 			'Configure department-issue approvers (Inventory Setup → Approval) for this store'
@@ -952,7 +962,8 @@ export async function approveDepartmentIssue(
 		iss.fromStoreId,
 		'DISS',
 		iss.currentLevel,
-		staffId
+		staffId ?? '',
+		roleId
 	);
 
 	const rejectReason =
@@ -973,10 +984,7 @@ export async function approveDepartmentIssue(
 						table.invDepartmentIssueTable.hospitalId,
 						input.hospitalId
 					),
-					eq(
-						table.invDepartmentIssueTable.statusTaggingId,
-						pending
-					),
+					eq(table.invDepartmentIssueTable.statusTaggingId, pending),
 					isNull(table.invDepartmentIssueTable.deletedAt)
 				)
 			)
@@ -1018,10 +1026,7 @@ export async function approveDepartmentIssue(
 					})
 					.where(
 						and(
-							eq(
-								table.invDepartmentIssueTable.id,
-								input.issueId
-							),
+							eq(table.invDepartmentIssueTable.id, input.issueId),
 							eq(
 								table.invDepartmentIssueTable.statusTaggingId,
 								pending
@@ -1241,7 +1246,11 @@ export async function postDepartmentIssueReceive(
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
 	const staffId = await getStaffIdForUser(userId);
-	if (!staffId) throw error(403, 'Staff profile required to receive');
+	if (
+		!staffId &&
+		!hasAbsolutePermission(event.locals.userRoleId ?? null)
+	)
+		throw error(403, 'Staff profile required to receive');
 
 	const detail = await getDepartmentIssueById(event, {
 		hospitalId: input.hospitalId,
@@ -1259,7 +1268,8 @@ export async function postDepartmentIssueReceive(
 		input.hospitalId,
 		detail.toStoreId,
 		'RFS',
-		staffId
+		staffId ?? '',
+		event.locals.userRoleId ?? null
 	);
 
 	const allocRows = await ensureDb()
@@ -1362,7 +1372,9 @@ export async function cancelDepartmentIssue(
 		throw error(400, 'Issue cannot be cancelled in current status');
 	}
 
-	let allowed = iss.requestedBy === userId;
+	let allowed =
+		iss.requestedBy === userId ||
+		hasAbsolutePermission(event.locals.userRoleId ?? null);
 	if (!allowed) {
 		const staffId = await getStaffIdForUser(userId);
 		if (staffId) {

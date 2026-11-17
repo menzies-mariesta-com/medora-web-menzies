@@ -3,6 +3,7 @@ import { StaffTypeEnum } from '$lib/model/enum/db-link';
 import { and, eq, inArray } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { hasAbsolutePermission } from '$lib/server/medora/permission/absolute-permission.server';
 
 export function isConsultant(
 	staffTypeId: number | null | undefined
@@ -24,10 +25,32 @@ export function requireClinicalStaff(event: RequestEvent): {
 	staffTypeId: number;
 } {
 	const staff = event.locals.staff;
-	if (!staff?.id || staff.staffTypeId == null) {
-		throw error(401, 'Clinical staff session is required');
+	// Absolute-permission roles may author clinical records, but the record
+	// columns FK staff.id, so they still need a staff profile for attribution.
+	const absolute = hasAbsolutePermission(
+		event.locals.userRoleId ?? null
+	);
+	if (!staff?.id) {
+		throw absolute
+			? error(
+					409,
+					'A staff profile is required to sign clinical records. Link one to this account first.'
+				)
+			: error(401, 'Clinical staff session is required');
 	}
-	if (!isConsultant(staff.staffTypeId) && !isMo(staff.staffTypeId)) {
+	if (staff.staffTypeId == null) {
+		throw absolute
+			? error(
+					409,
+					'A staff profile with a clinical staff type is required to sign clinical records.'
+				)
+			: error(401, 'Clinical staff session is required');
+	}
+	if (
+		!isConsultant(staff.staffTypeId) &&
+		!isMo(staff.staffTypeId) &&
+		!absolute
+	) {
 		throw error(403, 'MO or consultant access is required');
 	}
 	return { id: String(staff.id), staffTypeId: staff.staffTypeId };
@@ -35,7 +58,10 @@ export function requireClinicalStaff(event: RequestEvent): {
 
 export function requireConsultant(event: RequestEvent): string {
 	const staff = requireClinicalStaff(event);
-	if (!isConsultant(staff.staffTypeId)) {
+	if (
+		!isConsultant(staff.staffTypeId) &&
+		!hasAbsolutePermission(event.locals.userRoleId ?? null)
+	) {
 		throw error(403, 'Consultant approval is required');
 	}
 	return staff.id;

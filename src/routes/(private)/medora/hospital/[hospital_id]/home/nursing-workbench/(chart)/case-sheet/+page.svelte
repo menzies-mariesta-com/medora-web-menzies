@@ -33,6 +33,8 @@
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { printByFromPage } from '$lib/tool/emr/document-master-client-print.util';
+	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
+	import { can } from '$lib/state/page-permission.state.svelte';
 
 	type PatientVisitWithRelations = any;
 	type PatientAllergyWithRelations = any;
@@ -443,7 +445,7 @@
 							class:cursor-pointer={!isSaving}
 							class:cursor-not-allowed={isSaving}
 							class:loading={isSaving}
-							disabled={isSaving}
+							disabled={isSaving || !can(PageActionEnum.EDIT)}
 							aria-busy={isSaving}
 							aria-label={m.save()}
 							onclick={saveCaseSheet}

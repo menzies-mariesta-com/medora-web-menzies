@@ -617,6 +617,13 @@
       "when": 1795282800000,
       "tag": "0087_document_body_strip_embedded_letterhead",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1795286400000,
+      "tag": "0088_user_group_page_actions",
+      "breakpoints": true
     }
   ]
 }

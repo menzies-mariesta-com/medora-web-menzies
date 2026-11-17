@@ -42,8 +42,11 @@
 		(page.data as { userRoleId?: number | null })?.userRoleId ?? null
 	);
 	const adminPermissions = $derived(
-		(page.data as { adminPermissions?: AdminPagePermissionFlags[] | null })
-			?.adminPermissions ?? null
+		(
+			page.data as {
+				adminPermissions?: AdminPagePermissionFlags[] | null;
+			}
+		)?.adminPermissions ?? null
 	);
 
 	const allNavItems: {
@@ -52,6 +55,8 @@
 		label: () => string;
 		icon: typeof LucideAppWindow;
 		match: (pathname: string) => boolean;
+		/** Admin data lives at `/api/medora/admin/*`, never under the page path. */
+		prefetchApi?: string;
 	}[] = [
 		{
 			href: WebRoutesEnum.MEDORA_ADMIN,
@@ -71,10 +76,12 @@
 		{
 			href: WebRoutesEnum.MEDORA_ADMIN_HOSPITALS,
 			pageKey: AdminPageKeyEnum.HOSPITALS,
-			label: () => paraglideMsg('admin_overview_hospitals', 'Hospitals'),
+			label: () =>
+				paraglideMsg('admin_overview_hospitals', 'Hospitals'),
 			icon: LucideHouse,
 			match: (pathname) =>
-				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_HOSPITALS)
+				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_HOSPITALS),
+			prefetchApi: '/api/medora/hospital?page=1&pageSize=25'
 		},
 		{
 			href: WebRoutesEnum.MEDORA_ADMIN_PLANS,
@@ -106,7 +113,9 @@
 			label: () => paraglideMsg('admin_nav_icd', 'ICD codes'),
 			icon: LucideBookMarked,
 			match: (pathname) =>
-				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_ICD)
+				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_ICD),
+			prefetchApi:
+				'/api/medora/admin/icd?page=1&pageSize=25&system=ICD10'
 		},
 		{
 			href: WebRoutesEnum.MEDORA_ADMIN_GLOBAL_DOCUMENTS,
@@ -155,7 +164,7 @@
 </script>
 
 <aside
-	class="flex min-h-full h-full w-72 flex-col border-r border-ink-border bg-base-200"
+	class="flex h-full min-h-full w-72 flex-col border-r border-ink-border bg-base-200"
 	aria-label={paraglideMsg('admin_nav_aria', 'Admin navigation')}
 >
 	<div class="shrink-0 border-b border-ink-border px-4 py-4">
@@ -163,7 +172,9 @@
 			href={WebRoutesEnum.MEDORA_ADMIN}
 			className="text-base"
 		/>
-		<p class="mt-1 text-xs font-medium uppercase tracking-wide text-base-content/50">
+		<p
+			class="mt-1 text-xs font-medium tracking-wide text-base-content/50 uppercase"
+		>
 			{paraglideMsg('system_admin', 'System admin')}
 		</p>
 	</div>
@@ -180,6 +191,7 @@
 						class:menu-active={active}
 						class:menu-wash-active={active}
 						aria-current={active ? 'page' : undefined}
+						data-prefetch-api={item.prefetchApi}
 						onclick={onNavClick}
 					>
 						<Icon className="size-4 shrink-0" />

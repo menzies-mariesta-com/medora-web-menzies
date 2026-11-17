@@ -9,6 +9,9 @@ export const cacheKeys = {
 	masterStatus: () => `${PREFIX}:master-status`,
 	hospitalMeta: (hospitalId: string) =>
 		`${PREFIX}:hospital-meta:${hospitalId}`,
+	/** Per-staff effective page grants in one hospital (union of their groups). */
+	staffPagePermissions: (staffId: string, hospitalId: string) =>
+		`${PREFIX}:staff-page-perms:${hospitalId}:${staffId}`,
 	apiGetResponse: (digest: string) => `${PREFIX}:api-get:${digest}`
 } as const;
 
@@ -17,6 +20,7 @@ export const cacheTags = {
 	medoraNav: 'medora-nav',
 	masterLookup: 'master-lookup',
 	masterStatus: 'master-status',
+	staffPagePermissions: 'staff-page-permissions',
 	apiGet: 'api-get'
 } as const;
 

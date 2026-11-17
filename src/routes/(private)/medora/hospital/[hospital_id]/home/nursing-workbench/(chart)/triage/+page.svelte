@@ -16,6 +16,8 @@
 	import LEdAssignErBedDialogContent from '$lib/component/own/local/private/medora/emergency/LEdAssignErBedDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
+	import { can } from '$lib/state/page-permission.state.svelte';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 	const toastService = new ToastService();
@@ -183,7 +185,7 @@
 			<WashButton
 				className="btn-primary cursor-pointer"
 				loading={submitting}
-				disabled={submitting}
+				disabled={submitting || !can(PageActionEnum.EDIT)}
 				onClick={() => submitTriage(true)}
 			>
 				{msg.ed_triage_complete()}
