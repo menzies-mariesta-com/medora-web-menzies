@@ -4,7 +4,7 @@
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideSave from '$lib/component/own/library/lucide/LucideSave.svelte';
 	import LucideSignature from '$lib/component/own/library/lucide/LucideSignature.svelte';
-	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
+	import { DocumentTypeId } from '$lib/model/constant/document-type-id.constant';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StaffTypeEnum } from '$lib/model/enum/db-link';
 	import type { DischargeSummaryRow } from '$lib/model/type/medora/clinical.type';
@@ -25,9 +25,14 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { parseUuid } from '$lib/util/id.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import type { VisitLike } from '$lib/util/document-placeholder.util';
+	import {
+		extraPrintBodyHtml,
+		type VisitLike
+	} from '$lib/util/document-placeholder.util';
 	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+	import { printByFromPage } from '$lib/tool/emr/document-master-client-print.util';
+	import PrintDocumentTemplatePicker from '$lib/component/own/library/menzies/PrintDocumentTemplatePicker.svelte';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 
@@ -49,6 +54,7 @@
 	let isSigning = $state(false);
 	let isPrinting = $state(false);
 	let mounted = $state(false);
+	let selectedPrintDocumentId = $state<number | null>(null);
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	lifeCycleUtil.onMount(() => {
@@ -73,31 +79,7 @@
 			staffTypeId === StaffTypeEnum.CONSULTANT
 	);
 
-	const printByName = $derived.by(() => {
-		const s = page.data?.staff as
-			| {
-					title?: { name?: string | null } | null;
-					firstName?: string | null;
-					middleName?: string | null;
-					lastName?: string | null;
-			  }
-			| null
-			| undefined;
-		if (s) {
-			const name = StringUtil.fullNameWithTitle(
-				s.title?.name ?? null,
-				s.firstName,
-				s.middleName,
-				s.lastName
-			).trim();
-			if (name) return name;
-		}
-		const u = page.data?.user as
-			| { name?: string | null; email?: string | null }
-			| null
-			| undefined;
-		return (u?.name || u?.email || '').trim();
-	});
+	const printByName = $derived(printByFromPage(page));
 
 	const patientDisplayName = $derived(
 		visitRow?.patient
@@ -156,7 +138,10 @@
 		}
 	}
 
-	async function loadSummary() {
+	async function loadSummary(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId || !visitId) {
 			fillForm(null);
 			visitRow = null;
@@ -171,13 +156,15 @@
 			fillForm(row);
 			visitRow = visit;
 		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			console.error(error);
 			toastService.addErrorToast(
 				m.mo_clinical_discharge_load_failed(),
 				error
 			);
 		} finally {
-			isLoading = false;
+			if (!opts?.isCancelled?.()) isLoading = false;
 		}
 	}
 
@@ -202,19 +189,19 @@
 			visit,
 			printBy: printByName,
 			extraPlaceholders: {
-				'{{print.body_html}}': bodyHtml,
-				'{{print.datetime}}': printedAt,
-				'{{print.label_title}}': m.mo_clinical_discharge_title(),
-				'{{print.label_visit_no}}':
+				...extraPrintBodyHtml(bodyHtml),
+				'{{print_datetime}}': printedAt,
+				'{{print_label_title}}': m.mo_clinical_discharge_title(),
+				'{{print_label_visit_no}}':
 					m.visit_history_visit_label_visit_no(),
-				'{{print.label_patient}}':
+				'{{print_label_patient}}':
 					m.visit_history_visit_label_patient(),
-				'{{print.label_patient_code}}':
+				'{{print_label_patient_code}}':
 					m.visit_history_visit_label_patient_code(),
-				'{{print.label_visit_date}}':
+				'{{print_label_visit_date}}':
 					m.visit_history_visit_label_visit_date(),
-				'{{print.label_doctor}}': m.visit_history_visit_label_doctor(),
-				'{{print.label_generated}}':
+				'{{print_label_doctor}}': m.visit_history_visit_label_doctor(),
+				'{{print_label_generated}}':
 					msg.mo_clinical_discharge_generated()
 			},
 			iframeId: 'discharge-summary-print-iframe'
@@ -229,17 +216,17 @@
 		if (!pid || !hospitalId || !visitId) return 'skipped';
 
 		try {
-			const bootstrap = await fetchDocumentPrintBootstrap(
-				hospitalId,
-				DOCUMENT_PRINT_CODE.DISCHARGE_SUMMARY
-			);
+			const bootstrap = await fetchDocumentPrintBootstrap(hospitalId, {
+				documentTypeId: DocumentTypeId.DISCHARGE_SUMMARY_PRINT,
+				documentId: selectedPrintDocumentId
+			});
 			if (!bootstrap.document?.documentText) return 'failed';
 
 			const printOpts = buildPrintOpts(visit);
 			const htmlPdf = buildPrintHtmlFromDocumentMasterBootstrap(
 				bootstrap,
 				printOpts,
-				'pdfRaster'
+				'browser'
 			);
 			const blob = await htmlStringToPdfBlob(htmlPdf);
 			const visitNo =
@@ -365,10 +352,10 @@
 			const visit = visitRow ?? (await fetchVisitRow());
 			if (visit) visitRow = visit;
 
-			const bootstrap = await fetchDocumentPrintBootstrap(
-				hospitalId,
-				DOCUMENT_PRINT_CODE.DISCHARGE_SUMMARY
-			);
+			const bootstrap = await fetchDocumentPrintBootstrap(hospitalId, {
+				documentTypeId: DocumentTypeId.DISCHARGE_SUMMARY_PRINT,
+				documentId: selectedPrintDocumentId
+			});
 			if (!bootstrap.document?.documentText) {
 				toastService.addToast(
 					msg.mo_clinical_discharge_print_failed(),
@@ -416,7 +403,13 @@
 		if (!mounted) return;
 		void visitId;
 		void hospitalId;
-		void loadSummary();
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadSummary({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 
@@ -456,7 +449,15 @@
 							</span>
 						{/if}
 					</div>
-					<div class="no-print flex shrink-0 items-center gap-1">
+					<div
+						class="no-print flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2"
+					>
+						<PrintDocumentTemplatePicker
+							{hospitalId}
+							documentTypeId={DocumentTypeId.DISCHARGE_SUMMARY_PRINT}
+							bind:selectedDocumentId={selectedPrintDocumentId}
+						/>
+					<div class="flex shrink-0 items-center gap-1">
 						<div
 							class="tooltip tooltip-primary tooltip-left"
 							data-tip={m.save()}
@@ -511,6 +512,7 @@
 								<LucidePrinter className="size-4" />
 							</button>
 						</div>
+					</div>
 					</div>
 				</div>
 				{#if visitRow}

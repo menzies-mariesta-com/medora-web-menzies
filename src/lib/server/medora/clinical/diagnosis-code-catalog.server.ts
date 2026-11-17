@@ -20,7 +20,7 @@ export type DiagnosisCodeCatalogMeta = {
 		titleCount: number;
 		importedAt: string;
 	} | null;
-	attribution: 'WHO_ICD' | 'CDC_ICD10_CM';
+	attribution: 'WHO_ICD' | 'CDC_ICD10_CM' | 'SNOMED_CT';
 };
 
 export async function getHospitalDiagnosisCatalogMeta(
@@ -41,7 +41,9 @@ export async function getHospitalDiagnosisCatalogMeta(
 		attribution:
 			codingSystem === DiagnosisCodingSystemEnum.ICD10_CM
 				? 'CDC_ICD10_CM'
-				: 'WHO_ICD'
+				: codingSystem === DiagnosisCodingSystemEnum.SNOMED_CT
+					? 'SNOMED_CT'
+					: 'WHO_ICD'
 	};
 }
 
@@ -114,6 +116,9 @@ export function defaultCodingSystemLabel(system: string): string {
 	}
 	if (parsed === DiagnosisCodingSystemEnum.ICD10_CM) {
 		return 'ICD-10-CM (US)';
+	}
+	if (parsed === DiagnosisCodingSystemEnum.SNOMED_CT) {
+		return 'SNOMED CT';
 	}
 	return 'ICD-10 (WHO)';
 }

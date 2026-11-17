@@ -32,7 +32,9 @@
 </script>
 
 {#if isEmbed}
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 {:else if subPages.length > 0}
 	<div class="patient-subnav-wrapper">
 		<div role="tablist" class="patient-subnav-tabs">
@@ -52,11 +54,15 @@
 			{/each}
 		</div>
 		<div class="patient-subnav-content">
-			{@render children()}
+			{#if children}
+				{@render children()}
+			{/if}
 		</div>
 	</div>
 {:else}
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 {/if}
 
 <style>

@@ -76,19 +76,22 @@
 		return n || `Store #${r.storeId}`;
 	}
 
-	async function loadBundle() {
+	async function loadBundle(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId) return;
 		bundleLoading = true;
 		bundleError = null;
 		try {
-			const res = await fetch(apiBase(), {
-				credentials: 'include',
-				cache: 'no-store'
-			});
+			const res = await fetch(apiBase(), { credentials: 'include',
+				cache: 'no-store', signal: opts?.signal });
 			if (!res.ok) await throwUserFacingHttpError(res);
 			const b = (await res.json()) as { recipients: RecipientDto[] };
 			recipients = [...b.recipients];
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			console.error(e);
 			bundleError =
 				toUserFacingErrorDetail(e) ?? m.error_load_failed();
@@ -132,7 +135,10 @@
 		});
 	}
 
-	async function hydrateStaffOptions() {
+	async function hydrateStaffOptions(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId) return;
 		const merged: StaffOpt[] = [];
 		const seen = new SvelteSet<string>();
@@ -150,12 +156,12 @@
 		);
 	}
 
-	async function hydrateStores() {
+	async function hydrateStores(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId) return;
-		const res = await fetch(
-			`/api/medora/hospital/${hospitalId}/home/inventory-setup/stores?page=1&pageSize=500`,
-			{ credentials: 'include', cache: 'no-store' }
-		);
+		const res = await fetch(`/api/medora/hospital/${hospitalId}/home/inventory-setup/stores?page=1&pageSize=500`, { credentials: 'include', cache: 'no-store', signal: opts?.signal });
 		if (!res.ok) {
 			storeOptions = [];
 			return;
@@ -328,9 +334,15 @@
 
 	$effect(() => {
 		void hospitalId;
-		void loadBundle();
-		void hydrateStaffOptions();
-		void hydrateStores();
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadBundle({ signal: ac.signal, isCancelled: () => cancelled });
+		void hydrateStaffOptions({ signal: ac.signal, isCancelled: () => cancelled });
+		void hydrateStores({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

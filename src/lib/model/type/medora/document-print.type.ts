@@ -1,17 +1,17 @@
-import type {
-	DocumentSettingRow,
-	DocumentSettingWithRelations
-} from '$lib/model/type/document-setting.type';
+import type { DocumentSettingRow } from '$lib/model/type/document-setting.type';
+import type { ClinicalDocumentSectionEnum } from '$lib/model/enum/clinical-document-section.enum';
 
-/** Minimal document shape for `resolveDocumentSettingForDoc`. */
+/** Minimal document shape for print. */
 export type DocumentForPrintSetting = {
 	documentSettingId?: number | null;
 	documentTypeId?: number | null;
-	documentType?: { documentType?: string | null } | null;
+	clinicalSection?: ClinicalDocumentSectionEnum | null;
+	documentType?: {
+		documentType?: string | null;
+	} | null;
 	documentSetting?: DocumentSettingRow | null;
 };
 
-/** Master document row from clinical-document bootstrap API (print / preview). */
 export type ClinicalDocumentRow = DocumentForPrintSetting & {
 	id: number;
 	documentNumber?: string | null;
@@ -19,7 +19,14 @@ export type ClinicalDocumentRow = DocumentForPrintSetting & {
 	documentText?: string | null;
 };
 
+export type DocumentPrintOptionRow = {
+	documentId: number;
+	code: string | null;
+	documentNumber: string | null;
+};
+
 export type DocumentMasterPrintBootstrap = {
 	document: ClinicalDocumentRow | null;
-	documentSettings: DocumentSettingWithRelations[];
+	documentSetting: DocumentSettingRow | null;
+	textPlaceholders: Record<string, string>;
 };

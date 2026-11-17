@@ -25,9 +25,10 @@ import {
 import { TRANSACTIONAL_CATALOG_TEMPLATES } from './catalog-transactional-print';
 import type { CatalogTemplateDef } from './document-catalog.types';
 import { DocumentCatalogKindEnum } from '$lib/model/enum/document-catalog.enum';
+import { ClinicalDocumentSectionEnum } from '$lib/model/enum/clinical-document-section.enum';
 
 const introHospital =
-	'I understand that care will be provided at {{hospital.name}} in accordance with hospital policies and applicable law.';
+	'I understand that care will be provided at {{hospital_name}} in accordance with hospital policies and applicable law.';
 
 function legacyClinicalForms(): CatalogTemplateDef[] {
 	const map: { code: string; legacyId: number; title: string; docType: number }[] = [
@@ -92,14 +93,23 @@ function legacyClinicalForms(): CatalogTemplateDef[] {
 			docType: 4
 		}
 	];
+	const sectionByLegacyClinicalDocType: Record<
+		number,
+		ClinicalDocumentSectionEnum
+	> = {
+		1: ClinicalDocumentSectionEnum.CONSENT,
+		2: ClinicalDocumentSectionEnum.FORM,
+		3: ClinicalDocumentSectionEnum.INSTRUCTION,
+		4: ClinicalDocumentSectionEnum.CERTIFICATE
+	};
 	return map.map((row) => ({
-		catalogCode: `CATALOG_LEGACY_${row.code}`,
 		kind: DocumentCatalogKindEnum.HTML_PRINT,
 		category: 'consent_clinical',
 		title: row.title,
+		clinicalSection: sectionByLegacyClinicalDocType[row.docType] ?? null,
 		legacyDocumentId: row.legacyId,
 		legacyDocumentCode: row.code,
-		documentTypeId: row.docType,
+		documentTypeId: 1,
 		defaultDocumentSettingId: 1,
 		catalogVersion: 2,
 		locales: [
@@ -120,7 +130,7 @@ function buildBulkCatalog(): CatalogTemplateDef[] {
 		prefix: 'REG',
 		items: REGISTRATION_TITLES.map((title) => ({
 			title,
-			intro: `Complete all sections for ${title.toLowerCase()} at {{hospital.name}}.`,
+			intro: `Complete all sections for ${title.toLowerCase()} at {{hospital_name}}.`,
 			fields: ['Primary details', 'Additional notes', 'Staff verification']
 		}))
 	});
@@ -283,11 +293,7 @@ function buildBulkCatalog(): CatalogTemplateDef[] {
 	];
 
 	return bulk.map((t) => {
-		if (
-			t.category === 'consent_clinical' ||
-			t.category === 'finance' ||
-			t.catalogCode.startsWith('CATALOG_LEGACY_')
-		) {
+		if (t.category === 'consent_clinical' || t.category === 'finance') {
 			return attachMyLocaleStub([t])[0];
 		}
 		return t;
@@ -301,8 +307,3 @@ export function getAllCatalogTemplates(): CatalogTemplateDef[] {
 	return cached;
 }
 
-export function getCatalogTemplateByCode(
-	code: string
-): CatalogTemplateDef | undefined {
-	return getAllCatalogTemplates().find((t) => t.catalogCode === code);
-}

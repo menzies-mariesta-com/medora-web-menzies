@@ -19,7 +19,9 @@
 >
 	<div class="my-main w-full">
 		<AnimatedPageContent type="fadeUp">
-			{@render children?.()}
+			{#if children}
+				{@render children()}
+			{/if}
 		</AnimatedPageContent>
 	</div>
 </div>

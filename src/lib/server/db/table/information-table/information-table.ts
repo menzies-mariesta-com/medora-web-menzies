@@ -36,6 +36,7 @@ import {
 import { BillingDiscountTypeEnum } from '../../../../model/enum/billing-discount-type.enum';
 import { BillingVisitOpenModeEnum } from '../../../../model/enum/billing-visit-open-mode.enum';
 import { userTable } from '../auth-table/auth-table';
+import { documentTable, documentTypeTable } from '../master-table/master-table';
 import {
 	bloodTypeTable,
 	billingDiscountTypeTable,
@@ -223,6 +224,27 @@ export const financialYearTable = pgTable(
 			table.hospitalId,
 			table.code
 		)
+	]
+);
+
+/** Hospital-scoped color overrides for UI badges, borders, ribbons. */
+export const hospitalColorConfigTable = pgTable(
+	'hospital_color_config',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		category: varchar('category', { length: 64 }).notNull(),
+		entityKey: varchar('entity_key', { length: 128 }).notNull(),
+		color: varchar('color', { length: 32 }).notNull(),
+		...timestamps
+	},
+	(table) => [
+		uniqueIndex('hospital_color_config_hospital_cat_key_uidx')
+			.on(table.hospitalId, table.category, table.entityKey)
+			.where(sql`${table.deletedAt} IS NULL`),
+		index('hospital_color_config_hospital_id_idx').on(table.hospitalId)
 	]
 );
 
@@ -706,37 +728,18 @@ export const patientAllergyTable = pgTable('patient_allergy', {
 	...timestamps
 });
 
-/** Document type lookup (consent, form, instruction, certificate, help) */
-export const documentTypeTable = pgTable(
-	'document_type',
-	{
-		id: serial('id').primaryKey(),
-		documentType: varchar('document_type', { length: 512 }),
-		statusId: integer('status_id')
-			.references(() => statusTable.id)
-			.notNull()
-			.default(StatusEnum.ACTIVE),
-		...timestamps
-	},
-	(table) => [
-		index('document_type_name_idx').on(table.documentType),
-		index('document_type_status_id_idx').on(table.statusId)
-	]
-);
-
-/** Document setting - template configuration for document layout and placeholders */
-export const documentSettingTable = pgTable(
-	'document_setting',
+/** Hospital-scoped print layout presets (margins, header/footer HTML). */
+export const hospitalDocumentSettingsTable = pgTable(
+	'hospital_document_settings',
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }).notNull(),
-		documentTypeId: integer('document_type_id').references(
-			() => documentTypeTable.id
-		),
-		hospitalId: uuid('hospital_id').references(
-			() => hospitalTable.id
-		),
-		// Page layout settings (in mm)
+		documentId: integer('document_id').references(() => documentTable.id, {
+			onDelete: 'cascade'
+		}),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
 		marginTop: integer('margin_top').default(20),
 		marginBottom: integer('margin_bottom').default(20),
 		marginLeft: integer('margin_left').default(15),
@@ -745,18 +748,14 @@ export const documentSettingTable = pgTable(
 		paddingBottom: integer('padding_bottom').default(10),
 		paddingLeft: integer('padding_left').default(10),
 		paddingRight: integer('padding_right').default(10),
-		// Page size
 		pageSize: varchar('page_size', { length: 20 }).default('A4'),
 		pageOrientation: varchar('page_orientation', {
 			length: 20
 		}).default('portrait'),
-		// Header and footer templates (HTML with placeholders)
 		headerHtml: text('header_html'),
 		footerHtml: text('footer_html'),
-		// Show/hide header footer
 		showHeader: boolean('show_header').default(true),
 		showFooter: boolean('show_footer').default(true),
-		// Description
 		description: text('description'),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
@@ -765,48 +764,17 @@ export const documentSettingTable = pgTable(
 		...timestamps
 	},
 	(table) => [
-		index('document_setting_name_idx').on(table.name),
-		index('document_setting_document_type_id_idx').on(
-			table.documentTypeId
+		index('hospital_document_settings_name_idx').on(table.name),
+		uniqueIndex('hospital_document_settings_document_id_uidx').on(
+			table.documentId
 		),
-		index('document_setting_hospital_id_idx').on(table.hospitalId),
-		index('document_setting_status_id_idx').on(table.statusId)
+		index('hospital_document_settings_hospital_id_idx').on(table.hospitalId),
+		index('hospital_document_settings_status_id_idx').on(table.statusId)
 	]
 );
 
-/** Document master - stores document templates with HTML content */
-export const documentTable = pgTable(
-	'document',
-	{
-		id: serial('id').primaryKey(),
-		documentTypeId: integer('document_type_id')
-			.notNull()
-			.references(() => documentTypeTable.id),
-		code: varchar('code', { length: 128 }),
-		catalogCode: varchar('catalog_code', { length: 128 }),
-		isSystemCatalog: boolean('is_system_catalog').notNull().default(false),
-		hospitalId: uuid('hospital_id').references(() => hospitalTable.id, {
-			onDelete: 'cascade'
-		}),
-		documentText: text('document_text'),
-		documentNumber: varchar('document_number', { length: 128 }),
-		documentSettingId: integer('document_setting_id').references(
-			() => documentSettingTable.id
-		),
-		statusId: integer('status_id')
-			.references(() => statusTable.id)
-			.notNull()
-			.default(StatusEnum.ACTIVE),
-		...timestamps
-	},
-	(table) => [
-		index('document_code_idx').on(table.code),
-		index('document_catalog_code_idx').on(table.catalogCode),
-		index('document_hospital_id_idx').on(table.hospitalId),
-		index('document_document_type_id_idx').on(table.documentTypeId),
-		index('document_status_id_idx').on(table.statusId)
-	]
-);
+/** @deprecated use hospitalDocumentSettingsTable */
+export const documentSettingTable = hospitalDocumentSettingsTable;
 
 /** Patient document - links documents to visits (clinical document sub page) */
 export const patientDocumentTable = pgTable(
@@ -3028,3 +2996,3757 @@ export const ipAdvanceDepositTable = pgTable(
 		index('ip_advance_deposit_visit_id_idx').on(t.visitId)
 	]
 );
+
+
+// Merged from er-master-table.ts
+/** Hospital ED triage acuity master (levels 1-5, color-coded). */
+export const edTriageLevelTable = pgTable(
+	'ed_triage_level',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		level: integer('level').notNull(),
+		name: varchar('name', { length: 512 }).notNull(),
+		/** daisyUI badge token: error, warning, info, success, neutral, etc. */
+		color: varchar('color', { length: 32 }).notNull().default('neutral'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		uniqueIndex('ed_triage_level_hospital_level_uidx').on(
+			t.hospitalId,
+			t.level
+		),
+		index('ed_triage_level_hospital_id_idx').on(t.hospitalId)
+	]
+);
+
+/** Per-hospital ER billing defaults (bed charge service). */
+export const hospitalEdBillingConfigTable = pgTable(
+	'hospital_ed_billing_config',
+	{
+		hospitalId: uuid('hospital_id')
+			.primaryKey()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		erBedServiceItemId: integer('er_bed_service_item_id').references(
+			() => serviceItemTable.id,
+			{ onDelete: 'set null' }
+		),
+		...timestamps
+	}
+);
+
+// Merged from inventory-transaction-table.ts
+const invTimestamps = {
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => sql`now()`),
+	deletedAt: timestamp('deleted_at', {
+		withTimezone: true,
+		mode: 'string'
+	}),
+	createdBy: text('created_by').references(
+		(): AnyPgColumn => userTable.id,
+		{ onDelete: 'set null', onUpdate: 'cascade' }
+	),
+	updatedBy: text('updated_by').references(
+		(): AnyPgColumn => userTable.id,
+		{ onDelete: 'set null', onUpdate: 'cascade' }
+	),
+	deletedBy: text('deleted_by').references(
+		(): AnyPgColumn => userTable.id,
+		{ onDelete: 'set null', onUpdate: 'cascade' }
+	)
+} as const;
+
+const invJunctionTimestamps = {
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => sql`now()`)
+} as const;
+
+/**
+ * Low-stock threshold per store+item (issue-unit quantity).
+ * Used for alerts and reporting.
+ */
+export const invItemReorderLevelTable = pgTable(
+	'inv_item_reorder_level',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'cascade' }),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'cascade' }),
+		/** Threshold in stock/issue unit. */
+		minQty: decimal('min_qty', { precision: 18, scale: 0 })
+			.notNull()
+			.default('0'),
+		/** Purchase/issue conversion row used when entering Min qty in purchase unit (nullable legacy rows). */
+		itemUnitMasterId: integer('item_unit_master_id').references(
+			() => itemUnitMasterTable.id,
+			{ onDelete: 'set null' }
+		),
+		...invTimestamps
+	},
+	(t) => [
+		uniqueIndex('inv_item_reorder_level_store_item_active_uidx')
+			.on(t.hospitalId, t.storeId, t.itemId)
+			.where(sql`${t.deletedAt} IS NULL`),
+		index('inv_item_reorder_level_store_idx').on(
+			t.hospitalId,
+			t.storeId
+		),
+		index('inv_item_reorder_level_item_idx').on(
+			t.hospitalId,
+			t.itemId
+		)
+	]
+);
+
+/** Hospital-wide stock alert defaults and email toggles (one row per hospital). */
+export const invStockAlertSettingTable = pgTable(
+	'inv_stock_alert_setting',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.unique()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		defaultExpiringSoonDays: integer('default_expiring_soon_days')
+			.notNull()
+			.default(30),
+		emailLowStock: boolean('email_low_stock')
+			.notNull()
+			.default(false),
+		emailExpired: boolean('email_expired').notNull().default(false),
+		emailExpiringSoon: boolean('email_expiring_soon')
+			.notNull()
+			.default(false),
+		emailMinGapMinutes: integer('email_min_gap_minutes')
+			.notNull()
+			.default(360),
+		inAppMinGapMinutes: integer('in_app_min_gap_minutes')
+			.notNull()
+			.default(360),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp('updated_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+			.$onUpdate(() => sql`now()`)
+	},
+	(t) => [
+		index('inv_stock_alert_setting_hospital_idx').on(t.hospitalId)
+	]
+);
+
+/** Reusable sale-price formula (hospital template library). */
+export const invPricingFormulaTemplateTable = pgTable(
+	'inv_pricing_formula_template',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 128 }).notNull(),
+		description: text('description'),
+		formulaVersion: integer('formula_version').notNull().default(1),
+		includeDiscount: boolean('include_discount').notNull().default(true),
+		includeTax: boolean('include_tax').notNull().default(true),
+		includeFreeQty: boolean('include_free_qty').notNull().default(false),
+		/** When true, apply item master markup in the ITEM slot. */
+		includeItemMarkup: boolean('include_item_markup').notNull().default(true),
+		/** When true, apply store markup in the STORE slot. */
+		includeStoreMarkup: boolean('include_store_markup').notNull().default(true),
+		/** More Sale Less markup (MSL slot). */
+		mslMarkupPercent: decimal('msl_markup_percent', {
+			precision: 8,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		slotOrder: jsonb('slot_order')
+			.notNull()
+			.default(['COST', 'MSL', 'ITEM', 'STORE']),
+		isSystemDefault: boolean('is_system_default')
+			.notNull()
+			.default(false),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp('updated_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+			.$onUpdate(() => sql`now()`)
+	},
+	(t) => [
+		uniqueIndex('inv_pricing_formula_template_hospital_name_uidx').on(
+			t.hospitalId,
+			t.name
+		),
+		uniqueIndex('inv_pricing_formula_template_hospital_default_uidx')
+			.on(t.hospitalId)
+			.where(sql`${t.isSystemDefault} = true`),
+		index('inv_pricing_formula_template_hospital_idx').on(t.hospitalId)
+	]
+);
+
+/** One assigned template per hospital + branch + sale module. */
+export const invModulePricingAssignmentTable = pgTable(
+	'inv_module_pricing_assignment',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, {
+				onDelete: 'cascade'
+			}),
+		/** `IS` | `ES` | `DC` */
+		module: varchar('module', { length: 16 }).notNull(),
+		formulaTemplateId: integer('formula_template_id')
+			.notNull()
+			.references(() => invPricingFormulaTemplateTable.id, {
+				onDelete: 'restrict'
+			}),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp('updated_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+			.$onUpdate(() => sql`now()`)
+	},
+	(t) => [
+		uniqueIndex('inv_module_pricing_assignment_scope_uidx').on(
+			t.hospitalId,
+			t.branchId,
+			t.module
+		),
+		index('inv_module_pricing_assignment_hospital_idx').on(
+			t.hospitalId
+		),
+		index('inv_module_pricing_assignment_template_idx').on(
+			t.formulaTemplateId
+		),
+		check(
+			'inv_module_pricing_assignment_module_chk',
+			sql`(${t.module}) IN ('IS', 'ES', 'DC')`
+		)
+	]
+);
+
+/** Staff subscribed to inventory stock alerts per hospital and store. */
+export const invStockAlertRecipientTable = pgTable(
+	'inv_stock_alert_recipient',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'cascade' }),
+		staffId: uuid('staff_id')
+			.notNull()
+			.references(() => staffTable.id, { onDelete: 'cascade' }),
+		notifyLowStock: boolean('notify_low_stock')
+			.notNull()
+			.default(true),
+		notifyExpired: boolean('notify_expired').notNull().default(true),
+		notifyExpiringSoon: boolean('notify_expiring_soon')
+			.notNull()
+			.default(true),
+		...invTimestamps
+	},
+	(t) => [
+		uniqueIndex('inv_stock_alert_recipient_hospital_store_staff_uidx')
+			.on(t.hospitalId, t.storeId, t.staffId)
+			.where(sql`${t.deletedAt} IS NULL`),
+		index('inv_stock_alert_recipient_hospital_idx').on(t.hospitalId),
+		index('inv_stock_alert_recipient_store_idx').on(
+			t.hospitalId,
+			t.storeId
+		)
+	]
+);
+
+/** Dedupe log for outbound stock alert emails (per recipient + store + event type). */
+export const invStockAlertEmailSentTable = pgTable(
+	'inv_stock_alert_email_sent',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'cascade' }),
+		recipientStaffId: uuid('recipient_staff_id')
+			.notNull()
+			.references(() => staffTable.id, { onDelete: 'cascade' }),
+		eventType: varchar('event_type', { length: 64 }).notNull(),
+		/** Hash of plain-text body; null = legacy rows (time-only cooldown). */
+		payloadDigest: varchar('payload_digest', { length: 32 }),
+		sentAt: timestamp('sent_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+	},
+	(t) => [
+		index('inv_stock_alert_email_sent_lookup_idx').on(
+			t.hospitalId,
+			t.recipientStaffId,
+			t.storeId,
+			t.eventType,
+			t.sentAt
+		)
+	]
+);
+
+/** Per-store PR/PO approval levels (many staff per level via inv_approval_assignee). */
+export const invApprovalLevelTable = pgTable(
+	'inv_approval_level',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'cascade' }),
+		/** `PR` | `PO` | `DI` | `SI` | `SR` | `GRN` | `DC` */
+		module: varchar('module', { length: 8 }).notNull(),
+		level: integer('level').notNull(),
+		isRequired: boolean('is_required').notNull().default(true),
+		...invTimestamps
+	},
+	(t) => [
+		uniqueIndex('inv_approval_level_store_module_level_active_uidx')
+			.on(t.hospitalId, t.storeId, t.module, t.level)
+			.where(sql`${t.deletedAt} IS NULL`),
+		index('inv_approval_level_hospital_store_idx').on(
+			t.hospitalId,
+			t.storeId
+		),
+		check(
+			'inv_approval_level_module_chk',
+			sql`${t.module} IN ('PR', 'PO', 'DI', 'DISS', 'RFS', 'GRN', 'DC')`
+		),
+		check(
+			'inv_approval_level_level_positive_chk',
+			sql`${t.level} >= 1`
+		)
+	]
+);
+
+export const invApprovalAssigneeTable = pgTable(
+	'inv_approval_assignee',
+	{
+		id: serial('id').primaryKey(),
+		levelId: integer('level_id')
+			.notNull()
+			.references(() => invApprovalLevelTable.id, {
+				onDelete: 'cascade'
+			}),
+		staffId: uuid('staff_id')
+			.notNull()
+			.references(() => staffTable.id, { onDelete: 'cascade' }),
+		...invJunctionTimestamps
+	},
+	(t) => [
+		uniqueIndex('inv_approval_assignee_level_staff_uidx').on(
+			t.levelId,
+			t.staffId
+		)
+	]
+);
+
+/** Audit trail for PR/PO approvals. */
+export const invApprovalLogTable = pgTable(
+	'inv_approval_log',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		documentId: uuid('document_id').notNull(),
+		module: varchar('module', { length: 8 }).notNull(),
+		level: integer('level').notNull(),
+		/** {@link InvApprovalActionEnum} */
+		action: integer('action').notNull(),
+		remarks: text('remarks'),
+		approvedBy: text('approved_by')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'restrict' }),
+		lineAdjustments: jsonb('line_adjustments'),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+	},
+	(t) => [
+		index('inv_approval_log_document_idx').on(t.documentId),
+		check(
+			'inv_approval_log_module_chk',
+			sql`${t.module} IN ('PR', 'PO', 'DI', 'DISS', 'RFS', 'GRN', 'DC')`
+		)
+	]
+);
+
+export const purchaseRequisitionTable = pgTable(
+	'purchase_requisition',
+	{
+		id: uuid('id')
+			.primaryKey()
+			.$defaultFn(() => uuidV7()),
+		prNo: varchar('pr_no', { length: 128 }),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		fromStoreId: integer('from_store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		toStoreId: integer('to_store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		requestedBy: text('requested_by')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'restrict' }),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id, {
+				onDelete: 'restrict'
+			}),
+		currentLevel: integer('current_level').notNull().default(1),
+		remarks: text('remarks'),
+		approvedBy: text('approved_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		approvedAt: timestamp('approved_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelledBy: text('cancelled_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		cancelledAt: timestamp('cancelled_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelReason: text('cancel_reason'),
+		...invTimestamps
+	},
+	(t) => [
+		index('purchase_requisition_hospital_from_store_idx').on(
+			t.hospitalId,
+			t.fromStoreId
+		),
+		index('purchase_requisition_hospital_to_store_idx').on(
+			t.hospitalId,
+			t.toStoreId
+		)
+	]
+);
+
+export const purchaseRequisitionLineTable = pgTable(
+	'purchase_requisition_line',
+	{
+		id: serial('id').primaryKey(),
+		prId: uuid('pr_id')
+			.notNull()
+			.references(() => purchaseRequisitionTable.id, {
+				onDelete: 'cascade'
+			}),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		quantity: decimal('quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
+		/** Original requested qty; unchanged when approver adjusts `quantity`. */
+		requestedQuantity: decimal('requested_quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
+		unitId: integer('unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		/** Remaining qty allocatable to POs (starts equal to quantity). */
+		qtyRemaining: decimal('qty_remaining', {
+			precision: 18,
+			scale: 0
+		})
+			.notNull()
+			.default('0'),
+		...invTimestamps
+	},
+	(t) => [index('purchase_requisition_line_pr_id_idx').on(t.prId)]
+);
+
+export const purchaseOrderTable = pgTable(
+	'purchase_order',
+	{
+		id: uuid('id')
+			.primaryKey()
+			.$defaultFn(() => uuidV7()),
+		poNo: varchar('po_no', { length: 128 }),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		/** Null for manual PO (no PR). */
+		prId: uuid('pr_id').references(
+			() => purchaseRequisitionTable.id,
+			{ onDelete: 'restrict' }
+		),
+		/** For PR-backed PO: same as PR `to_store_id` (central purchasing). PO approval/GRN receive at this store. Manual PO: typically CPS. */
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		supplierId: integer('supplier_id')
+			.notNull()
+			.references(() => supplierTable.id, { onDelete: 'restrict' }),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id, {
+				onDelete: 'restrict'
+			}),
+		currentLevel: integer('current_level').notNull().default(1),
+		totalAmount: decimal('total_amount', { precision: 14, scale: 2 })
+			.notNull()
+			.default('0'),
+		sentToSupplierAt: timestamp('sent_to_supplier_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		approvedBy: text('approved_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		approvedAt: timestamp('approved_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		...invTimestamps
+	},
+	(t) => [
+		index('purchase_order_hospital_pr_idx').on(t.hospitalId, t.prId),
+		index('purchase_order_hospital_store_idx').on(
+			t.hospitalId,
+			t.storeId
+		)
+	]
+);
+
+export const purchaseOrderLineTable = pgTable(
+	'purchase_order_line',
+	{
+		id: serial('id').primaryKey(),
+		poId: uuid('po_id')
+			.notNull()
+			.references(() => purchaseOrderTable.id, {
+				onDelete: 'cascade'
+			}),
+		prLineId: integer('pr_line_id').references(
+			() => purchaseRequisitionLineTable.id,
+			{ onDelete: 'set null' }
+		),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		quantity: decimal('quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
+		unitId: integer('unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		unitPrice: decimal('unit_price', {
+			precision: 14,
+			scale: 2
+		}).notNull(),
+		lineTotal: decimal('line_total', {
+			precision: 14,
+			scale: 2
+		}).notNull(),
+		qtyReceivedCumulative: decimal('qty_received_cumulative', {
+			precision: 18,
+			scale: 0
+		})
+			.notNull()
+			.default('0'),
+		...invTimestamps
+	},
+	(t) => [index('purchase_order_line_po_id_idx').on(t.poId)]
+);
+
+/**
+ * Normalized batch master (cost lot per `goods_receipt_line` when received via GRN).
+ * GRN-linked identity: `item_batch_identity_grn_uidx` on
+ * `(hospital_id, item_id, batch_no, expiry_date, goods_receipt_line_id)` (migration 0092).
+ * Legacy rows use `item_batch_identity_legacy_uidx` (supplier only; migration 0093).
+ * Unit prices are read from `goods_receipt_line.purchase_price` at display/sale time.
+ */
+export const itemBatchTable = pgTable(
+	'item_batch',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		batchNo: varchar('batch_no', { length: 128 }).notNull(),
+		expiryDate: date('expiry_date'),
+		supplierId: integer('supplier_id').references(
+			() => supplierTable.id,
+			{
+				onDelete: 'set null'
+			}
+		),
+		goodsReceiptNoteId: uuid('goods_receipt_note_id').references(
+			(): AnyPgColumn => goodsReceiptNoteTable.id,
+			{ onDelete: 'set null' }
+		),
+		goodsReceiptLineId: integer('goods_receipt_line_id').references(
+			(): AnyPgColumn => goodsReceiptLineTable.id,
+			{ onDelete: 'set null' }
+		),
+		udiDi: varchar('udi_di', { length: 128 }),
+		serialNo: varchar('serial_no', { length: 128 }),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+	},
+	(t) => [
+		index('item_batch_hospital_item_idx').on(t.hospitalId, t.itemId),
+		index('item_batch_expiry_idx').on(t.expiryDate),
+		index('item_batch_grn_line_idx').on(t.goodsReceiptLineId),
+		index('item_batch_grn_note_idx').on(t.goodsReceiptNoteId)
+	]
+);
+
+/** Per-store quantity by batch (`item_batch`). */
+export const invStockTable = pgTable(
+	'inv_stock',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'cascade' }),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
+		quantity: decimal('quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
+		...invTimestamps
+	},
+	(t) => [
+		index('inv_stock_store_item_idx').on(t.storeId, t.itemId),
+		index('inv_stock_batch_idx').on(t.batchId)
+	]
+);
+
+export const goodsReceiptNoteTable = pgTable(
+	'goods_receipt_note',
+	{
+		id: uuid('id')
+			.primaryKey()
+			.$defaultFn(() => uuidV7()),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		/** Null when direct GRN (no PO). */
+		poId: uuid('po_id').references(() => purchaseOrderTable.id, {
+			onDelete: 'restrict'
+		}),
+		/** Set when `poId` is null; otherwise may mirror PO supplier. */
+		supplierId: integer('supplier_id').references(
+			() => supplierTable.id,
+			{
+				onDelete: 'restrict'
+			}
+		),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		/**
+		 * Supplier invoice metadata (optional).
+		 * Stored at GRN header-level (not per line).
+		 */
+		invoiceNo: varchar('invoice_no', { length: 128 }),
+		invoiceDate: date('invoice_date'),
+		invoiceAmount: decimal('invoice_amount', {
+			precision: 14,
+			scale: 2
+		}),
+		invoiceDiscountAmount: decimal('invoice_discount_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		invoiceDiscountPercent: decimal('invoice_discount_percent', {
+			precision: 8,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		invoiceTaxAmount: decimal('invoice_tax_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		invoiceTaxPercent: decimal('invoice_tax_percent', {
+			precision: 8,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		invoicePhotoUrl: text('invoice_photo_url'),
+		receivedBy: text('received_by')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'restrict' }),
+		receivedDate: date('received_date').notNull(),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id, {
+				onDelete: 'restrict'
+			}),
+		cancelledBy: text('cancelled_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		cancelledAt: timestamp('cancelled_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelReason: text('cancel_reason'),
+		...invTimestamps
+	},
+	(t) => [
+		index('goods_receipt_note_po_id_idx').on(t.poId),
+		check(
+			'goods_receipt_note_po_or_supplier_chk',
+			sql`${t.poId} is not null or ${t.supplierId} is not null`
+		)
+	]
+);
+
+export const goodsReceiptLineTable = pgTable(
+	'goods_receipt_line',
+	{
+		id: serial('id').primaryKey(),
+		grnId: uuid('grn_id')
+			.notNull()
+			.references(() => goodsReceiptNoteTable.id, {
+				onDelete: 'cascade'
+			}),
+		/** Null for direct GRN line (no PO line). */
+		poLineId: integer('po_line_id').references(
+			() => purchaseOrderLineTable.id,
+			{ onDelete: 'restrict' }
+		),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		purchasedQty: decimal('purchased_qty', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
+		batchNo: varchar('batch_no', { length: 128 }),
+		expiryDate: date('expiry_date'),
+		unitId: integer('unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		batchId: integer('batch_id').references(() => itemBatchTable.id, {
+			onDelete: 'set null'
+		}),
+		purchasePrice: decimal('purchase_price', {
+			precision: 14,
+			scale: 2
+		}),
+		freeQty: decimal('free_qty', { precision: 18, scale: 0 })
+			.notNull()
+			.default('0'),
+		/** Unit for `freeQty` (can differ from ordered/received unit). */
+		freeUnitId: integer('free_unit_id').references(
+			() => unitTable.id,
+			{
+				onDelete: 'restrict'
+			}
+		),
+		discountAmount: decimal('discount_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		discountPercent: decimal('discount_percent', {
+			precision: 8,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		taxAmount: decimal('tax_amount', { precision: 14, scale: 2 })
+			.notNull()
+			.default('0'),
+		taxPercent: decimal('tax_percent', { precision: 8, scale: 2 })
+			.notNull()
+			.default('0'),
+		...invTimestamps
+	},
+	(t) => [index('goods_receipt_line_grn_id_idx').on(t.grnId)]
+);
+
+export const invStoreTransferTable = pgTable(
+	'inv_store_transfer',
+	{
+		id: uuid('id')
+			.primaryKey()
+			.$defaultFn(() => uuidV7()),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		fromStoreId: integer('from_store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		toStoreId: integer('to_store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id, {
+				onDelete: 'restrict'
+			}),
+		requestedBy: text('requested_by')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'restrict' }),
+		approvedBy: text('approved_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		postedAt: timestamp('posted_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		remark: text('remark'),
+		/** When set, transfer was created to fulfill a posted GRN (e.g. to requesting store). */
+		sourceGrnId: uuid('source_grn_id').references(
+			() => goodsReceiptNoteTable.id,
+			{ onDelete: 'set null' }
+		),
+		cancelledBy: text('cancelled_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		cancelledAt: timestamp('cancelled_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelReason: text('cancel_reason'),
+		...invTimestamps
+	},
+	(t) => [
+		check(
+			'inv_store_transfer_stores_distinct_chk',
+			sql`${t.fromStoreId} <> ${t.toStoreId}`
+		)
+	]
+);
+
+export const invStoreTransferLineTable = pgTable(
+	'inv_store_transfer_line',
+	{
+		id: serial('id').primaryKey(),
+		transferId: uuid('transfer_id')
+			.notNull()
+			.references(() => invStoreTransferTable.id, {
+				onDelete: 'cascade'
+			}),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		quantity: decimal('quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
+		unitId: integer('unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
+		...invTimestamps
+	},
+	(t) => [
+		index('inv_store_transfer_line_transfer_id_idx').on(t.transferId)
+	]
+);
+
+export const invStockIssueTable = pgTable(
+	'inv_stock_issue',
+	{
+		id: uuid('id')
+			.primaryKey()
+			.$defaultFn(() => uuidV7()),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id, {
+				onDelete: 'restrict'
+			}),
+		issuedTo: text('issued_to'),
+		reason: text('reason'),
+		postedAt: timestamp('posted_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		requestedBy: text('requested_by')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'restrict' }),
+		cancelledBy: text('cancelled_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		cancelledAt: timestamp('cancelled_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelReason: text('cancel_reason'),
+		...invTimestamps
+	},
+	(t) => [index('inv_stock_issue_store_idx').on(t.storeId)]
+);
+
+export const invStockIssueLineTable = pgTable(
+	'inv_stock_issue_line',
+	{
+		id: serial('id').primaryKey(),
+		issueId: uuid('issue_id')
+			.notNull()
+			.references(() => invStockIssueTable.id, {
+				onDelete: 'cascade'
+			}),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		qty: decimal('qty', { precision: 18, scale: 0 }).notNull(),
+		unitId: integer('unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
+		...invTimestamps
+	},
+	(t) => [index('inv_stock_issue_line_issue_id_idx').on(t.issueId)]
+);
+
+/** Department indent: requesting store → central store; then central issues, destination receives. */
+export const invDepartmentIndentTable = pgTable(
+	'inv_department_indent',
+	{
+		id: uuid('id')
+			.primaryKey()
+			.$defaultFn(() => uuidV7()),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		indentNo: varchar('indent_no', { length: 128 }),
+		fromStoreId: integer('from_store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		toStoreId: integer('to_store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		requestedBy: text('requested_by')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'restrict' }),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id, {
+				onDelete: 'restrict'
+			}),
+		currentLevel: integer('current_level').notNull().default(1),
+		remarks: text('remarks'),
+		fromApprovedBy: text('from_approved_by').references(
+			() => userTable.id,
+			{ onDelete: 'set null' }
+		),
+		fromApprovedAt: timestamp('from_approved_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		issuedBy: text('issued_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		issuedAt: timestamp('issued_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		receivedBy: text('received_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		receivedAt: timestamp('received_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelledBy: text('cancelled_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		cancelledAt: timestamp('cancelled_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelReason: text('cancel_reason'),
+		...invTimestamps
+	},
+	(t) => [
+		index('inv_department_indent_hospital_from_idx').on(
+			t.hospitalId,
+			t.fromStoreId
+		),
+		index('inv_department_indent_hospital_to_idx').on(
+			t.hospitalId,
+			t.toStoreId
+		),
+		check(
+			'inv_department_indent_from_to_distinct_chk',
+			sql`${t.fromStoreId} <> ${t.toStoreId}`
+		)
+	]
+);
+
+export const invDepartmentIndentLineTable = pgTable(
+	'inv_department_indent_line',
+	{
+		id: serial('id').primaryKey(),
+		indentId: uuid('indent_id')
+			.notNull()
+			.references(() => invDepartmentIndentTable.id, {
+				onDelete: 'cascade'
+			}),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		quantity: decimal('quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
+		unitId: integer('unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		qtyIssued: decimal('qty_issued', { precision: 18, scale: 0 })
+			.notNull()
+			.default('0'),
+		batchId: integer('batch_id').references(() => itemBatchTable.id, {
+			onDelete: 'set null'
+		}),
+		...invTimestamps
+	},
+	(t) => [
+		index('inv_department_indent_line_indent_id_idx').on(t.indentId)
+	]
+);
+
+export const invDepartmentIndentLineAllocTable = pgTable(
+	'inv_department_indent_line_alloc',
+	{
+		id: serial('id').primaryKey(),
+		lineId: integer('line_id')
+			.notNull()
+			.references(() => invDepartmentIndentLineTable.id, {
+				onDelete: 'cascade'
+			}),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
+		quantity: decimal('quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+	},
+	(t) => [
+		index('inv_department_indent_line_alloc_line_idx').on(t.lineId)
+	]
+);
+
+/** Department issue: central → requesting store; approval + issue + receive. */
+export const invDepartmentIssueTable = pgTable(
+	'inv_department_issue',
+	{
+		id: uuid('id')
+			.primaryKey()
+			.$defaultFn(() => uuidV7()),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		issueNo: varchar('issue_no', { length: 128 }),
+		sourceIndentId: uuid('source_indent_id').references(
+			() => invDepartmentIndentTable.id,
+			{ onDelete: 'set null' }
+		),
+		fromStoreId: integer('from_store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		toStoreId: integer('to_store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		requestedBy: text('requested_by')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'restrict' }),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id, {
+				onDelete: 'restrict'
+			}),
+		currentLevel: integer('current_level').notNull().default(1),
+		remarks: text('remarks'),
+		approvedBy: text('approved_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		approvedAt: timestamp('approved_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		issuedBy: text('issued_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		issuedAt: timestamp('issued_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		receivedBy: text('received_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		receivedAt: timestamp('received_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelledBy: text('cancelled_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		cancelledAt: timestamp('cancelled_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelReason: text('cancel_reason'),
+		...invTimestamps
+	},
+	(t) => [
+		check(
+			'inv_department_issue_stores_distinct_chk',
+			sql`${t.fromStoreId} <> ${t.toStoreId}`
+		),
+		index('inv_department_issue_hospital_from_idx').on(
+			t.hospitalId,
+			t.fromStoreId
+		),
+		index('inv_department_issue_hospital_to_idx').on(
+			t.hospitalId,
+			t.toStoreId
+		),
+		index('inv_department_issue_status_idx').on(t.statusTaggingId),
+		index('inv_department_issue_source_indent_idx').on(
+			t.sourceIndentId
+		)
+	]
+);
+
+export const invDepartmentIssueLineTable = pgTable(
+	'inv_department_issue_line',
+	{
+		id: serial('id').primaryKey(),
+		issueId: uuid('issue_id')
+			.notNull()
+			.references(() => invDepartmentIssueTable.id, {
+				onDelete: 'cascade'
+			}),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		quantity: decimal('quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
+		unitId: integer('unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		qtyIssued: decimal('qty_issued', { precision: 18, scale: 0 })
+			.notNull()
+			.default('0'),
+		...invTimestamps
+	},
+	(t) => [
+		index('inv_department_issue_line_issue_id_idx').on(t.issueId)
+	]
+);
+
+export const invDepartmentIssueLineAllocTable = pgTable(
+	'inv_department_issue_line_alloc',
+	{
+		id: serial('id').primaryKey(),
+		lineId: integer('line_id')
+			.notNull()
+			.references(() => invDepartmentIssueLineTable.id, {
+				onDelete: 'cascade'
+			}),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
+		quantity: decimal('quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+	},
+	(t) => [
+		index('inv_department_issue_line_alloc_line_idx').on(t.lineId)
+	]
+);
+
+/** Department consumption: deduct stock at a store after multi-level approval (module DC). */
+export const invDepartmentConsumptionTable = pgTable(
+	'inv_department_consumption',
+	{
+		id: uuid('id')
+			.primaryKey()
+			.$defaultFn(() => uuidV7()),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		consumptionNo: varchar('consumption_no', { length: 128 }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		requestedBy: text('requested_by')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'restrict' }),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id, {
+				onDelete: 'restrict'
+			}),
+		currentLevel: integer('current_level').notNull().default(1),
+		remarks: text('remarks'),
+		approvedBy: text('approved_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		approvedAt: timestamp('approved_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelledBy: text('cancelled_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		cancelledAt: timestamp('cancelled_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelReason: text('cancel_reason'),
+		...invTimestamps
+	},
+	(t) => [
+		index('inv_department_consumption_hospital_store_idx').on(
+			t.hospitalId,
+			t.storeId
+		),
+		index('inv_department_consumption_status_idx').on(
+			t.statusTaggingId
+		)
+	]
+);
+
+export const invDepartmentConsumptionLineTable = pgTable(
+	'inv_department_consumption_line',
+	{
+		id: serial('id').primaryKey(),
+		consumptionId: uuid('consumption_id')
+			.notNull()
+			.references(() => invDepartmentConsumptionTable.id, {
+				onDelete: 'cascade'
+			}),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		quantity: decimal('quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
+		unitId: integer('unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
+		/** Per issue unit; snapshot at post time. */
+		empSalePrice: decimal('emp_sale_price', {
+			precision: 14,
+			scale: 2
+		}),
+		pricingFormulaTemplateId: integer(
+			'pricing_formula_template_id'
+		).references(() => invPricingFormulaTemplateTable.id, {
+			onDelete: 'restrict'
+		}),
+		pricingModule: varchar('pricing_module', { length: 16 }),
+		unitEmpSalePriceIssue: decimal('unit_emp_sale_price_issue', {
+			precision: 14,
+			scale: 2
+		}),
+		pricingInputsSnapshot: jsonb('pricing_inputs_snapshot'),
+		pricingComputedAt: timestamp('pricing_computed_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		remarks: text('remarks'),
+		...invTimestamps
+	},
+	(t) => [
+		index('inv_department_consumption_line_consumption_id_idx').on(
+			t.consumptionId
+		),
+		index('inv_department_consumption_line_pricing_formula_template_id_idx').on(
+			t.pricingFormulaTemplateId
+		)
+	]
+);
+
+// Merged from rxnorm-table.ts
+const rxTimestamps = {
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => sql`now()`)
+} as const;
+
+export const rxnormReleaseTable = pgTable(
+	'rxnorm_release',
+	{
+		id: serial('id').primaryKey(),
+		releaseId: varchar('release_id', { length: 128 }).notNull(),
+		source: varchar('source', { length: 64 })
+			.notNull()
+			.default('NLM_RXNORM_FULL'),
+		conceptCount: integer('concept_count').notNull().default(0),
+		relCount: integer('rel_count').notNull().default(0),
+		importedAt: timestamp('imported_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		notes: text('notes'),
+		...rxTimestamps
+	},
+	(t) => [
+		uniqueIndex('rxnorm_release_source_release_uidx').on(
+			t.source,
+			t.releaseId
+		)
+	]
+);
+
+export const rxnormConceptTable = pgTable(
+	'rxnorm_concept',
+	{
+		rxcui: varchar('rxcui', { length: 16 }).primaryKey(),
+		name: varchar('name', { length: 1024 }).notNull(),
+		tty: varchar('tty', { length: 8 }).notNull(),
+		suppress: varchar('suppress', { length: 8 }),
+		normalizedName: varchar('normalized_name', { length: 1024 }),
+		releaseId: varchar('release_id', { length: 128 }).notNull(),
+		...rxTimestamps
+	},
+	(t) => [
+		index('rxnorm_concept_tty_idx').on(t.tty),
+		index('rxnorm_concept_name_idx').on(t.normalizedName),
+		index('rxnorm_concept_release_idx').on(t.releaseId)
+	]
+);
+
+export const rxnormRelTable = pgTable(
+	'rxnorm_rel',
+	{
+		id: serial('id').primaryKey(),
+		rxcui1: varchar('rxcui1', { length: 16 }).notNull(),
+		rxcui2: varchar('rxcui2', { length: 16 }).notNull(),
+		rela: varchar('rela', { length: 64 }).notNull(),
+		releaseId: varchar('release_id', { length: 128 }).notNull()
+	},
+	(t) => [
+		index('rxnorm_rel_rxcui1_idx').on(t.rxcui1),
+		index('rxnorm_rel_rxcui2_idx').on(t.rxcui2),
+		index('rxnorm_rel_rela_idx').on(t.rela),
+		uniqueIndex('rxnorm_rel_pair_rela_release_uidx').on(
+			t.rxcui1,
+			t.rxcui2,
+			t.rela,
+			t.releaseId
+		)
+	]
+);
+
+export const rxnormNdcTable = pgTable(
+	'rxnorm_ndc',
+	{
+		id: serial('id').primaryKey(),
+		rxcui: varchar('rxcui', { length: 16 }).notNull(),
+		ndc: varchar('ndc', { length: 32 }).notNull(),
+		releaseId: varchar('release_id', { length: 128 }).notNull()
+	},
+	(t) => [
+		uniqueIndex('rxnorm_ndc_ndc_release_uidx').on(t.ndc, t.releaseId),
+		index('rxnorm_ndc_rxcui_idx').on(t.rxcui)
+	]
+);
+
+export const drugInteractionTable = pgTable(
+	'drug_interaction',
+	{
+		id: serial('id').primaryKey(),
+		source: varchar('source', { length: 32 }).notNull(),
+		externalId: varchar('external_id', { length: 128 }).notNull(),
+		rxcuiA: varchar('rxcui_a', { length: 16 }),
+		rxcuiB: varchar('rxcui_b', { length: 16 }),
+		ingredientRxcuiA: varchar('ingredient_rxcui_a', { length: 16 }),
+		ingredientRxcuiB: varchar('ingredient_rxcui_b', { length: 16 }),
+		severity: varchar('severity', { length: 16 }).notNull(),
+		description: text('description').notNull(),
+		management: text('management'),
+		releaseOrVersion: varchar('release_or_version', { length: 128 }),
+		...rxTimestamps
+	},
+	(t) => [
+		uniqueIndex('drug_interaction_source_external_uidx').on(
+			t.source,
+			t.externalId
+		),
+		index('drug_interaction_rxcui_a_idx').on(t.rxcuiA),
+		index('drug_interaction_rxcui_b_idx').on(t.rxcuiB),
+		index('drug_interaction_ing_a_idx').on(t.ingredientRxcuiA),
+		index('drug_interaction_ing_b_idx').on(t.ingredientRxcuiB)
+	]
+);
+
+export const allergyRxnormMapTable = pgTable(
+	'allergy_rxnorm_map',
+	{
+		id: serial('id').primaryKey(),
+		allergyId: integer('allergy_id').notNull(),
+		ingredientRxcui: varchar('ingredient_rxcui', { length: 16 }).notNull(),
+		...rxTimestamps
+	},
+	(t) => [
+		uniqueIndex('allergy_rxnorm_map_allergy_uidx').on(t.allergyId)
+	]
+);
+
+export const ddinterRxnormMapTable = pgTable(
+	'ddinter_rxnorm_map',
+	{
+		id: serial('id').primaryKey(),
+		ddinterDrugKey: varchar('ddinter_drug_key', { length: 512 }).notNull(),
+		rxcui: varchar('rxcui', { length: 16 }).notNull(),
+		...rxTimestamps
+	},
+	(t) => [
+		uniqueIndex('ddinter_rxnorm_map_key_uidx').on(t.ddinterDrugKey)
+	]
+);
+
+// Merged from diagnostics-table.ts
+const diagnosticsTimestamps = {
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+};
+
+export const hospitalLabSettingTable = pgTable(
+	'hospital_lab_setting',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		accessionPrefix: varchar('accession_prefix', { length: 32 })
+			.notNull()
+			.default('LAB'),
+		criticalPolicy: varchar('critical_policy', { length: 64 })
+			.notNull()
+			.default('callback_after_release'),
+		autoNursingCompleteOnRelease: boolean('auto_nursing_complete_on_release')
+			.notNull()
+			.default(false),
+		enabledSectionsJson: jsonb('enabled_sections_json')
+			.notNull()
+			.default(['hematology', 'chemistry', 'microbiology']),
+		labelFormatJson: jsonb('label_format_json').notNull().default({}),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...diagnosticsTimestamps
+	},
+	(t) => [
+		uniqueIndex('hospital_lab_setting_hospital_uidx').on(t.hospitalId)
+	]
+);
+
+export const labTestTable = pgTable(
+	'lab_test',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id').references(() => hospitalTable.id, {
+			onDelete: 'cascade'
+		}),
+		code: varchar('code', { length: 64 }).notNull(),
+		name: varchar('name', { length: 512 }).notNull(),
+		loincCode: varchar('loinc_code', { length: 32 }),
+		section: varchar('section', { length: 32 }).notNull(),
+		dataType: varchar('data_type', { length: 16 }).notNull().default('numeric'),
+		unit: varchar('unit', { length: 64 }),
+		refRangeLow: decimal('ref_range_low', { precision: 14, scale: 4 }),
+		refRangeHigh: decimal('ref_range_high', { precision: 14, scale: 4 }),
+		refRangeText: varchar('ref_range_text', { length: 256 }),
+		criticalLow: decimal('critical_low', { precision: 14, scale: 4 }),
+		criticalHigh: decimal('critical_high', { precision: 14, scale: 4 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...diagnosticsTimestamps
+	},
+	(t) => [
+		index('lab_test_hospital_idx').on(t.hospitalId),
+		index('lab_test_section_idx').on(t.section)
+	]
+);
+
+export const labPanelTable = pgTable(
+	'lab_panel',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id').references(() => hospitalTable.id, {
+			onDelete: 'cascade'
+		}),
+		code: varchar('code', { length: 64 }).notNull(),
+		name: varchar('name', { length: 512 }).notNull(),
+		section: varchar('section', { length: 32 }).notNull(),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...diagnosticsTimestamps
+	},
+	(t) => [index('lab_panel_hospital_idx').on(t.hospitalId)]
+);
+
+export const labPanelMemberTable = pgTable(
+	'lab_panel_member',
+	{
+		id: serial('id').primaryKey(),
+		panelId: integer('panel_id')
+			.notNull()
+			.references(() => labPanelTable.id, { onDelete: 'cascade' }),
+		testId: integer('test_id')
+			.notNull()
+			.references(() => labTestTable.id, { onDelete: 'cascade' }),
+		sortOrder: integer('sort_order').notNull().default(1),
+		...diagnosticsTimestamps
+	},
+	(t) => [
+		uniqueIndex('lab_panel_member_panel_test_uidx').on(t.panelId, t.testId)
+	]
+);
+
+export const labServiceTestMapTable = pgTable(
+	'lab_service_test_map',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		serviceItemId: integer('service_item_id')
+			.notNull()
+			.references(() => serviceItemTable.id, { onDelete: 'cascade' }),
+		targetType: varchar('target_type', { length: 16 }).notNull(),
+		targetId: integer('target_id').notNull(),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...diagnosticsTimestamps
+	},
+	(t) => [
+		uniqueIndex('lab_service_test_map_service_uidx').on(
+			t.hospitalId,
+			t.serviceItemId
+		)
+	]
+);
+
+export const labOrderTable = pgTable(
+	'lab_order',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		visitId: uuid('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id, { onDelete: 'cascade' }),
+		serviceOrderDetailId: integer('service_order_detail_id')
+			.notNull()
+			.references(() => serviceOrderDetailTable.id, { onDelete: 'cascade' }),
+		priority: varchar('priority', { length: 16 }).notNull().default('routine'),
+		clinicalNotes: text('clinical_notes'),
+		orderStatus: varchar('order_status', { length: 32 })
+			.notNull()
+			.default('ordered'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...diagnosticsTimestamps
+	},
+	(t) => [
+		uniqueIndex('lab_order_service_order_detail_uidx').on(t.serviceOrderDetailId),
+		index('lab_order_visit_idx').on(t.visitId),
+		index('lab_order_hospital_idx').on(t.hospitalId)
+	]
+);
+
+export const labAccessionTable = pgTable(
+	'lab_accession',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		labOrderId: integer('lab_order_id')
+			.notNull()
+			.references(() => labOrderTable.id, { onDelete: 'cascade' }),
+		accessionNo: varchar('accession_no', { length: 64 }).notNull(),
+		barcodePayload: varchar('barcode_payload', { length: 256 }).notNull(),
+		section: varchar('section', { length: 32 }).notNull(),
+		accessionStatus: varchar('accession_status', { length: 32 })
+			.notNull()
+			.default('ordered'),
+		requestedTestsJson: jsonb('requested_tests_json').notNull().default([]),
+		collectionSite: varchar('collection_site', { length: 256 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...diagnosticsTimestamps
+	},
+	(t) => [
+		uniqueIndex('lab_accession_no_hospital_uidx').on(t.hospitalId, t.accessionNo),
+		index('lab_accession_status_idx').on(t.hospitalId, t.section, t.accessionStatus)
+	]
+);
+
+export const labSpecimenTable = pgTable(
+	'lab_specimen',
+	{
+		id: serial('id').primaryKey(),
+		accessionId: integer('accession_id')
+			.notNull()
+			.references(() => labAccessionTable.id, { onDelete: 'cascade' }),
+		specimenType: varchar('specimen_type', { length: 32 }).notNull(),
+		collectedAt: timestamp('collected_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		collectedBy: uuid('collected_by').references(() => staffTable.id),
+		receivedAt: timestamp('received_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		receivedBy: uuid('received_by').references(() => staffTable.id),
+		rejectReason: varchar('reject_reason', { length: 32 }),
+		rejectNote: text('reject_note'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...diagnosticsTimestamps
+	},
+	(t) => [index('lab_specimen_accession_idx').on(t.accessionId)]
+);
+
+export const labResultReportTable = pgTable(
+	'lab_result_report',
+	{
+		id: serial('id').primaryKey(),
+		accessionId: integer('accession_id')
+			.notNull()
+			.references(() => labAccessionTable.id, { onDelete: 'cascade' }),
+		reportStatus: varchar('report_status', { length: 16 })
+			.notNull()
+			.default('preliminary'),
+		releasedAt: timestamp('released_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		releasedBy: uuid('released_by').references(() => staffTable.id),
+		verifiedAt: timestamp('verified_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		verifiedBy: uuid('verified_by').references(() => staffTable.id),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...diagnosticsTimestamps
+	},
+	(t) => [index('lab_result_report_accession_idx').on(t.accessionId)]
+);
+
+export const labResultObservationTable = pgTable(
+	'lab_result_observation',
+	{
+		id: serial('id').primaryKey(),
+		reportId: integer('report_id')
+			.notNull()
+			.references(() => labResultReportTable.id, { onDelete: 'cascade' }),
+		testId: integer('test_id')
+			.notNull()
+			.references(() => labTestTable.id),
+		valueNumeric: decimal('value_numeric', { precision: 14, scale: 4 }),
+		valueText: text('value_text'),
+		unit: varchar('unit', { length: 64 }),
+		refRangeText: varchar('ref_range_text', { length: 256 }),
+		abnormalFlag: varchar('abnormal_flag', { length: 8 }),
+		isCritical: boolean('is_critical').notNull().default(false),
+		observationStatus: varchar('observation_status', { length: 16 })
+			.notNull()
+			.default('draft'),
+		source: varchar('source', { length: 16 }).notNull().default('manual'),
+		enteredBy: uuid('entered_by').references(() => staffTable.id),
+		verifiedBy: uuid('verified_by').references(() => staffTable.id),
+		verifiedAt: timestamp('verified_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...diagnosticsTimestamps
+	},
+	(t) => [
+		index('lab_result_observation_report_idx').on(t.reportId),
+		index('lab_result_observation_critical_idx').on(t.isCritical)
+	]
+);
+
+export const labCriticalCallbackTable = pgTable(
+	'lab_critical_callback',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		observationId: integer('observation_id')
+			.notNull()
+			.references(() => labResultObservationTable.id, { onDelete: 'cascade' }),
+		visitId: uuid('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		callbackStatus: varchar('callback_status', { length: 32 })
+			.notNull()
+			.default('open'),
+		calledParty: varchar('called_party', { length: 256 }),
+		readBackText: text('read_back_text'),
+		calledAt: timestamp('called_at', { withTimezone: true, mode: 'string' }),
+		completedAt: timestamp('completed_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		completedBy: uuid('completed_by').references(() => staffTable.id),
+		assignedStaffId: uuid('assigned_staff_id').references(() => staffTable.id),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...diagnosticsTimestamps
+	},
+	(t) => [
+		index('lab_critical_callback_hospital_status_idx').on(
+			t.hospitalId,
+			t.callbackStatus
+		)
+	]
+);
+
+export const labAuditTable = pgTable(
+	'lab_audit',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		entityType: varchar('entity_type', { length: 64 }).notNull(),
+		entityId: integer('entity_id').notNull(),
+		action: varchar('action', { length: 64 }).notNull(),
+		staffId: uuid('staff_id').references(() => staffTable.id),
+		detailJson: jsonb('detail_json'),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+	},
+	(t) => [
+		index('lab_audit_entity_idx').on(t.entityType, t.entityId),
+		index('lab_audit_hospital_idx').on(t.hospitalId)
+	]
+);
+
+export const labIntegrationMessageTable = pgTable(
+	'lab_integration_message',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		direction: varchar('direction', { length: 16 }).notNull(),
+		protocol: varchar('protocol', { length: 32 }).notNull().default('hl7_v2'),
+		rawPayload: text('raw_payload').notNull(),
+		parseStatus: varchar('parse_status', { length: 16 })
+			.notNull()
+			.default('pending'),
+		parseError: text('parse_error'),
+		accessionNo: varchar('accession_no', { length: 64 }),
+		processedAt: timestamp('processed_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...diagnosticsTimestamps
+	},
+	(t) => [
+		index('lab_integration_message_hospital_status_idx').on(
+			t.hospitalId,
+			t.parseStatus
+		)
+	]
+);
+
+// Merged from medication-order-table.ts
+const medOrderTimestamps = {
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => sql`now()`),
+	deletedAt: timestamp('deleted_at', {
+		withTimezone: true,
+		mode: 'string'
+	}),
+	createdBy: text('created_by').references(
+		(): AnyPgColumn => userTable.id,
+		{
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		}
+	),
+	updatedBy: text('updated_by').references(
+		(): AnyPgColumn => userTable.id,
+		{
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		}
+	),
+	deletedBy: text('deleted_by').references(
+		(): AnyPgColumn => userTable.id,
+		{
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		}
+	)
+} as const;
+
+/** Medication order: dosage form (tablet, capsule, …). Global; hospital opt-out via `med_order_form_inactive`. */
+export const medOrderFormTable = pgTable(
+	'med_order_form',
+	{
+		id: serial('id').primaryKey(),
+		isPreset: boolean('is_preset').notNull().default(false),
+		name: varchar('name', { length: 512 }).notNull(),
+		description: text('description'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...medOrderTimestamps
+	},
+	(t) => [
+		index('med_order_form_name_idx').on(t.name),
+		index('med_order_form_preset_idx')
+			.on(t.isPreset)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+export const medOrderFormInactiveTable = pgTable(
+	'med_order_form_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		formId: integer('form_id')
+			.notNull()
+			.references(() => medOrderFormTable.id, {
+				onDelete: 'cascade'
+			}),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references(
+			(): AnyPgColumn => userTable.id,
+			{
+				onDelete: 'set null',
+				onUpdate: 'cascade'
+			}
+		)
+	},
+	(t) => [
+		uniqueIndex('med_order_form_inactive_hospital_form_uidx').on(
+			t.hospitalId,
+			t.formId
+		),
+		index('med_order_form_inactive_hospital_id_idx').on(t.hospitalId),
+		index('med_order_form_inactive_form_id_idx').on(t.formId)
+	]
+);
+
+export const medOrderRouteTable = pgTable(
+	'med_order_route',
+	{
+		id: serial('id').primaryKey(),
+		/** Seeded or user-created global rows. Hospital enable/disable is via `med_order_route_inactive`. */
+		isPreset: boolean('is_preset').notNull().default(false),
+		name: varchar('name', { length: 512 }).notNull(),
+		description: text('description'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...medOrderTimestamps
+	},
+	(t) => [
+		index('med_order_route_name_idx').on(t.name),
+		index('med_order_route_preset_idx')
+			.on(t.isPreset)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+/**
+ * Hospital-scoped inactive list: master route rows are global; hospitals only store disabled rows here.
+ */
+export const medOrderRouteInactiveTable = pgTable(
+	'med_order_route_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		routeId: integer('route_id')
+			.notNull()
+			.references(() => medOrderRouteTable.id, {
+				onDelete: 'cascade'
+			}),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references(
+			(): AnyPgColumn => userTable.id,
+			{
+				onDelete: 'set null',
+				onUpdate: 'cascade'
+			}
+		)
+	},
+	(t) => [
+		uniqueIndex('med_order_route_inactive_hospital_route_uidx').on(
+			t.hospitalId,
+			t.routeId
+		),
+		index('med_order_route_inactive_hospital_id_idx').on(
+			t.hospitalId
+		),
+		index('med_order_route_inactive_route_id_idx').on(t.routeId)
+	]
+);
+
+export const medOrderOrderTypeTable = pgTable(
+	'med_order_order_type',
+	{
+		id: serial('id').primaryKey(),
+		isPreset: boolean('is_preset').notNull().default(false),
+		name: varchar('name', { length: 512 }).notNull(),
+		description: text('description'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...medOrderTimestamps
+	},
+	(t) => [
+		index('med_order_order_type_name_idx').on(t.name),
+		index('med_order_order_type_preset_idx')
+			.on(t.isPreset)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+export const medOrderOrderTypeInactiveTable = pgTable(
+	'med_order_order_type_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		orderTypeId: integer('order_type_id')
+			.notNull()
+			.references(() => medOrderOrderTypeTable.id, {
+				onDelete: 'cascade'
+			}),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references(
+			(): AnyPgColumn => userTable.id,
+			{
+				onDelete: 'set null',
+				onUpdate: 'cascade'
+			}
+		)
+	},
+	(t) => [
+		uniqueIndex(
+			'med_order_order_type_inactive_hospital_type_uidx'
+		).on(t.hospitalId, t.orderTypeId),
+		index('med_order_order_type_inactive_hospital_id_idx').on(
+			t.hospitalId
+		),
+		index('med_order_order_type_inactive_order_type_id_idx').on(
+			t.orderTypeId
+		)
+	]
+);
+
+export const medOrderDoseUnitTable = pgTable(
+	'med_order_dose_unit',
+	{
+		id: serial('id').primaryKey(),
+		isPreset: boolean('is_preset').notNull().default(false),
+		name: varchar('name', { length: 512 }).notNull(),
+		description: text('description'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...medOrderTimestamps
+	},
+	(t) => [
+		index('med_order_dose_unit_name_idx').on(t.name),
+		index('med_order_dose_unit_preset_idx')
+			.on(t.isPreset)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+export const medOrderDoseUnitInactiveTable = pgTable(
+	'med_order_dose_unit_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		doseUnitId: integer('dose_unit_id')
+			.notNull()
+			.references(() => medOrderDoseUnitTable.id, {
+				onDelete: 'cascade'
+			}),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references(
+			(): AnyPgColumn => userTable.id,
+			{
+				onDelete: 'set null',
+				onUpdate: 'cascade'
+			}
+		)
+	},
+	(t) => [
+		uniqueIndex(
+			'med_order_dose_unit_inactive_hospital_dose_unit_uidx'
+		).on(t.hospitalId, t.doseUnitId),
+		index('med_order_dose_unit_inactive_hospital_id_idx').on(
+			t.hospitalId
+		),
+		index('med_order_dose_unit_inactive_dose_unit_id_idx').on(
+			t.doseUnitId
+		)
+	]
+);
+
+export const medOrderFoodRelationTable = pgTable(
+	'med_order_food_relation',
+	{
+		id: serial('id').primaryKey(),
+		isPreset: boolean('is_preset').notNull().default(false),
+		name: varchar('name', { length: 512 }).notNull(),
+		description: text('description'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...medOrderTimestamps
+	},
+	(t) => [
+		index('med_order_food_relation_name_idx').on(t.name),
+		index('med_order_food_relation_preset_idx')
+			.on(t.isPreset)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+export const medOrderFoodRelationInactiveTable = pgTable(
+	'med_order_food_relation_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		foodRelationId: integer('food_relation_id')
+			.notNull()
+			.references(() => medOrderFoodRelationTable.id, {
+				onDelete: 'cascade'
+			}),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references(
+			(): AnyPgColumn => userTable.id,
+			{
+				onDelete: 'set null',
+				onUpdate: 'cascade'
+			}
+		)
+	},
+	(t) => [
+		uniqueIndex(
+			'med_order_food_relation_inactive_hospital_food_uidx'
+		).on(t.hospitalId, t.foodRelationId),
+		index('med_order_food_relation_inactive_hospital_id_idx').on(
+			t.hospitalId
+		),
+		index('med_order_food_relation_inactive_food_relation_id_idx').on(
+			t.foodRelationId
+		)
+	]
+);
+
+export const medOrderDurationUnitTable = pgTable(
+	'med_order_duration_unit',
+	{
+		id: serial('id').primaryKey(),
+		isPreset: boolean('is_preset').notNull().default(false),
+		/** Short code: minute, hour, day, week, month */
+		code: varchar('code', { length: 64 }).notNull(),
+		name: varchar('name', { length: 512 }).notNull(),
+		sequenceNo: integer('sequence_no').notNull().default(0),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...medOrderTimestamps
+	},
+	(t) => [
+		uniqueIndex('med_order_duration_unit_global_code_uidx')
+			.on(t.code)
+			.where(sql`${t.deletedAt} IS NULL`),
+		index('med_order_duration_unit_preset_idx')
+			.on(t.isPreset)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+export const medOrderDurationUnitInactiveTable = pgTable(
+	'med_order_duration_unit_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		durationUnitId: integer('duration_unit_id')
+			.notNull()
+			.references(() => medOrderDurationUnitTable.id, {
+				onDelete: 'cascade'
+			}),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references(
+			(): AnyPgColumn => userTable.id,
+			{
+				onDelete: 'set null',
+				onUpdate: 'cascade'
+			}
+		)
+	},
+	(t) => [
+		uniqueIndex(
+			'med_order_duration_unit_inactive_hospital_unit_uidx'
+		).on(t.hospitalId, t.durationUnitId),
+		index('med_order_duration_unit_inactive_hospital_id_idx').on(
+			t.hospitalId
+		),
+		index('med_order_duration_unit_inactive_duration_unit_id_idx').on(
+			t.durationUnitId
+		)
+	]
+);
+
+/**
+ * Dosing frequency master.
+ * `kind`: fixed_times | interval | prn | custom (extensible).
+ */
+export const medOrderFrequencyTable = pgTable(
+	'med_order_frequency',
+	{
+		id: serial('id').primaryKey(),
+		label: varchar('label', { length: 512 }).notNull(),
+		/** Protected built-in rows; cannot be deleted and only allow active/inactive toggle. */
+		isPreset: boolean('is_preset').notNull().default(false),
+		description: text('description'),
+		abbreviation: varchar('abbreviation', { length: 64 }),
+		/** Occurrences per day (legacy-like). */
+		frequencyPerDay: decimal('frequency_per_day', {
+			precision: 18,
+			scale: 6
+		}),
+		sequenceNo: integer('sequence_no').notNull().default(0),
+		isCommonFrequency: boolean('is_common_frequency')
+			.notNull()
+			.default(false),
+		isTimingRequired: boolean('is_timing_required')
+			.notNull()
+			.default(false),
+		diffPlotOneHourlyValue: integer('diff_plot_one_hourly_value'),
+		diffPlotTwoHourlyValue: integer('diff_plot_two_hourly_value'),
+		diffPlotHalfHourlyValue: integer('diff_plot_half_hourly_value'),
+		diffPlotFourHourlyValue: integer('diff_plot_four_hourly_value'),
+		diffPlotSixHourlyValue: integer('diff_plot_six_hourly_value'),
+		variableDose: boolean('variable_dose').notNull().default(false),
+		pictorialDefinition: text('pictorial_definition'),
+		isFrequencyInfusion: boolean('is_frequency_infusion')
+			.notNull()
+			.default(false),
+		localLanguage: text('local_language'),
+		kind: varchar('kind', { length: 64 }).notNull().default('custom'),
+		summaryText: text('summary_text'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...medOrderTimestamps
+	},
+	(t) => [
+		index('med_order_frequency_label_idx').on(t.label),
+		index('med_order_frequency_preset_idx')
+			.on(t.isPreset)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+/**
+ * Hospital-scoped inactive list for frequencies.
+ * Master frequency rows stay global; hospitals only store disabled rows here.
+ */
+export const medOrderFrequencyInactiveTable = pgTable(
+	'med_order_frequency_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		frequencyId: integer('frequency_id')
+			.notNull()
+			.references(() => medOrderFrequencyTable.id, {
+				onDelete: 'cascade'
+			}),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references(
+			(): AnyPgColumn => userTable.id,
+			{
+				onDelete: 'set null',
+				onUpdate: 'cascade'
+			}
+		)
+	},
+	(t) => [
+		uniqueIndex(
+			'med_order_frequency_inactive_hospital_frequency_uidx'
+		).on(t.hospitalId, t.frequencyId),
+		index('med_order_frequency_inactive_hospital_id_idx').on(
+			t.hospitalId
+		),
+		index('med_order_frequency_inactive_frequency_id_idx').on(
+			t.frequencyId
+		)
+	]
+);
+
+export const medicationOrderBatchTable = pgTable(
+	'medication_order_batch',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		visitId: uuid('visit_id').references(
+			() => patientVisitTable.id,
+			{
+				onDelete: 'restrict'
+			}
+		),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		/**
+		 * External sales marker / display name (patient full name).
+		 * Set for external-origin batches even when `visitId` is present (OP visit + OP bill).
+		 * Internal sales keeps this null.
+		 */
+		extCustomerName: varchar('ext_customer_name', { length: 512 }),
+		advisingDoctor: varchar('advising_doctor', { length: 512 }),
+		orderingStaffId: uuid('ordering_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		consultantCosignedAt: timestamp('consultant_cosigned_at', {
+			withTimezone: true
+		}),
+		consultantCosignedBy: uuid('consultant_cosigned_by').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		batchNo: varchar('batch_no', { length: 256 }).notNull(),
+		batchRemarks: text('batch_remarks'),
+		...medOrderTimestamps
+	},
+	(t) => [
+		index('medication_order_batch_hospital_id_idx').on(t.hospitalId),
+		index('medication_order_batch_visit_id_idx').on(t.visitId),
+		uniqueIndex('medication_order_batch_hospital_batch_no_uidx')
+			.on(t.hospitalId, t.batchNo)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+export const medicationOrderLineTable = pgTable(
+	'medication_order_line',
+	{
+		id: serial('id').primaryKey(),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => medicationOrderBatchTable.id, {
+				onDelete: 'cascade'
+			}),
+		lineNo: integer('line_no').notNull().default(1),
+		itemMasterId: integer('item_master_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		dose: decimal('dose', { precision: 18, scale: 6 }).notNull(),
+		doseUnitId: integer('dose_unit_id')
+			.notNull()
+			.references(() => medOrderDoseUnitTable.id, {
+				onDelete: 'restrict'
+			}),
+		frequencyId: integer('frequency_id')
+			.notNull()
+			.references(() => medOrderFrequencyTable.id, {
+				onDelete: 'restrict'
+			}),
+		durationValue: decimal('duration_value', {
+			precision: 18,
+			scale: 6
+		}).notNull(),
+		durationUnitId: integer('duration_unit_id')
+			.notNull()
+			.references(() => medOrderDurationUnitTable.id, {
+				onDelete: 'restrict'
+			}),
+		formId: integer('form_id').references(
+			() => medOrderFormTable.id,
+			{
+				onDelete: 'set null'
+			}
+		),
+		routeId: integer('route_id').references(
+			() => medOrderRouteTable.id,
+			{
+				onDelete: 'set null'
+			}
+		),
+		orderTypeId: integer('order_type_id').references(
+			() => medOrderOrderTypeTable.id,
+			{ onDelete: 'set null' }
+		),
+		foodRelationId: integer('food_relation_id').references(
+			() => medOrderFoodRelationTable.id,
+			{ onDelete: 'set null' }
+		),
+		startAt: timestamp('start_at', {
+			withTimezone: true,
+			mode: 'string'
+		}).notNull(),
+		testDose: text('test_dose'),
+		substituteNotAllowed: boolean('substitute_not_allowed')
+			.notNull()
+			.default(false),
+		itemUnitMasterId: integer('item_unit_master_id').references(
+			() => itemUnitMasterTable.id,
+			{ onDelete: 'restrict' }
+		),
+		/** Sale quantity in {@link outUnitId}. */
+		qtyOut: decimal('qty_out', {
+			precision: 18,
+			scale: 6
+		}),
+		/** Unit for {@link qtyOut} and {@link unitSalePrice} (purchase or issue unit from IUM). */
+		outUnitId: integer('out_unit_id').references(() => unitTable.id, {
+			onDelete: 'restrict'
+		}),
+		unitSalePrice: decimal('unit_sale_price', {
+			precision: 14,
+			scale: 2
+		}),
+		/** Formula template revision used for {@link unitSalePrice} / {@link unitSalePriceIssue}. */
+		pricingFormulaTemplateId: integer('pricing_formula_template_id').references(
+			() => invPricingFormulaTemplateTable.id,
+			{ onDelete: 'restrict' }
+		),
+		/** `IS` | `ES` | `DC` at charge time. */
+		pricingModule: varchar('pricing_module', { length: 16 }),
+		/** Primary stock batch used for COST slot at charge time. */
+		pricingBatchId: integer('pricing_batch_id').references(
+			() => itemBatchTable.id,
+			{ onDelete: 'restrict' }
+		),
+		/** Patient charge per issue unit (formula anchor). */
+		unitSalePriceIssue: decimal('unit_sale_price_issue', {
+			precision: 14,
+			scale: 2
+		}),
+		pricingInputsSnapshot: jsonb('pricing_inputs_snapshot'),
+		pricingComputedAt: timestamp('pricing_computed_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		lineRemarks: text('line_remarks'),
+		...medOrderTimestamps
+	},
+	(t) => [
+		index('medication_order_line_batch_id_idx').on(t.batchId),
+		index('medication_order_line_pricing_formula_template_id_idx').on(
+			t.pricingFormulaTemplateId
+		)
+	]
+);
+
+export const medicationOrderLineAllocationTable = pgTable(
+	'medication_order_line_allocation',
+	{
+		id: serial('id').primaryKey(),
+		lineId: integer('line_id')
+			.notNull()
+			.references(() => medicationOrderLineTable.id, {
+				onDelete: 'cascade'
+			}),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
+		qtyPurchase: decimal('qty_purchase', {
+			precision: 18,
+			scale: 6
+		}).notNull(),
+		...medOrderTimestamps
+	},
+	(t) => [
+		index('medication_order_line_allocation_line_id_idx').on(
+			t.lineId
+		),
+		index('medication_order_line_allocation_batch_id_idx').on(
+			t.batchId
+		)
+	]
+);
+
+export const medicationOrderBatchPaymentTable = pgTable(
+	'medication_order_batch_payment',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => medicationOrderBatchTable.id, {
+				onDelete: 'cascade'
+			}),
+		paymentMethod: varchar('payment_method', { length: 64 })
+			.notNull()
+			.default('cash'),
+		amountDue: decimal('amount_due', {
+			precision: 14,
+			scale: 2
+		}).notNull(),
+		amountPaid: decimal('amount_paid', {
+			precision: 14,
+			scale: 2
+		}).notNull(),
+		paidAt: timestamp('paid_at', {
+			withTimezone: true,
+			mode: 'string'
+		}).notNull(),
+		receiptNo: varchar('receipt_no', { length: 256 }).notNull(),
+		...medOrderTimestamps
+	},
+	(t) => [
+		uniqueIndex('medication_order_batch_payment_batch_id_uidx')
+			.on(t.batchId)
+			.where(sql`${t.deletedAt} IS NULL`),
+		uniqueIndex(
+			'medication_order_batch_payment_hospital_receipt_uidx'
+		)
+			.on(t.hospitalId, t.receiptNo)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+// Merged from clinical-platform-table.ts
+const clinicalTimestamps = {
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => sql`now()`)
+} as const;
+
+/** Structured order set header (feature 63). */
+export const clinicalOrderSetTable = pgTable(
+	'clinical_order_set',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 512 }).notNull(),
+		specialtyTag: varchar('specialty_tag', { length: 128 }),
+		version: integer('version').notNull().default(1),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...clinicalTimestamps
+	},
+	(t) => [index('clinical_order_set_hospital_idx').on(t.hospitalId)]
+);
+
+export const clinicalOrderSetTriggerTable = pgTable(
+	'clinical_order_set_trigger',
+	{
+		id: serial('id').primaryKey(),
+		orderSetId: integer('order_set_id')
+			.notNull()
+			.references(() => clinicalOrderSetTable.id, {
+				onDelete: 'cascade'
+			}),
+		triggerType: varchar('trigger_type', { length: 32 }).notNull(),
+		triggerRefId: integer('trigger_ref_id'),
+		triggerRefCode: varchar('trigger_ref_code', { length: 128 }),
+		...clinicalTimestamps
+	},
+	(t) => [index('clinical_order_set_trigger_set_idx').on(t.orderSetId)]
+);
+
+export const clinicalOrderSetLineTable = pgTable(
+	'clinical_order_set_line',
+	{
+		id: serial('id').primaryKey(),
+		orderSetId: integer('order_set_id')
+			.notNull()
+			.references(() => clinicalOrderSetTable.id, {
+				onDelete: 'cascade'
+			}),
+		lineNo: integer('line_no').notNull().default(1),
+		lineType: varchar('line_type', { length: 32 }).notNull(),
+		payloadJson: jsonb('payload_json').notNull().default({}),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...clinicalTimestamps
+	},
+	(t) => [index('clinical_order_set_line_set_idx').on(t.orderSetId)]
+);
+
+/** CDS prescribing alerts (feature 64). */
+export const prescribingAlertTable = pgTable(
+	'prescribing_alert',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		visitId: uuid('visit_id').references(() => patientVisitTable.id, {
+			onDelete: 'set null'
+		}),
+		batchId: integer('batch_id').references(
+			() => medicationOrderBatchTable.id,
+			{ onDelete: 'set null' }
+		),
+		alertType: varchar('alert_type', { length: 64 }).notNull(),
+		severity: varchar('severity', { length: 16 }).notNull(),
+		message: text('message').notNull(),
+		conceptRef: varchar('concept_ref', { length: 64 }),
+		overridden: boolean('overridden').notNull().default(false),
+		overrideReasonCode: varchar('override_reason_code', { length: 64 }),
+		overrideRemark: text('override_remark'),
+		overriddenBy: uuid('overridden_by').references(() => staffTable.id, {
+			onDelete: 'set null'
+		}),
+		overriddenAt: timestamp('overridden_at', { withTimezone: true }),
+		createdBy: uuid('created_by').references(() => staffTable.id, {
+			onDelete: 'set null'
+		}),
+		...clinicalTimestamps
+	},
+	(t) => [
+		index('prescribing_alert_hospital_idx').on(t.hospitalId),
+		index('prescribing_alert_batch_idx').on(t.batchId)
+	]
+);
+
+/** Hospital formulary tier (feature 65). */
+export const hospitalFormularyItemTable = pgTable(
+	'hospital_formulary_item',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		itemMasterId: integer('item_master_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'cascade' }),
+		tier: varchar('tier', { length: 32 }).notNull(),
+		effectiveFrom: date('effective_from'),
+		effectiveTo: date('effective_to'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...clinicalTimestamps
+	},
+	(t) => [
+		uniqueIndex('hospital_formulary_item_hospital_item_uidx').on(
+			t.hospitalId,
+			t.itemMasterId
+		)
+	]
+);
+
+export const formularySubstitutionRuleTable = pgTable(
+	'formulary_substitution_rule',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		restrictedItemMasterId: integer('restricted_item_master_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'cascade' }),
+		preferredItemMasterId: integer('preferred_item_master_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'cascade' }),
+		conditionsJson: jsonb('conditions_json').default({}),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...clinicalTimestamps
+	},
+	(t) => [index('formulary_sub_rule_hospital_idx').on(t.hospitalId)]
+);
+
+/** BCMA product barcode (feature 66). */
+export const pharmacyProductIdentifierTable = pgTable(
+	'pharmacy_product_identifier',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		itemMasterId: integer('item_master_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'cascade' }),
+		barcodeValue: varchar('barcode_value', { length: 128 }).notNull(),
+		identifierType: varchar('identifier_type', { length: 16 }).notNull(),
+		isPrimary: boolean('is_primary').notNull().default(false),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...clinicalTimestamps
+	},
+	(t) => [
+		uniqueIndex('pharmacy_product_id_hospital_barcode_uidx').on(
+			t.hospitalId,
+			t.barcodeValue
+		),
+		index('pharmacy_product_id_item_idx').on(t.itemMasterId)
+	]
+);
+
+/** Scheduled dose from active med order line (feature 66). */
+export const medicationOrderScheduleTable = pgTable(
+	'medication_order_schedule',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		visitId: uuid('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+		lineId: integer('line_id')
+			.notNull()
+			.references(() => medicationOrderLineTable.id, {
+				onDelete: 'cascade'
+			}),
+		scheduledAt: timestamp('scheduled_at', {
+			withTimezone: true,
+			mode: 'string'
+		}).notNull(),
+		doseLabel: varchar('dose_label', { length: 256 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...clinicalTimestamps
+	},
+	(t) => [
+		index('med_order_schedule_visit_idx').on(t.visitId),
+		index('med_order_schedule_due_idx').on(t.scheduledAt)
+	]
+);
+
+export const medicationAdministrationTable = pgTable(
+	'medication_administration',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		visitId: uuid('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+		scheduleId: integer('schedule_id').references(
+			() => medicationOrderScheduleTable.id,
+			{ onDelete: 'set null' }
+		),
+		lineId: integer('line_id')
+			.notNull()
+			.references(() => medicationOrderLineTable.id, {
+				onDelete: 'restrict'
+			}),
+		administrationStatus: varchar('administration_status', {
+			length: 32
+		}).notNull(),
+		administeredAt: timestamp('administered_at', {
+			withTimezone: true,
+			mode: 'string'
+		}).notNull(),
+		scannedPatientToken: varchar('scanned_patient_token', {
+			length: 256
+		}),
+		scannedProductBarcode: varchar('scanned_product_barcode', {
+			length: 128
+		}),
+		scannedNurseCode: varchar('scanned_nurse_code', { length: 128 }),
+		nurseStaffId: uuid('nurse_staff_id').references(() => staffTable.id, {
+			onDelete: 'set null'
+		}),
+		lateReason: text('late_reason'),
+		remark: text('remark'),
+		...clinicalTimestamps
+	},
+	(t) => [
+		index('med_administration_visit_idx').on(t.visitId),
+		index('med_administration_schedule_idx').on(t.scheduleId)
+	]
+);
+
+/** IV infusion extension (feature 67). */
+export const medicationOrderInfusionTable = pgTable(
+	'medication_order_infusion',
+	{
+		id: serial('id').primaryKey(),
+		lineId: integer('line_id')
+			.notNull()
+			.references(() => medicationOrderLineTable.id, {
+				onDelete: 'cascade'
+			}),
+		infusionType: varchar('infusion_type', { length: 32 }).notNull(),
+		totalVolumeMl: decimal('total_volume_ml', {
+			precision: 18,
+			scale: 6
+		}),
+		rateMlHr: decimal('rate_ml_hr', { precision: 18, scale: 6 }),
+		rateWeightBasedJson: jsonb('rate_weight_based_json'),
+		diluentItemMasterId: integer('diluent_item_master_id').references(
+			() => itemMasterTable.id,
+			{ onDelete: 'set null' }
+		),
+		concentration: varchar('concentration', { length: 128 }),
+		pumpId: varchar('pump_id', { length: 128 }),
+		...clinicalTimestamps
+	},
+	(t) => [
+		uniqueIndex('med_order_infusion_line_uidx').on(t.lineId)
+	]
+);
+
+/** Nursing care plan templates (feature 68). */
+export const nursingCarePlanTemplateTable = pgTable(
+	'nursing_care_plan_template',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		title: varchar('title', { length: 512 }).notNull(),
+		nandaLabel: varchar('nanda_label', { length: 256 }),
+		sectionsJson: jsonb('sections_json').notNull().default([]),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...clinicalTimestamps
+	},
+	(t) => [index('nursing_care_plan_tpl_hospital_idx').on(t.hospitalId)]
+);
+
+export const nursingCarePlanInstanceTable = pgTable(
+	'nursing_care_plan_instance',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		visitId: uuid('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id),
+		templateId: integer('template_id').references(
+			() => nursingCarePlanTemplateTable.id,
+			{ onDelete: 'set null' }
+		),
+		contentJson: jsonb('content_json').notNull().default({}),
+		signedAt: timestamp('signed_at', { withTimezone: true }),
+		signedBy: uuid('signed_by').references(() => staffTable.id, {
+			onDelete: 'set null'
+		}),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...clinicalTimestamps
+	},
+	(t) => [index('nursing_care_plan_inst_visit_idx').on(t.visitId)]
+);
+
+/** Clinical alerts inbox (feature 69). */
+export const clinicalAlertTable = pgTable(
+	'clinical_alert',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		visitId: uuid('visit_id').references(() => patientVisitTable.id, {
+			onDelete: 'set null'
+		}),
+		ruleCode: varchar('rule_code', { length: 64 }).notNull(),
+		severity: varchar('severity', { length: 16 }).notNull(),
+		title: varchar('title', { length: 512 }).notNull(),
+		message: text('message').notNull(),
+		payloadJson: jsonb('payload_json').default({}),
+		alertStatus: varchar('alert_status', { length: 32 })
+			.notNull()
+			.default('open'),
+		assignedStaffId: uuid('assigned_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }),
+		acknowledgedBy: uuid('acknowledged_by').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		snoozedUntil: timestamp('snoozed_until', { withTimezone: true }),
+		...clinicalTimestamps
+	},
+	(t) => [
+		index('clinical_alert_hospital_status_idx').on(
+			t.hospitalId,
+			t.alertStatus
+		),
+		index('clinical_alert_visit_idx').on(t.visitId)
+	]
+);
+
+/** Progress note addendum (feature 71). */
+export const progressNoteAddendumReasonTable = pgTable(
+	'progress_note_addendum_reason',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		code: varchar('code', { length: 64 }).notNull(),
+		label: varchar('label', { length: 256 }).notNull(),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...clinicalTimestamps
+	},
+	(t) => [
+		uniqueIndex('progress_note_addendum_reason_hospital_code_uidx').on(
+			t.hospitalId,
+			t.code
+		)
+	]
+);
+
+export const progressNoteAddendumTable = pgTable(
+	'progress_note_addendum',
+	{
+		id: serial('id').primaryKey(),
+		progressNoteId: integer('progress_note_id')
+			.notNull()
+			.references(() => progressNoteTable.id, { onDelete: 'cascade' }),
+		reasonCode: varchar('reason_code', { length: 64 }).notNull(),
+		body: text('body').notNull(),
+		authorStaffId: uuid('author_staff_id').references(() => staffTable.id, {
+			onDelete: 'set null'
+		}),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+	},
+	(t) => [
+		index('progress_note_addendum_note_idx').on(t.progressNoteId)
+	]
+);
+
+/** ROI tracking (feature 72). */
+export const roiRequestTable = pgTable(
+	'roi_request',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		requesterName: varchar('requester_name', { length: 512 }).notNull(),
+		requesterContact: varchar('requester_contact', { length: 256 }),
+		scopeDescription: text('scope_description').notNull(),
+		requestStatus: varchar('request_status', { length: 32 }).notNull(),
+		dueDate: date('due_date'),
+		assignedStaffId: uuid('assigned_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		...clinicalTimestamps
+	},
+	(t) => [index('roi_request_hospital_status_idx').on(t.hospitalId)]
+);
+
+export const roiRequestEventTable = pgTable(
+	'roi_request_event',
+	{
+		id: serial('id').primaryKey(),
+		roiRequestId: integer('roi_request_id')
+			.notNull()
+			.references(() => roiRequestTable.id, { onDelete: 'cascade' }),
+		eventType: varchar('event_type', { length: 64 }).notNull(),
+		remark: text('remark'),
+		staffId: uuid('staff_id').references(() => staffTable.id, {
+			onDelete: 'set null'
+		}),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+	},
+	(t) => [index('roi_request_event_request_idx').on(t.roiRequestId)]
+);
+
+/** Immunization (feature 74). */
+export const immunizationMasterTable = pgTable(
+	'immunization_master',
+	{
+		id: serial('id').primaryKey(),
+		cvxCode: varchar('cvx_code', { length: 16 }).notNull(),
+		name: varchar('name', { length: 512 }).notNull(),
+		scheduleRulesJson: jsonb('schedule_rules_json').default([]),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...clinicalTimestamps
+	},
+	(t) => [uniqueIndex('immunization_master_cvx_uidx').on(t.cvxCode)]
+);
+
+export const patientImmunizationTable = pgTable(
+	'patient_immunization',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		visitId: uuid('visit_id').references(() => patientVisitTable.id, {
+			onDelete: 'set null'
+		}),
+		immunizationMasterId: integer('immunization_master_id')
+			.notNull()
+			.references(() => immunizationMasterTable.id, {
+				onDelete: 'restrict'
+			}),
+		administeredOn: date('administered_on').notNull(),
+		doseSequence: integer('dose_sequence').notNull().default(1),
+		lotNumber: varchar('lot_number', { length: 128 }),
+		site: varchar('site', { length: 128 }),
+		administratorStaffId: uuid('administrator_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		visGiven: boolean('vis_given').notNull().default(false),
+		remark: text('remark'),
+		...clinicalTimestamps
+	},
+	(t) => [index('patient_immunization_patient_idx').on(t.patientId)]
+);
+
+/** Chronic disease registry (feature 75). */
+export const registryDefinitionTable = pgTable(
+	'registry_definition',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		code: varchar('code', { length: 64 }).notNull(),
+		name: varchar('name', { length: 512 }).notNull(),
+		inclusionRulesJson: jsonb('inclusion_rules_json').default({}),
+		recallIntervalDays: integer('recall_interval_days').default(90),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...clinicalTimestamps
+	},
+	(t) => [
+		uniqueIndex('registry_definition_hospital_code_uidx').on(
+			t.hospitalId,
+			t.code
+		)
+	]
+);
+
+export const registryMemberTable = pgTable(
+	'registry_member',
+	{
+		id: serial('id').primaryKey(),
+		registryDefinitionId: integer('registry_definition_id')
+			.notNull()
+			.references(() => registryDefinitionTable.id, {
+				onDelete: 'cascade'
+			}),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		enrolledAt: timestamp('enrolled_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		lastReviewAt: timestamp('last_review_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		nextRecallDate: date('next_recall_date'),
+		memberStatus: varchar('member_status', { length: 32 }).notNull(),
+		...clinicalTimestamps
+	},
+	(t) => [
+		uniqueIndex('registry_member_registry_patient_uidx').on(
+			t.registryDefinitionId,
+			t.patientId
+		),
+		index('registry_member_recall_idx').on(t.nextRecallDate)
+	]
+);
+
+// Merged from perioperative-table.ts
+const perioperativeTimestamps = {
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+};
+
+export const clinicalFormTemplateTable = pgTable(
+	'clinical_form_template',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id').references(() => hospitalTable.id, {
+			onDelete: 'cascade'
+		}),
+		code: varchar('code', { length: 128 }).notNull(),
+		version: integer('version').notNull().default(1),
+		title: varchar('title', { length: 512 }).notNull(),
+		schemaJson: jsonb('schema_json').notNull(),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...perioperativeTimestamps
+	},
+	(t) => [
+		uniqueIndex('clinical_form_template_code_hospital_uidx').on(
+			t.code,
+			sql`COALESCE(${t.hospitalId}, '00000000-0000-0000-0000-000000000000'::uuid)`
+		)
+	]
+);
+
+export const clinicalFormInstanceTable = pgTable(
+	'clinical_form_instance',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		visitId: uuid('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+		surgicalCaseId: integer('surgical_case_id'),
+		templateId: integer('template_id')
+			.notNull()
+			.references(() => clinicalFormTemplateTable.id),
+		contextType: varchar('context_type', { length: 64 }).notNull(),
+		valuesJson: jsonb('values_json').notNull().default({}),
+		statusTaggingId: integer('status_tagging_id').references(
+			() => statusTaggingTable.id
+		),
+		signedAt: timestamp('signed_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		signedBy: uuid('signed_by').references(() => staffTable.id),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...perioperativeTimestamps
+	},
+	(t) => [
+		index('clinical_form_instance_visit_idx').on(t.visitId),
+		index('clinical_form_instance_case_idx').on(t.surgicalCaseId)
+	]
+);
+
+export const otRoomTable = pgTable(
+	'ot_room',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		name: varchar('name', { length: 256 }).notNull(),
+		sequenceNo: integer('sequence_no').notNull().default(0),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...perioperativeTimestamps
+	},
+	(t) => [index('ot_room_hospital_branch_idx').on(t.hospitalId, t.branchId)]
+);
+
+export const surgicalCaseTable = pgTable(
+	'surgical_case',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		visitId: uuid('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+		admissionId: integer('admission_id').references(
+			() => ipdAdmissionTable.id,
+			{ onDelete: 'set null' }
+		),
+		serviceOrderDetailId: integer('service_order_detail_id').references(
+			() => serviceOrderDetailTable.id,
+			{ onDelete: 'set null' }
+		),
+		otRoomId: integer('ot_room_id').references(() => otRoomTable.id, {
+			onDelete: 'set null'
+		}),
+		procedureName: varchar('procedure_name', { length: 512 })
+			.notNull()
+			.default(''),
+		caseType: varchar('case_type', { length: 32 })
+			.notNull()
+			.default('general'),
+		priority: varchar('priority', { length: 32 })
+			.notNull()
+			.default('elective'),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id),
+		scheduledStart: timestamp('scheduled_start', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		scheduledEnd: timestamp('scheduled_end', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		actualStart: timestamp('actual_start', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		actualEnd: timestamp('actual_end', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		preOpCompleteAt: timestamp('pre_op_complete_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		displacedByCaseId: integer('displaced_by_case_id'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...perioperativeTimestamps
+	},
+	(t) => [
+		index('surgical_case_hospital_idx').on(t.hospitalId),
+		index('surgical_case_visit_idx').on(t.visitId),
+		index('surgical_case_room_schedule_idx').on(
+			t.otRoomId,
+			t.scheduledStart
+		)
+	]
+);
+
+export const surgicalCaseStaffTable = pgTable(
+	'surgical_case_staff',
+	{
+		surgicalCaseId: integer('surgical_case_id')
+			.notNull()
+			.references(() => surgicalCaseTable.id, { onDelete: 'cascade' }),
+		staffId: uuid('staff_id')
+			.notNull()
+			.references(() => staffTable.id),
+		roleCode: varchar('role_code', { length: 32 }).notNull()
+	},
+	(t) => [
+		primaryKey({
+			columns: [t.surgicalCaseId, t.staffId, t.roleCode]
+		})
+	]
+);
+
+export const surgicalCaseAuditTable = pgTable(
+	'surgical_case_audit',
+	{
+		id: serial('id').primaryKey(),
+		surgicalCaseId: integer('surgical_case_id')
+			.notNull()
+			.references(() => surgicalCaseTable.id, { onDelete: 'cascade' }),
+		action: varchar('action', { length: 64 }).notNull(),
+		detailJson: jsonb('detail_json'),
+		staffId: uuid('staff_id').references(() => staffTable.id),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+	},
+	(t) => [index('surgical_case_audit_case_idx').on(t.surgicalCaseId)]
+);
+
+export const edEncounterTable = pgTable(
+	'ed_encounter',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		visitId: uuid('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+		boardColumn: varchar('board_column', { length: 64 })
+			.notNull()
+			.default('waiting_triage'),
+		fastTrack: boolean('fast_track').notNull().default(false),
+		triageSystem: varchar('triage_system', { length: 16 }),
+		triageFormInstanceId: integer('triage_form_instance_id'),
+		acuityLevel: varchar('acuity_level', { length: 32 }),
+		edTriageLevelId: integer('ed_triage_level_id').references(
+			() => edTriageLevelTable.id,
+			{ onDelete: 'set null' }
+		),
+		isMlc: boolean('is_mlc').notNull().default(false),
+		registrationRemarks: text('registration_remarks'),
+		assignedDoctorId: uuid('assigned_doctor_id').references(
+			() => staffTable.id
+		),
+		erWardId: integer('er_ward_id').references(() => wardTable.id, {
+			onDelete: 'set null'
+		}),
+		erRoomId: integer('er_room_id').references(() => roomTable.id, {
+			onDelete: 'set null'
+		}),
+		erBedId: integer('er_bed_id').references(() => bedTable.id, {
+			onDelete: 'set null'
+		}),
+		erBedAssignedAt: timestamp('er_bed_assigned_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		arrivedAt: timestamp('arrived_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		dischargedAt: timestamp('discharged_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		retainErBedAfterDischarge: boolean('retain_er_bed_after_discharge')
+			.notNull()
+			.default(false),
+		dischargeRemarks: text('discharge_remarks'),
+		erBedChargeServiceOrderDetailId: integer(
+			'er_bed_charge_service_order_detail_id'
+		),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...perioperativeTimestamps
+	},
+	(t) => [uniqueIndex('ed_encounter_visit_uidx').on(t.visitId)]
+);
+
+export const traumaActivationTable = pgTable(
+	'trauma_activation',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		visitId: uuid('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+		levelCode: varchar('level_code', { length: 16 }).notNull(),
+		activatedAt: timestamp('activated_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		deactivatedAt: timestamp('deactivated_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		formInstanceId: integer('form_instance_id'),
+		activatedBy: uuid('activated_by').references(() => staffTable.id),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...perioperativeTimestamps
+	},
+	(t) => [index('trauma_activation_hospital_idx').on(t.hospitalId)]
+);
+
+export const surgicalCaseImplantTable = pgTable(
+	'surgical_case_implant',
+	{
+		id: serial('id').primaryKey(),
+		surgicalCaseId: integer('surgical_case_id')
+			.notNull()
+			.references(() => surgicalCaseTable.id, { onDelete: 'cascade' }),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		itemBatchId: integer('item_batch_id').references(
+			() => itemBatchTable.id,
+			{ onDelete: 'set null' }
+		),
+		udiRaw: varchar('udi_raw', { length: 512 }),
+		quantity: decimal('quantity', { precision: 14, scale: 4 })
+			.notNull()
+			.default('1'),
+		departmentConsumptionId: uuid('department_consumption_id'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...perioperativeTimestamps
+	},
+	(t) => [index('surgical_case_implant_case_idx').on(t.surgicalCaseId)]
+);
+
+export const hospitalPerioperativeSettingTable = pgTable(
+	'hospital_perioperative_setting',
+	{
+		hospitalId: uuid('hospital_id')
+			.primaryKey()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		defaultEdTriageSystem: varchar('default_ed_triage_system', {
+			length: 16
+		})
+			.notNull()
+			.default('esi'),
+		preOpMandatory: boolean('pre_op_mandatory').notNull().default(true),
+		whoBlockWithoutTimeout: boolean('who_block_without_timeout')
+			.notNull()
+			.default(false),
+		updatedAt: timestamp('updated_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+	}
+);
+
+export const ldEncounterTable = pgTable(
+	'ld_encounter',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		visitId: uuid('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+		boardColumn: varchar('board_column', { length: 64 })
+			.notNull()
+			.default('active_labor'),
+		partogramFormInstanceId: integer('partogram_form_instance_id'),
+		deliveryFormInstanceId: integer('delivery_form_instance_id'),
+		surgicalCaseId: integer('surgical_case_id').references(
+			() => surgicalCaseTable.id,
+			{ onDelete: 'set null' }
+		),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...perioperativeTimestamps
+	},
+	(t) => [uniqueIndex('ld_encounter_visit_uidx').on(t.visitId)]
+);
+
+// Merged from hospital-document-table.ts
+const docLinkTimestamps = {
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+};
+
+/** Hospital ↔ global document (type + layout are per hospital). */
+export const hospitalDocumentTable = pgTable(
+	'hospital_document',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		documentId: integer('document_id')
+			.notNull()
+			.references(() => documentTable.id, { onDelete: 'cascade' }),
+		documentTypeId: integer('document_type_id')
+			.notNull()
+			.references(() => documentTypeTable.id),
+		locale: varchar('locale', { length: 16 }).notNull().default('en'),
+		documentSettingId: integer('document_setting_id').references(
+			() => hospitalDocumentSettingsTable.id
+		),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...docLinkTimestamps
+	},
+	(t) => [
+		uniqueIndex('hospital_document_hospital_document_uidx').on(
+			t.hospitalId,
+			t.documentId
+		),
+		index('hospital_document_hospital_idx').on(t.hospitalId),
+		index('hospital_document_document_type_id_idx').on(t.documentTypeId)
+	]
+);
+
+export const hospitalDocumentTextPlaceholderTable = pgTable(
+	'hospital_document_text_placeholder',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		code: varchar('code', { length: 64 }).notNull(),
+		text: text('text').notNull(),
+		description: text('description'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...docLinkTimestamps
+	},
+	(t) => [
+		uniqueIndex('hospital_doc_text_ph_hospital_code_uidx').on(
+			t.hospitalId,
+			t.code
+		),
+		index('hospital_doc_text_ph_hospital_idx').on(t.hospitalId)
+	]
+);
+
+export { documentTable, documentTypeTable } from '../master-table/master-table';

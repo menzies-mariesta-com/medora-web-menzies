@@ -64,13 +64,20 @@
 
 	$effect(() => {
 		if (!hospitalId) return;
+		let cancelled = false;
+		const ac = new AbortController();
 		void (async () => {
 			const res = await fetch(
 				`/api/medora/hospital/${hospitalId}/home/administration/ward-master?active=1`,
-				{ credentials: 'include' }
+				{ credentials: 'include', signal: ac.signal }
 			);
+			if (cancelled) return;
 			if (res.ok) wards = (await res.json()) as WardRow[];
 		})();
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	async function handleConfirm() {

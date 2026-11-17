@@ -13,6 +13,10 @@ import { loadAdminPagePermissions } from '$lib/server/medora/admin/admin-permiss
 import { redirect } from '@sveltejs/kit';
 import { applySecurityHeaders } from '$lib/server/http/security-headers.server';
 import {
+	finalizeAppResponse,
+	tryEarlyCachedApiGet
+} from '$lib/server/http/finalize-response.server';
+import {
 	applyCorsToResponse,
 	optionsPreflightResponse
 } from '$lib/server/http/cors-patient-api.server';
@@ -25,6 +29,7 @@ import {
 	doctorApiReadOnlyResponse,
 	isDoctorApiReadOnlyViolation
 } from '$lib/server/medora/doctor-portal/doctor-api-read-only.server';
+import { ownerApiReadOnlyResponseIfNeeded } from '$lib/server/medora/plan/owner-api-read-only.server';
 
 const NOISE_404_PATHS = new Set([
 	'/favicon.ico',
@@ -179,6 +184,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	return runWithRequestAuditUser(event.locals.user?.id ?? null, async () => {
+	const ownerReadOnly = await ownerApiReadOnlyResponseIfNeeded(event);
+	if (ownerReadOnly) return applySecurityHeaders(ownerReadOnly, event);
+
 	const twoFactorGate =
 		rejectMutatingMedoraApiWithoutTwoFactor(event);
 	if (twoFactorGate)
@@ -200,6 +208,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return applySecurityHeaders(withCors, event);
 	}
 
+	const earlyApi = await tryEarlyCachedApiGet(event);
+	if (earlyApi) return earlyApi;
+
 	const response = await paraglideMiddleware(
 		event.request,
 		({
@@ -213,7 +224,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			return resolve(event, {
 				transformPageChunk: ({ html }) =>
 					html.replace('%paraglide.lang%', locale)
-			}).then((response) => applySecurityHeaders(response, event));
+			}).then((resolved) => finalizeAppResponse(event, resolved));
 		}
 	);
 	if (pathname.startsWith('/api/doctor/')) {

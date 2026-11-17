@@ -185,7 +185,10 @@
 		}
 	}
 
-	async function fetchVisit(): Promise<{
+	async function fetchVisit(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}): Promise<{
 		patientId: string;
 		hospitalId: string;
 	} | null> {
@@ -193,11 +196,14 @@
 		isLoadingVisit = true;
 		try {
 			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/allergy?mode=visit.get&visitId=${visitId}`
+				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/allergy?mode=visit.get&visitId=${visitId}`,
+				{ signal: opts?.signal }
 			);
+			if (opts?.isCancelled?.()) return null;
 			if (!res.ok)
 				throw new Error(`Visit load failed (${res.status})`);
 			const v = await res.json();
+			if (opts?.isCancelled?.()) return null;
 			if (v) {
 				const nextVisit = {
 					patientId: v.patientId,
@@ -210,17 +216,22 @@
 				return null;
 			}
 		} catch {
+			if (opts?.isCancelled?.()) return null;
 			visit = null;
 			return null;
 		} finally {
-			isLoadingVisit = false;
+			if (!opts?.isCancelled?.()) isLoadingVisit = false;
 		}
 	}
 
 	async function fetchAllergies(
 		patientId: string,
 		hospitalIdParam: string | undefined,
-		options?: { force?: boolean }
+		options?: {
+			force?: boolean;
+			signal?: AbortSignal;
+			isCancelled?: () => boolean;
+		}
 	) {
 		const pageSize = Number(pageSizeStr) || 10;
 		const requestKey = JSON.stringify({
@@ -255,19 +266,23 @@
 				qs.set('statusId', String(statusId));
 
 			const res = await fetch(
-				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/allergy?${qs.toString()}`
+				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/allergy?${qs.toString()}`,
+				{ signal: options?.signal }
 			);
+			if (options?.isCancelled?.()) return;
 			if (!res.ok)
 				throw new Error(`Allergy load failed (${res.status})`);
 			const result = await res.json();
+			if (options?.isCancelled?.()) return;
 			patientAllergies = result.data;
 			totalAllergies = result.total;
 		} catch (err) {
+			if (options?.isCancelled?.()) return;
 			console.error(err);
 			patientAllergies = [];
 			totalAllergies = 0;
 		} finally {
-			isLoadingAllergies = false;
+			if (!options?.isCancelled?.()) isLoadingAllergies = false;
 		}
 	}
 
@@ -280,15 +295,29 @@
 				return;
 			}
 			lastLoadedVisitKey = visitKey;
-			(async () => {
-				const resolvedVisit = await fetchVisit();
+			let cancelled = false;
+			const ac = new AbortController();
+			void (async () => {
+				const resolvedVisit = await fetchVisit({
+					signal: ac.signal,
+					isCancelled: () => cancelled
+				});
+				if (cancelled) return;
 				if (resolvedVisit) {
 					await fetchAllergies(
 						resolvedVisit.patientId,
-						resolvedVisit.hospitalId
+						resolvedVisit.hospitalId,
+						{
+							signal: ac.signal,
+							isCancelled: () => cancelled
+						}
 					);
 				}
 			})();
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 		} else {
 			lastLoadedVisitKey = '';
 			visit = null;

@@ -1,12 +1,23 @@
+import { join } from 'node:path';
 import nodemailer from 'nodemailer';
 import { env } from '$env/dynamic/private';
+import {
+	EMAIL_LOGO_CID,
+	EMAIL_LOGO_PATH,
+	emailLogoSrcForSend
+} from '$lib/asset/email/email-brand';
 import { log } from '$lib/logger';
+
+const emailLogoFilePath = join(process.cwd(), 'static', EMAIL_LOGO_PATH.replace(/^\//, ''));
 
 function trimEnv(value: string | undefined): string {
 	return (value ?? '').trim();
 }
 
-function createTransporter() {
+let cachedTransporter: nodemailer.Transporter | null = null;
+
+function getTransporter(): nodemailer.Transporter {
+	if (cachedTransporter) return cachedTransporter;
 	const host = trimEnv(env.SMTP_HOST);
 	const port = Number(trimEnv(env.SMTP_PORT) || '587');
 	const user = trimEnv(env.SMTP_USER);
@@ -14,7 +25,7 @@ function createTransporter() {
 	// 465 = implicit TLS; 587 = STARTTLS (Namecheap Private Email default)
 	const secure = port === 465;
 
-	return nodemailer.createTransport({
+	cachedTransporter = nodemailer.createTransport({
 		host,
 		port,
 		secure,
@@ -24,6 +35,7 @@ function createTransporter() {
 			pass
 		}
 	});
+	return cachedTransporter;
 }
 
 /** Server-only: for use from auth or server routes. Commands cannot be called during SSR. */
@@ -38,13 +50,25 @@ export async function sendEmailServer(payload: {
 	const port = trimEnv(env.SMTP_PORT) || '587';
 
 	try {
-		const transporter = createTransporter();
+		const transporter = getTransporter();
+		const html = payload.html ?? `<p>${payload.message}</p>`;
+		const attachments =
+			html.includes(emailLogoSrcForSend()) ?
+				[
+					{
+						filename: 'medora-logo-email.png',
+						path: emailLogoFilePath,
+						cid: EMAIL_LOGO_CID
+					}
+				]
+			:	undefined;
 		await transporter.sendMail({
 			from: `"Medora" <${user}>`,
 			to: payload.to,
 			subject: payload.subject,
 			text: payload.message,
-			html: payload.html ?? `<p>${payload.message}</p>`
+			html,
+			...(attachments ? { attachments } : {})
 		});
 		return true;
 	} catch (err) {

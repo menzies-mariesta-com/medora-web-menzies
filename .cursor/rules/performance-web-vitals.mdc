@@ -1,0 +1,61 @@
+---
+description: Core Web Vitals, caching, and navigation performance defaults
+alwaysApply: true
+---
+
+# Performance (Medora web)
+
+## Targets (Google + perception)
+
+| Metric | Good | Notes |
+|--------|------|-------|
+| TTFB | ≤ 800 ms | Tiered L1+L2 cache + Netlify edge HTML SWR |
+| INP | ≤ 200 ms | Optimistic UI, global `cachedFetch` for GET `/api` |
+| LCP | ≤ 2.5 s | Font preload, immutable `/_app/immutable/*`, SW precache |
+| Feels instant | ≤ 100 ms | Hover preload (data+code), client SWR |
+| Seamless flow | ≤ 1 s | Repeat navigations hit memory/Redis/SW |
+
+## Navigation (SvelteKit)
+
+- `src/app.html`: `data-sveltekit-preload-data="hover"` and `data-sveltekit-preload-code="hover"`.
+- Do not set `data-sveltekit-preload-data="off"` without cause.
+
+## Global server pipeline (`hooks.server.ts`)
+
+- **Early GET `/api`**: `tryEarlyCachedApiGet` → tiered cache hit skips handler.
+- **After resolve**: `finalizeAppResponse` stores JSON GETs (policy in `api-cache-policy.server.ts`), applies HTML edge headers, runs mutation invalidation, then security headers.
+- **Mutations** (`POST|PUT|PATCH|DELETE` `/api/**` success): `invalidateCacheTag` for `api-get`, hospital scope, `master-lookup`, nav, staff — plus `X-Medora-Invalidate-Client-Cache`.
+
+## Per-route tiers (207 API handlers)
+
+- Generated: `src/lib/server/http/api-route-cache-policy.generated.ts` via `pnpm run generate:api-cache-policy`.
+- CI: `pnpm run check:api-cache-policy` fails if stale.
+- Runtime: `pathnameToApiTemplate()` → `API_ROUTE_TIER_BY_TEMPLATE` (+ picker `mode` boost).
+
+## Policy (`api-cache-policy.server.ts`)
+
+- **no-store**: auth, mobile portals, live billing/stock/emr/nursing/ADT paths.
+- **tiered**: master APIs, picker `mode=` reads, dashboard (short), default GET `/api` (45–60s).
+
+## Tiered cache
+
+- `$lib/server/cache/tiered-cache.server.ts` — `cacheGetOrSet`, `cacheGet`, `cacheSet`, `invalidateCacheTag`.
+- Keys/tags: `cache-keys.server.ts`. Upstash optional (`UPSTASH_REDIS_REST_URL` / token).
+- Master writes: `notifyHospitalMasterWrite(hospitalId)` or `afterGlobalMasterCatalogMutation()` from seeds/jobs.
+
+## Client + SW
+
+- `src/hooks.client.ts` — `installGlobalFetchPerformance()` + registers `static/medora-sw.js`.
+- `$lib/util/client-fetch-cache.util.ts` — `cachedFetch`, `fetchJsonCached`, invalidation on mutation headers.
+- SW: immutable Vite assets + bootstrap CSS only (never cache `/api` in SW — auth isolation).
+
+## HTML / CDN (Netlify)
+
+- `html-edge-cache.server.ts` + `netlify.toml` for `/medora/*`, `/auth/*`: `Netlify-CDN-Cache-Control: private, durable, max-age=60, stale-while-revalidate=180`, `Vary: Cookie`.
+- `security-headers.server.ts` does **not** override existing `Cache-Control`.
+
+## When adding features
+
+- New read-mostly GET API: rely on central policy; tighten with `no-store` if clinical/financial live data.
+- New master CRUD: ensure API route is under `/api/` (hook invalidates) or call `notifyHospitalMasterWrite` in the server module.
+- Never cache secrets, passwords, or unscoped cross-hospital payloads.

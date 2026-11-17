@@ -41,12 +41,23 @@ export const GET: RequestHandler = async (event) => {
 					visitIds: [visitId]
 				})
 			]);
+			const { buildVisitBarColorHints } = await import(
+				'$lib/server/medora/administration/color-configuration.server'
+			);
+			const colorHints =
+				visit != null
+					? await buildVisitBarColorHints(hospitalId, {
+							id: visitId,
+							visitTypeId: visit.visitTypeId
+						})
+					: null;
 			return json({
 				visit,
 				hasActiveAllergies: patientId
 					? activeIds.includes(patientId)
 					: false,
-				hasAbnormalVital: abnormalIds.includes(visitId)
+				hasAbnormalVital: abnormalIds.includes(visitId),
+				colorHints
 			});
 		}
 		case 'visit.list': {

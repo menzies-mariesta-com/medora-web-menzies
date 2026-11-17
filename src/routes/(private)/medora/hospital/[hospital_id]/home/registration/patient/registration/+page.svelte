@@ -1252,7 +1252,6 @@
 							bind:selectedIdentityTypeId
 							bind:identityNo
 							bind:dateOfBirth
-							dateOfBirthMax={dateTimeUtil.getTodayDateString()}
 							bind:guardianName
 							bind:guardianPhone
 						/>

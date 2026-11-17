@@ -23,7 +23,9 @@
 	<div class="my-main p-3">
 		{#key page.url.pathname}
 			<AnimatedPageContent>
-				{@render children?.()}
+				{#if children}
+					{@render children()}
+				{/if}
 			</AnimatedPageContent>
 		{/key}
 	</div>

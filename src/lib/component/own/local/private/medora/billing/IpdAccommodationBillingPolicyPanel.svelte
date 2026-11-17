@@ -74,12 +74,15 @@
 	let accommodationServiceItemId = $state('');
 	let serviceItemLabelCache = $state('');
 
-	async function loadPolicy() {
+	async function loadPolicy(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!apiBase) return;
 		loading = true;
 		loadError = '';
 		try {
-			const res = await fetch(apiBase, { credentials: 'include' });
+			const res = await fetch(apiBase, { credentials: 'include', signal: opts?.signal });
 			if (!res.ok) {
 				loadError =
 					sanitizeUserFacingErrorText(await res.text(), {
@@ -115,7 +118,7 @@
 				'Failed to load accommodation policy.'
 			);
 		} finally {
-			loading = false;
+			if (!opts?.isCancelled?.()) loading = false;
 		}
 	}
 
@@ -197,7 +200,13 @@
 	$effect(() => {
 		void hospitalId;
 		void careSetting;
-		void loadPolicy();
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadPolicy({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

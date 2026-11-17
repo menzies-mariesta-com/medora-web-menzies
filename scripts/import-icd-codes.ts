@@ -22,6 +22,9 @@
  *   pnpm db:import:icd -- --system ALL
  *   pnpm db:import:icd -- --system ICD10 --dry-run
  *   pnpm db:import:icd -- --limit 500
+ *
+ * Init seed (information-table-seed): WHO_ICD_SEED_SYSTEM=ICD10|ICD11|BOTH,
+ * ICD10_CM_SEED=1, SNOMED_RF2_DIR + licensed RF2.
  */
 
 import {

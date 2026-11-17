@@ -25,5 +25,7 @@
 	class="modal-action mt-0 -mx-4 shrink-0 px-4 py-3 {className}"
 	role="presentation"
 >
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 </div>

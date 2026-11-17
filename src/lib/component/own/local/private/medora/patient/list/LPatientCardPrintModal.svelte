@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
+	import PrintPreview from '$lib/component/own/library/menzies/PrintPreview.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
+	import { buildPrintDocumentHtml } from '$lib/util/print-document-html.util';
+	import { sanitizeDownloadFileBase } from '$lib/util/print-download-filename.util';
+	import { printHtmlInIframe } from '$lib/util/document-master-print.util.svelte';
 	import { page } from '$app/state';
 	import type { PatientWithRelations } from '$lib/model/type/medora/patient.type';
 
@@ -82,11 +83,6 @@
 		return v?.trim() ? v : '—';
 	});
 
-	const patientPhotoUrl = $derived.by(() => {
-		if (!patient) return '';
-		return getPatientPhotoDisplayUrl(patient.photoPath) ?? '';
-	});
-
 	const patientInitials = $derived.by(() => {
 		const name = patientFullName ?? '—';
 		const parts = name
@@ -153,10 +149,9 @@
 			.replaceAll("'", '&#039;');
 	}
 
-	function openPrintWindow() {
-		if (!patient) return;
+	function buildPatientCardBodyHtml(): string {
+		if (!patient) return '';
 
-		const title = 'Patient card';
 		const photoUrl = getPatientPhotoDisplayUrl(patient.photoPath);
 		const photoHtml = photoUrl
 			? `<img class="photo" src="${escapeHtml(
@@ -166,89 +161,88 @@
 					patientInitials
 				)}</div>`;
 
-		const html = `<!doctype html>
-<html lang="en">
-<head>
-	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>${escapeHtml(title)}</title>
-	<style>
-		body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif; padding: 24px; color: #111827; }
-		.card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; max-width: 720px; margin: 0 auto; }
-		h1 { font-size: 18px; margin: 0 0 16px; }
-		.header { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
-		.photo { width: 76px; height: 76px; border-radius: 9999px; object-fit: cover; border: 1px solid #e5e7eb; }
-		.photo-placeholder { width: 76px; height: 76px; border-radius: 9999px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; font-weight: 800; background: #f3f4f6; color: #111827; }
-		.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; }
-		.field .label { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; font-weight: 700; margin-bottom: 2px; }
-		.field .value { font-size: 14px; font-weight: 600; word-break: break-word; }
-		.address { margin-top: 12px; }
-		@media print { body { padding: 0; } .card { border: none; border-radius: 0; } }
-	</style>
-</head>
-<body>
-	<div class="card">
-		<h1>${escapeHtml(title)}</h1>
-		<div class="header">
-			${photoHtml}
-			<div>
-				<div style="font-size:16px;font-weight:800;margin-bottom:2px;">${escapeHtml(patientFullName)}</div>
-				<div style="color:#6b7280;font-size:13px;">Patient code: <span style="font-weight:700;">${escapeHtml(patientCode)}</span></div>
+		return `<style>
+			.patient-card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; color: #111827; }
+			.patient-card h1 { font-size: 18px; margin: 0 0 16px; }
+			.patient-card .header { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
+			.patient-card .photo,
+			.patient-card .photo-placeholder { width: 76px; height: 76px; border-radius: 9999px; object-fit: cover; border: 1px solid #e5e7eb; }
+			.patient-card .photo-placeholder { display: flex; align-items: center; justify-content: center; font-weight: 800; background: #f3f4f6; color: #111827; }
+			.patient-card .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; }
+			.patient-card .field .label { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; font-weight: 700; margin-bottom: 2px; }
+			.patient-card .field .value { font-size: 14px; font-weight: 600; word-break: break-word; }
+			.patient-card .address { margin-top: 12px; }
+		</style>
+		<div class="patient-card">
+			<h1>Patient card</h1>
+			<div class="header">
+				${photoHtml}
+				<div>
+					<div style="font-size:16px;font-weight:800;margin-bottom:2px;">${escapeHtml(patientFullName)}</div>
+					<div style="color:#6b7280;font-size:13px;">Patient code: <span style="font-weight:700;">${escapeHtml(patientCode)}</span></div>
+				</div>
 			</div>
-		</div>
-		<div class="grid">
-			<div class="field"><div class="label">Patient code</div><div class="value">${escapeHtml(patientCode)}</div></div>
-			<div class="field"><div class="label">Full patient name</div><div class="value">${escapeHtml(patientFullName)}</div></div>
-			<div class="field"><div class="label">Identity</div><div class="value">${escapeHtml(identityDisplay)}</div></div>
-			<div class="field"><div class="label">Gender</div><div class="value">${escapeHtml(genderDisplay)}</div></div>
-			<div class="field"><div class="label">Date of birth</div><div class="value">${escapeHtml(dobDisplay)}</div></div>
-			<div class="field"><div class="label">Phone primary</div><div class="value">${escapeHtml(phonePrimaryDisplay)}</div></div>
-		</div>
-		<div class="address field">
-			<div class="label">Address</div>
-			<div class="value">${escapeHtml(addressDisplay)}</div>
-		</div>
-	</div>
-</body>
-</html>`;
+			<div class="grid">
+				<div class="field"><div class="label">Patient code</div><div class="value">${escapeHtml(patientCode)}</div></div>
+				<div class="field"><div class="label">Full patient name</div><div class="value">${escapeHtml(patientFullName)}</div></div>
+				<div class="field"><div class="label">Identity</div><div class="value">${escapeHtml(identityDisplay)}</div></div>
+				<div class="field"><div class="label">Gender</div><div class="value">${escapeHtml(genderDisplay)}</div></div>
+				<div class="field"><div class="label">Date of birth</div><div class="value">${escapeHtml(dobDisplay)}</div></div>
+				<div class="field"><div class="label">Phone primary</div><div class="value">${escapeHtml(phonePrimaryDisplay)}</div></div>
+			</div>
+			<div class="address field">
+				<div class="label">Address</div>
+				<div class="value">${escapeHtml(addressDisplay)}</div>
+			</div>
+		</div>`;
+	}
 
-		// Blob URL is more reliable than document.write for printing.
-		const w = window.open('', '_blank', 'noopener');
-		if (!w) return;
+	/**
+	 * One HTML source for preview, print and PDF — same page spec as every
+	 * other Document Master print document.
+	 */
+	const printHtml = $derived.by(() => {
+		if (!patient) return '';
+		const name = patientFullName !== '—' ? patientFullName : 'patient';
+		return buildPrintDocumentHtml({
+			documentHtml: buildPatientCardBodyHtml(),
+			documentTitle: 'Patient card',
+			downloadFileBase: sanitizeDownloadFileBase(
+				`patient_card_${name}`
+			),
+			headerHtml: '',
+			footerHtml: '',
+			setting: {
+				pageSize: 'A4',
+				pageOrientation: 'portrait',
+				marginTop: 15,
+				marginBottom: 15,
+				marginLeft: 15,
+				marginRight: 15,
+				paddingTop: 5,
+				paddingBottom: 5,
+				paddingLeft: 5,
+				paddingRight: 5,
+				showHeader: false,
+				showFooter: false
+			},
+			variant: 'browser'
+		});
+	});
 
+	let isPrinting = $state(false);
+
+	async function printPatientCard() {
+		if (!printHtml || isPrinting) return;
+		isPrinting = true;
 		try {
-			const blob = new Blob([html], { type: 'text/html' });
-			const blobUrl = URL.createObjectURL(blob);
-
-			const cleanup = () => {
-				try {
-					URL.revokeObjectURL(blobUrl);
-				} catch {
-					// ignore
-				}
-			};
-
-			w.location.href = blobUrl;
-			w.onload = () => {
-				try {
-					w.focus();
-					w.print();
-				} finally {
-					cleanup();
-				}
-			};
-
-			// Fallback print (some browsers don't reliably fire onload).
-			setTimeout(() => {
-				try {
-					w.focus();
-					w.print();
-				} finally {
-					cleanup();
-				}
-			}, 250);
+			await printHtmlInIframe(printHtml, {
+				iframeId: 'patient-card-print-iframe'
+			});
 		} catch (err) {
 			console.error('[patient-card-print] failed', err);
+		} finally {
+			isPrinting = false;
 		}
 	}
 </script>
@@ -258,9 +252,9 @@
 	open={true}
 	{onClose}
 	title="Patient card"
-	boxClassName="max-w-2xl"
+	boxClassName="max-w-5xl"
 >
-	<div class="p-1">
+	<div class="p-4">
 		{#if isLoading}
 			<div class="flex items-center justify-center py-10">
 				<span class="loading loading-spinner loading-lg"></span>
@@ -270,107 +264,12 @@
 		{:else if !patient}
 			<p class="text-sm text-base-content/70">Patient not found.</p>
 		{:else}
-			<WashCard animate={true}>
-				<WashCardBody className="p-4">
-					<div class="flex items-start gap-4">
-						<div class="relative shrink-0">
-							{#if patientPhotoUrl}
-								<img
-									src={patientPhotoUrl}
-									alt="Patient profile"
-									class="h-20 w-20 rounded-full border border-base-300 object-cover shadow-sm"
-								/>
-							{:else}
-								<div
-									class="flex h-20 w-20 items-center justify-center rounded-full border border-base-300 bg-base-200 shadow-sm"
-								>
-									<span
-										class="text-sm font-bold text-base-content/70"
-									>
-										{patientInitials}
-									</span>
-								</div>
-							{/if}
-						</div>
-
-						<div class="flex flex-col gap-2">
-							<WashCardBodyTitle className="text-base-content">
-								{patientFullName}
-							</WashCardBodyTitle>
-
-							<p class="text-sm text-base-content/70">
-								Patient code: <span class="font-semibold"
-									>{patientCode}</span
-								>
-							</p>
-
-							<div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-								<div class="field">
-									<div
-										class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-									>
-										Identity
-									</div>
-									<div
-										class="value text-sm font-semibold break-words"
-									>
-										{identityDisplay}
-									</div>
-								</div>
-								<div class="field">
-									<div
-										class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-									>
-										Gender
-									</div>
-									<div
-										class="value text-sm font-semibold break-words"
-									>
-										{genderDisplay}
-									</div>
-								</div>
-								<div class="field">
-									<div
-										class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-									>
-										Date of birth
-									</div>
-									<div
-										class="value text-sm font-semibold break-words"
-									>
-										{dobDisplay}
-									</div>
-								</div>
-								<div class="field">
-									<div
-										class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-									>
-										Phone primary
-									</div>
-									<div
-										class="value text-sm font-semibold break-words"
-									>
-										{phonePrimaryDisplay}
-									</div>
-								</div>
-							</div>
-
-							<div class="mt-4">
-								<div
-									class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-								>
-									Address
-								</div>
-								<div
-									class="value mt-1 text-sm font-semibold break-words"
-								>
-									{addressDisplay}
-								</div>
-							</div>
-						</div>
-					</div>
-				</WashCardBody>
-			</WashCard>
+			<PrintPreview
+				html={printHtml}
+				title="Patient card print preview"
+				minHeight="min-h-[60vh]"
+				showPrintButton={false}
+			/>
 		{/if}
 	</div>
 	{#snippet actions()}
@@ -378,7 +277,9 @@
 			<WashButton
 				type="button"
 				className="btn-primary btn-sm gap-2"
-				onClick={openPrintWindow}
+				onClick={() => void printPatientCard()}
+				loading={isPrinting}
+				loadingText="Printing…"
 			>
 				<LucidePrinter className="size-5" />
 				Print

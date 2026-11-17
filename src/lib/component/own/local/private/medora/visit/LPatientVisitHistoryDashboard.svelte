@@ -26,8 +26,10 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
-	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
+	import { DocumentTypeId } from '$lib/model/constant/document-type-id.constant';
 	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
+	import { fetchVisitLikeForDocumentPrint } from '$lib/tool/emr/visit-print-context.util';
+	import { printByFromPage } from '$lib/tool/emr/document-master-client-print.util';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
@@ -70,6 +72,7 @@
 	);
 	const visitId = $derived(parseUuid(visitIdStr) ?? '');
 	const hospitalId = $derived(page.params.hospital_id ?? '');
+	const printByName = $derived(printByFromPage(page));
 
 	let visitRow = $state<PatientVisitWithRelationsLite | null>(null);
 	let tableRows = $state<VisitTableRow[]>([]);
@@ -239,7 +242,10 @@
 		return `/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/patient-visit-history-dashboard?visitId=${visitIdValue}`;
 	}
 
-	async function loadDashboard(visitIdValue: number) {
+	async function loadDashboard(visitIdValue: number, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		const seq = ++loadSeq;
 		isLoading = true;
 		loadError = '';
@@ -326,12 +332,14 @@
 				} satisfies LabOrderRow;
 			});
 		} catch (err) {
+			if (err instanceof DOMException && err.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			if (seq !== loadSeq || visitIdValue !== visitId) return;
 			console.error(err);
 			loadError =
 				toUserFacingErrorDetail(err) ?? m.error_load_failed();
 		} finally {
-			if (seq === loadSeq) isLoading = false;
+			if (seq === loadSeq) if (!opts?.isCancelled?.()) isLoading = false;
 		}
 	}
 
@@ -369,27 +377,38 @@
 		const printed = m.visit_history_visit_label_printed();
 		const printedAt = `${printed}: ${new Date().toLocaleString()}`;
 		const payload = visitLabelBarcodeValue(row);
+		const visitForPrint = await fetchVisitLikeForDocumentPrint(
+			hospitalId,
+			row.visitId
+		);
+		const slimVisitPlaceholders = visitForPrint
+			? {}
+			: {
+					'{{patient_name}}': row.patientDisplayName,
+					'{{patient_code}}': row.patientCode,
+					'{{patient_dob}}': row.patientDobLabel,
+					'{{visit_code}}': row.visitNo,
+					'{{visit_date}}': row.visitDateLabel,
+					'{{doctor_name}}': row.doctorName,
+					'{{hospital_name}}': row.hospitalName
+				};
 
 		await printFromDocumentMaster({
 			hospitalId,
-			documentCode: DOCUMENT_PRINT_CODE.VISIT_LABEL,
+			documentTypeId: DocumentTypeId.VISIT_LABEL_PRINT,
+			visit: visitForPrint,
+			printBy: printByName,
 			extraPlaceholders: {
-				'{{patient.name}}': row.patientDisplayName,
-				'{{patient.code}}': row.patientCode,
-				'{{patient.dob}}': row.patientDobLabel,
-				'{{visit.no}}': row.visitNo,
-				'{{visit.date}}': row.visitDateLabel,
-				'{{doctor.name}}': row.doctorName,
-				'{{hospital.logo}}': '',
-				'{{print.datetime}}': printedAt,
-				'{{print.label_heading}}': m.visit_history_visit_label_heading(),
-				'{{print.label_patient}}': m.visit_history_visit_label_patient(),
-				'{{print.label_dob}}': m.visit_history_visit_label_dob(),
-				'{{print.label_patient_code}}':
+				...slimVisitPlaceholders,
+				'{{print_datetime}}': printedAt,
+				'{{print_label_heading}}': m.visit_history_visit_label_heading(),
+				'{{print_label_patient}}': m.visit_history_visit_label_patient(),
+				'{{print_label_dob}}': m.visit_history_visit_label_dob(),
+				'{{print_label_patient_code}}':
 					m.visit_history_visit_label_patient_code(),
-				'{{print.label_doctor}}': m.visit_history_visit_label_doctor(),
-				'{{print.label_visit_no}}': m.visit_history_visit_label_visit_no(),
-				'{{print.label_visit_date}}':
+				'{{print_label_doctor}}': m.visit_history_visit_label_doctor(),
+				'{{print_label_visit_no}}': m.visit_history_visit_label_visit_no(),
+				'{{print_label_visit_date}}':
 					m.visit_history_visit_label_visit_date()
 			},
 			iframeId: 'visit-label-print-iframe',
@@ -446,7 +465,13 @@
 		}
 		if (lastLoadedVisitId === visitId) return;
 		lastLoadedVisitId = visitId;
-		void loadDashboard(visitId);
+			let cancelled = false;
+			const ac = new AbortController();
+		void loadDashboard(visitId, { signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 </script>
 

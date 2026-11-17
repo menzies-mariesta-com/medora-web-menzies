@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import {
 	and,
 	asc,
@@ -22,6 +23,11 @@ import { normalizePagination } from '$lib/model/type/pagination.type';
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import { uuidV7 } from '$lib/util/id.util';
+import {
+	assertRowsUpdated,
+	throwDocumentStatusConflict,
+	updateStatusTaggingIfCurrent
+} from '$lib/server/medora/workflow/status-transition.server';
 import {
 	assertStaffAssignedForModule,
 	assertStaffCanApproveLevel,
@@ -711,6 +717,8 @@ export async function createDepartmentIssue(
 		return newId;
 	});
 
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return getDepartmentIssueById(event, {
 		hospitalId: input.hospitalId,
 		id
@@ -883,6 +891,8 @@ export async function createDepartmentIssueFromIndent(
 		return issueId;
 	});
 
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return getDepartmentIssueById(event, {
 		hospitalId: input.hospitalId,
 		id: newId
@@ -950,31 +960,80 @@ export async function approveDepartmentIssue(
 			? String(input.remarks).trim()
 			: 'Rejected by approver';
 
+	const pending = InvDepartmentIssueStatusTaggingEnum.PENDING;
+
 	await ensureDb().transaction(async (tx) => {
+		const [locked] = await tx
+			.select()
+			.from(table.invDepartmentIssueTable)
+			.where(
+				and(
+					eq(table.invDepartmentIssueTable.id, input.issueId),
+					eq(
+						table.invDepartmentIssueTable.hospitalId,
+						input.hospitalId
+					),
+					eq(
+						table.invDepartmentIssueTable.statusTaggingId,
+						pending
+					),
+					isNull(table.invDepartmentIssueTable.deletedAt)
+				)
+			)
+			.for('update')
+			.limit(1);
+		if (!locked) throwDocumentStatusConflict();
+
 		if (input.action === InvApprovalActionEnum.REJECTED) {
-			await tx
-				.update(table.invDepartmentIssueTable)
-				.set({
+			await updateStatusTaggingIfCurrent(
+				tx,
+				table.invDepartmentIssueTable,
+				input.issueId,
+				pending,
+				{
 					statusTaggingId:
 						InvDepartmentIssueStatusTaggingEnum.CANCELLED,
 					cancelledBy: userId,
 					cancelledAt: sql<string>`now()`,
 					cancelReason: rejectReason,
 					updatedBy: userId
-				})
-				.where(eq(table.invDepartmentIssueTable.id, input.issueId));
+				},
+				[
+					eq(
+						table.invDepartmentIssueTable.currentLevel,
+						locked.currentLevel
+					)
+				]
+			);
 			return;
 		}
 
 		if (input.action === InvApprovalActionEnum.APPROVED) {
-			if (iss.currentLevel < maxLevel) {
-				await tx
+			if (locked.currentLevel < maxLevel) {
+				const rows = await tx
 					.update(table.invDepartmentIssueTable)
 					.set({
-						currentLevel: iss.currentLevel + 1,
+						currentLevel: locked.currentLevel + 1,
 						updatedBy: userId
 					})
-					.where(eq(table.invDepartmentIssueTable.id, input.issueId));
+					.where(
+						and(
+							eq(
+								table.invDepartmentIssueTable.id,
+								input.issueId
+							),
+							eq(
+								table.invDepartmentIssueTable.statusTaggingId,
+								pending
+							),
+							eq(
+								table.invDepartmentIssueTable.currentLevel,
+								locked.currentLevel
+							)
+						)
+					)
+					.returning({ id: table.invDepartmentIssueTable.id });
+				assertRowsUpdated(rows);
 				return;
 			}
 
@@ -1015,7 +1074,7 @@ export async function approveDepartmentIssue(
 						await addDeltaToInvStock(tx, {
 							hospitalId: input.hospitalId,
 							itemId: line.itemId,
-							storeId: iss.fromStoreId,
+							storeId: locked.fromStoreId,
 							batchId: a.batchId,
 							delta: String(-q),
 							userId
@@ -1049,7 +1108,7 @@ export async function approveDepartmentIssue(
 					)
 					.where(
 						and(
-							eq(table.invStockTable.storeId, iss.fromStoreId),
+							eq(table.invStockTable.storeId, locked.fromStoreId),
 							eq(table.invStockTable.itemId, line.itemId),
 							isNull(table.invStockTable.deletedAt),
 							sql`${table.invStockTable.quantity}::numeric > 0`
@@ -1093,20 +1152,29 @@ export async function approveDepartmentIssue(
 					.where(eq(table.invDepartmentIssueLineTable.id, line.id));
 			}
 
-			await tx
-				.update(table.invDepartmentIssueTable)
-				.set({
+			await updateStatusTaggingIfCurrent(
+				tx,
+				table.invDepartmentIssueTable,
+				input.issueId,
+				pending,
+				{
 					statusTaggingId: InvDepartmentIssueStatusTaggingEnum.ISSUED,
 					approvedBy: userId,
 					approvedAt: sql<string>`now()`,
 					issuedBy: userId,
 					issuedAt: sql<string>`now()`,
 					updatedBy: userId
-				})
-				.where(eq(table.invDepartmentIssueTable.id, input.issueId));
+				},
+				[
+					eq(
+						table.invDepartmentIssueTable.currentLevel,
+						locked.currentLevel
+					)
+				]
+			);
 
-			if (iss.sourceIndentId) {
-				const sid = iss.sourceIndentId;
+			if (locked.sourceIndentId) {
+				const sid = locked.sourceIndentId;
 				const doneLines = await tx
 					.select({
 						itemId: table.invDepartmentIssueLineTable.itemId,

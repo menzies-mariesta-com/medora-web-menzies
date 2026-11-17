@@ -87,15 +87,15 @@
 		wards = (await response.json()) as WardRow[];
 	}
 
-	async function loadRooms(wardId: number) {
+	async function loadRooms(wardId: number, opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!hospitalId || !wardId) {
 			rooms = [];
 			return;
 		}
-		const response = await fetch(
-			`${administrationApi}/room-master?active=1&wardId=${wardId}${formIsEr ? '&scope=er' : ''}`,
-			{ credentials: 'include', cache: 'no-store' }
-		);
+		const response = await fetch(`${administrationApi}/room-master?active=1&wardId=${wardId}${formIsEr ? '&scope=er' : ''}`, { credentials: 'include', cache: 'no-store', signal: opts?.signal });
 		if (!response.ok) {
 			rooms = [];
 			return;
@@ -144,6 +144,8 @@
 				formActive = true;
 			}
 		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') return;
+			if (opts?.isCancelled?.()) return;
 			toastService.addToast(
 				error instanceof Error
 					? error.message
@@ -151,7 +153,7 @@
 				StatusColorEnum.ERROR
 			);
 		} finally {
-			isLoading = false;
+			if (!opts?.isCancelled?.()) isLoading = false;
 		}
 	});
 
@@ -175,7 +177,9 @@
 			rooms = [];
 			return;
 		}
+		let cancelled = false;
 		void loadRooms(wid).then(() => {
+			if (cancelled) return;
 			if (
 				formRoomId &&
 				!rooms.some((r) => String(r.id) === formRoomId)
@@ -183,6 +187,9 @@
 				formRoomId = '';
 			}
 		});
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	async function handleSubmit(event: Event) {

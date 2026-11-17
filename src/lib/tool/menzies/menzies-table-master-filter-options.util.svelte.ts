@@ -1,3 +1,5 @@
+import { fetchJsonCached } from '$lib/util/client-fetch-cache.util';
+
 /** Select option shape for MenziesTable column filters. */
 export type MenziesSelectFilterOption = { value: string; label: string };
 
@@ -64,10 +66,10 @@ export async function fetchSupplierMasterFilterOptions(
 export async function fetchSeverityMasterFilterOptions(
 	signal?: AbortSignal
 ): Promise<MenziesSelectFilterOption[]> {
-	const res = await fetch('/api/medora/master/lookup?kind=severity', {
-		signal
-	});
-	const rows = await parseJson<{ id: number; name: string | null }[]>(res);
+	const rows = await fetchJsonCached<{ id: number; name: string | null }[]>(
+		'/api/medora/master/lookup?kind=severity',
+		{ signal, ttlMs: 120_000, staleMs: 600_000 }
+	);
 	return sortByLabel(
 		rows.map((s) => ({
 			value: s.name?.trim() ?? String(s.id),

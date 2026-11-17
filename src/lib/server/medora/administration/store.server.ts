@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import {
 	and,
 	count,
@@ -318,6 +319,8 @@ export async function createStore(
 	});
 
 	const groupsByStore = await fetchUserGroupsForStores([created.id]);
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return {
 		...created,
 		userGroups: groupsByStore.get(created.id) ?? []
@@ -423,6 +426,8 @@ export async function updateStore(
 	if (!row) throw new Error('Update failed');
 
 	const groupsByStore = await fetchUserGroupsForStores([row.id]);
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return {
 		...row,
 		userGroups: groupsByStore.get(row.id) ?? []

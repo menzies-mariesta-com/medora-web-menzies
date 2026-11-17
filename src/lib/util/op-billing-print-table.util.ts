@@ -4,7 +4,6 @@ import {
 	billingLineTotal,
 	billingLineUnitPrice
 } from '$lib/tool/billing/billing-visit-totals.util';
-
 function escapeHtml(text: string): string {
 	return text
 		.replace(/&/g, '&amp;')

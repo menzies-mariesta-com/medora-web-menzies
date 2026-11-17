@@ -1,10 +1,11 @@
 /**
  * Builds full HTML for clinical / EMR print and PDF rasterization.
- * - browser: @media print with fixed header/footer (native print dialog).
- * - pdfRaster: linear layout without fixed positioning (html2canvas-friendly).
+ * Paginated print: table thead (repeating header) + fixed footer in tfoot; @page uses document margins (header/footer stay inside).
+ * browser / pdfRaster share the same shell; variant is for callers only.
  */
 
 import caseSheetDocumentCss from '$lib/asset/style/case-sheet-document.css?raw';
+import { sanitizeDownloadFileBase } from '$lib/util/print-download-filename.util';
 
 export type PrintDocumentHtmlVariant = 'browser' | 'pdfRaster';
 
@@ -22,6 +23,66 @@ export type PrintDocumentLayoutInput = {
 	showHeader?: boolean | null;
 	showFooter?: boolean | null;
 };
+
+const CSS_PX_PER_MM = 96 / 25.4;
+
+export function mmToCssPx(mm: number): number {
+	return Math.round(mm * CSS_PX_PER_MM);
+}
+
+export type PrintPageSpec = {
+	widthMm: number;
+	heightMm: number;
+	widthPx: number;
+	jspdfFormat: 'a4' | 'a5' | 'letter' | 'legal';
+	orientation: 'portrait' | 'landscape';
+};
+
+export function resolvePrintPageSpec(
+	setting: PrintDocumentLayoutInput | null
+): PrintPageSpec {
+	const raw = (setting?.pageSize ?? 'A4').trim();
+	const orientation: 'portrait' | 'landscape' =
+		setting?.pageOrientation === 'landscape'
+			? 'landscape'
+			: 'portrait';
+	const upper = raw.toUpperCase();
+	let widthMm = 210;
+	let heightMm = 297;
+	let jspdfFormat: PrintPageSpec['jspdfFormat'] = 'a4';
+
+	if (upper === 'A5') {
+		widthMm = 148;
+		heightMm = 210;
+		jspdfFormat = 'a5';
+	} else if (upper === 'LETTER') {
+		widthMm = 216;
+		heightMm = 279;
+		jspdfFormat = 'letter';
+	} else if (upper === 'LEGAL') {
+		widthMm = 216;
+		heightMm = 356;
+		jspdfFormat = 'legal';
+	} else if (raw.includes('mm')) {
+		const [wPart, hPart] = raw.split(/\s+/);
+		const w = Number.parseFloat(wPart);
+		const h = Number.parseFloat(hPart ?? wPart);
+		if (Number.isFinite(w)) widthMm = w;
+		if (Number.isFinite(h)) heightMm = h;
+	}
+
+	if (orientation === 'landscape') {
+		[widthMm, heightMm] = [heightMm, widthMm];
+	}
+
+	return {
+		widthMm,
+		heightMm,
+		widthPx: mmToCssPx(widthMm),
+		jspdfFormat,
+		orientation
+	};
+}
 
 /** Shared print utility CSS for document templates and runtime HTML builders. */
 export const PRINT_DOCUMENT_UTILITY_CSS = `
@@ -220,9 +281,27 @@ export const PRINT_DOCUMENT_UTILITY_CSS = `
 	}
 `;
 
+/** Drop embedded letterhead in template body when hospital layout header is active. */
+export function preprocessDocumentBodyForLayout(
+	documentHtml: string,
+	opts: { layoutHeaderHtml: string; showLayoutHeader: boolean }
+): string {
+	if (!opts.showLayoutHeader || !opts.layoutHeaderHtml.trim()) {
+		return documentHtml;
+	}
+	return documentHtml
+		.replace(
+			/<header\s+class="print-doc-header"[^>]*>[\s\S]*?<\/header>\s*/gi,
+			''
+		)
+		.trim();
+}
+
 export function buildPrintDocumentHtml(params: {
 	documentHtml: string;
 	documentTitle: string;
+	/** Overrides default basename derived from `documentTitle`. */
+	downloadFileBase?: string;
 	headerHtml: string;
 	footerHtml: string;
 	setting: PrintDocumentLayoutInput | null;
@@ -231,6 +310,7 @@ export function buildPrintDocumentHtml(params: {
 	const {
 		documentHtml,
 		documentTitle,
+		downloadFileBase,
 		headerHtml,
 		footerHtml,
 		setting,
@@ -245,114 +325,254 @@ export function buildPrintDocumentHtml(params: {
 	const paddingBottom = setting?.paddingBottom ?? 10;
 	const paddingLeft = setting?.paddingLeft ?? 10;
 	const paddingRight = setting?.paddingRight ?? 10;
-	const pageSize = setting?.pageSize ?? 'A4';
-	const orientation = setting?.pageOrientation ?? 'portrait';
+	const pageSpec = resolvePrintPageSpec(setting);
+	const downloadBase = sanitizeDownloadFileBase(
+		downloadFileBase ?? documentTitle
+	);
 	const pageSizeCss =
-		pageSize.includes('mm') || pageSize.includes('in')
-			? pageSize
-			: `${pageSize} ${orientation}`;
+		(setting?.pageSize ?? 'A4').includes('mm') ||
+		(setting?.pageSize ?? 'A4').includes('in')
+			? (setting?.pageSize ?? 'A4')
+			: `${setting?.pageSize ?? 'A4'} ${pageSpec.orientation}`;
 	const showHeader = setting?.showHeader ?? true;
-	/** Layout footers disabled — avoids duplicate footers and browser URL margin noise. */
-	const showFooter = false;
-	const plainLayout = !showHeader && !showFooter;
+	const showFooter =
+		(setting?.showFooter ?? false) && Boolean(footerHtml?.trim());
+	const hasLayoutHeader = showHeader && Boolean(headerHtml?.trim());
 
-	const headerBlock =
-		showHeader && headerHtml
-			? `<div class="print-header">
-						<div class="header-table">${headerHtml}</div>
-						<div class="document-name">${escapeHtml(documentTitle)}</div>
-					</div>`
-			: showHeader
-				? `<div class="print-header"><div class="document-name">${escapeHtml(documentTitle)}</div></div>`
-				: '';
+	// Header chrome comes only from the Document Setting. Never invent a
+	// Document Name header: preview and print must show the document HTML.
+	const headerBlock = hasLayoutHeader
+		? `<div class="print-header"><div class="header-table">${headerHtml}</div></div>`
+		: '';
 
 	const footerBlock =
 		showFooter && footerHtml
-			? `<div class="print-footer">${footerHtml}</div>`
+			? `<div class="print-footer print-chrome-bottom">${footerHtml}</div>`
 			: '';
 
-	const headerSpaceMm = showHeader ? 38 : 0;
-	const footerSpaceMm = showFooter ? 22 : 0;
-	const pageMarginTop = plainLayout
-		? marginTop
-		: marginTop + headerSpaceMm;
-	const pageMarginBottom = plainLayout
-		? marginBottom
-		: marginBottom + footerSpaceMm;
-	const headerSpacerHeight = showHeader ? 130 : 0;
-	const footerSpacerHeight = showFooter ? 70 : 0;
+	const hasPrintChrome = Boolean(headerBlock || footerBlock);
+	const footerReserveMm = showFooter && footerBlock ? 30 : 0;
+	const pageMarginPrint = `${marginTop}mm ${marginRight}mm ${marginBottom}mm ${marginLeft}mm`;
 
-	const isPdf = variant === 'pdfRaster';
-
-	const printMediaBlock =
-		isPdf || plainLayout
-			? plainLayout && !isPdf
-				? `
-					@media print {
-						* {
-							print-color-adjust: exact;
-							-webkit-print-color-adjust: exact;
-						}
-						@page {
-							size: ${pageSizeCss};
-							margin: ${marginTop}mm ${marginRight}mm ${marginBottom}mm ${marginLeft}mm;
-						}
+	const chromeLayoutCss = hasPrintChrome
+		? `
+					.print-layout-table {
+						width: 100%;
+						table-layout: fixed;
+						border-collapse: collapse;
+						border-spacing: 0;
+						margin: 0;
+						padding: 0;
+					}
+					.print-layout-table > thead {
+						display: table-header-group;
+					}
+					.print-layout-table > tfoot {
+						display: table-footer-group;
+					}
+					.print-layout-header-cell {
+						vertical-align: top;
+						padding: 0 0 4mm 0;
+					}
+					.print-body-slot {
+						box-sizing: border-box;
+					}
+					.print-layout-footer-cell {
+						height: ${footerReserveMm}mm;
+						padding: 0;
+						vertical-align: top;
+					}
+					.print-chrome-bottom {
+						box-sizing: border-box;
+						padding: 2mm ${paddingRight}mm ${paddingBottom}mm ${paddingLeft}mm;
+						background: #fff;
 					}`
-				: ''
-			: `
-					@media print {
-						* {
-							print-color-adjust: exact;
-							-webkit-print-color-adjust: exact;
+		: '';
+
+	const printChromeBlock = hasPrintChrome
+		? `
+						html,
+						body {
+							width: 100%;
+							height: 100%;
 						}
-						@page {
-							size: ${pageSizeCss};
-							margin: ${pageMarginTop}mm ${marginRight}mm ${pageMarginBottom}mm ${marginLeft}mm;
+						.print-body-slot {
+							padding-bottom: ${paddingBottom + footerReserveMm}mm;
 						}
-						.print-header {
-							position: fixed;
-							top: 0;
-							left: 0;
-							right: 0;
-							padding: 8mm ${marginRight}mm 10px ${marginLeft}mm;
+						.print-layout-table > tfoot {
+							height: ${footerReserveMm}mm;
 						}
-						.print-footer {
+						.print-layout-table .content table > tfoot {
+							height: auto;
+						}
+						.print-chrome-bottom {
 							position: fixed;
 							bottom: 0;
 							left: 0;
 							right: 0;
-							padding: 10px ${marginRight}mm 8mm ${marginLeft}mm;
+							width: 100%;
+							z-index: 2;
+							min-height: 24mm;
+						}`
+		: '';
+
+	const pageHeightPx = mmToCssPx(pageSpec.heightMm);
+	const screenPreviewChrome = hasPrintChrome
+		? `
+						html[data-print-preview="1"] .print-preview-sheet .print-body-slot {
+							/* The tfoot below already reserves the footer band. */
+							padding-bottom: 0;
+						}
+						html[data-print-preview="1"] .print-preview-sheet .print-layout-table > tfoot {
+							height: ${footerReserveMm}mm;
+						}
+						html[data-print-preview="1"] .print-preview-sheet .print-layout-table > tfoot .print-chrome-bottom {
+							position: absolute;
+							left: ${marginLeft}mm;
+							right: ${marginRight}mm;
+							bottom: ${marginBottom}mm;
+							width: auto;
+							z-index: 2;
+							min-height: 24mm;
+						}`
+		: '';
+
+	const screenPreviewBlock = `
+					@media screen {
+						html[data-print-preview="1"] {
+							background: #d4d4d8;
+						}
+						html[data-print-preview="1"] body {
+							margin: 0;
+							padding: 16px 0 24px;
+							background: #d4d4d8;
+						}
+						html[data-print-preview="1"] .print-preview-stack {
+							display: flex;
+							flex-direction: column;
+							align-items: center;
+							gap: 20px;
+						}
+						html[data-print-preview="1"] .print-preview-sheet {
+							box-sizing: border-box;
+							position: relative;
+							width: ${pageSpec.widthPx}px;
+							height: ${pageHeightPx}px;
+							padding: ${marginTop}mm ${marginRight}mm ${marginBottom}mm ${marginLeft}mm;
+							overflow: hidden;
+							background: #fff;
+							box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 0, 0, 0.08);
+						}
+						html[data-print-preview="1"] .print-preview-sheet > .print-page {
+							box-sizing: border-box;
+							width: 100% !important;
+							max-width: none !important;
+							height: 100%;
+							margin: 0 !important;
+							padding: 0 !important;
+						}
+						html[data-print-preview="1"] .print-preview-sheet .print-surface {
+							box-sizing: border-box;
+							height: 100%;
+							/* Vertical padding belongs to the first/last fragment only,
+							   exactly like the fragmented .print-surface in print. */
+							padding: 0 ${paddingRight}mm 0 ${paddingLeft}mm;
+						}
+						html[data-print-preview="1"] .print-preview-sheet[data-preview-first="1"] .print-surface {
+							padding-top: ${paddingTop}mm;
+						}
+						html[data-print-preview="1"] .print-preview-sheet[data-preview-last="1"] .print-surface {
+							padding-bottom: ${paddingBottom}mm;
+						}
+						${screenPreviewChrome}
+					}`;
+
+	const printMediaBlock = `
+					@media print {
+						* {
+							print-color-adjust: exact;
+							-webkit-print-color-adjust: exact;
+						}
+						@page {
+							size: ${pageSizeCss};
+							margin: ${pageMarginPrint};
+						}
+						.print-page {
+							width: auto;
+							max-width: none;
+							padding: 0;
+						}
+						.print-surface {
+							padding: ${paddingTop}mm ${paddingRight}mm ${paddingBottom}mm ${paddingLeft}mm;
+						}
+						${printChromeBlock}
+						.content > * {
+							break-inside: auto;
+							page-break-inside: auto;
 						}
 					}`;
 
-	const bodyMinWidth = isPdf
-		? 'min-width: 720px; max-width: 800px;'
-		: '';
+	const bodyContent = documentHtml || '<p>No content</p>';
+	const inner = hasPrintChrome
+		? `<table class="print-layout-table">
+				${headerBlock ? `<thead><tr><td class="print-layout-cell print-layout-header-cell">${headerBlock}</td></tr></thead>` : ''}
+				<tbody><tr><td class="print-layout-cell"><div class="print-body-slot"><div class="content">${bodyContent}</div></div></td></tr></tbody>
+				${footerBlock ? `<tfoot><tr><td class="print-layout-cell print-layout-footer-cell">${footerBlock}</td></tr></tfoot>` : ''}
+			</table>`
+		: `<div class="content">${bodyContent}</div>`;
 
 	return `<!DOCTYPE html>
-			<html>
+			<html
+				data-print-variant="${variant}"
+				data-print-chrome="${hasPrintChrome ? '1' : '0'}"
+				data-jspdf-format="${pageSpec.jspdfFormat}"
+				data-jspdf-orientation="${pageSpec.orientation}"
+				data-capture-width-px="${pageSpec.widthPx}"
+				data-page-width-mm="${pageSpec.widthMm}"
+				data-page-height-mm="${pageSpec.heightMm}"
+				data-margin-top-mm="${marginTop}"
+				data-margin-bottom-mm="${marginBottom}"
+				data-margin-left-mm="${marginLeft}"
+				data-margin-right-mm="${marginRight}"
+				data-padding-top-mm="${paddingTop}"
+				data-padding-bottom-mm="${paddingBottom}"
+				data-padding-left-mm="${paddingLeft}"
+				data-padding-right-mm="${paddingRight}"
+				data-download-filename="${escapeHtml(downloadBase)}"
+			>
 			<head>
 				<meta charset="utf-8"/>
-				<title>${escapeHtml(documentTitle)}</title>
+				<title>${escapeHtml(downloadBase)}</title>
 				<style>
 					body {
 						font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif;
 						margin: 0;
-						padding: ${paddingTop}mm ${paddingRight}mm ${paddingBottom}mm ${paddingLeft}mm;
+						padding: 0;
 						line-height: 1.6;
-						${bodyMinWidth}
 						background: #fff;
 						color: #000;
 					}
-					.header-spacer {
-						height: ${headerSpacerHeight}px;
+					.print-page {
+						box-sizing: border-box;
+						width: ${pageSpec.widthPx}px;
+						max-width: 100%;
+						margin: 0 auto;
+						padding: ${marginTop}mm ${marginRight}mm ${marginBottom}mm ${marginLeft}mm;
+						background: #fff;
 					}
-					.footer-spacer {
-						height: ${footerSpacerHeight}px;
+					.print-surface {
+						box-sizing: border-box;
+						padding: ${paddingTop}mm ${paddingRight}mm ${paddingBottom}mm ${paddingLeft}mm;
 					}
+					td.print-layout-cell {
+						border: none;
+						padding: 0;
+						vertical-align: top;
+					}
+					${chromeLayoutCss}
 					.print-header {
 						text-align: left;
-						padding: 12px 0 10px 0;
+						padding: 0 0 8px 0;
 					}
 					.header-table {
 						margin-bottom: 6px;
@@ -369,33 +589,29 @@ export function buildPrintDocumentHtml(params: {
 						font-size: 10px;
 						padding: 10px 0 12px 0;
 					}
-					table {
+					.content table {
 						width: 100%;
 						border-collapse: collapse;
 					}
-					th,
-					td {
+					.content th,
+					.content td {
 						border: 1px solid #000;
 						padding: 4px 6px;
 						text-align: left;
 						vertical-align: top;
 					}
-					thead th {
-						background-color: #f5f5f5;
+					.content thead th {
 						font-weight: 600;
 					}
 					${PRINT_DOCUMENT_UTILITY_CSS}
+					${screenPreviewBlock}
 					${printMediaBlock}
 				</style>
 			</head>
 			<body>
-				${headerBlock}
-				${showHeader && !isPdf ? '<div class="header-spacer"></div>' : ''}
-				<div class="content">
-					${documentHtml || '<p>No content</p>'}
+				<div class="print-page">
+					<div class="print-surface">${inner}</div>
 				</div>
-				${showFooter && !isPdf ? '<div class="footer-spacer"></div>' : ''}
-				${footerBlock}
 			</body>
 			</html>`;
 }

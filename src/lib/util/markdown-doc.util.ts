@@ -54,6 +54,16 @@ function resolveImageHref(href: string, options?: MarkdownToHtmlOptions): string
 	return resolveDocImageSrc(trimmed);
 }
 
+function slugifyHeading(text: string): string {
+	const plain = text.replace(/<[^>]+>/g, '').trim();
+	return plain
+		.toLowerCase()
+		.replace(/[^\w\s-]/g, '')
+		.replace(/\s+/g, '-')
+		.replace(/-+/g, '-')
+		.replace(/^-|-$/g, '');
+}
+
 /** Minimal markdown to HTML for hospital-facing docs. */
 export function markdownToHtml(md: string, options?: MarkdownToHtmlOptions): string {
 	const lines = md.split('\n');
@@ -62,6 +72,14 @@ export function markdownToHtml(md: string, options?: MarkdownToHtmlOptions): str
 	let codeLang = '';
 	const codeBuf: string[] = [];
 	let listBlock: ListBlock | null = null;
+	const headingIds = new Map<string, number>();
+
+	const headingId = (raw: string): string => {
+		const base = slugifyHeading(raw) || 'section';
+		const n = headingIds.get(base) ?? 0;
+		headingIds.set(base, n + 1);
+		return n === 0 ? base : `${base}-${n}`;
+	};
 
 	const flushList = () => {
 		if (!listBlock || listBlock.items.length === 0) {
@@ -188,12 +206,16 @@ export function markdownToHtml(md: string, options?: MarkdownToHtmlOptions): str
 			continue;
 		}
 		if (line.startsWith('## ')) {
-			out.push(`<h2 class="docs-h2">${inlineMd(line.slice(3))}</h2>`);
+			const inner = inlineMd(line.slice(3));
+			const id = headingId(line.slice(3));
+			out.push(`<h2 id="${escapeHtml(id)}">${inner}</h2>`);
 			i++;
 			continue;
 		}
 		if (line.startsWith('### ')) {
-			out.push(`<h3 class="docs-h3">${inlineMd(line.slice(4))}</h3>`);
+			const inner = inlineMd(line.slice(4));
+			const id = headingId(line.slice(4));
+			out.push(`<h3 id="${escapeHtml(id)}">${inner}</h3>`);
 			i++;
 			continue;
 		}

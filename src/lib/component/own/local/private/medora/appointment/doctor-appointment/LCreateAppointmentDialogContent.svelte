@@ -778,6 +778,7 @@
 					<WashInputField
 						bind:value={patientDateOfBirth}
 						inputType="date"
+						dateBounds="dateOfBirth"
 						className="w-full"
 					/>
 				</div>

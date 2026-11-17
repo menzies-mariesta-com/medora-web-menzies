@@ -8,8 +8,8 @@ export default defineConfig({
 		'./src/lib/server/db/table/auth-table/auth-table.ts',
 		'./src/lib/server/db/table/master-table/master-table.ts',
 		'./src/lib/server/db/table/information-table/information-table.ts',
-		'./src/lib/server/db/table/information-table/inventory-transaction-table.ts',
-		'./src/lib/server/db/table/information-table/medication-order-table.ts',
+		'./src/lib/server/db/table/patient-portal-table/patient-portal-table.ts',
+		'./src/lib/server/db/table/plan-table/plan-table.ts',
 		'./src/lib/server/db/table/notification-table/notification-table.ts',
 		'./src/lib/server/db/table/marketplace-table/marketplace-table.ts'
 	],

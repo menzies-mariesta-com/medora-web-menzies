@@ -408,15 +408,28 @@
 			!_branchSelection
 		)
 			return;
-		(async () => {
+		let cancelled = false;
+		const ac = new AbortController();
+		void (async () => {
 			await fetchServiceItems();
+			if (cancelled) return;
 			await fetchTaggings(true);
 		})();
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	$effect(() => {
 		if (isComparativeMode && selectedBranchIds.length > 0) {
-			fetchComparativeTaggings();
+			let cancelled = false;
+			const ac = new AbortController();
+			void fetchComparativeTaggings();
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 		}
 	});
 

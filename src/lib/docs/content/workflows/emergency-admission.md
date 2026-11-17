@@ -3,7 +3,7 @@ title: "Registration"
 description: "How to use Registration in Emergency."
 docType: workflow
 slug: workflows/emergency-admission
-pageId: 123
+pageId: 1200100
 moduleId: 12
 pageUrl: "/medora/home/emergency/admission"
 generated: true

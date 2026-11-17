@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDropdown from '$lib/component/wash/dropdown/WashDropdown.svelte';
+	import WashDropdownButton from '$lib/component/wash/dropdown/button/WashDropdownButton.svelte';
+	import WashDropdownContent from '$lib/component/wash/dropdown/content/WashDropdownContent.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -45,7 +48,8 @@
 		listResult?.systemTotals ?? {
 			ICD10: 0,
 			ICD10_CM: 0,
-			ICD11: 0
+			ICD11: 0,
+			SNOMED_CT: 0
 		}
 	);
 
@@ -56,7 +60,17 @@
 		if (system === DiagnosisCodingSystemEnum.ICD11) {
 			return msg.hospital_coding_system_icd11();
 		}
+		if (system === DiagnosisCodingSystemEnum.SNOMED_CT) {
+			return msg.hospital_coding_system_snomed_ct();
+		}
 		return msg.hospital_coding_system_icd10();
+	}
+
+	function reseedTargetLabel(system: DiagnosisCodingSystem | 'ALL'): string {
+		if (system === 'ALL') {
+			return msg.admin_icd_reseed_all_option();
+		}
+		return msg.admin_icd_reseed_system_option({ system });
 	}
 	const latestRelease = $derived(
 		listResult?.latestReleases?.find((r) => r.system === activeSystem) ??
@@ -176,12 +190,16 @@
 		void loadCodes(true);
 	}
 
-	async function confirmReseed() {
+	async function confirmReseed(
+		target: DiagnosisCodingSystem | 'ALL' = activeSystem
+	) {
 		if (!isSystemAdmin || reseeding) return;
+		const confirmSystem =
+			target === 'ALL' ? 'ALL' : target;
 		const result = await dialogService.open({
 			title: msg.admin_icd_reseed_title(),
 			message: msg.admin_icd_reseed_confirm({
-				system: activeSystem
+				system: confirmSystem
 			}),
 			variant: DialogVariantEnum.CONFIRM,
 			tone: 'error'
@@ -194,7 +212,9 @@
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ system: activeSystem })
+				body: JSON.stringify({
+					system: target === 'ALL' ? 'ALL' : target
+				})
 			});
 			if (!res.ok) await throwUserFacingHttpError(res);
 			const body = (await res.json()) as AdminIcdReseedResponse;
@@ -250,16 +270,51 @@
 		</div>
 
 		{#if isSystemAdmin}
-			<WashButton
-				variant="error"
-				size="sm"
-				className={reseeding ? 'cursor-not-allowed' : 'cursor-pointer'}
-				disabled={reseeding}
-				loading={reseeding}
-				onClick={confirmReseed}
-			>
-				{msg.admin_icd_reseed_action()}
-			</WashButton>
+			<div class="flex shrink-0 flex-wrap items-center gap-2">
+				<WashButton
+					variant="error"
+					size="sm"
+					className={reseeding ? 'cursor-not-allowed' : 'cursor-pointer'}
+					disabled={reseeding}
+					loading={reseeding}
+					onClick={() => confirmReseed(activeSystem)}
+				>
+					{msg.admin_icd_reseed_action()}
+				</WashButton>
+				<WashDropdown className="dropdown-end">
+					<WashDropdownButton
+						className="btn-error btn-sm {reseeding
+							? 'btn-disabled cursor-not-allowed'
+							: 'cursor-pointer'}"
+					>
+						{msg.admin_icd_reseed_menu()}
+					</WashDropdownButton>
+					<WashDropdownContent className="bg-base-100">
+						{#each DIAGNOSIS_CODING_SYSTEM_VALUES as system (system)}
+							<li>
+								<button
+									type="button"
+									class="cursor-pointer"
+									disabled={reseeding}
+									onclick={() => confirmReseed(system)}
+								>
+									{reseedTargetLabel(system)}
+								</button>
+							</li>
+						{/each}
+						<li>
+							<button
+								type="button"
+								class="cursor-pointer font-semibold"
+								disabled={reseeding}
+								onclick={() => confirmReseed('ALL')}
+							>
+								{reseedTargetLabel('ALL')}
+							</button>
+						</li>
+					</WashDropdownContent>
+				</WashDropdown>
+			</div>
 		{/if}
 	</div>
 
@@ -308,6 +363,9 @@
 	</p>
 	<p class="text-xs text-base-content/55">
 		{msg.icd_cm_attribution()}
+	</p>
+	<p class="text-xs text-base-content/55">
+		{msg.snomed_attribution()}
 	</p>
 	<p class="text-xs text-base-content/50">
 		{msg.admin_icd_reseed_hint()}

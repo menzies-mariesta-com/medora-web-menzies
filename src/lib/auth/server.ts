@@ -13,6 +13,7 @@ import {
 	verificationTable
 } from '$lib/server/db/table/auth-table/auth-table';
 import { renderResetPasswordEmail } from '$lib/asset/email/reset-password';
+import { tryConsumePasswordResetCapture } from '$lib/server/auth/capture-password-reset-url.server';
 import { renderOtpVerificationEmail } from '$lib/asset/email/otp-verification';
 import { sendEmailServer } from '$lib/server/util/mailer.server';
 import { PasswordHashUtil } from '$lib/server/auth/password-hash.server';
@@ -91,10 +92,11 @@ export const auth = betterAuth({
 				passwordHashUtil.verify({ password, hash })
 		},
 		sendResetPassword: async ({ user, url }) => {
+			if (tryConsumePasswordResetCapture(user.email, url)) return;
 			const { html, plainText } = renderResetPasswordEmail({ url });
 			void sendEmailServer({
 				to: user.email,
-				subject: 'Reset your password',
+				subject: 'Reset your Medora password',
 				message: plainText,
 				html
 			});

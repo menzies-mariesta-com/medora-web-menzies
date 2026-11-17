@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import {
 	and,
 	count,
@@ -12,6 +13,7 @@ import {
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { requireOptionalDateOfBirth } from '$lib/server/medora/date-of-birth-range.server';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { activeEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import type {
@@ -239,11 +241,19 @@ export async function createAppointment(
 	input: AppointmentSchemaInsert
 ): Promise<AppointmentSchema> {
 	await ensureCanAccessHospital(event, input.hospitalId);
+	const values = { ...input };
+	if (values.patientDateOfBirth) {
+		values.patientDateOfBirth =
+			requireOptionalDateOfBirth(String(values.patientDateOfBirth)) ??
+			null;
+	}
 	const [row] = await ensureDb()
 		.insert(table.appointmentTable)
-		.values(input)
+		.values(values)
 		.returning();
 	if (!row) throw new Error('Failed to create appointment');
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return row;
 }
 
@@ -256,9 +266,15 @@ export async function updateAppointment(
 	if (!Number.isFinite(id) || id <= 0) {
 		throw error(400, 'Invalid appointment id');
 	}
+	const patch = { ...rest };
+	if (patch.patientDateOfBirth) {
+		patch.patientDateOfBirth =
+			requireOptionalDateOfBirth(String(patch.patientDateOfBirth)) ??
+			null;
+	}
 	const [row] = await ensureDb()
 		.update(table.appointmentTable)
-		.set(rest)
+		.set(patch)
 		.where(
 			and(
 				eq(table.appointmentTable.id, id),
@@ -273,6 +289,8 @@ export async function updateAppointment(
 			'Appointment not found, was removed, or belongs to another hospital.'
 		);
 	}
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return row;
 }
 
@@ -373,6 +391,8 @@ export async function createAppointmentBlock(
 		.values(input)
 		.returning();
 	if (!row) throw new Error('Failed to create block');
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return row;
 }
 
@@ -396,6 +416,8 @@ export async function updateAppointmentBlock(
 		)
 		.returning();
 	if (!row) throw new Error('Failed to update block');
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return row;
 }
 

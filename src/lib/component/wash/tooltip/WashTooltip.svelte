@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import {
 		resolveHorizontalTooltipSide,
 		stripTooltipPlacementClasses,
@@ -12,7 +13,7 @@
 		className = '',
 		placement = 'auto'
 	} = $props<{
-		children: () => void;
+		children?: Snippet;
 		tooltipText: string;
 		className?: string;
 		placement?: 'auto' | HorizontalTooltipSide;
@@ -73,5 +74,7 @@
 	onmouseenter={handlePointerEnter}
 	onfocusin={handleFocusIn}
 >
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 </div>

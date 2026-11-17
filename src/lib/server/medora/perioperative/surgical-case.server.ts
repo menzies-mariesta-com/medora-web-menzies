@@ -12,6 +12,10 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getOrCreateHospitalPerioperativeSetting } from './hospital-perioperative-setting.server';
 import { publishPerioperativeEvent } from './perioperative-event-bus.server';
+import {
+	assertRowsUpdated,
+	updateStatusTaggingIfCurrent
+} from '$lib/server/medora/workflow/status-transition.server';
 
 async function auditCase(
 	surgicalCaseId: number,
@@ -210,17 +214,28 @@ export async function scheduleSurgicalCase(input: {
 			);
 		for (const c of conflicts) {
 			if (c.priority === SurgicalCasePriorityEnum.ELECTIVE) {
-				await ensureDb()
-					.update(table.surgicalCaseTable)
-					.set({
-						statusTaggingId:
-							SurgicalCaseStatusTaggingEnum.PENDING_RESCHEDULE,
-						displacedByCaseId: input.caseId,
-						scheduledStart: null,
-						scheduledEnd: null,
-						otRoomId: null
-					})
-					.where(eq(table.surgicalCaseTable.id, c.id));
+				await ensureDb().transaction(async (tx) => {
+					await updateStatusTaggingIfCurrent(
+						tx,
+						table.surgicalCaseTable,
+						c.id,
+						SurgicalCaseStatusTaggingEnum.SCHEDULED,
+						{
+							statusTaggingId:
+								SurgicalCaseStatusTaggingEnum.PENDING_RESCHEDULE,
+							displacedByCaseId: input.caseId,
+							scheduledStart: null,
+							scheduledEnd: null,
+							otRoomId: null
+						},
+						[
+							eq(
+								table.surgicalCaseTable.hospitalId,
+								input.hospitalId
+							)
+						]
+					);
+				});
 				await auditCase(c.id, 'bumped', input.staffId ?? null, {
 					byCaseId: input.caseId
 				});
@@ -233,21 +248,42 @@ export async function scheduleSurgicalCase(input: {
 		}
 	}
 
-	const [row] = await ensureDb()
-		.update(table.surgicalCaseTable)
-		.set({
-			otRoomId: input.otRoomId,
-			scheduledStart: input.scheduledStart,
-			scheduledEnd: input.scheduledEnd,
-			statusTaggingId: SurgicalCaseStatusTaggingEnum.SCHEDULED
-		})
-		.where(
-			and(
-				eq(table.surgicalCaseTable.id, input.caseId),
-				eq(table.surgicalCaseTable.hospitalId, input.hospitalId)
+	const row = await ensureDb().transaction(async (tx) => {
+		const [locked] = await tx
+			.select({ statusTaggingId: table.surgicalCaseTable.statusTaggingId })
+			.from(table.surgicalCaseTable)
+			.where(
+				and(
+					eq(table.surgicalCaseTable.id, input.caseId),
+					eq(table.surgicalCaseTable.hospitalId, input.hospitalId),
+					ne(table.surgicalCaseTable.statusId, StatusEnum.DELETED)
+				)
 			)
-		)
-		.returning();
+			.for('update')
+			.limit(1);
+		if (!locked) throw error(404, 'Case not found');
+		const rows = await tx
+			.update(table.surgicalCaseTable)
+			.set({
+				otRoomId: input.otRoomId,
+				scheduledStart: input.scheduledStart,
+				scheduledEnd: input.scheduledEnd,
+				statusTaggingId: SurgicalCaseStatusTaggingEnum.SCHEDULED
+			})
+			.where(
+				and(
+					eq(table.surgicalCaseTable.id, input.caseId),
+					eq(
+						table.surgicalCaseTable.statusTaggingId,
+						locked.statusTaggingId
+					),
+					eq(table.surgicalCaseTable.hospitalId, input.hospitalId)
+				)
+			)
+			.returning();
+		assertRowsUpdated(rows);
+		return rows[0]!;
+	});
 
 	await auditCase(input.caseId, 'scheduled', input.staffId ?? null, {
 		otRoomId: input.otRoomId,
@@ -266,20 +302,38 @@ export async function markPreOpComplete(input: {
 	caseId: number;
 	staffId?: string | null;
 }) {
-	const [row] = await ensureDb()
-		.update(table.surgicalCaseTable)
-		.set({
-			preOpCompleteAt: new Date().toISOString(),
-			statusTaggingId: SurgicalCaseStatusTaggingEnum.PRE_OP_COMPLETE
-		})
-		.where(
-			and(
-				eq(table.surgicalCaseTable.id, input.caseId),
-				eq(table.surgicalCaseTable.hospitalId, input.hospitalId)
+	const row = await ensureDb().transaction(async (tx) => {
+		const [locked] = await tx
+			.select({ statusTaggingId: table.surgicalCaseTable.statusTaggingId })
+			.from(table.surgicalCaseTable)
+			.where(
+				and(
+					eq(table.surgicalCaseTable.id, input.caseId),
+					eq(table.surgicalCaseTable.hospitalId, input.hospitalId),
+					ne(table.surgicalCaseTable.statusId, StatusEnum.DELETED)
+				)
 			)
-		)
-		.returning();
-	if (!row) throw error(404, 'Case not found');
+			.for('update')
+			.limit(1);
+		if (!locked) throw error(404, 'Case not found');
+		await updateStatusTaggingIfCurrent(
+			tx,
+			table.surgicalCaseTable,
+			input.caseId,
+			locked.statusTaggingId,
+			{
+				preOpCompleteAt: new Date().toISOString(),
+				statusTaggingId: SurgicalCaseStatusTaggingEnum.PRE_OP_COMPLETE
+			},
+			[eq(table.surgicalCaseTable.hospitalId, input.hospitalId)]
+		);
+		const [updated] = await tx
+			.select()
+			.from(table.surgicalCaseTable)
+			.where(eq(table.surgicalCaseTable.id, input.caseId))
+			.limit(1);
+		return updated!;
+	});
 	await auditCase(input.caseId, 'pre_op_complete', input.staffId ?? null);
 	publishPerioperativeEvent({
 		type: PerioperativeSseEventTypeEnum.CASE_STATUS,
@@ -322,17 +376,35 @@ export async function updateCaseStatus(input: {
 	if (input.actualStart != null) patch.actualStart = input.actualStart;
 	if (input.actualEnd != null) patch.actualEnd = input.actualEnd;
 
-	const [row] = await ensureDb()
-		.update(table.surgicalCaseTable)
-		.set(patch)
-		.where(
-			and(
-				eq(table.surgicalCaseTable.id, input.caseId),
-				eq(table.surgicalCaseTable.hospitalId, input.hospitalId)
+	const row = await ensureDb().transaction(async (tx) => {
+		const [locked] = await tx
+			.select({ statusTaggingId: table.surgicalCaseTable.statusTaggingId })
+			.from(table.surgicalCaseTable)
+			.where(
+				and(
+					eq(table.surgicalCaseTable.id, input.caseId),
+					eq(table.surgicalCaseTable.hospitalId, input.hospitalId),
+					ne(table.surgicalCaseTable.statusId, StatusEnum.DELETED)
+				)
 			)
-		)
-		.returning();
-	if (!row) throw error(404, 'Case not found');
+			.for('update')
+			.limit(1);
+		if (!locked) throw error(404, 'Case not found');
+		await updateStatusTaggingIfCurrent(
+			tx,
+			table.surgicalCaseTable,
+			input.caseId,
+			locked.statusTaggingId,
+			patch,
+			[eq(table.surgicalCaseTable.hospitalId, input.hospitalId)]
+		);
+		const [updated] = await tx
+			.select()
+			.from(table.surgicalCaseTable)
+			.where(eq(table.surgicalCaseTable.id, input.caseId))
+			.limit(1);
+		return updated!;
+	});
 	await auditCase(input.caseId, 'status_change', input.staffId ?? null, {
 		statusTaggingId: input.statusTaggingId
 	});

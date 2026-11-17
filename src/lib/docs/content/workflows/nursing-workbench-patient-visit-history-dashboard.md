@@ -3,7 +3,7 @@ title: "Patient Visit History Dashboard"
 description: "How to use Patient Visit History Dashboard in Nursing Workbench."
 docType: workflow
 slug: workflows/nursing-workbench-patient-visit-history-dashboard
-pageId: 800008
+pageId: 400108
 moduleId: 4
 pageUrl: "/medora/home/nursing-workbench/patient-visit-history-dashboard"
 generated: true

@@ -51,6 +51,12 @@ export const POST: RequestHandler = async (event) => {
 				: null,
 		documentText:
 			body.documentText != null ? String(body.documentText) : null,
+		clinicalSection:
+			body.clinicalSection === undefined
+				? undefined
+				: body.clinicalSection != null
+					? String(body.clinicalSection)
+					: null,
 		statusId:
 			body.statusId != null ? Number(body.statusId) : undefined
 	});
@@ -93,6 +99,12 @@ export const PUT: RequestHandler = async (event) => {
 				? undefined
 				: body.documentText != null
 					? String(body.documentText)
+					: null,
+		clinicalSection:
+			body.clinicalSection === undefined
+				? undefined
+				: body.clinicalSection != null
+					? String(body.clinicalSection)
 					: null,
 		statusId:
 			body.statusId === undefined

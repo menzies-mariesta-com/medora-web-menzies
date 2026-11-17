@@ -1,5 +1,6 @@
 import { DocumentCatalogKindEnum } from '$lib/model/enum/document-catalog.enum';
 import { getAllCatalogTemplates } from '$lib/server/medora/document-master/catalog/document-catalog.index';
+import type { CatalogTemplateDef } from '$lib/server/medora/document-master/catalog/document-catalog.types';
 import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.util';
 
 const MIN_TEMPLATES = 280;
@@ -13,6 +14,10 @@ for (const group of DOCUMENT_TEMPLATE_PLACEHOLDERS) {
 }
 // Print pipeline injects structured HTML blocks.
 allowed.add('{{print.body_html}}');
+
+function templateKey(tpl: CatalogTemplateDef): string {
+	return `${tpl.title}|${tpl.documentTypeId}|${tpl.legacyDocumentId ?? ''}|${tpl.legacyDocumentCode ?? ''}`;
+}
 
 function collectPlaceholders(html: string): string[] {
 	return [...html.matchAll(PLACEHOLDER_RE)].map((m) => m[0]);
@@ -28,30 +33,27 @@ function main(): void {
 		);
 	}
 
-	const codes = new Set<string>();
+	const keys = new Set<string>();
 	for (const tpl of templates) {
-		if (!tpl.catalogCode?.trim()) {
-			errors.push('Template missing catalogCode');
-			continue;
+		const label = templateKey(tpl);
+		if (keys.has(label)) {
+			errors.push(`Duplicate template: ${label}`);
 		}
-		if (codes.has(tpl.catalogCode)) {
-			errors.push(`Duplicate catalogCode: ${tpl.catalogCode}`);
-		}
-		codes.add(tpl.catalogCode);
+		keys.add(label);
 
 		if (!tpl.title?.trim()) {
-			errors.push(`${tpl.catalogCode}: empty title`);
+			errors.push(`${label}: empty title`);
 		}
 
 		const en = tpl.locales.find((l) => l.locale === 'en');
 		if (!en) {
-			errors.push(`${tpl.catalogCode}: missing en locale`);
+			errors.push(`${label}: missing en locale`);
 		} else if (
 			tpl.kind !== DocumentCatalogKindEnum.TRANSACTIONAL_PRINT &&
 			!en.documentText?.trim() &&
 			!tpl.legacyDocumentId
 		) {
-			errors.push(`${tpl.catalogCode}: empty en documentText`);
+			errors.push(`${label}: empty en documentText`);
 		}
 
 		for (const loc of tpl.locales) {
@@ -65,7 +67,7 @@ function main(): void {
 			const text = loc.documentText ?? '';
 			for (const ph of collectPlaceholders(text)) {
 				if (!allowed.has(ph)) {
-					errors.push(`${tpl.catalogCode} (${loc.locale}): unknown placeholder ${ph}`);
+					errors.push(`${label} (${loc.locale}): unknown placeholder ${ph}`);
 				}
 			}
 		}

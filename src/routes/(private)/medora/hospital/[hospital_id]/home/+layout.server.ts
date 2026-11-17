@@ -11,7 +11,13 @@ import type { PageWithRelations } from '$lib/model/type/medora/page.type';
 import { and, eq, inArray } from 'drizzle-orm';
 import { listStoresForApprovalConfig } from '$lib/server/medora/inventory/approval-config.server';
 import { getMedoraPagesForNav } from '$lib/server/medora/page-nav-cache.server';
+import { cacheGetOrSet } from '$lib/server/cache/tiered-cache.server';
+import {
+	cacheKeys,
+	hospitalMetaTag
+} from '$lib/server/cache/cache-keys.server';
 import { withSectionIndexRedirect } from '$lib/server/medora/nav/medora-section-index-redirect.server';
+import { loadOwnerEntitlementLayoutFields } from '$lib/server/medora/plan/owner-entitlement-layout.server';
 import type { Cookies, RequestEvent } from '@sveltejs/kit';
 
 const COOKIE_SELECTED_USER_GROUP_ID = 'heka_selected_user_group_id';
@@ -115,21 +121,38 @@ export const load: LayoutServerLoad = async (event) => {
 		const [fullPages, hospitalRow] = await Promise.all([
 			getMedoraPagesForNav(),
 			hospitalId
-				? ensureDb()
-						.select({
-							name: table.hospitalTable.name,
-							logoUrl: table.hospitalTable.logoUrl,
-							countryId: table.hospitalTable.countryId
-						})
-						.from(table.hospitalTable)
-						.where(eq(table.hospitalTable.id, hospitalId))
-						.limit(1)
-				: Promise.resolve([] as { name: string | null; logoUrl: string | null; countryId: number | null }[])
+				? cacheGetOrSet({
+						key: cacheKeys.hospitalMeta(hospitalId),
+						ttlSeconds: 300,
+						tags: [hospitalMetaTag(hospitalId)],
+						factory: () =>
+							ensureDb()
+								.select({
+									name: table.hospitalTable.name,
+									logoUrl: table.hospitalTable.logoUrl,
+									countryId: table.hospitalTable.countryId
+								})
+								.from(table.hospitalTable)
+								.where(eq(table.hospitalTable.id, hospitalId))
+								.limit(1)
+					})
+				: Promise.resolve(
+						[] as {
+							name: string | null;
+							logoUrl: string | null;
+							countryId: number | null;
+						}[]
+					)
 		]);
 		const [hospital] = hospitalRow;
 		const currentHospitalName = hospital?.name ?? null;
 		const currentHospitalLogoUrl = hospital?.logoUrl ?? null;
 		const currentHospitalCountryId = hospital?.countryId ?? null;
+
+		const entitlementFields = await loadOwnerEntitlementLayoutFields(
+			hospitalId,
+			userRoleId
+		);
 
 		// OWNER or SYSTEM_ADMIN: show all pages, all branches for this hospital
 		if (
@@ -191,7 +214,8 @@ export const load: LayoutServerLoad = async (event) => {
 				selectedBranchId,
 				/** All branches the user is allowed to use (this hospital only). For OWNER/SYSTEM_ADMIN = all hospital branches. */
 				allowedBranches: allHospitalBranches,
-				...invNav
+				...invNav,
+				...entitlementFields
 			});
 		}
 
@@ -415,7 +439,8 @@ export const load: LayoutServerLoad = async (event) => {
 				selectedBranchId,
 				/** All branches the user is allowed to use. For STAFF = branches they are assigned to. */
 				allowedBranches: staffBranchesForNav,
-				...invNav
+				...invNav,
+				...entitlementFields
 			});
 		}
 
@@ -433,7 +458,8 @@ export const load: LayoutServerLoad = async (event) => {
 			selectedBranchId: null,
 			allowedBranches: [],
 			inventoryFromStoresForNav: [],
-			selectedInventoryFromStoreId: null
+			selectedInventoryFromStoreId: null,
+			...entitlementFields
 		});
 	} catch (err) {
 		// Let SvelteKit redirects/errors bubble up unchanged.

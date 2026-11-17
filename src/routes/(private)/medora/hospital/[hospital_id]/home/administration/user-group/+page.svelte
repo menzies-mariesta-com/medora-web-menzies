@@ -227,6 +227,7 @@
 			totalRowCount={total}
 			showRefreshButton={true}
 			refreshTooltip={m.refresh_data()}
+			on:refresh={() => fetchGroups()}
 			emptyMessage={m.no_user_groups_create()}
 			showRowActions={true}
 			actionsHeader={m.actions()}

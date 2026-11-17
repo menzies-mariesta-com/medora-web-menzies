@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import {
 	and,
 	count,
@@ -206,6 +207,8 @@ export async function createServiceItem(
 		.values(input)
 		.returning();
 	if (!row) throw new Error('Failed to create service item');
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return row;
 }
 
@@ -231,6 +234,8 @@ export async function updateServiceItem(
 		.where(eq(table.serviceItemTable.id, id))
 		.returning();
 	if (!row) throw error(404, 'Service item not found');
+	void notifyHospitalMasterWrite(input.hospitalId);
+
 	return row;
 }
 

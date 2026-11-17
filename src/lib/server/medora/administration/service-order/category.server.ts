@@ -1,4 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import { and, count, desc, eq, ilike, ne } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
@@ -100,6 +101,8 @@ export async function createCategory(
 		.values(input)
 		.returning();
 	if (!row) throw new Error('Failed to create category');
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }
 
@@ -115,6 +118,8 @@ export async function updateCategory(
 		.where(eq(table.categoryTable.id, id))
 		.returning();
 	if (!row) throw error(404, 'Category not found');
+	void notifyHospitalMasterWrite(hospitalId);
+
 	return row;
 }
 

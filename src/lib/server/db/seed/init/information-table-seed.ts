@@ -4,14 +4,17 @@ import { neon } from '@neondatabase/serverless';
 import { seedLogger } from '$lib/logger';
 import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
 import {
-	CLINICAL_FORM_SEED_ROWS,
-	buildClinicalFormDocumentText
-} from '$lib/util/clinical-form-print-body.util';
-import {
 	importWhoIcdSystems,
 	isWhoIcdSeedSkipped,
+	resolveWhoIcdSeedSystems,
 	WhoIcdCredentialsError
 } from '$lib/server/medora/clinical/who-icd-import.server';
+import { importIcd10CmCatalogue } from '$lib/server/medora/clinical/icd10-cm-import.server';
+import {
+	importSnomedRf2Catalogue,
+	isSnomedSeedSkipped,
+	SnomedRf2ImportError
+} from '$lib/server/medora/clinical/snomed-rf2-import.server';
 
 const client = neon(ensureDatabaseUrl());
 const db = drizzle(client);
@@ -25,10 +28,9 @@ const db = drizzle(client);
  * Does **not** seed demo patients, staff, service items, inventory, ER demo beds, or
  * transactional visits — use scripts under `src/lib/server/db/seed/demo/` (`pnpm db:seed:demo:*`).
  *
- * **ICD-10 / ICD-11:** imports the full WHO coded catalogues via the ICD-API
- * (`WHO_ICD_CLIENT_ID` + `WHO_ICD_CLIENT_SECRET` required). Set
- * `WHO_ICD_SKIP_SEED=1` only to skip (catalogue will not be complete).
- * Same importer as `pnpm db:import:icd` and admin Reseed.
+ * **Diagnosis catalogues:** optional WHO ICD (`WHO_ICD_*`), ICD-10-CM (`ICD10_CM_SEED=1`),
+ * SNOMED CT (`SNOMED_RF2_DIR`). Use `WHO_ICD_SEED_SYSTEM=ICD10|ICD11|BOTH` to import one WHO edition.
+ * Set `WHO_ICD_SKIP_SEED=1` / `SNOMED_SKIP_SEED=1` to skip.
  *
  * Per-hospital **`item_master`** catalog rows are **not** seeded here (created via the app).
  * Migration **`0074_item_master_drop_barcode_batch_required`** removes legacy **`barcode`** /
@@ -124,10 +126,11 @@ export async function seedInformationTables() {
 			(100701, 'Document Type', 1, 1, 100700, '/medora/home/administration/document-master/document-type', 1),
 			(100702, 'Document', 1, 1, 100700, '/medora/home/administration/document-master/document', 2),
 			(100703, 'Document Setting', 1, 1, 100700, '/medora/home/administration/document-master/document-setting', 3),
-			(100704, 'Master Templates', 1, 1, 100700, '/medora/home/administration/document-master/template-library', 4),
-			(100705, 'Hospital Template Access', 1, 1, 100700, '/medora/home/administration/document-master/hospital-templates', 5),
+			(100706, 'Placeholder setup', 1, 1, 100700, '/medora/home/administration/document-master/placeholder-setup', 4),
+			(100707, 'Reusable Global Documents', 1, 1, 100700, '/medora/home/administration/document-master/reusable-global-documents', 5),
 			(100800, 'Financial Year', 1, 1, null, '/medora/home/administration/financial-year', 8),
 			(100900, 'Prefix Configuration', 1, 1, null, '/medora/home/administration/prefix-configuration', 9),
+			(100905, 'Color Configuration', 1, 1, null, '/medora/home/administration/color-configuration', 10),
 			(101000, 'Departments', 1, 1, null, '/medora/home/administration/departments', 10),
 			(101100, 'Medication Order Setup', 1, 1, null, '/medora/home/administration/medication-order-setup', 12),
 			(101101, 'Frequency', 1, 1, 101100, '/medora/home/administration/medication-order-setup/frequency', 1),
@@ -150,6 +153,7 @@ export async function seedInformationTables() {
 			(101503, 'ED Billing', 1, 1, 101500, '/medora/home/administration/billing-setup/ed-billing', 3),
 			(101504, 'Billing Settings', 1, 1, 101500, '/medora/home/administration/billing-setup/settings', 4),
 			(101600, 'ED triage levels', 1, 1, null, '/medora/home/administration/er-triage-level', 19),
+			(101610, 'Trauma activation setup', 1, 1, null, '/medora/home/administration/trauma-activation-setup', 20),
 
 			-- ── Module 2: Registration ──
 			(200100, 'Patient', 2, 1, null, '/medora/home/registration/patient', 1),
@@ -286,7 +290,9 @@ export async function seedInformationTables() {
 		810001, 810002, 800000, 800001, 801000,
 		451, 451001, 451002, 452, 452001, 452002, 453,
 		1900002, 1900003, 1900004, 1900005, 1900006, 1900007, 1900008,
-		481002, 481003, 481004, 481005, 481006, 481007, 481008
+		481002, 481003, 481004, 481005, 481006, 481007, 481008,
+		// Document Master: legacy template-library / hospital-templates (→ reusable-global-documents)
+		100704, 100705
 	];
 	await db.execute(sql`
 		DELETE FROM user_group_page
@@ -304,16 +310,15 @@ export async function seedInformationTables() {
 		`);
 	seedLogger.info('Seeded: page');
 
-	// Full WHO ICD-10 + ICD-11 (every coded entity). Requires WHO_ICD_* keys.
-	// Set WHO_ICD_SKIP_SEED=1 only for CI/local escape hatches (leaves catalog empty/unchanged).
-	if (isWhoIcdSeedSkipped()) {
+	const whoSystems = resolveWhoIcdSeedSystems();
+	if (whoSystems == null) {
 		seedLogger.warn(
-			'Skipped diagnosis_code WHO import (WHO_ICD_SKIP_SEED is set). Catalogue will not be complete.'
+			'Skipped diagnosis_code WHO import (WHO_ICD_SKIP_SEED or WHO_ICD_SEED_SYSTEM=NONE).'
 		);
 	} else {
 		try {
 			const icdResult = await importWhoIcdSystems({
-				systems: 'BOTH',
+				systems: whoSystems,
 				notesPrefix: 'Seeded by information-table-seed (WHO ICD-API)',
 				log: (m) => seedLogger.info(m)
 			});
@@ -324,6 +329,47 @@ export async function seedInformationTables() {
 			if (err instanceof WhoIcdCredentialsError) {
 				throw new Error(
 					`${err.message} Or set WHO_ICD_SKIP_SEED=1 to skip ICD during information seed (not recommended for real hospitals).`
+				);
+			}
+			throw err;
+		}
+	}
+
+	const icdCmSkip =
+		(process.env.ICD10_CM_SKIP_SEED ?? '').trim().toLowerCase() === '1';
+	const icdCmSeed =
+		(process.env.ICD10_CM_SEED ?? '').trim().toLowerCase() === '1';
+	if (icdCmSkip) {
+		seedLogger.warn('Skipped ICD-10-CM import (ICD10_CM_SKIP_SEED=1).');
+	} else if (icdCmSeed) {
+		try {
+			const cmResult = await importIcd10CmCatalogue({
+				notesPrefix: 'Seeded by information-table-seed (CDC ICD-10-CM)',
+				log: (m) => seedLogger.info(m)
+			});
+			seedLogger.info(
+				`Seeded: diagnosis_code (ICD-10-CM) inserted=${cmResult.inserted} updated=${cmResult.updated} total=${cmResult.total}`
+			);
+		} catch (err) {
+			throw err;
+		}
+	}
+
+	if (isSnomedSeedSkipped()) {
+		seedLogger.warn('Skipped SNOMED CT import (SNOMED_SKIP_SEED is set).');
+	} else if ((process.env.SNOMED_RF2_DIR ?? '').trim()) {
+		try {
+			const snomedResult = await importSnomedRf2Catalogue({
+				notesPrefix: 'Seeded by information-table-seed (SNOMED RF2)',
+				log: (m) => seedLogger.info(m)
+			});
+			seedLogger.info(
+				`Seeded: diagnosis_code (SNOMED CT) inserted=${snomedResult.inserted} updated=${snomedResult.updated} total=${snomedResult.total}`
+			);
+		} catch (err) {
+			if (err instanceof SnomedRf2ImportError) {
+				throw new Error(
+					`${err.message} Or set SNOMED_SKIP_SEED=1 to skip SNOMED during information seed.`
 				);
 			}
 			throw err;
@@ -531,216 +577,29 @@ export async function seedInformationTables() {
 		'Seeded: inv_approval_level schema (module CHECK + active unique index)'
 	);
 
-	// 8. Document types (consent, form, instruction, certificate, help)
-	// Note: column is 'name' in old schema, 'document_type' in new schema after migration
+	// 8. Document Master (dev: wipe and reseed — no backfill)
 	await db.execute(sql`
-		INSERT INTO document_type (id, document_type, status_id)
-		VALUES
-			(1, 'Consent', 1),
-			(2, 'Form', 1),
-			(3, 'Instruction', 1),
-			(4, 'Certificate', 1),
-			(5, 'Help', 1),
-			(6, 'Letter', 1),
-			(7, 'Report', 1),
-			(8, 'Finance', 1),
-			(9, 'HR', 1),
-			(10, 'Legal', 1)
-		ON CONFLICT (id) DO NOTHING;
+		TRUNCATE TABLE
+			patient_document,
+			hospital_document_text_placeholder,
+			hospital_document,
+			document,
+			hospital_document_settings
+		RESTART IDENTITY CASCADE;
 	`);
-	seedLogger.info('Seeded: document_type');
+	seedLogger.info('Reset: document master tables (truncate)');
 
-	// 9. Document settings (template configurations)
-	await db.execute(sql`
-		INSERT INTO document_setting (id, name, document_type_id, margin_top, margin_bottom, margin_left, margin_right, padding_top, padding_bottom, padding_left, padding_right, page_size, page_orientation, show_header, show_footer, header_html, footer_html, status_id)
-		VALUES
-			(1, 'OPD Consent Form', 1, 20, 20, 15, 15, 10, 10, 10, 10, 'A4', 'portrait', true, true,
-				'<div style="text-align:center;"><strong>{{hospital.name}}</strong><br/><span style="font-size:12px;">{{hospital.address}}</span></div>',
-				'<div style="text-align:center;font-size:10px;">Page {{page.number}} of {{page.total}} | Printed: {{print.date}} by {{print.by}}</div>',
-				1),
-			(2, 'ED Case Sheet', 2, 15, 15, 10, 10, 5, 5, 5, 5, 'A4', 'portrait', true, true,
-				'<div><strong>{{hospital.name}}</strong> - Emergency Department<br/>Patient: {{patient.name}} | Code: {{patient.code}} | Visit: {{visit.no}}</div>',
-				'<div style="font-size:10px;">Doctor: {{doctor.name}} | Date: {{visit.date}}</div>',
-				1),
-			(3, 'Medical Certificate', 4, 25, 25, 20, 20, 15, 15, 15, 15, 'A4', 'portrait', true, true,
-				'<div style="text-align:center;"><strong>MEDICAL CERTIFICATE</strong><br/>{{hospital.name}}</div>',
-				'<div style="text-align:right;font-size:11px;"><br/>_____________________<br/>{{doctor.name}}<br/>{{doctor.license}}</div>',
-				1),
-			(4, 'Discharge Instructions', 3, 15, 15, 15, 15, 10, 10, 10, 10, 'A4', 'portrait', true, true,
-				'<div><strong>Discharge Instructions</strong><br/>Patient: {{patient.name}} | DOB: {{patient.dob}} | Age/Gender: {{patient.age}}/{{patient.gender}}</div>',
-				'<div style="font-size:10px;">Issued by: {{doctor.name}} on {{visit.date}}</div>',
-				1),
-			(5, 'A4_plain', 2, 10, 10, 10, 10, 5, 5, 5, 5, 'A4', 'portrait', false, false,
-				'',
-				'',
-				1),
-			(6, 'A4_plain (legacy)', 2, 10, 10, 10, 10, 5, 5, 5, 5, 'A4', 'portrait', false, false,
-				'',
-				'',
-				1),
-			(7, 'Label_100x60_plain', 2, 4, 4, 4, 4, 2, 2, 2, 2, '100mm 60mm', 'portrait', false, false,
-				'',
-				'',
-				1),
-			(8, 'A4_plain (legacy)', 2, 10, 10, 10, 10, 5, 5, 5, 5, 'A4', 'portrait', false, false,
-				'',
-				'',
-				1),
-			(9, 'A5_plain', 2, 8, 8, 8, 8, 4, 4, 4, 4, 'A5', 'portrait', false, false,
-				'',
-				'',
-				1)
-		ON CONFLICT (id) DO UPDATE SET
-			name = EXCLUDED.name,
-			document_type_id = EXCLUDED.document_type_id,
-			margin_top = EXCLUDED.margin_top,
-			margin_bottom = EXCLUDED.margin_bottom,
-			margin_left = EXCLUDED.margin_left,
-			margin_right = EXCLUDED.margin_right,
-			padding_top = EXCLUDED.padding_top,
-			padding_bottom = EXCLUDED.padding_bottom,
-			padding_left = EXCLUDED.padding_left,
-			padding_right = EXCLUDED.padding_right,
-			page_size = EXCLUDED.page_size,
-			page_orientation = EXCLUDED.page_orientation,
-			show_header = EXCLUDED.show_header,
-			show_footer = EXCLUDED.show_footer,
-			header_html = EXCLUDED.header_html,
-			footer_html = EXCLUDED.footer_html,
-			status_id = EXCLUDED.status_id;
-	`);
-	seedLogger.info('Seeded: document_setting');
+	// document_type is master data — see master-table-seed.ts
 
-	// 9b. System print documents (codes used across billing, visits, appointments, pharmacy)
-	await db.execute(sql`
-		INSERT INTO document (id, document_type_id, code, document_text, document_number, document_setting_id, status_id)
-		VALUES
-			(
-				90001,
-				2,
-				'NURSING_COMPLETE_PRINT',
-				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>{{hospital.address}}</header><p>Visit <strong>{{visit.no}}</strong> - {{patient.name}} ({{patient.code}})</p>{{visit.service_lines_table}}',
-				'Nursing complete (OP)',
-				5,
-				1
-			),
-			(
-				90002,
-				2,
-				'OP_BILL_PRINT',
-				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>Bill No: {{document.number}} | Date: {{document.date}}<br/>Patient: {{patient.name}} ({{patient.code}})</header><dl class="meta"><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div><div><dt>{{print.label_branch}}</dt><dd>{{visit.department}}</dd></div></dl>{{print.body_html}}',
-				'OP Bill',
-				5,
-				1
-			),
-			(
-				90007,
-				2,
-				'IP_BILL_PRINT',
-				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>IP Bill No: {{document.number}} | Date: {{document.date}}<br/>Patient: {{patient.name}} ({{patient.code}})</header><dl class="meta"><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div><div><dt>{{print.label_branch}}</dt><dd>{{visit.department}}</dd></div></dl>{{print.body_html}}',
-				'IP Bill',
-				5,
-				1
-			),
-			(
-				90003,
-				2,
-				'VISIT_LABEL_PRINT',
-				'<div class="label-header"><img class="label-logo" src="{{hospital.logo}}" alt="" /><h1>{{print.label_heading}}</h1></div><div class="label-rows"><div class="label-row"><div class="pair"><span class="k">{{print.label_patient}}</span><span class="v">{{patient.name}}</span></div><div class="pair right"><span class="k">{{print.label_dob}}</span><span class="v">{{patient.dob}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_patient_code}}</span><span class="v">{{patient.code}}</span></div><div class="pair right"><span class="k">{{print.label_doctor}}</span><span class="v">{{doctor.name}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_visit_no}}</span><span class="v">{{visit.no}}</span></div><div class="pair right"><span class="k">{{print.label_visit_date}}</span><span class="v">{{visit.date}}</span></div></div></div><div class="barcode-wrap"><svg id="visit-label-barcode"></svg></div>',
-				'Visit label',
-				7,
-				1
-			),
-			(
-				90008,
-				2,
-				'IPD_WRISTBAND_PRINT',
-				'<div class="label-header"><img class="label-logo" src="{{hospital.logo}}" alt="" /><h1>IPD Wristband</h1></div><div class="label-rows"><div class="label-row"><div class="pair"><span class="k">{{print.label_patient}}</span><span class="v">{{patient.name}}</span></div><div class="pair right"><span class="k">{{print.label_dob}}</span><span class="v">{{patient.dob}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_patient_code}}</span><span class="v">{{patient.code}}</span></div><div class="pair right"><span class="k">Admission</span><span class="v">{{document.number}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_visit_no}}</span><span class="v">{{visit.no}}</span></div><div class="pair right"><span class="k">Ward / Bed</span><span class="v">{{visit.department}}</span></div></div></div><div class="barcode-wrap"><svg id="visit-label-barcode"></svg></div>',
-				'IPD Wristband',
-				7,
-				1
-			),
-			(
-				90004,
-				2,
-				'APPOINTMENT_SLIP_PRINT',
-				'<div class="appt-header"><img class="logo" src="{{hospital.logo}}" alt="" /><div><h1 class="title">{{print.label_title}}</h1><p class="sub">{{print.label_subtitle}}</p></div></div><table class="appt-table"><tr><td class="label">{{print.label_patient}}</td><td>{{appointment.patient}}</td></tr><tr><td class="label">{{print.label_doctor}}</td><td>{{appointment.doctor}}</td></tr><tr><td class="label">{{print.label_date}}</td><td>{{appointment.date}}</td></tr><tr><td class="label">{{print.label_start_time}}</td><td>{{appointment.start_time}}</td></tr><tr><td class="label">{{print.label_end_time}}</td><td>{{appointment.end_time}}</td></tr></table>',
-				'Appointment slip',
-				5,
-				1
-			),
-			(
-				90005,
-				2,
-				'MED_ORDER_RECEIPT_PRINT',
-				'<h2>{{print.label_title}}</h2><p><strong>{{document.number}}</strong></p><p class="meta-line">{{print.customer}} · {{print.doctor}}</p>{{print.body_html}}',
-				'Medication receipt',
-				9,
-				1
-			),
-			(
-				90006,
-				2,
-				'CASE_SHEET_PRINT',
-				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>{{hospital.address}}</header><h2 class="case-sheet-doc-title">{{print.label_title}}</h2><dl class="meta case-sheet-meta-print"><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div></dl>{{print.body_html}}',
-				'Nursing case sheet',
-				5,
-				1
-			),
-			(
-				90009,
-				2,
-				'DISCHARGE_SUMMARY_PRINT',
-				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>{{hospital.address}}</header><h2 class="case-sheet-doc-title">{{print.label_title}}</h2><dl class="meta case-sheet-meta-print"><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div></dl>{{print.body_html}}',
-				'Discharge summary',
-				5,
-				1
-			)
-		ON CONFLICT (id) DO UPDATE SET
-			document_type_id = EXCLUDED.document_type_id,
-			code = EXCLUDED.code,
-			document_text = EXCLUDED.document_text,
-			document_number = EXCLUDED.document_number,
-			document_setting_id = EXCLUDED.document_setting_id,
-			status_id = EXCLUDED.status_id;
-	`);
-	seedLogger.info('Seeded: document (system print templates)');
-
-	// 9b. Blank clinical forms (pen-fill; EMR clinical document page)
-	const clinicalFormValues = CLINICAL_FORM_SEED_ROWS.map((row) => {
-		const documentText = buildClinicalFormDocumentText(
-			row.code
-		).replace(/'/g, "''");
-		const documentNumber = row.documentNumber.replace(/'/g, "''");
-		return `(${row.id}, ${row.documentTypeId}, '${row.code}', '${documentText}', '${documentNumber}', 5, 1)`;
-	}).join(',\n\t\t\t');
-
-	await db.execute(
-		sql.raw(`
-		INSERT INTO document (id, document_type_id, code, document_text, document_number, document_setting_id, status_id)
-		VALUES
-			${clinicalFormValues}
-		ON CONFLICT (id) DO UPDATE SET
-			document_type_id = EXCLUDED.document_type_id,
-			code = EXCLUDED.code,
-			document_text = EXCLUDED.document_text,
-			document_number = EXCLUDED.document_number,
-			document_setting_id = EXCLUDED.document_setting_id,
-			status_id = EXCLUDED.status_id;
-	`)
-	);
-	seedLogger.info('Seeded: document (clinical blank forms)');
-
-	// Catalog sync is source of truth for CATALOG_* system documents (updates legacy 900xx / 901xx rows).
+	// Global `document` rows from code catalog, then hospital_document links (below)
 	try {
-		const { ensureDocumentCatalogSynced } = await import(
-			'$lib/server/medora/document-master/document-catalog-sync.server'
+		const { provisionDocumentMasterForSeed } = await import(
+			'./document-master-provision.seed'
 		);
-		const { synced } = await ensureDocumentCatalogSynced();
-		seedLogger.info(`Synced document catalog (${synced} templates)`);
-	} catch {
+		await provisionDocumentMasterForSeed(db);
+	} catch (e) {
 		seedLogger.info(
-			'Skipped: document catalog sync (tables not present or migration pending)'
+			`Skipped: hospital document provision (${e instanceof Error ? e.message : String(e)})`
 		);
 	}
 
@@ -753,11 +612,20 @@ export async function seedInformationTables() {
 	`);
 	seedLogger.info('Seeded: allergy');
 
+	const { afterGlobalMasterCatalogMutation } = await import(
+		'$lib/server/cache/on-master-mutation.server'
+	);
+	await afterGlobalMasterCatalogMutation();
+
 	try {
 		const { seedEdTriageLevelsForHospitals } = await import(
 			'$lib/server/db/seed/init/seed-ed-triage-levels.server'
 		);
 		await seedEdTriageLevelsForHospitals(db);
+		const { seedTraumaActivationDefaultsForHospitals } = await import(
+			'$lib/server/db/seed/init/seed-trauma-activation-defaults.server'
+		);
+		await seedTraumaActivationDefaultsForHospitals(db);
 	} catch (e) {
 		seedLogger.warn(
 			`Skipped: ed_triage_level (${e instanceof Error ? e.message : String(e)})`

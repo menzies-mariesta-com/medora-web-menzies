@@ -3,7 +3,7 @@ title: "ED triage levels"
 description: "How to use ED triage levels in Administration."
 docType: workflow
 slug: workflows/administration-er-triage-level
-pageId: 454
+pageId: 101600
 moduleId: 1
 pageUrl: "/medora/home/administration/er-triage-level"
 generated: true

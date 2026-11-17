@@ -188,19 +188,24 @@
 
 	$effect(() => {
 		const h = hospitalIdEffective;
+		let cancelled = false;
 		void (async () => {
-			if (!h) return;
+			if (!h || cancelled) return;
 			try {
 				const [a, s] = await Promise.all([
 					fetchAllergyMasterList(),
 					fetchSeverities()
 				]);
+				if (cancelled) return;
 				allergies = a;
 				severities = s;
 			} catch (e) {
-				console.error(e);
+				if (!cancelled) console.error(e);
 			}
 		})();
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	const allergyNameForEdit = $derived(
@@ -214,8 +219,10 @@
 		const id = patientAllergyId;
 		const h = hospitalIdEffective;
 		if (id && h) {
+			let cancelled = false;
 			void (async () => {
 				const row = await fetchPatientAllergyById(id);
+				if (cancelled) return;
 				if (row) {
 					selectedAllergyId = String(row.allergyId);
 					allergyMode = 'existing';
@@ -226,6 +233,9 @@
 					deactivationRemark = row.deactivationRemark ?? '';
 				}
 			})();
+			return () => {
+				cancelled = true;
+			};
 		} else if (!id) {
 			selectedAllergyId = '';
 			newAllergyName = '';

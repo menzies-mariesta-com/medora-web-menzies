@@ -1,11 +1,18 @@
+import { flattenLegacyPlaceholderTokens } from '$lib/model/constant/document-placeholder.registry';
 import {
-	buildDocumentPlaceholderContext,
+	normalizePrintContext,
 	resolveDocumentTemplate,
 	type DocumentLike,
 	type VisitLike
 } from '$lib/util/document-placeholder.util';
+import type { DocumentTypeIdValue } from '$lib/model/constant/document-type-id.constant';
 import { resolveDocumentSettingForDoc } from '$lib/util/emr-print-setting.util';
-import { buildPrintDocumentHtml } from '$lib/util/print-document-html.util';
+import {
+	buildPrintDocumentHtml,
+	preprocessDocumentBodyForLayout
+} from '$lib/util/print-document-html.util';
+import { buildDocumentMasterDownloadFileBase } from '$lib/util/print-download-filename.util';
+import { resolvePrintDownloadFileBaseFromHtml } from '$lib/util/print-document-preview-meta.util';
 import type {
 	ClinicalDocumentRow,
 	DocumentMasterPrintBootstrap
@@ -13,7 +20,8 @@ import type {
 
 export type PrintFromDocumentMasterOptions = {
 	hospitalId: string;
-	documentCode: string;
+	documentTypeId: number;
+	documentId?: number;
 	visit?: VisitLike | null;
 	document?: DocumentLike | null;
 	printBy?: string;
@@ -25,33 +33,119 @@ export type PrintFromDocumentMasterOptions = {
 	) => void | Promise<void>;
 };
 
+export function resolvePrintDocumentIdForFetch(
+	hospitalId: string,
+	documentTypeId: number | undefined,
+	explicitDocumentId?: number | null
+): number | undefined {
+	if (explicitDocumentId != null && Number.isFinite(explicitDocumentId)) {
+		return explicitDocumentId;
+	}
+	if (hospitalId && documentTypeId != null) {
+		const stored = loadStoredPrintDocumentId(hospitalId, documentTypeId);
+		if (stored != null) return stored;
+	}
+	return undefined;
+}
+
 export async function fetchDocumentPrintBootstrap(
 	hospitalId: string,
-	documentCode: string
+	opts: {
+		documentCode?: string;
+		documentTypeId?: DocumentTypeIdValue;
+		documentId?: number | null;
+	}
 ): Promise<DocumentMasterPrintBootstrap> {
-	const res = await fetch(
-		`/api/medora/hospital/${hospitalId}/home/document-print?mode=bootstrap&code=${encodeURIComponent(documentCode)}`,
-		{ credentials: 'include' }
+	const resolvedDocumentId = resolvePrintDocumentIdForFetch(
+		hospitalId,
+		opts.documentTypeId,
+		opts.documentId
 	);
+	const url = new URL(
+		`/api/medora/hospital/${hospitalId}/home/document-print`,
+		window.location.origin
+	);
+	url.searchParams.set('mode', 'bootstrap');
+	if (opts.documentCode) {
+		url.searchParams.set('code', opts.documentCode);
+	}
+	if (opts.documentTypeId != null) {
+		url.searchParams.set('documentTypeId', String(opts.documentTypeId));
+	}
+	if (resolvedDocumentId != null) {
+		url.searchParams.set('documentId', String(resolvedDocumentId));
+	}
+	const res = await fetch(url.pathname + url.search, {
+		credentials: 'include'
+	});
 	if (!res.ok) {
 		throw new Error(`Template load failed (${res.status})`);
 	}
 	return res.json();
 }
 
+export async function fetchPrintOptions(
+	hospitalId: string,
+	documentTypeId: number
+) {
+	const res = await fetch(
+		`/api/medora/hospital/${hospitalId}/home/document-print?mode=options&documentTypeId=${encodeURIComponent(String(documentTypeId))}`,
+		{ credentials: 'include' }
+	);
+	if (!res.ok) throw new Error(`Print options failed (${res.status})`);
+	return res.json() as Promise<{
+		options: import('$lib/model/type/medora/document-print.type').DocumentPrintOptionRow[];
+		defaultDocumentId: number | null;
+	}>;
+}
+
+const printTemplateChoiceKey = (hospitalId: string, documentTypeId: number) =>
+	`medora.printTemplate.${hospitalId}.type${documentTypeId}`;
+
+export function loadStoredPrintDocumentId(
+	hospitalId: string,
+	documentTypeId: number
+): number | null {
+	try {
+		const raw = sessionStorage.getItem(
+			printTemplateChoiceKey(hospitalId, documentTypeId)
+		);
+		if (!raw) return null;
+		const n = Number(raw);
+		return Number.isFinite(n) ? n : null;
+	} catch {
+		return null;
+	}
+}
+
+export function storePrintDocumentId(
+	hospitalId: string,
+	documentTypeId: number,
+	documentId: number
+) {
+	try {
+		sessionStorage.setItem(
+			printTemplateChoiceKey(hospitalId, documentTypeId),
+			String(documentId)
+		);
+	} catch {
+		// ignore
+	}
+}
+
 export async function printFromDocumentMaster(
 	opts: PrintFromDocumentMasterOptions
 ): Promise<void> {
-	const bootstrap = await fetchDocumentPrintBootstrap(
-		opts.hospitalId,
-		opts.documentCode
-	);
+	const bootstrap = await fetchDocumentPrintBootstrap(opts.hospitalId, {
+		documentTypeId: opts.documentTypeId,
+		documentId: opts.documentId
+	});
 	await printFromDocumentMasterBootstrap(bootstrap, opts);
 }
 
 export async function printFromDocumentMasterBootstrap(
 	bootstrap: DocumentMasterPrintBootstrap,
-	opts: Omit<PrintFromDocumentMasterOptions, 'hospitalId' | 'documentCode'>
+	opts: Omit<PrintFromDocumentMasterOptions, 'hospitalId' | 'documentTypeId' | 'documentId'>
 ): Promise<void> {
 	const html = buildPrintHtmlFromDocumentMasterBootstrap(
 		bootstrap,
@@ -66,7 +160,7 @@ export async function printFromDocumentMasterBootstrap(
 
 export function buildPrintHtmlFromDocumentMasterBootstrap(
 	bootstrap: DocumentMasterPrintBootstrap,
-	opts: Omit<PrintFromDocumentMasterOptions, 'hospitalId' | 'documentCode'>,
+	opts: Omit<PrintFromDocumentMasterOptions, 'hospitalId' | 'documentTypeId' | 'documentId'>,
 	variant: 'browser' | 'pdfRaster' = 'browser'
 ): string {
 	const masterDoc = bootstrap.document;
@@ -74,31 +168,36 @@ export function buildPrintHtmlFromDocumentMasterBootstrap(
 		throw new Error('Print template not found');
 	}
 
-	const context = buildDocumentPlaceholderContext(
-		opts.visit ?? null,
-		{ ...masterDoc, ...opts.document },
-		{
-			printBy: opts.printBy,
-			extraPlaceholders: opts.extraPlaceholders
-		}
-	);
+	const context = normalizePrintContext({
+		visit: opts.visit ?? null,
+		document: { ...masterDoc, ...opts.document },
+		printBy: opts.printBy,
+		extraPlaceholders: opts.extraPlaceholders,
+		textPlaceholders: bootstrap.textPlaceholders
+	});
 
 	const setting = resolveDocumentSettingForDoc(
-		bootstrap.documentSettings,
+		bootstrap.documentSetting,
 		masterDoc
 	);
-	const documentHtml = resolveDocumentTemplate(
-		masterDoc.documentText,
-		context
-	).trim();
 	const headerHtml = resolveDocumentTemplate(
-		setting?.headerHtml,
+		flattenLegacyPlaceholderTokens(setting?.headerHtml ?? ''),
 		context
 	).trim();
 	const footerHtml = resolveDocumentTemplate(
-		setting?.footerHtml,
+		flattenLegacyPlaceholderTokens(setting?.footerHtml ?? ''),
 		context
 	).trim();
+	const showLayoutHeader =
+		(setting?.showHeader ?? true) && Boolean(headerHtml.trim());
+	let documentHtml = resolveDocumentTemplate(
+		flattenLegacyPlaceholderTokens(masterDoc.documentText),
+		context
+	).trim();
+	documentHtml = preprocessDocumentBodyForLayout(documentHtml, {
+		layoutHeaderHtml: headerHtml,
+		showLayoutHeader
+	});
 	const documentTitle =
 		masterDoc.documentNumber ||
 		masterDoc.documentType?.documentType ||
@@ -107,6 +206,10 @@ export function buildPrintHtmlFromDocumentMasterBootstrap(
 	return buildPrintDocumentHtml({
 		documentHtml,
 		documentTitle,
+		downloadFileBase: buildDocumentMasterDownloadFileBase(
+			masterDoc,
+			opts.visit ?? null
+		),
 		headerHtml,
 		footerHtml,
 		setting,
@@ -159,12 +262,27 @@ export async function printHtmlInIframe(
 		await opts.onReady(doc, win);
 	}
 
+	const printDialogTitle = resolvePrintDownloadFileBaseFromHtml(html);
+	doc.title = printDialogTitle;
+
 	window.setTimeout(() => {
+		const parentTitle = document.title;
+		document.title = printDialogTitle;
+
+		const restoreParentTitle = () => {
+			document.title = parentTitle;
+		};
+		win.addEventListener('afterprint', restoreParentTitle, { once: true });
+		window.addEventListener('afterprint', restoreParentTitle, {
+			once: true
+		});
+		window.setTimeout(restoreParentTitle, 120_000);
+
 		try {
 			win.focus();
 			win.print();
 		} catch {
-			// ignore
+			restoreParentTitle();
 		}
 	}, 200);
 }

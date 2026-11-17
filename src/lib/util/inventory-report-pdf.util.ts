@@ -36,7 +36,7 @@ export function buildInventoryReportTableHtml(params: {
 	const sub = subtitle
 		? `<p class="sub">${escapeHtml(subtitle)}</p>`
 		: '';
-	return `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>
+	return `<!DOCTYPE html><html data-jspdf-format="a4" data-jspdf-orientation="portrait" data-capture-width-px="794"><head><meta charset="utf-8"/><style>
 body{font-family:system-ui,sans-serif;font-size:11px;padding:16px;color:#111}
 h1{font-size:16px;margin:0 0 8px}
 .sub{font-size:10px;color:#444;margin:0 0 12px}

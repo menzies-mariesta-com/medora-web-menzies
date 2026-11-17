@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { washRecipes } from '@menzies-mariesta-com/menzies-design-wash-ui/core';
 
 	let {
@@ -11,7 +12,7 @@
 		useRecipe?: boolean;
 		effect?: 'zebra';
 		className?: string;
-		children: () => void;
+		children?: Snippet;
 	}>();
 
 	const classes = $derived.by(() => {
@@ -29,5 +30,7 @@
 
 
 <table class={classes}>
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 </table>

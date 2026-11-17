@@ -151,6 +151,18 @@
 		padding: 0;
 		max-width: none;
 	}
+
+	/* Avoid clip: sections/records taller than one page must be allowed to break */
+	.case-sheet-section,
+	.case-sheet-record {
+		break-inside: auto;
+		page-break-inside: auto;
+	}
+
+	.case-sheet-section h3 {
+		break-after: avoid;
+		page-break-after: avoid;
+	}
 }
 
 .print-document-root .case-sheet-section h3,

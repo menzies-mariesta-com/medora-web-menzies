@@ -57,7 +57,10 @@
 		return row.schemaJson;
 	}
 
-	async function initForms() {
+	async function initForms(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!formApi) return;
 		[whoSchema, anesthesiaSchema, pacuSchema] = await Promise.all([
 			loadTemplate('who_surgical_safety_v1'),
@@ -67,7 +70,13 @@
 	}
 
 	$effect(() => {
-		if (caseRow?.id) void initForms();
+			let cancelled = false;
+			const ac = new AbortController();
+		if (caseRow?.id) void initForms({ signal: ac.signal, isCancelled: () => cancelled });
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 	});
 
 	async function postCase(body: Record<string, unknown>) {

@@ -3,7 +3,7 @@ title: "Patient Attachment"
 description: "How to use Patient Attachment in Nursing Workbench."
 docType: workflow
 slug: workflows/nursing-workbench-patient-attachment
-pageId: 800006
+pageId: 400103
 moduleId: 4
 pageUrl: "/medora/home/nursing-workbench/patient-attachment"
 generated: true

@@ -20,15 +20,11 @@ export const GET: RequestHandler = async (event) => {
 			? Number(statusIdStr)
 			: null;
 
-	const includeGlobal =
-		event.url.searchParams.get('includeGlobal') === 'true';
-
 	const data = await getDocumentSettingsPaginated(event, {
 		hospitalId,
 		page,
 		pageSize,
-		statusId: statusId ?? undefined,
-		includeGlobal
+		statusId: statusId ?? undefined
 	});
 	return json(data);
 };
@@ -42,10 +38,6 @@ export const POST: RequestHandler = async (event) => {
 	const data = await createDocumentSetting(event, {
 		hospitalId,
 		name: String(body.name ?? ''),
-		documentTypeId:
-			body.documentTypeId != null
-				? Number(body.documentTypeId)
-				: null,
 		description:
 			body.description != null ? String(body.description) : null,
 		pageSize: body.pageSize != null ? String(body.pageSize) : null,
@@ -90,12 +82,6 @@ export const PUT: RequestHandler = async (event) => {
 	const data = await updateDocumentSetting(event, {
 		id: Number(body.id),
 		name: body.name != null ? String(body.name) : undefined,
-		documentTypeId:
-			body.documentTypeId === undefined
-				? undefined
-				: body.documentTypeId != null
-					? Number(body.documentTypeId)
-					: null,
 		description:
 			body.description === undefined
 				? undefined

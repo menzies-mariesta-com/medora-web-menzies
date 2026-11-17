@@ -42,8 +42,8 @@
 			: '';
 	}
 
-	async function apiGet<T>(url: string): Promise<T> {
-		const res = await fetch(url);
+	async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
+		const res = await fetch(url, { signal });
 		if (!res.ok) {
 			const text = await res.text().catch(() => '');
 			throw new Error(text || res.statusText);
@@ -51,7 +51,10 @@
 		return (await res.json()) as T;
 	}
 
-	async function fetchVisit() {
+	async function fetchVisit(opts?: {
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		if (!visitId || !hospitalId) {
 			visit = null;
 			return;
@@ -62,10 +65,11 @@
 			if (!base) return;
 			const res = await apiGet<{
 				data: { patientId: string; hospitalId: string } | null;
-			}>(`${base}?action=visitBasics&visitId=${visitId}`);
+			}>(`${base}?action=visitBasics&visitId=${visitId}`, opts?.signal);
+			if (opts?.isCancelled?.()) return;
 			visit = res.data;
 		} finally {
-			isLoadingVisit = false;
+			if (!opts?.isCancelled?.()) isLoadingVisit = false;
 		}
 	}
 
@@ -74,7 +78,16 @@
 		if (visitId) {
 			if (visitId === lastLoadedVisitId) return;
 			lastLoadedVisitId = visitId;
-			fetchVisit();
+			let cancelled = false;
+			const ac = new AbortController();
+			void fetchVisit({
+				signal: ac.signal,
+				isCancelled: () => cancelled
+			});
+			return () => {
+				cancelled = true;
+				ac.abort();
+			};
 		} else {
 			lastLoadedVisitId = null;
 			visit = null;
