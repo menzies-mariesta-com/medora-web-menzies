@@ -31,16 +31,24 @@ export type NotificationListItem = {
 	link: string | null;
 };
 
-function requireRecipientStaffId(event: RequestEvent): string {
+/**
+ * Recipient for notification queries, or `null` when the caller has no staff row.
+ *
+ * Absolute-permission roles (owner / system admin / admin team) deliberately have
+ * no `staff` row, so a missing row is "no notifications", not an auth failure:
+ * the bell polls this endpoint on every page and a 401 logged on every poll.
+ */
+function recipientStaffIdOrNull(event: RequestEvent): string | null {
+	if (!event.locals.user) throw error(401, 'Unauthorized');
 	const staffId = event.locals.staff?.id;
-	if (!staffId) throw error(401, 'Unauthorized');
-	return String(staffId);
+	return staffId ? String(staffId) : null;
 }
 
 export async function getNotificationUnreadCount(
 	event: RequestEvent
 ): Promise<number> {
-	const recipientStaffId = requireRecipientStaffId(event);
+	const recipientStaffId = recipientStaffIdOrNull(event);
+	if (recipientStaffId == null) return 0;
 	const whereExpr = and(
 		eq(table.notificationTable.recipientStaffId, recipientStaffId),
 		ne(table.notificationTable.statusId, StatusEnum.DELETED),
@@ -60,7 +68,10 @@ export async function getNotificationsPaginated(
 ): Promise<PaginatedResult<NotificationListItem>> {
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
-	const recipientStaffId = requireRecipientStaffId(event);
+	const recipientStaffId = recipientStaffIdOrNull(event);
+	if (recipientStaffId == null) {
+		return { data: [], total: 0, page, pageSize, totalPages: 1 };
+	}
 
 	const whereBase = and(
 		eq(table.notificationTable.recipientStaffId, recipientStaffId),
@@ -122,7 +133,8 @@ export async function markNotificationRead(
 	event: RequestEvent,
 	input: { id: number }
 ): Promise<void> {
-	const recipientStaffId = requireRecipientStaffId(event);
+	const recipientStaffId = recipientStaffIdOrNull(event);
+	if (recipientStaffId == null) return;
 	await ensureDb()
 		.update(table.notificationTable)
 		.set({ readAt: new Date().toISOString() })
@@ -141,7 +153,8 @@ export async function markNotificationRead(
 export async function markAllNotificationsRead(
 	event: RequestEvent
 ): Promise<void> {
-	const recipientStaffId = requireRecipientStaffId(event);
+	const recipientStaffId = recipientStaffIdOrNull(event);
+	if (recipientStaffId == null) return;
 	const whereExpr = and(
 		eq(table.notificationTable.recipientStaffId, recipientStaffId),
 		ne(table.notificationTable.statusId, StatusEnum.DELETED),

@@ -77,8 +77,9 @@
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let totalRows = $state(0);
-	let lastFetchKey: string | null = $state(null);
-	let lastLoadedVisitKey: string = $state('');
+	/** Cache key of the last *completed* read; set after success so an aborted read retries. */
+	let lastFetchKey: string | null = null;
+	let lastLoadedVisitKey = '';
 	let tableFilters = $state<Record<string, string>>({
 		status: String(StatusEnum.ACTIVE)
 	});
@@ -200,7 +201,6 @@
 		if (!options?.force && requestKey === lastFetchKey) {
 			return;
 		}
-		lastFetchKey = requestKey;
 
 		isLoading = true;
 		const fetchInit = options?.signal
@@ -325,6 +325,7 @@
 			initialized = true;
 			if (options?.isCancelled?.()) return;
 			await refreshNursingIncompleteCount();
+			lastFetchKey = requestKey;
 		} catch (error) {
 			if (options?.isCancelled?.()) return;
 			if (error instanceof DOMException && error.name === 'AbortError') {
@@ -353,13 +354,16 @@
 			if (lastLoadedVisitKey === visitKey) {
 				return;
 			}
-			lastLoadedVisitKey = visitKey;
 			let cancelled = false;
 			const ac = new AbortController();
-			void fetchNursingComplete({
-				signal: ac.signal,
-				isCancelled: () => cancelled
-			});
+			void (async () => {
+				await fetchNursingComplete({
+					signal: ac.signal,
+					isCancelled: () => cancelled
+				});
+				// Only a finished load counts: a superseded attempt aborts before this.
+				if (!cancelled) lastLoadedVisitKey = visitKey;
+			})();
 			return () => {
 				cancelled = true;
 				ac.abort();

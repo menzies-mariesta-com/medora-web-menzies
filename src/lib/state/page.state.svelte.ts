@@ -4,11 +4,12 @@ import type {
 	MedoraPageRow,
 	PageWithRelations
 } from '$lib/model/type/medora/page.type';
-import {
-	medoraHospitalPageUrl,
-} from '$lib/model/enum/routes.enum';
+import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
+import { SECTION_INDEX_SELF_RENDERING_PAGE_URLS } from '$lib/model/const/section-index-self-rendering.const';
 
-export type PageTreeItem = MedoraPageRow & { children: PageTreeItem[] };
+export type PageTreeItem = MedoraPageRow & {
+	children: PageTreeItem[];
+};
 
 let fullPageData = $state<PageWithRelations[]>([]);
 
@@ -22,7 +23,9 @@ export function getPageData(): MedoraPageRow[] {
 }
 
 /** Nav rows from the raw page list (drops the `module` / `status` relations). */
-export function pageRowsFrom(full: PageWithRelations[]): MedoraPageRow[] {
+export function pageRowsFrom(
+	full: PageWithRelations[]
+): MedoraPageRow[] {
 	return full.map(({ module: _m, status: _s, ...p }) => p);
 }
 
@@ -159,12 +162,20 @@ export function getSectionIndexRedirectTarget(
 	if (!hospitalId) return null;
 	const logicalPath = pathnameForPageMatch();
 	if (normPath(logicalPath) === normPath('/medora/home')) return null;
+	// Same skip list as the server helper: these pages render their own content.
+	if (
+		SECTION_INDEX_SELF_RENDERING_PAGE_URLS.has(normPath(logicalPath))
+	) {
+		return null;
+	}
 	const indexPage = getPageData().find(
 		(p) => normPath(p.pageUrl) === normPath(logicalPath)
 	);
 	if (!indexPage) return null;
 	const subs = getSubPagesForParentId(indexPage.id);
-	const first = subs.find((p) => p.pageUrl?.startsWith('/medora/home'));
+	const first = subs.find((p) =>
+		p.pageUrl?.startsWith('/medora/home')
+	);
 	if (!first?.pageUrl) return null;
 	const target = medoraHospitalPageUrl(hospitalId, first.pageUrl);
 	if (!target.startsWith(`/medora/hospital/${hospitalId}/home`)) {

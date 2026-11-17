@@ -4,6 +4,14 @@ import { neon } from '@neondatabase/serverless';
 import { seedLogger } from '$lib/logger';
 import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
 import {
+	invalidateCacheKey,
+	invalidateCacheTag
+} from '$lib/server/cache/tiered-cache.server';
+import {
+	cacheKeys,
+	cacheTags
+} from '$lib/server/cache/cache-keys.server';
+import {
 	importWhoIcdSystems,
 	isWhoIcdSeedSkipped,
 	resolveWhoIcdSeedSystems,
@@ -163,23 +171,22 @@ export async function seedInformationTables() {
 			-- ── Module 3: Appointment ──
 			(300100, 'Doctor Appointment', 3, 1, null, '/medora/home/appointment/doctor-appointment', 1),
 
-			-- ── Module 4: Nursing Workbench ──
+			-- ── Module 4: Nursing Workbench (chart tab order; hospital boards live in ADT / Emergency) ──
 			(400100, 'Nursing Workbench', 4, 1, null, '/medora/home/nursing-workbench', 1),
-			(400101, 'Vital', 4, 1, 400100, '/medora/home/nursing-workbench/vital', 1),
-			(400102, 'Allergy', 4, 1, 400100, '/medora/home/nursing-workbench/allergy', 2),
-			(400103, 'Patient Attachment', 4, 1, 400100, '/medora/home/nursing-workbench/patient-attachment', 3),
-			(400104, 'Clinical Document', 4, 1, 400100, '/medora/home/nursing-workbench/clinical-document', 4),
-			(400105, 'Case Sheet', 4, 1, 400100, '/medora/home/nursing-workbench/case-sheet', 5),
-			(400106, 'Order', 4, 1, 400100, '/medora/home/nursing-workbench/order', 6),
-			(400107, 'Nursing Complete', 4, 1, 400100, '/medora/home/nursing-workbench/nursing-complete', 7),
-			(400108, 'Patient Visit History Dashboard', 4, 1, 400100, '/medora/home/nursing-workbench/patient-visit-history-dashboard', 8),
-			(400109, 'Census', 4, 1, 400100, '/medora/home/nursing-workbench/census', 9),
-			(400110, 'Track Board', 4, 1, 400100, '/medora/home/nursing-workbench/track-board', 10),
+			(400108, 'Dashboard', 4, 1, 400100, '/medora/home/nursing-workbench/patient-visit-history-dashboard', 1),
+			(400116, 'Journal', 4, 1, 400108, '/medora/home/nursing-workbench/patient-visit-history-dashboard/journal', 1),
+			(400117, 'Visual', 4, 1, 400108, '/medora/home/nursing-workbench/patient-visit-history-dashboard/visual', 2),
+			(400101, 'Vital', 4, 1, 400100, '/medora/home/nursing-workbench/vital', 2),
+			(400102, 'Allergy', 4, 1, 400100, '/medora/home/nursing-workbench/allergy', 3),
+			(400106, 'Order', 4, 1, 400100, '/medora/home/nursing-workbench/order', 4),
+			(400107, 'Nursing Complete', 4, 1, 400100, '/medora/home/nursing-workbench/nursing-complete', 5),
+			(400105, 'Case Sheet', 4, 1, 400100, '/medora/home/nursing-workbench/case-sheet', 6),
+			(400104, 'Clinical Document', 4, 1, 400100, '/medora/home/nursing-workbench/clinical-document', 7),
+			(400103, 'Patient Attachment', 4, 1, 400100, '/medora/home/nursing-workbench/patient-attachment', 8),
+			(400113, 'eMAR', 4, 1, 400100, '/medora/home/nursing-workbench/emar', 9),
+			(400114, 'Care plans', 4, 1, 400100, '/medora/home/nursing-workbench/care-plan', 10),
 			(400111, 'Triage', 4, 1, 400100, '/medora/home/nursing-workbench/triage', 11),
-			(400112, 'Trauma Log', 4, 1, 400100, '/medora/home/nursing-workbench/trauma-log', 12),
-			(400113, 'eMAR', 4, 1, 400100, '/medora/home/nursing-workbench/emar', 13),
-			(400114, 'Care plans', 4, 1, 400100, '/medora/home/nursing-workbench/care-plan', 14),
-			(400115, 'MLC documentation', 4, 1, 400100, '/medora/home/nursing-workbench/mlc-documentation', 15),
+			(400115, 'MLC documentation', 4, 1, 400100, '/medora/home/nursing-workbench/mlc-documentation', 12),
 
 			-- ── Module 6: Consultation ──
 			(600100, 'EMR', 6, 1, null, '/medora/home/consultation/emr', 1),
@@ -206,6 +213,8 @@ export async function seedInformationTables() {
 			(700400, 'Bed Transfer Requisition', 7, 1, null, '/medora/home/adt/bed-transfer-requisition', 4),
 			(700401, 'New Requisition', 7, 1, 700400, '/medora/home/adt/bed-transfer-requisition/new', 1),
 			(700402, 'Requisition List', 7, 1, 700400, '/medora/home/adt/bed-transfer-requisition/list', 2),
+			-- Census keeps its 4xxxxx id (user_group_page grants reference it) though it now sits in ADT.
+			(400109, 'Census', 7, 1, null, '/medora/home/nursing-workbench/census', 5),
 
 			-- ── Module 8: Billing ──
 			(800100, 'Bill', 8, 1, null, '/medora/home/billing/bill', 1),
@@ -250,6 +259,9 @@ export async function seedInformationTables() {
 			(1200101, 'ED Patient Registration', 12, 1, 1200100, '/medora/home/emergency/admission/new', 1),
 			(1200102, 'New patient', 12, 1, 1200100, '/medora/home/emergency/admission/new-patient', 2),
 			(1200200, 'ED Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 2),
+			-- Boards keep their 4xxxxx ids (user_group_page grants reference them) though they now sit in Emergency.
+			(400110, 'Track Board', 12, 1, null, '/medora/home/nursing-workbench/track-board', 3),
+			(400112, 'Trauma Log', 12, 1, null, '/medora/home/nursing-workbench/trauma-log', 4),
 
 			-- ── Module 13: Perioperative ──
 			(1300100, 'OT Board', 13, 1, null, '/medora/home/perioperative/ot-board', 1),
@@ -309,6 +321,11 @@ export async function seedInformationTables() {
 		)});
 		`);
 	seedLogger.info('Seeded: page');
+
+	// The nav tree is cached (L1 + optional Redis) for 120 s; drop it so new / moved pages show up.
+	// (Not via page-nav-cache.server: it pulls in $env, which the tsx seed runner cannot resolve.)
+	await invalidateCacheKey(cacheKeys.medoraNavPages());
+	await invalidateCacheTag(cacheTags.medoraNav);
 
 	const whoSystems = resolveWhoIcdSeedSystems();
 	if (whoSystems == null) {

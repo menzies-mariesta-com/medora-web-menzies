@@ -12,6 +12,8 @@
 	import LVisitAlertIndicators from '$lib/component/own/local/private/medora/emr/LVisitAlertIndicators.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import type { VisitBarColorHints } from '$lib/model/type/medora/color-configuration.type';
+	import { badgeInlineStyleFromColor } from '$lib/tool/color/hospital-color-resolve.util';
+	import { DAISYUI_DEFAULT_HEX } from '$lib/tool/color/color-daisyui-default.util';
 
 	let {
 		visitId = '',
@@ -27,6 +29,7 @@
 
 	let visit = $state<any>(null);
 	let isLoading = $state(false);
+	let visitTypeColor = $state<string | null>(null);
 	let hasActiveAllergies = $state(false);
 	let hasAbnormalVital = $state(false);
 	const showAlerts = $derived(hasActiveAllergies || hasAbnormalVital);
@@ -41,6 +44,7 @@
 				: '';
 		if (!id || !hid) {
 			visit = null;
+			visitTypeColor = null;
 			return;
 		}
 		let cancelled = false;
@@ -58,6 +62,8 @@
 				>(url, { bypass: true, signal: ac.signal });
 				if (!cancelled) {
 					visit = pack.visit ?? null;
+					visitTypeColor =
+						pack.colorHints?.visitTypeBorderColor ?? null;
 					hasActiveAllergies = pack.hasActiveAllergies ?? false;
 					hasAbnormalVital = pack.hasAbnormalVital ?? false;
 					onColorHints?.(pack.colorHints ?? null);
@@ -65,6 +71,7 @@
 			} catch {
 				if (!cancelled) {
 					visit = null;
+					visitTypeColor = null;
 					hasActiveAllergies = false;
 					hasAbnormalVital = false;
 					onColorHints?.(null);
@@ -159,7 +166,7 @@
 		</div>
 	{/if}
 
-	<div class="flex min-w-0 flex-col gap-0.5">
+	<div class="flex min-w-0 flex-1 flex-col gap-0.5">
 		{#if isLoading}
 			<div class="text-xs leading-tight text-base-content/60">
 				Loading…
@@ -172,18 +179,13 @@
 			<div
 				class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm leading-tight"
 			>
-				{#if visitNo || visitTypeName}
+				{#if visitNo}
 					<div class="flex flex-wrap items-center gap-1">
 						<span class="font-normal text-base-content/80"
-							>Selected Visit:</span
+							>Visit:</span
 						>
 						<span class="font-medium text-primary">
-							{#if visitNo}{visitNo}{/if}{#if visitTypeName}
-								{#if visitNo}<span class="text-base-content/60">
-										·
-									</span>{/if}
-								{visitTypeName}
-							{/if}
+							{visitNo}
 						</span>
 					</div>
 				{/if}
@@ -260,4 +262,15 @@
 			</div>
 		{/if}
 	</div>
+
+	{#if visitTypeName}
+		<span
+			class="badge badge-sm shrink-0"
+			style={badgeInlineStyleFromColor(
+				visitTypeColor ?? DAISYUI_DEFAULT_HEX.primary
+			)}
+		>
+			{visitTypeName}
+		</span>
+	{/if}
 </div>
