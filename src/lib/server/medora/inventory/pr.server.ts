@@ -36,6 +36,7 @@ import {
 	getStaffIdForUser
 } from './inventory-scope.server';
 import type { InvApprovalModule } from './approval-config.server';
+import { hasAbsolutePermission } from '$lib/server/medora/permission/absolute-permission.server';
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/medora/administration/item-master.server';
 import {
 	assertRowsUpdated,
@@ -209,6 +210,7 @@ export async function listPurchaseRequisitions(
 
 	const userId = event.locals.user?.id ?? null;
 	const staffId = userId ? await getStaffIdForUser(userId) : null;
+	const roleId = event.locals.userRoleId ?? null;
 	let approverPairSet = new Set<string>();
 	if (staffId) {
 		const pairs = await listPrApproverStoreLevelsForStaff(
@@ -282,9 +284,10 @@ export async function listPurchaseRequisitions(
 			poCount: poCountByPr.get(r.pr.id) ?? 0,
 			canApprove:
 				r.pr.statusTaggingId === InvPrStatusTaggingEnum.PENDING &&
-				approverPairSet.has(
-					`${r.pr.fromStoreId}:${r.pr.currentLevel}`
-				)
+				(hasAbsolutePermission(roleId) ||
+					approverPairSet.has(
+						`${r.pr.fromStoreId}:${r.pr.currentLevel}`
+					))
 		})),
 		total,
 		page,
@@ -468,24 +471,26 @@ export async function getPurchaseRequisitionById(
 	const logs = await listApprovalLogs(input.hospitalId, input.id);
 
 	const userId = event.locals.user?.id ?? null;
+	const roleId = event.locals.userRoleId ?? null;
 	const staffIdForApprove = userId
 		? await getStaffIdForUser(userId)
 		: null;
 	let canApprove = false;
-	if (
-		staffIdForApprove &&
-		row.pr.statusTaggingId === InvPrStatusTaggingEnum.PENDING
-	) {
-		const pairs = await listPrApproverStoreLevelsForStaff(
-			input.hospitalId,
-			staffIdForApprove
-		);
-		const approverPairSet = new Set(
-			pairs.map((p) => `${p.storeId}:${p.level}`)
-		);
-		canApprove = approverPairSet.has(
-			`${row.pr.fromStoreId}:${row.pr.currentLevel}`
-		);
+	if (row.pr.statusTaggingId === InvPrStatusTaggingEnum.PENDING) {
+		if (hasAbsolutePermission(roleId)) {
+			canApprove = true;
+		} else if (staffIdForApprove) {
+			const pairs = await listPrApproverStoreLevelsForStaff(
+				input.hospitalId,
+				staffIdForApprove
+			);
+			const approverPairSet = new Set(
+				pairs.map((p) => `${p.storeId}:${p.level}`)
+			);
+			canApprove = approverPairSet.has(
+				`${row.pr.fromStoreId}:${row.pr.currentLevel}`
+			);
+		}
 	}
 
 	return {
@@ -766,8 +771,10 @@ export async function approvePurchaseRequisition(
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
+	const roleId = event.locals.userRoleId ?? null;
 	const staffId = await getStaffIdForUser(userId);
-	if (!staffId) throw error(403, 'Staff profile required to approve');
+	if (!staffId && !hasAbsolutePermission(roleId))
+		throw error(403, 'Staff profile required to approve');
 
 	const [pr] = await ensureDb()
 		.select()
@@ -793,7 +800,7 @@ export async function approvePurchaseRequisition(
 		pr.fromStoreId,
 		'PR'
 	);
-	if (maxLevel < 1)
+	if (maxLevel < 1 && !hasAbsolutePermission(roleId))
 		throw error(400, 'Configure approval levels for this store (PR)');
 
 	const module: InvApprovalModule = 'PR';
@@ -802,7 +809,8 @@ export async function approvePurchaseRequisition(
 		pr.fromStoreId,
 		module,
 		pr.currentLevel,
-		staffId
+		staffId ?? '',
+		roleId
 	);
 
 	await ensureDb().transaction(async (tx) => {
@@ -872,7 +880,12 @@ export async function approvePurchaseRequisition(
 					statusTaggingId: InvPrStatusTaggingEnum.REJECTED,
 					updatedBy: userId
 				},
-				[eq(table.purchaseRequisitionTable.currentLevel, locked.currentLevel)]
+				[
+					eq(
+						table.purchaseRequisitionTable.currentLevel,
+						locked.currentLevel
+					)
+				]
 			);
 		} else if (input.action === InvApprovalActionEnum.SENT_BACK) {
 			await updateStatusTaggingIfCurrent(
@@ -885,7 +898,12 @@ export async function approvePurchaseRequisition(
 					currentLevel: 1,
 					updatedBy: userId
 				},
-				[eq(table.purchaseRequisitionTable.currentLevel, locked.currentLevel)]
+				[
+					eq(
+						table.purchaseRequisitionTable.currentLevel,
+						locked.currentLevel
+					)
+				]
 			);
 		} else if (input.action === InvApprovalActionEnum.APPROVED) {
 			if (locked.currentLevel < maxLevel) {

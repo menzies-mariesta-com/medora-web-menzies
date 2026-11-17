@@ -62,6 +62,8 @@
 	import { untrack, tick } from 'svelte';
 	import { applyStaggeredStartDates } from '$lib/util/med-order-stagger.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
+	import { can } from '$lib/state/page-permission.state.svelte';
 const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
@@ -1100,7 +1102,7 @@ const lifeCycleUtil = new LifeCycleUtil();
 			<WashButton
 				className="btn-error btn-ghost btn-sm"
 				onClick={deleteCurrentBatch}
-				disabled={isBusy}
+				disabled={isBusy || !can(PageActionEnum.DELETE)}
 			>
 				<LucideTrash2 className="size-4" />
 				{m.delete_data()}
@@ -1362,7 +1364,12 @@ const lifeCycleUtil = new LifeCycleUtil();
 					<WashButton
 						className="btn btn-secondary btn-sm"
 						onClick={persistBatch}
-						disabled={!storeId || draftLines.length === 0 || isBusy}
+						disabled={
+							!storeId ||
+							!can(PageActionEnum.CREATE) ||
+							draftLines.length === 0 ||
+							isBusy
+						}
 						loading={isBusy}
 					>
 						<LucideCircleCheck className="size-4" />

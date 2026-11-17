@@ -21,6 +21,8 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
+	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
+	import { can } from '$lib/state/page-permission.state.svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -370,7 +372,8 @@
 					<WashButton
 						type="submit"
 						variant="primary"
-						disabled={isSubmitting}
+						disabled={isSubmitting ||
+							!can(PageActionEnum.CREATE)}
 						loading={isSubmitting}>Create booking</WashButton
 					>
 				</WashCardBodyAction>

@@ -2224,6 +2224,8 @@
 	"hospital_home_chart_visits_tooltip": "{label}: {count} visits",
 	"nav_help": "Help",
 	"nav_ecosystem": "Ecosystem",
+	"nav_load_degraded": "Some navigation data could not load.",
+	"nav_load_retry": "Reload navigation",
 	"ecosystem_page_title": "Menzies ecosystem",
 	"ecosystem_page_blurb": "Apps your organization can add alongside Medora. Subscribed products open in a new tab when integration is enabled.",
 	"ecosystem_nextup_title": "NextUp By Menzies",

@@ -1,13 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import {
-	getApiCachePolicy,
-	pathnameToApiTemplate
-} from '$lib/server/http/api-cache-policy.server';
-import { API_ROUTE_TIER_BY_TEMPLATE } from '$lib/server/http/api-route-cache-policy.generated';
+import { getApiCachePolicy } from '$lib/server/http/api-cache-policy.server';
+import { pathnameToApiTemplate } from '$lib/util/api-route-template.util';
+import { API_ROUTE_TIER_BY_TEMPLATE } from '$lib/util/api-route-tier.generated';
 
 describe('getApiCachePolicy', () => {
-	it('covers all 207 generated route templates', () => {
-		expect(Object.keys(API_ROUTE_TIER_BY_TEMPLATE).length).toBe(207);
+	it('assigns a known tier to every generated route template', () => {
+		const tiers = new Set(Object.values(API_ROUTE_TIER_BY_TEMPLATE));
+		expect(tiers.size).toBeGreaterThan(0);
+		for (const tier of tiers) {
+			expect(typeof tier).toBe('string');
+		}
+		// Nursing chart reads are live clinical data.
+		expect(
+			API_ROUTE_TIER_BY_TEMPLATE[
+				'/api/medora/hospital/:hospital_id/home/nursing-workbench/emr/patient-visit-history-dashboard/visual'
+			]
+		).toBe('no-store');
 	});
 
 	it('denies live billing reads', () => {

@@ -16,16 +16,28 @@ export function setPageData(data: PageWithRelations[]) {
 	fullPageData = data;
 }
 
-/** Use in reactive context, e.g. $derived(getPageData()) */
+/** Use in reactive context, e.g. `$derived(getPageData())` */
 export function getPageData(): MedoraPageRow[] {
-	return fullPageData.map(({ module: _m, status: _s, ...p }) => p);
+	return pageRowsFrom(fullPageData);
 }
 
-/** Use in reactive context, e.g. $derived(getUniqueModuleData()) */
+/** Nav rows from the raw page list (drops the `module` / `status` relations). */
+export function pageRowsFrom(full: PageWithRelations[]): MedoraPageRow[] {
+	return full.map(({ module: _m, status: _s, ...p }) => p);
+}
+
+/** Use in reactive context, e.g. `$derived(getUniqueModuleData())` */
 export function getUniqueModuleData(): MedoraPageModuleRow[] {
+	return uniqueModulesFrom(fullPageData);
+}
+
+/** One row per module referenced by a page, in first-seen order. */
+export function uniqueModulesFrom(
+	full: PageWithRelations[]
+): MedoraPageModuleRow[] {
 	return Array.from(
 		new Map(
-			fullPageData
+			full
 				.filter(
 					(
 						p

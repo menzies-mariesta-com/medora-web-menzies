@@ -43,6 +43,7 @@ import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/medora/
 import { addDeltaToInvStock } from './item-batch.server';
 import { issueQtyStringFromPurchaseReceipt } from './item-unit-inventory.server';
 import { parsePositiveIntQty } from './inv-validate.server';
+import { hasAbsolutePermission } from '$lib/server/medora/permission/absolute-permission.server';
 
 export type ConsumptionLineInput = {
 	itemId: number;
@@ -284,6 +285,7 @@ export async function listDepartmentConsumptions(
 
 	const userId = event.locals.user?.id ?? null;
 	const staffId = userId ? await getStaffIdForUser(userId) : null;
+	const roleId = event.locals.userRoleId ?? null;
 	let dcPairSet = new Set<string>();
 	if (staffId) {
 		const pairs = await listDcApproverStoreLevelsForStaff(
@@ -299,14 +301,16 @@ export async function listDepartmentConsumptions(
 			const canApprove =
 				row.statusTaggingId ===
 					InvDepartmentConsumptionStatusTaggingEnum.PENDING &&
-				dcPairSet.has(`${row.storeId}:${row.currentLevel}`);
+				(dcPairSet.has(`${row.storeId}:${row.currentLevel}`) ||
+					hasAbsolutePermission(roleId));
 			const canManageOpen = await computeCanManageOpenConsumption({
 				hospitalId: input.hospitalId,
 				requestedBy: row.requestedBy,
 				storeId: row.storeId,
 				userId,
 				staffId,
-				statusTaggingId: row.statusTaggingId
+				statusTaggingId: row.statusTaggingId,
+				roleId
 			});
 			const canSubmitForApproval =
 				canManageOpen &&
@@ -337,13 +341,14 @@ export async function listDepartmentConsumptions(
 	};
 }
 
-async function computeCanManageOpenConsumption(input: {
+export async function computeCanManageOpenConsumption(input: {
 	hospitalId: string;
 	requestedBy: string;
 	storeId: number;
 	userId: string | null;
 	staffId: string | null;
 	statusTaggingId: number;
+	roleId: number | null;
 }): Promise<boolean> {
 	// No draft flow: only pending docs can be managed/cancelled.
 	if (
@@ -352,8 +357,12 @@ async function computeCanManageOpenConsumption(input: {
 	) {
 		return false;
 	}
-	// Requirement: only the requester (creator) can cancel from UI.
-	return Boolean(input.userId && input.requestedBy === input.userId);
+	// Requirement: only the requester (creator) can cancel from UI, except
+	// absolute-permission roles who may cancel any document in their scope.
+	return (
+		Boolean(input.userId && input.requestedBy === input.userId) ||
+		hasAbsolutePermission(input.roleId)
+	);
 }
 
 export async function getDepartmentConsumptionById(
@@ -470,23 +479,29 @@ export async function getDepartmentConsumptionById(
 	);
 
 	const userId = event.locals.user?.id ?? null;
+	const roleId = event.locals.userRoleId ?? null;
 	const staffIdForApprove = userId
 		? await getStaffIdForUser(userId)
 		: null;
 	let canApprove = false;
 	if (
-		staffIdForApprove &&
 		joined.consumption.statusTaggingId ===
-			InvDepartmentConsumptionStatusTaggingEnum.PENDING
+		InvDepartmentConsumptionStatusTaggingEnum.PENDING
 	) {
-		const pairs = await listDcApproverStoreLevelsForStaff(
-			input.hospitalId,
-			staffIdForApprove
-		);
-		const set = new Set(pairs.map((p) => `${p.storeId}:${p.level}`));
-		canApprove = set.has(
-			`${joined.consumption.storeId}:${joined.consumption.currentLevel}`
-		);
+		if (hasAbsolutePermission(roleId)) {
+			canApprove = true;
+		} else if (staffIdForApprove) {
+			const pairs = await listDcApproverStoreLevelsForStaff(
+				input.hospitalId,
+				staffIdForApprove
+			);
+			const set = new Set(
+				pairs.map((p) => `${p.storeId}:${p.level}`)
+			);
+			canApprove = set.has(
+				`${joined.consumption.storeId}:${joined.consumption.currentLevel}`
+			);
+		}
 	}
 
 	const logs = await listApprovalLogs(input.hospitalId, input.id);
@@ -497,7 +512,8 @@ export async function getDepartmentConsumptionById(
 		storeId: joined.consumption.storeId,
 		userId,
 		staffId: staffIdForApprove,
-		statusTaggingId: joined.consumption.statusTaggingId
+		statusTaggingId: joined.consumption.statusTaggingId,
+		roleId
 	});
 	const canCancel = canManageOpen;
 
@@ -612,7 +628,9 @@ export async function approveDepartmentConsumption(
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
 	const staffId = await getStaffIdForUser(userId);
-	if (!staffId) throw error(403, 'Staff profile required to approve');
+	const roleId = event.locals.userRoleId ?? null;
+	if (!staffId && !hasAbsolutePermission(roleId))
+		throw error(403, 'Staff profile required to approve');
 
 	const [doc] = await ensureDb()
 		.select()
@@ -644,7 +662,7 @@ export async function approveDepartmentConsumption(
 		doc.storeId,
 		'DC'
 	);
-	if (maxLevel < 1) {
+	if (maxLevel < 1 && !hasAbsolutePermission(roleId)) {
 		throw error(
 			400,
 			'Configure department consumption approvers for this store'
@@ -655,7 +673,8 @@ export async function approveDepartmentConsumption(
 		doc.storeId,
 		'DC',
 		doc.currentLevel,
-		staffId
+		staffId ?? '',
+		roleId
 	);
 
 	const rejectReason =
@@ -801,7 +820,9 @@ export async function approveDepartmentConsumption(
 					pricingComputedAt: prices.pricingComputedAt,
 					updatedBy: userId
 				})
-				.where(eq(table.invDepartmentConsumptionLineTable.id, line.id));
+				.where(
+					eq(table.invDepartmentConsumptionLineTable.id, line.id)
+				);
 
 			const needIssue = await issueQtyStringFromPurchaseReceipt({
 				hospitalId: input.hospitalId,
@@ -929,7 +950,8 @@ export async function cancelDepartmentConsumption(
 		storeId: doc.storeId,
 		userId,
 		staffId: staffIdForCancel,
-		statusTaggingId: doc.statusTaggingId
+		statusTaggingId: doc.statusTaggingId,
+		roleId: event.locals.userRoleId ?? null
 	});
 	if (!allowed) throw error(403, 'You cannot cancel this document');
 

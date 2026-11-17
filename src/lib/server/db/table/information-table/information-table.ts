@@ -35,6 +35,7 @@ import {
 } from '../../../../model/enum/db-link';
 import { BillingDiscountTypeEnum } from '../../../../model/enum/billing-discount-type.enum';
 import { BillingVisitOpenModeEnum } from '../../../../model/enum/billing-visit-open-mode.enum';
+import { PageActionEnum } from '../../../../model/enum/page-action.enum';
 import { userTable } from '../auth-table/auth-table';
 import { documentTable, documentTypeTable } from '../master-table/master-table';
 import {
@@ -135,6 +136,23 @@ const junctionTimestamps = {
 			onUpdate: 'cascade'
 		}
 	)
+} as const;
+
+/** Master/config tables whose migration created only created_at + updated_at. */
+const masterTimestamps = {
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => sql`now()`)
 } as const;
 
 // Information Tables (alphabetical) - business/transactional data
@@ -569,14 +587,28 @@ export const statusTaggingTypeTable = pgTable('status_tagging_type', {
 	...timestamps
 });
 
-export const userGroupPageTable = pgTable('user_group_page', {
-	id: serial('id').primaryKey(),
-	userGroupId: integer('user_group_id').references(
-		() => userGroupTable.id
-	),
-	pageId: integer('page_id').references(() => pageTable.id),
-	...junctionTimestamps
-});
+export const userGroupPageTable = pgTable(
+	'user_group_page',
+	{
+		id: serial('id').primaryKey(),
+		userGroupId: integer('user_group_id').references(
+			() => userGroupTable.id
+		),
+		pageId: integer('page_id').references(() => pageTable.id),
+		/** `page_action` code: view | create | edit | delete | approve | … */
+		actionCode: varchar('action_code', { length: 48 })
+			.notNull()
+			.default(PageActionEnum.VIEW),
+		...junctionTimestamps
+	},
+	(t) => [
+		unique('user_group_page_group_page_action_unique').on(
+			t.userGroupId,
+			t.pageId,
+			t.actionCode
+		)
+	]
+);
 
 export const userGroupTable = pgTable('user_group', {
 	id: serial('id').primaryKey(),
@@ -3015,7 +3047,7 @@ export const edTriageLevelTable = pgTable(
 			.references(() => statusTable.id)
 			.notNull()
 			.default(StatusEnum.ACTIVE),
-		...timestamps
+		...masterTimestamps
 	},
 	(t) => [
 		uniqueIndex('ed_triage_level_hospital_level_uidx').on(
@@ -3037,8 +3069,86 @@ export const hospitalEdBillingConfigTable = pgTable(
 			() => serviceItemTable.id,
 			{ onDelete: 'set null' }
 		),
-		...timestamps
+		...masterTimestamps
 	}
+);
+
+/** Hospital trauma team activation level (code I/II/III or custom). */
+export const hospitalTraumaActivationLevelTable = pgTable(
+	'hospital_trauma_activation_level',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		code: varchar('code', { length: 16 }).notNull(),
+		name: varchar('name', { length: 512 }).notNull(),
+		description: text('description'),
+		color: varchar('color', { length: 32 }).notNull().default('error'),
+		sortOrder: integer('sort_order').notNull().default(0),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...masterTimestamps
+	},
+	(t) => [
+		uniqueIndex('hospital_trauma_activation_level_hospital_code_uidx').on(
+			t.hospitalId,
+			t.code
+		),
+		index('hospital_trauma_activation_level_hospital_id_idx').on(t.hospitalId)
+	]
+);
+
+export const hospitalTraumaMilestoneTemplateTable = pgTable(
+	'hospital_trauma_milestone_template',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		code: varchar('code', { length: 64 }).notNull(),
+		label: varchar('label', { length: 512 }).notNull(),
+		sortOrder: integer('sort_order').notNull().default(0),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...masterTimestamps
+	},
+	(t) => [
+		uniqueIndex('hospital_trauma_milestone_tpl_hospital_code_uidx').on(
+			t.hospitalId,
+			t.code
+		),
+		index('hospital_trauma_milestone_tpl_hospital_id_idx').on(t.hospitalId)
+	]
+);
+
+export const hospitalTraumaTeamRoleTable = pgTable(
+	'hospital_trauma_team_role',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		code: varchar('code', { length: 64 }).notNull(),
+		label: varchar('label', { length: 512 }).notNull(),
+		sortOrder: integer('sort_order').notNull().default(0),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...masterTimestamps
+	},
+	(t) => [
+		uniqueIndex('hospital_trauma_team_role_hospital_code_uidx').on(
+			t.hospitalId,
+			t.code
+		),
+		index('hospital_trauma_team_role_hospital_id_idx').on(t.hospitalId)
+	]
 );
 
 // Merged from inventory-transaction-table.ts
@@ -6573,6 +6683,10 @@ export const traumaActivationTable = pgTable(
 			.notNull()
 			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
 		levelCode: varchar('level_code', { length: 16 }).notNull(),
+		activationLevelId: integer('activation_level_id').references(
+			() => hospitalTraumaActivationLevelTable.id,
+			{ onDelete: 'set null' }
+		),
 		activatedAt: timestamp('activated_at', {
 			withTimezone: true,
 			mode: 'string'
@@ -6583,6 +6697,7 @@ export const traumaActivationTable = pgTable(
 			withTimezone: true,
 			mode: 'string'
 		}),
+		deactivateReason: text('deactivate_reason'),
 		formInstanceId: integer('form_instance_id'),
 		activatedBy: uuid('activated_by').references(() => staffTable.id),
 		statusId: integer('status_id')
@@ -6592,6 +6707,59 @@ export const traumaActivationTable = pgTable(
 		...perioperativeTimestamps
 	},
 	(t) => [index('trauma_activation_hospital_idx').on(t.hospitalId)]
+);
+
+export const traumaActivationMilestoneTable = pgTable(
+	'trauma_activation_milestone',
+	{
+		id: serial('id').primaryKey(),
+		traumaActivationId: integer('trauma_activation_id')
+			.notNull()
+			.references(() => traumaActivationTable.id, { onDelete: 'cascade' }),
+		milestoneTemplateId: integer('milestone_template_id')
+			.notNull()
+			.references(() => hospitalTraumaMilestoneTemplateTable.id, {
+				onDelete: 'cascade'
+			}),
+		completedAt: timestamp('completed_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		completedBy: uuid('completed_by').references(() => staffTable.id)
+	},
+	(t) => [
+		uniqueIndex('trauma_activation_milestone_uidx').on(
+			t.traumaActivationId,
+			t.milestoneTemplateId
+		)
+	]
+);
+
+export const traumaActivationTeamAckTable = pgTable(
+	'trauma_activation_team_ack',
+	{
+		id: serial('id').primaryKey(),
+		traumaActivationId: integer('trauma_activation_id')
+			.notNull()
+			.references(() => traumaActivationTable.id, { onDelete: 'cascade' }),
+		teamRoleId: integer('team_role_id')
+			.notNull()
+			.references(() => hospitalTraumaTeamRoleTable.id, {
+				onDelete: 'cascade'
+			}),
+		notified: boolean('notified').notNull().default(false),
+		acknowledgedAt: timestamp('acknowledged_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		staffId: uuid('staff_id').references(() => staffTable.id)
+	},
+	(t) => [
+		uniqueIndex('trauma_activation_team_ack_uidx').on(
+			t.traumaActivationId,
+			t.teamRoleId
+		)
+	]
 );
 
 export const surgicalCaseImplantTable = pgTable(

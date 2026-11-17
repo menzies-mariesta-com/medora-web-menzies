@@ -3,10 +3,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+const root = path.join(
+	path.dirname(fileURLToPath(import.meta.url)),
+	'..'
+);
 const target = path.join(
 	root,
-	'src/lib/server/http/api-route-cache-policy.generated.ts'
+	'src/lib/util/api-route-tier.generated.ts'
 );
 
 const before = fs.readFileSync(target, 'utf8');

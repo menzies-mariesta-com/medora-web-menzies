@@ -4,10 +4,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+const root = path.join(
+	path.dirname(fileURLToPath(import.meta.url)),
+	'..'
+);
+// Client-safe location: the browser needs the template map to validate hover prefetch targets.
 const outFile = path.join(
 	root,
-	'src/lib/server/http/api-route-cache-policy.generated.ts'
+	'src/lib/util/api-route-tier.generated.ts'
 );
 
 function walkApiServers(dir) {
@@ -66,14 +70,22 @@ function classify(template, getEnabled) {
 		'/api/medora/notification',
 		'/api/medora/staff/self'
 	];
-	if (noStorePrefix.some((p) => t.startsWith(p) || t === p.replace(/\/$/, ''))) {
+	if (
+		noStorePrefix.some(
+			(p) => t.startsWith(p) || t === p.replace(/\/$/, '')
+		)
+	) {
 		return 'no-store';
 	}
 
 	if (t.startsWith('/api/medora/master/')) return 'master-long';
 
 	if (/\/home\/billing\//.test(t)) return 'no-store';
-	if (/\/home\/(adt|consultation|clinical-form|medication-order|obstetrics)\//.test(t)) {
+	if (
+		/\/home\/(adt|consultation|clinical-form|medication-order|obstetrics)\//.test(
+			t
+		)
+	) {
 		return 'no-store';
 	}
 	if (/\/home\/nursing-workbench\//.test(t)) return 'no-store';
@@ -98,12 +110,14 @@ function classify(template, getEnabled) {
 
 	if (/\/home\/administration\//.test(t)) return 'master-long';
 	if (/\/home\/inventory-setup\//.test(t)) return 'master-long';
-	if (/\/home\/diagnostics\/lab\/catalog/.test(t)) return 'master-long';
+	if (/\/home\/diagnostics\/lab\/catalog/.test(t))
+		return 'master-long';
 	if (/\/home\/perioperative\/ot-room/.test(t)) return 'master-long';
 	if (/\/home\/account-settings/.test(t)) return 'account-medium';
 
 	if (/\/home\/dashboard/.test(t)) return 'dashboard-short';
-	if (/\/home\/diagnostics\/lab\/dashboard/.test(t)) return 'dashboard-short';
+	if (/\/home\/diagnostics\/lab\/dashboard/.test(t))
+		return 'dashboard-short';
 
 	if (t.startsWith('/api/medora/admin/plans')) return 'no-store';
 	if (t.startsWith('/api/medora/admin/')) return 'admin-medium';
@@ -138,4 +152,6 @@ export const API_ROUTE_TIER_BY_TEMPLATE: Record<string, ApiRouteTierId> = `;
 const body = `${header}${JSON.stringify(tiers, null, '\t')} as const satisfies Record<string, ApiRouteTierId>;\n`;
 
 fs.writeFileSync(outFile, body);
-console.log(`Wrote ${servers.length} routes → ${path.relative(root, outFile)}`);
+console.log(
+	`Wrote ${servers.length} routes → ${path.relative(root, outFile)}`
+);

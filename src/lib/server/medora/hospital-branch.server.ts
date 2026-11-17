@@ -7,7 +7,8 @@ import type {
 	HospitalBranchSchemaInsert,
 	HospitalBranchSchemaUpdate
 } from '$lib/server/db/schema-type';
-import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
+import { StatusEnum } from '$lib/model/enum/db-link';
+import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import type {
 	PaginatedResult,
 	PaginationParams
@@ -19,31 +20,10 @@ async function ensureCanManageHospital(
 	event: RequestEvent,
 	hospitalId: string
 ): Promise<void> {
-	if (!event.locals?.user) throw error(401, 'Unauthorized');
-	const userRoleId = event.locals.userRoleId ?? null;
-	const userId = event.locals.user?.id ?? null;
-	const allowedHospitalIds = event.locals.allowedHospitalIds ?? [];
-
-	if (userRoleId === RoleEnum.SYSTEM_ADMIN) return;
-	if (userRoleId === RoleEnum.OWNER && userId) {
-		const [h] = await ensureDb()
-			.select({ ownerId: table.hospitalTable.ownerId })
-			.from(table.hospitalTable)
-			.where(eq(table.hospitalTable.id, hospitalId))
-			.limit(1);
-		if (!h || h.ownerId !== userId)
-			throw error(
-				403,
-				'You can only manage branches of your own hospitals'
-			);
-		return;
-	}
-	if (userRoleId === RoleEnum.STAFF) {
-		if (!allowedHospitalIds.includes(hospitalId))
-			throw error(403, 'You do not have access to this hospital');
-		return;
-	}
-	throw error(403, 'Forbidden');
+	await ensureCanAccessHospital(event, hospitalId, {
+		ownerErrorMessage:
+			'You can only manage branches of your own hospitals'
+	});
 }
 
 export async function getBranchesByHospitalId(

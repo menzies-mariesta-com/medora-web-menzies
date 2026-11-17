@@ -8,6 +8,8 @@
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 	import { m } from '$lib/paraglide/messages';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
+	import { can } from '$lib/state/page-permission.state.svelte';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 	const lifeCycle = new LifeCycleUtil();
@@ -99,7 +101,7 @@
 		<WashButton
 			className="btn btn-primary cursor-pointer self-start"
 			loading={submitting}
-			disabled={submitting}
+			disabled={submitting || !can(PageActionEnum.EDIT)}
 			onClick={() => void save()}
 		>
 			{m.save?.() ?? 'Save'}

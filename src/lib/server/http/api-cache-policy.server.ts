@@ -3,7 +3,8 @@
 import {
 	API_ROUTE_TIER_BY_TEMPLATE,
 	type ApiRouteTierId
-} from '$lib/server/http/api-route-cache-policy.generated';
+} from '$lib/util/api-route-tier.generated';
+import { pathnameToApiTemplate } from '$lib/util/api-route-template.util';
 import { cacheTags } from '$lib/server/cache/cache-keys.server';
 
 export type ApiCachePolicy =
@@ -16,29 +17,19 @@ export type ApiCachePolicy =
 			staleWhileRevalidateSeconds: number;
 	  };
 
-const UUID_RE =
-	/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
-
 function hospitalIdFromPath(pathname: string): string | null {
-	const m = pathname.match(
-		/^\/api\/medora\/hospital\/([^/]+)\//
-	);
+	const m = pathname.match(/^\/api\/medora\/hospital\/([^/]+)\//);
 	return m?.[1] ?? null;
 }
 
-function tagsForPath(pathname: string, extra: string[] = []): string[] {
+function tagsForPath(
+	pathname: string,
+	extra: string[] = []
+): string[] {
 	const tags = ['api-get', ...extra];
 	const hid = hospitalIdFromPath(pathname);
 	if (hid) tags.push(`api-get-hospital:${hid}`);
 	return tags;
-}
-
-/** Map runtime pathname → generated route template. */
-export function pathnameToApiTemplate(pathname: string): string {
-	let p = pathname.replace(/^\/api\/(?:private|public)\//, '/api/');
-	p = p.replace(UUID_RE, '/:hospital_id');
-	p = p.replace(/\/\d+/g, '/:id');
-	return p;
 }
 
 function tierConfig(

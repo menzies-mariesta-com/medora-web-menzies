@@ -9,7 +9,7 @@ export type ApiRouteTierId =
 	| 'dashboard-short'
 	| 'default-short';
 
-/** Per-route GET cache tier (210 API handlers). */
+/** Per-route GET cache tier (212 API handlers). */
 export const API_ROUTE_TIER_BY_TEMPLATE: Record<string, ApiRouteTierId> = {
 	"/api/ai/chat": "no-store",
 	"/api/cron/inventory-stock-alerts": "no-store",
@@ -32,6 +32,7 @@ export const API_ROUTE_TIER_BY_TEMPLATE: Record<string, ApiRouteTierId> = {
 	"/api/doctor/v1/visits/:visitId": "no-store",
 	"/api/grn-invoice/*": "no-store",
 	"/api/hospital-logo/*": "no-store",
+	"/api/medora/admin/global-documents": "admin-medium",
 	"/api/medora/admin/icd": "admin-medium",
 	"/api/medora/admin/ops": "admin-medium",
 	"/api/medora/admin/plans": "no-store",
@@ -57,8 +58,8 @@ export const API_ROUTE_TIER_BY_TEMPLATE: Record<string, ApiRouteTierId> = {
 	"/api/medora/hospital/:hospital_id/home/administration/document-master/document-setting": "master-long",
 	"/api/medora/hospital/:hospital_id/home/administration/document-master/document-type": "master-long",
 	"/api/medora/hospital/:hospital_id/home/administration/document-master/document": "master-long",
-	"/api/medora/hospital/:hospital_id/home/administration/document-master/hospital-templates": "master-long",
-	"/api/medora/hospital/:hospital_id/home/administration/document-master/template-library": "master-long",
+	"/api/medora/hospital/:hospital_id/home/administration/document-master/placeholder-setup": "master-long",
+	"/api/medora/hospital/:hospital_id/home/administration/document-master/reusable-global-documents": "master-long",
 	"/api/medora/hospital/:hospital_id/home/administration/er-triage-level": "master-long",
 	"/api/medora/hospital/:hospital_id/home/administration/external-refer-master": "master-long",
 	"/api/medora/hospital/:hospital_id/home/administration/financial-year": "master-long",
@@ -174,6 +175,7 @@ export const API_ROUTE_TIER_BY_TEMPLATE: Record<string, ApiRouteTierId> = {
 	"/api/medora/hospital/:hospital_id/home/nursing-workbench/emr/order": "no-store",
 	"/api/medora/hospital/:hospital_id/home/nursing-workbench/emr/patient-attachment": "no-store",
 	"/api/medora/hospital/:hospital_id/home/nursing-workbench/emr/patient-visit-history-dashboard": "no-store",
+	"/api/medora/hospital/:hospital_id/home/nursing-workbench/emr/patient-visit-history-dashboard/visual": "no-store",
 	"/api/medora/hospital/:hospital_id/home/nursing-workbench/emr/vital": "no-store",
 	"/api/medora/hospital/:hospital_id/home/nursing-workbench/ipd/census": "no-store",
 	"/api/medora/hospital/:hospital_id/home/nursing-workbench/trauma-log": "no-store",
