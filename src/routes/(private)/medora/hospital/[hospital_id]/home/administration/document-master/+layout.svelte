@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
+	import { medoraHospitalNavHref } from '$lib/model/enum/routes.enum';
 	import {
 		getSubPages,
 		pathnameForPageMatch
@@ -25,8 +25,7 @@
 	}
 
 	function navUrl(pageUrl: string | null | undefined): string | null {
-		if (!pageUrl || !hospitalId) return pageUrl ?? null;
-		return medoraHospitalPageUrl(hospitalId, pageUrl);
+		return medoraHospitalNavHref(hospitalId, pageUrl);
 	}
 </script>
 

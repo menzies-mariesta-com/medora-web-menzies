@@ -1,10 +1,10 @@
 ---
 title: "Census"
-description: "How to use Census in Nursing Workbench."
+description: "How to use Census in ADT."
 docType: workflow
 slug: workflows/nursing-workbench-census
 pageId: 400109
-moduleId: 4
+moduleId: 7
 pageUrl: "/medora/home/nursing-workbench/census"
 generated: true
 sinceVersion: "1.5.0"
@@ -13,7 +13,7 @@ lastReviewed: "2026-03-21"
 
 ## What you will do
 
-Use **Census** in **Nursing Workbench** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
+Use **Census** in **ADT** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
 
 ## Before you start
 
@@ -23,7 +23,7 @@ Use **Census** in **Nursing Workbench** for everyday hospital tasks. A full walk
 
 ## Steps
 
-1. Open **Nursing Workbench** from the home menu.
+1. Open **ADT** from the home menu.
 2. Open **Census**.
 3. Follow the on-screen forms and save when you are done.
 
@@ -31,7 +31,7 @@ Use **Census** in **Nursing Workbench** for everyday hospital tasks. A full walk
 
 ```mermaid
 flowchart LR
-  signIn[Sign in] --> module[Open Nursing Workbench]
+  signIn[Sign in] --> module[Open ADT]
   module --> screen[Open Census]
   screen --> done[Finish task]
 ```

@@ -1,6 +1,6 @@
 ---
-title: "Patient Visit History Dashboard"
-description: "How to use Patient Visit History Dashboard in Nursing Workbench."
+title: "Dashboard"
+description: "How to use Dashboard in Nursing Workbench."
 docType: workflow
 slug: workflows/nursing-workbench-patient-visit-history-dashboard
 pageId: 400108
@@ -13,7 +13,7 @@ lastReviewed: "2026-03-21"
 
 ## What you will do
 
-Use **Patient Visit History Dashboard** in **Nursing Workbench** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
+Use **Dashboard** in **Nursing Workbench** for everyday hospital tasks. A full walkthrough with screenshots will appear here after documentation capture runs.
 
 ## Before you start
 
@@ -24,7 +24,7 @@ Use **Patient Visit History Dashboard** in **Nursing Workbench** for everyday ho
 ## Steps
 
 1. Open **Nursing Workbench** from the home menu.
-2. Open **Patient Visit History Dashboard**.
+2. Open **Dashboard**.
 3. Follow the on-screen forms and save when you are done.
 
 ## Quick map
@@ -32,7 +32,7 @@ Use **Patient Visit History Dashboard** in **Nursing Workbench** for everyday ho
 ```mermaid
 flowchart LR
   signIn[Sign in] --> module[Open Nursing Workbench]
-  module --> screen[Open Patient Visit History Dashboard]
+  module --> screen[Open Dashboard]
   screen --> done[Finish task]
 ```
 

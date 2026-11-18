@@ -29,6 +29,10 @@ scripts/.docs-capture-2fa-backup.json
 scripts/.docs-capture-checkpoint.json
 scripts/.docs-capture-storage.json
 
+# drizzle-kit introspect scratch (not migrations)
+drizzle-introspect-tmp/
+drizzle-introspect-tmp-*/
+
 # Paraglide
 src/lib/paraglide
 project.inlang/cache/

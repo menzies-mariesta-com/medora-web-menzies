@@ -1,9 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import {
-	medoraHospitalPageUrl,
+	medoraHospitalNavHref,
 	requestPathToDbPageUrl
 } from '$lib/model/enum/routes.enum';
-
 export type MedoraNavPageRow = {
 	id: number;
 	parentId?: number | null;
@@ -32,10 +31,12 @@ export function medoraSectionIndexRedirectTarget(
 ): string | null {
 	if (!hospitalId) return null;
 	const dbPageUrl = requestPathToDbPageUrl(pathname, hospitalId);
-	if (!dbPageUrl || normPath(dbPageUrl) === normPath('/medora/home')) {
+	if (
+		!dbPageUrl ||
+		normPath(dbPageUrl) === normPath('/medora/home')
+	) {
 		return null;
 	}
-
 	const indexPage = pages.find(
 		(p) => normPath(p.pageUrl) === normPath(dbPageUrl)
 	);
@@ -44,13 +45,13 @@ export function medoraSectionIndexRedirectTarget(
 	const children = pages
 		.filter((p) => p.parentId === indexPage.id)
 		.sort((a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0));
-	const first = children.find((p) => p.pageUrl?.startsWith('/medora/home'));
+	const first = children.find((p) =>
+		medoraHospitalNavHref(hospitalId, p.pageUrl)
+	);
 	if (!first?.pageUrl) return null;
 
-	const target = medoraHospitalPageUrl(hospitalId, first.pageUrl);
-	if (!target.startsWith(`/medora/hospital/${hospitalId}/home`)) {
-		return null;
-	}
+	const target = medoraHospitalNavHref(hospitalId, first.pageUrl);
+	if (!target) return null;
 	return appendSearch(target, search);
 }
 
@@ -69,12 +70,9 @@ export function medoraMaybeRedirectSectionIndex(input: {
 	if (target) throw redirect(302, target);
 }
 
-function withSectionIndexRedirect<T extends { pageData: MedoraNavPageRow[] }>(
-	hospitalId: string,
-	pathname: string,
-	payload: T,
-	search = ''
-): T {
+function withSectionIndexRedirect<
+	T extends { pageData: MedoraNavPageRow[] }
+>(hospitalId: string, pathname: string, payload: T, search = ''): T {
 	if (payload.pageData.length > 0) {
 		medoraMaybeRedirectSectionIndex({
 			hospitalId,

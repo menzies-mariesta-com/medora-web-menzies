@@ -1,5 +1,9 @@
 <script lang="ts">
-	import { D3Util, type LineChartOptions } from '$lib/util/d3.util';
+	import {
+		D3Util,
+		type BarChartOptions,
+		type LineChartOptions
+	} from '$lib/util/d3.util';
 	import { m } from '$lib/paraglide/messages';
 	import type {
 		VitalTrendPoint,
@@ -17,6 +21,8 @@
 		seriesBLabel,
 		yUnit = '',
 		includeZero = true,
+		band,
+		drawAs = 'line',
 		emptyMessage
 	} = $props<{
 		title: string;
@@ -26,11 +32,15 @@
 		seriesBLabel?: string;
 		yUnit?: string;
 		includeZero?: boolean;
+		/** Normal reference range, shaded behind the data. */
+		band?: { min: number; max: number };
+		drawAs?: 'line' | 'dots' | 'bars';
 		emptyMessage: string;
 	}>();
 
 	const SERIES_A_COLOR = 'var(--color-primary, #570df8)';
 	const SERIES_B_COLOR = 'var(--color-error, #f87272)';
+	const BAND_COLOR = 'var(--color-success, #36d399)';
 
 	let container = $state<HTMLDivElement | null>(null);
 
@@ -40,9 +50,19 @@
 			a: seriesA.map((p) => [p.at, p.value]),
 			b: (seriesB ?? []).map((p) => [p.at, p.value]),
 			zero: includeZero,
-			unit: yUnit
+			unit: yUnit,
+			band,
+			drawAs
 		})
 	);
+
+	/** Bars need a label per reading; the axis is band-scaled, not time-scaled. */
+	function barLabel(at: number): string {
+		return new Date(at).toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric'
+		});
+	}
 
 	function tooltipFor(d: Point): string {
 		const value = yUnit ? `${d.value} ${yUnit}` : `${d.value}`;
@@ -54,24 +74,40 @@
 	$effect(() => {
 		// Read the draw key so new data (not just a resize) re-runs the chart.
 		const key = drawKey;
-		const host = container;
+		let host = container;
 		if (!host || !key) return;
 
 		let cancelled = false;
 		let retries = 0;
 		const draw = () => {
-			if (cancelled || !container) return;
-			const width = container.clientWidth;
-			const height = container.clientHeight || 240;
+			host = container;
+			if (cancelled || !host) return;
+			const width = host.clientWidth;
+			const height = host.clientHeight || 240;
 			if (width <= 0 && retries++ < 20) {
 				setTimeout(draw, 50);
 				return;
 			}
 			if (!hasData) return;
 
+			if (drawAs === 'bars') {
+				const options: BarChartOptions<Point> = {
+					container: host,
+					data: seriesA,
+					width,
+					height,
+					xAccessor: (d) => barLabel(d.at),
+					yAccessor: (d) => d.value,
+					band,
+					tooltipFormatter: tooltipFor
+				};
+				D3Util.createBarChart(options);
+				return;
+			}
+
 			const options: LineChartOptions<Point> = {
-				container,
-				// x axis spans both series; extra series draw their own points.
+				container: host,
+				// The x axis spans both series; extra series draw their own points.
 				data: seriesA.length > 0 ? seriesA : (seriesB ?? []),
 				width,
 				height,
@@ -79,23 +115,22 @@
 				yAccessor: (d) => d.value,
 				xScaleType: 'time',
 				includeZero,
-				// Monotone spline (the util default) reads better than dot markers;
-				// hover still shows the exact reading.
-				showPoints: false,
-				yLabel: yUnit,
+				band,
+				drawAs: drawAs === 'dots' ? 'dots' : 'line',
+				theme: { lineColor: SERIES_A_COLOR },
+				tooltipFormatter: tooltipFor,
 				series:
 					seriesB && seriesB.length > 0
 						? [
 								{
 									data: seriesB,
-									yAccessor: (d) => d.value,
+									yAccessor: (d: Point) => d.value,
 									color: SERIES_B_COLOR,
-									label: seriesBLabel
+									label: seriesBLabel,
+									drawAs: drawAs === 'dots' ? 'dots' : 'line'
 								}
 							]
-						: [],
-				theme: { lineColor: SERIES_A_COLOR },
-				tooltipFormatter: tooltipFor
+						: []
 			};
 			D3Util.createLineChart(options);
 		};
@@ -124,6 +159,19 @@
 			{#if yUnit}
 				<span class="badge badge-sm badge-ghost border-base-300 font-normal">
 					{m.visit_visual_chart_unit({ unit: yUnit })}
+				</span>
+			{/if}
+			{#if band}
+				<span class="badge badge-sm badge-ghost gap-1 border-base-300 font-normal">
+					<span
+						class="inline-block h-2 w-2 rounded-sm"
+						style:background-color={BAND_COLOR}
+						aria-hidden="true"
+					></span>
+					{m.visit_visual_ref_range({
+						min: `${band.min}`,
+						max: `${band.max}`
+					})}
 				</span>
 			{/if}
 		</span>

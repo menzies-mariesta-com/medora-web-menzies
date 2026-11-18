@@ -146,6 +146,24 @@ export function medoraHospitalPageUrl(
 	return `/medora/hospital/${hospitalId}/home${pageUrl.slice('/medora/home'.length) || ''}`;
 }
 
+/** DB `page.page_url` values used in nav (excludes placeholders like `-`). */
+export function isMedoraHomePageUrl(
+	pageUrl: string | null | undefined
+): pageUrl is string {
+	return typeof pageUrl === 'string' && pageUrl.startsWith('/medora/home');
+}
+
+/** Safe hospital-scoped href for nav; null when URL would not resolve to a real route. */
+export function medoraHospitalNavHref(
+	hospitalId: string | null | undefined,
+	pageUrl: string | null | undefined
+): string | null {
+	if (!hospitalId || !isMedoraHomePageUrl(pageUrl)) return null;
+	const href = medoraHospitalPageUrl(hospitalId, pageUrl);
+	const prefix = `/medora/hospital/${hospitalId}/home`;
+	return href.startsWith(prefix) ? href : null;
+}
+
 /**
  * Convert request pathname under hospital home to DB page URL (/medora/home/...).
  * Returns null if pathname is not under /medora/hospital/{hospitalId}/home.

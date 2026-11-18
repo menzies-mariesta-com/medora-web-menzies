@@ -11,7 +11,6 @@ import {
 	getDocumentByCode,
 	getDocumentsWithRelations
 } from '$lib/server/medora/document-master/document.server';
-import { getDocumentSettingsForPrint } from '$lib/server/medora/document-master/document-print.server';
 import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
@@ -91,9 +90,6 @@ export async function GET(event: RequestEvent) {
 			const code = event.url.searchParams.get('code') ?? '';
 			if (!code) throw error(400, 'code is required');
 			return json(await getDocumentByCode(event, code));
-		}
-		case 'documentSettings.list': {
-			return json(await getDocumentSettingsForPrint(event, hospitalId));
 		}
 		default:
 			throw error(400, `Unknown mode: ${mode}`);

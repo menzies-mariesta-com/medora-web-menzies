@@ -250,19 +250,24 @@
 		loadHospitals();
 	});
 
-	let lastRefreshKey = $state(0);
+	let lastRefreshKey = 0;
 	$effect(() => {
 		const key = refreshKey;
-		if (key > 0 && key !== lastRefreshKey) {
-			lastRefreshKey = key;
-			let cancelled = false;
-			const ac = new AbortController();
-			void loadHospitals(true, { signal: ac.signal, isCancelled: () => cancelled });
-		}
-			return () => {
-				cancelled = true;
-				ac.abort();
-			};
+		if (key <= 0 || key === lastRefreshKey) return;
+		let cancelled = false;
+		const ac = new AbortController();
+		void (async () => {
+			await loadHospitals(true, {
+				signal: ac.signal,
+				isCancelled: () => cancelled
+			});
+			// Only a finished load counts: a superseded attempt aborts before this.
+			if (!cancelled) lastRefreshKey = key;
+		})();
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 </script>
 

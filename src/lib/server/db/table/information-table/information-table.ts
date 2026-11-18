@@ -239,8 +239,8 @@ export const financialYearTable = pgTable(
 	},
 	(table) => [
 		unique('financial_year_hospital_code_unique').on(
-			table.hospitalId,
-			table.code
+			table.code,
+			table.hospitalId
 		)
 	]
 );
@@ -367,8 +367,8 @@ export const hospitalDepartmentTable = pgTable(
 		index('hospital_department_code_idx').on(table.code),
 		index('hospital_department_status_id_idx').on(table.statusId),
 		unique('hospital_department_hospital_code_unique').on(
-			table.hospitalId,
-			table.code
+			table.code,
+			table.hospitalId
 		)
 	]
 );
@@ -466,8 +466,8 @@ export const staffBranchTable = pgTable(
 	},
 	(t) => [
 		unique('staff_branch_staff_id_branch_id_unique').on(
-			t.staffId,
-			t.branchId
+			t.branchId,
+			t.staffId
 		)
 	]
 );
@@ -603,9 +603,9 @@ export const userGroupPageTable = pgTable(
 	},
 	(t) => [
 		unique('user_group_page_group_page_action_unique').on(
-			t.userGroupId,
+			t.actionCode,
 			t.pageId,
-			t.actionCode
+			t.userGroupId
 		)
 	]
 );

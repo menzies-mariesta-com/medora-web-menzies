@@ -154,8 +154,8 @@ export const adminPagePermissionTable = pgTable(
 	},
 	(t) => [
 		unique('admin_page_permission_user_page_unique').on(
-			t.userId,
-			t.pageKey
+			t.pageKey,
+			t.userId
 		)
 	]
 );

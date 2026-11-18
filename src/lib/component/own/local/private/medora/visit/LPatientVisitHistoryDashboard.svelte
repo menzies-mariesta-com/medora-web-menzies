@@ -89,7 +89,7 @@
 	let medicationLines = $state<VisitDashboardMedicationLineRow[]>([]);
 	let isLoading = $state(false);
 	let loadError = $state('');
-	let lastLoadedVisitId = $state<number | null>(null);
+	let lastLoadedVisitId: number | null = null;
 	let loadSeq = 0;
 
 	const hasPrescriptionData = $derived(
@@ -339,7 +339,9 @@
 			loadError =
 				toUserFacingErrorDetail(err) ?? m.error_load_failed();
 		} finally {
-			if (seq === loadSeq) if (!opts?.isCancelled?.()) isLoading = false;
+			// Clear the spinner even when superseded; a stale sequence must not
+			// leave the dashboard showing a loading state with no request in flight.
+			if (seq === loadSeq) isLoading = false;
 		}
 	}
 
@@ -464,10 +466,13 @@
 			return;
 		}
 		if (lastLoadedVisitId === visitId) return;
-		lastLoadedVisitId = visitId;
 			let cancelled = false;
 			const ac = new AbortController();
-		void loadDashboard(visitId, { signal: ac.signal, isCancelled: () => cancelled });
+		void (async () => {
+			await loadDashboard(visitId, { signal: ac.signal, isCancelled: () => cancelled });
+			// Only a finished load counts: a superseded attempt aborts before this.
+			if (!cancelled) lastLoadedVisitId = visitId;
+		})();
 			return () => {
 				cancelled = true;
 				ac.abort();
