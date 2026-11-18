@@ -41,34 +41,14 @@ const db = drizzle(client);
  * Set `WHO_ICD_SKIP_SEED=1` / `SNOMED_SKIP_SEED=1` to skip.
  *
  * Per-hospital **`item_master`** catalog rows are **not** seeded here (created via the app).
- * Migration **`0074_item_master_drop_barcode_batch_required`** removes legacy **`barcode`** /
- * **`is_batch_required`** columns; no seed SQL references those columns.
+ * Global documents: code catalog via `document-master-provision.seed` (per active hospital).
  *
- * Also applies inventory approval DDL (module CHECK + active unique on
- * `inv_approval_level`) so environments that use `pnpm db:seed` without a full
- * `db:migrate` run still match drizzle 0039–0041 for approval config.
- *
- * Also rewrites legacy `/heka/` module/page URLs to `/medora/` on every seed run
- * (seed uses ON CONFLICT DO NOTHING for those rows, so inserts alone would not update).
+ * **Insert-only:** reference rows only (`INSERT` / `ON CONFLICT` upsert). Schema via `pnpm db:push`.
  *
  * npx tsx src/lib/server/db/seed/init/information-table-seed.ts
  */
 export async function seedInformationTables() {
 	seedLogger.info('Seeding information tables...');
-
-	// Rebrand path rewrite for seed/db:push workflows (no drizzle migrate required).
-	// Existing rows keep /heka/... until this runs; new INSERTs below already use /medora/...
-	await db.execute(sql`
-		UPDATE module
-		SET module_url = REPLACE(module_url, '/heka/', '/medora/')
-		WHERE module_url LIKE '/heka/%';
-	`);
-	await db.execute(sql`
-		UPDATE page
-		SET page_url = REPLACE(page_url, '/heka/', '/medora/')
-		WHERE page_url LIKE '/heka/%';
-	`);
-	seedLogger.info('Rewrote module/page URLs: /heka/ → /medora/');
 
 	// 1. Modules (depends: status)
 	// image_url = Lucide kebab-case name (Menzies Design / Wash DynamicIcon naming).
@@ -295,31 +275,6 @@ export async function seedInformationTables() {
 			sequence_no = EXCLUDED.sequence_no,
 			updated_at = now();
 		`);
-
-	// Retired nav page ids from older seeds/migrations (drop grants, then rows).
-	const retiredPageIds = [
-		1, 2, 8, 44, 481, 15, 150000, 150001, 150002, 150003, 150004,
-		810001, 810002, 800000, 800001, 801000,
-		451, 451001, 451002, 452, 452001, 452002, 453,
-		1900002, 1900003, 1900004, 1900005, 1900006, 1900007, 1900008,
-		481002, 481003, 481004, 481005, 481006, 481007, 481008,
-		// Document Master: legacy template-library / hospital-templates (→ reusable-global-documents)
-		100704, 100705
-	];
-	await db.execute(sql`
-		DELETE FROM user_group_page
-		WHERE page_id IN (${sql.join(
-			retiredPageIds.map((id) => sql`${id}`),
-			sql`, `
-		)});
-	`);
-	await db.execute(sql`
-		DELETE FROM page
-		WHERE id IN (${sql.join(
-			retiredPageIds.map((id) => sql`${id}`),
-			sql`, `
-		)});
-		`);
 	seedLogger.info('Seeded: page');
 
 	// The nav tree is cached (L1 + optional Redis) for 120 s; drop it so new / moved pages show up.
@@ -524,89 +479,15 @@ export async function seedInformationTables() {
 			(80, 'Complete', 'complete', 2, 16),
 			(81, 'Amended', 'amended', 3, 16)
 
-		ON CONFLICT (id) DO NOTHING;
-		`);
-	// Remap legacy IP-only billing tags (58/59) → shared Billing Open/Closed (56/57).
-	await db.execute(sql`
-		UPDATE ip_billing SET status_tagging_id = 56
-		WHERE status_tagging_id = 58
-		`);
-	await db.execute(sql`
-		UPDATE ip_billing SET status_tagging_id = 57
-		WHERE status_tagging_id = 59
-		`);
-	await db.execute(sql`
-		UPDATE op_billing SET status_tagging_id = 56
-		WHERE status_tagging_id = 58
-		`);
-	await db.execute(sql`
-		UPDATE op_billing SET status_tagging_id = 57
-		WHERE status_tagging_id = 59
-		`);
-	await db.execute(sql`
-		DELETE FROM status_tagging WHERE id IN (58, 59)
-		`);
-	// Align Visit terminal status (Closed / Discharged) for seed-without-migrate DBs.
-	await db.execute(sql`
-		UPDATE patient_visit
-		SET status_tagging_id = 8
-		WHERE status_tagging_id = 55
-		`);
-	await db.execute(sql`
-		UPDATE status_tagging
-		SET name = 'Closed / Discharged',
-			code = 'closed_discharged',
-			sequence_no = 4
-		WHERE id = 8 AND status_tagging_type_id = 2
-		`);
-	await db.execute(sql`
-		DELETE FROM status_tagging
-		WHERE id = 55 AND status_tagging_type_id = 2
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			code = EXCLUDED.code,
+			sequence_no = EXCLUDED.sequence_no,
+			status_tagging_type_id = EXCLUDED.status_tagging_type_id;
 		`);
 	seedLogger.info('Seeded: status tagging');
 
-	// 7b. `inv_approval_level` / `inv_approval_log`: module CHECK + partial unique index
-	// (mirrors `drizzle/manual_inv_approval_module_check.sql` and 0041; no-op on already-migrated DBs)
-	await db.execute(
-		sql`ALTER TABLE "inv_approval_level" DROP CONSTRAINT IF EXISTS "inv_approval_level_module_chk"`
-	);
-	await db.execute(sql`
-		ALTER TABLE "inv_approval_level" ADD CONSTRAINT "inv_approval_level_module_chk" CHECK ("module" IN ('PR', 'PO', 'DI', 'DISS', 'RFS', 'GRN', 'DC'))
-		`);
-	await db.execute(
-		sql`ALTER TABLE "inv_approval_log" DROP CONSTRAINT IF EXISTS "inv_approval_log_module_chk"`
-	);
-	await db.execute(sql`
-		ALTER TABLE "inv_approval_log" ADD CONSTRAINT "inv_approval_log_module_chk" CHECK ("module" IN ('PR', 'PO', 'DI', 'DISS', 'RFS', 'GRN', 'DC'))
-		`);
-	await db.execute(
-		sql`DROP INDEX IF EXISTS "inv_approval_level_store_module_level_uidx"`
-	);
-	await db.execute(
-		sql`DROP INDEX IF EXISTS "inv_approval_level_store_module_level_active_uidx"`
-	);
-	await db.execute(sql`
-		CREATE UNIQUE INDEX "inv_approval_level_store_module_level_active_uidx"
-		ON "inv_approval_level" ("hospital_id", "store_id", "module", "level")
-		WHERE "deleted_at" IS NULL
-	`);
-	seedLogger.info(
-		'Seeded: inv_approval_level schema (module CHECK + active unique index)'
-	);
-
-	// 8. Document Master (dev: wipe and reseed — no backfill)
-	await db.execute(sql`
-		TRUNCATE TABLE
-			patient_document,
-			hospital_document_text_placeholder,
-			hospital_document,
-			document,
-			hospital_document_settings
-		RESTART IDENTITY CASCADE;
-	`);
-	seedLogger.info('Reset: document master tables (truncate)');
-
-	// document_type is master data — see master-table-seed.ts
+	// 8. Document Master — document_type is master data (master-table-seed.ts).
 
 	// Global `document` rows from code catalog, then hospital_document links (below)
 	try {

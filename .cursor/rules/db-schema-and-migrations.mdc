@@ -1,0 +1,41 @@
+---
+description: DB schema/data — dev phase uses push+seed; migrations optional until prod
+globs: src/lib/server/db/**/*,drizzle/**/*
+alwaysApply: false
+---
+
+# DB changes — migration or push + seed?
+
+**Project phase:** development only (no production deploy yet). **Default = no new numbered migrations.** Schema in Drizzle TS + reference data in `seed/init/*`.
+
+When you **create, alter, or drop** tables/columns/indexes/constraints, or **add reference/master/nav data**, confirm strategy **before** writing `drizzle/00NN_*.sql`.
+
+Use **AskQuestion** (or ask in chat) unless the user already said otherwise:
+
+1. **Dev-only (default)** — Drizzle schema → `pnpm db:push` + `pnpm db:seed`. **Do not add** `drizzle/00NN_*.sql`.
+2. **Numbered migration (rare)** — only if explicitly requested. One integrator on `main`; never renumber files.
+
+## Init seeds (`seed/init/*`)
+
+- **Only** `INSERT` (with `ON CONFLICT` upsert where idempotent re-run matters).
+- **No** `UPDATE`, `DELETE`, `ALTER`, `TRUNCATE`, `INSERT…SELECT`, or backfill scripts for init reference data.
+- Put the **final row values** in seed SQL; do not rely on follow-up fixes.
+
+| Data | File |
+|------|------|
+| Master lookups | `master-table-seed.ts` |
+| Modules, pages, status tagging, documents | `information-table-seed.ts` |
+| Roles (+ optional admin) | `auth-table-seed.ts` |
+| Marketplace | `marketplace-table-seed.ts` |
+
+## Day-to-day
+
+1. Edit `src/lib/server/db/table/**/*.ts` → `pnpm db:push`
+2. Edit seed `INSERT` values → `pnpm db:seed` or `pnpm db:seed:init:*`
+
+Existing `drizzle/*.sql` is for optional full replay (`db:migrate`, `db:reset:migrate`), not required per feature in dev.
+
+## Migrations hygiene (when used)
+
+- Never renumber/delete `drizzle/*.sql` or reorder `drizzle/meta/_journal.json` to fix merges.
+- Never `drizzle-kit generate` on parallel branches without coordinating.

@@ -12,9 +12,8 @@ const db = drizzle(client);
 /**
  * Seed master/lookup tables with basic reference data.
  *
- * This script is designed to be:
- * - **Order-aware** – inserts in FK‑safe order (status → country → state → city → others)
- * - **Idempotent-ish** – sets fixed primary keys so re-running will no-op on conflicts
+ * Insert-only: `INSERT` / `ON CONFLICT` upsert, FK‑safe order (status → country → …).
+ * Schema columns and constraints live in `src/lib/server/db/table/**` (`pnpm db:push`).
  *
  * npx tsx src/lib/server/db/seed/init/master-table-seed.ts
  */
@@ -1847,19 +1846,6 @@ export async function seedMasterTables() {
 			timeline_duration_days = 1,
 			name = EXCLUDED.name;
 	`);
-	// Neon HTTP: one statement per execute
-	await db.execute(sql`
-		SELECT setval(
-			pg_get_serial_sequence('unit', 'id'),
-			GREATEST(COALESCE((SELECT MAX(id) FROM unit), 0), 1)
-		)
-	`);
-	await db.execute(sql`
-		SELECT setval(
-			pg_get_serial_sequence('unit_type', 'id'),
-			GREATEST(COALESCE((SELECT MAX(id) FROM unit_type), 0), 1)
-		)
-	`);
 	seedLogger.info('Seeded: unit');
 
 	// 18. Visit types (for patient_visit)
@@ -1936,12 +1922,6 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO UPDATE SET
 			document_type = EXCLUDED.document_type,
 			status_id = EXCLUDED.status_id;
-	`);
-	await db.execute(sql`
-		SELECT setval(
-			pg_get_serial_sequence('document_type', 'id'),
-			GREATEST(COALESCE((SELECT MAX(id) FROM document_type), 0), 1)
-		)
 	`);
 	seedLogger.info('Seeded: document_type');
 
