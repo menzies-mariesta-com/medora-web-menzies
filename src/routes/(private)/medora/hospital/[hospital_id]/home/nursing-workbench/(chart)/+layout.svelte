@@ -14,13 +14,21 @@
 	import { m } from '$lib/paraglide/messages';
 	import { untrack } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { parseUuid } from '$lib/util/id.util';
+	import { loadVisitBarVisitType } from '$lib/tool/medora/visit-bar-phase.util';
+	import {
+		filterNursingChartTabs,
+		isNursingChartTabVisible,
+		nursingChartTabSlug
+	} from '$lib/tool/nursing/nursing-chart-tab.util';
 
 	let { children } = $props();
 
 	const routerUtil = new RouterUtil();
-	const subPages = $derived(
+	const chartSubPages = $derived(
 		getSubPagesForPageUrl(WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH)
 	);
+	let visitTypeId = $state<number | null | undefined>(undefined);
 	const currentPath = $derived(
 		(pathnameForPageMatch() ?? '')
 			.replace(/\/+$/, '')
@@ -68,6 +76,52 @@
 	});
 
 	const selectedVisitId = $derived(VisitState.visitId);
+
+	const subPages = $derived(
+		filterNursingChartTabs(
+			chartSubPages,
+			selectedVisitId ? visitTypeId : null
+		)
+	);
+
+	$effect(() => {
+		const id = parseUuid(selectedVisitId) ?? '';
+		const hid =
+			typeof hospitalId === 'string' && hospitalId.trim() !== ''
+				? hospitalId.trim()
+				: '';
+		if (!id || !hid) {
+			visitTypeId = undefined;
+			return;
+		}
+		let cancelled = false;
+		const ac = new AbortController();
+		(async () => {
+			const result = await loadVisitBarVisitType(hid, id, {
+				signal: ac.signal
+			});
+			if (cancelled) return;
+			visitTypeId = result.ok ? result.visitTypeId : null;
+		})().catch(() => {
+			if (!cancelled) visitTypeId = null;
+		});
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
+	});
+
+	$effect(() => {
+		const typeId = visitTypeId;
+		if (!selectedVisitId || typeId == null) return;
+		const slug = nursingChartTabSlug(currentPath);
+		if (!slug || isNursingChartTabVisible(slug, typeId)) return;
+		const fallback = navUrl(
+			WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH_PATIENT_VISIT_HISTORY_DASHBOARD
+		);
+		if (!fallback) return;
+		untrack(() => routerUtil.replaceRoute(fallback));
+	});
 
 	function handleVisitSelected(data: {
 		visitId: string;

@@ -33,7 +33,7 @@ function rowsOf<T>(result: unknown): T[] {
 
 /**
  * Seed auth roles + optional SYSTEM_ADMIN from SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD.
- * Idempotent: roles upsert by id; admin upserts by email.
+ * Insert-only: re-run skips admin if email already exists.
  */
 export async function seedAuthTables() {
 	seedLogger.info('Seeding auth tables...');
@@ -63,69 +63,34 @@ export async function seedAuthTables() {
 	}
 
 	const hashedPassword = await hashPassword(password);
-	const existingRows = rowsOf<{ id: string }>(
-		await db.execute(sql`
-			SELECT id FROM "user" WHERE lower(email) = ${email} LIMIT 1
-		`)
-	);
-	let userId = existingRows[0]?.id;
-
-	if (userId) {
-		await db.execute(sql`
-			UPDATE "user"
-			SET
-				name = 'System Admin',
-				email = ${email},
-				email_verified = true,
-				role_id = 1,
-				updated_at = now()
-			WHERE id = ${userId}
-		`);
-		await db.execute(sql`
-			UPDATE account
-			SET
-				password = ${hashedPassword},
-				account_id = ${email},
-				updated_at = now()
-			WHERE user_id = ${userId} AND provider_id = 'credential'
-		`);
-		const accounts = rowsOf<{ id: string }>(
-			await db.execute(sql`
-				SELECT id FROM account
-				WHERE user_id = ${userId} AND provider_id = 'credential'
-				LIMIT 1
-			`)
-		);
-		if (accounts.length === 0) {
-			const accountId = uuidV7();
-			await db.execute(sql`
-				INSERT INTO account (
-					id, user_id, account_id, provider_id, password, created_at, updated_at
-				) VALUES (
-					${accountId}, ${userId}, ${email}, 'credential', ${hashedPassword}, now(), now()
-				)
-			`);
-		}
-		seedLogger.info(`Updated SYSTEM_ADMIN user: ${email}`);
-	} else {
-		userId = uuidV7();
-		const accountId = uuidV7();
+	const userId = uuidV7();
+	const accountId = uuidV7();
+	const inserted = rowsOf<{ id: string }>(
 		await db.execute(sql`
 			INSERT INTO "user" (
 				id, name, email, email_verified, role_id, two_factor_enabled, created_at, updated_at
 			) VALUES (
 				${userId}, 'System Admin', ${email}, true, 1, false, now(), now()
 			)
-		`);
-		await db.execute(sql`
-			INSERT INTO account (
-				id, user_id, account_id, provider_id, password, created_at, updated_at
-			) VALUES (
-				${accountId}, ${userId}, ${email}, 'credential', ${hashedPassword}, now(), now()
-			)
-		`);
-		seedLogger.info(`Created SYSTEM_ADMIN user: ${email}`);
+			ON CONFLICT (email) DO NOTHING
+			RETURNING id
+		`)
+	);
+	if (inserted.length === 0) {
+		seedLogger.info(
+			`SYSTEM_ADMIN ${email} already exists; skipping account (insert-only seed)`
+		);
+		return;
 	}
+
+	await db.execute(sql`
+		INSERT INTO account (
+			id, user_id, account_id, provider_id, password, created_at, updated_at
+		) VALUES (
+			${accountId}, ${inserted[0].id}, ${email}, 'credential', ${hashedPassword}, now(), now()
+		)
+	`);
+	seedLogger.info(`Created SYSTEM_ADMIN user: ${email}`);
 }
 
 seedAuthTables()
