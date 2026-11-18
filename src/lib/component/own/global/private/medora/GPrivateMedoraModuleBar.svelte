@@ -19,7 +19,7 @@ import type {
 	import {
 		WebRoutesEnum,
 		medoraHospitalHome,
-		medoraHospitalPageUrl,
+		medoraHospitalNavHref,
 		requestPathToDbPageUrl
 	} from '$lib/model/enum/routes.enum';
 	import { getStaffPhotoDisplayUrl, getHospitalLogoDisplayUrl } from '$lib/util/staff-photo.util';
@@ -190,11 +190,8 @@ import type {
 	const currentSearch = $derived(page.url.search);
 
 	function modulePageHref(p: MedoraPageRow): string | null {
-		const base =
-			hospitalId && p.pageUrl != null
-				? medoraHospitalPageUrl(hospitalId, p.pageUrl)
-				: p.pageUrl;
-		if (base == null) return null;
+		const base = medoraHospitalNavHref(hospitalId, p.pageUrl);
+		if (!base) return null;
 		const search = searchForMedoraModuleLink(p.pageUrl, currentSearch);
 		return search ? `${base}${search}` : base;
 	}
@@ -769,7 +766,7 @@ import type {
 			>
 				{#each hoveredModulePages as p (p.id)}
 					{@const url = modulePageHref(p)}
-					{#if url != null}
+					{#if url}
 						<li class="w-full shrink-0">
 							<a
 								href={resolve(url as any)}

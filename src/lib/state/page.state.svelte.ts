@@ -4,7 +4,7 @@ import type {
 	MedoraPageRow,
 	PageWithRelations
 } from '$lib/model/type/medora/page.type';
-import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
+import { medoraHospitalNavHref } from '$lib/model/enum/routes.enum';
 export type PageTreeItem = MedoraPageRow & {
 	children: PageTreeItem[];
 };
@@ -165,14 +165,10 @@ export function getSectionIndexRedirectTarget(
 	);
 	if (!indexPage) return null;
 	const subs = getSubPagesForParentId(indexPage.id);
-	const first = subs.find((p) =>
-		p.pageUrl?.startsWith('/medora/home')
-	);
+	const first = subs.find((p) => medoraHospitalNavHref(hospitalId, p.pageUrl));
 	if (!first?.pageUrl) return null;
-	const target = medoraHospitalPageUrl(hospitalId, first.pageUrl);
-	if (!target.startsWith(`/medora/hospital/${hospitalId}/home`)) {
-		return null;
-	}
+	const target = medoraHospitalNavHref(hospitalId, first.pageUrl);
+	if (!target) return null;
 	if (!search || search === '?') return target;
 	return target + (search.startsWith('?') ? search : `?${search}`);
 }

@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import {
-	medoraHospitalPageUrl,
+	medoraHospitalNavHref,
 	requestPathToDbPageUrl
 } from '$lib/model/enum/routes.enum';
 export type MedoraNavPageRow = {
@@ -46,14 +46,12 @@ export function medoraSectionIndexRedirectTarget(
 		.filter((p) => p.parentId === indexPage.id)
 		.sort((a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0));
 	const first = children.find((p) =>
-		p.pageUrl?.startsWith('/medora/home')
+		medoraHospitalNavHref(hospitalId, p.pageUrl)
 	);
 	if (!first?.pageUrl) return null;
 
-	const target = medoraHospitalPageUrl(hospitalId, first.pageUrl);
-	if (!target.startsWith(`/medora/hospital/${hospitalId}/home`)) {
-		return null;
-	}
+	const target = medoraHospitalNavHref(hospitalId, first.pageUrl);
+	if (!target) return null;
 	return appendSearch(target, search);
 }
 
