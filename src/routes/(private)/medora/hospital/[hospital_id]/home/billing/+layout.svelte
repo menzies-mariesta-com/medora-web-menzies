@@ -5,6 +5,7 @@
 	import LVisitInfoBar from '$lib/component/own/local/private/medora/visit/LVisitInfoBar.svelte';
 	import { untrack } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { replaceCurrentRouteVisitId } from '$lib/util/medora-visit-url.util';
 
 	let { children } = $props();
 
@@ -37,15 +38,8 @@
 		visitId: string;
 		patientName: string;
 	}) {
+		replaceCurrentRouteVisitId(String(data.visitId));
 		VisitState.select(data);
-		const search = new SvelteURLSearchParams(page.url.search);
-		search.set('visitId', String(data.visitId));
-		const base = page.url.pathname;
-		const url =
-			search.toString().length > 0
-				? `${base}?${search.toString()}`
-				: base;
-		routerUtil.replaceRoute(url);
 	}
 
 	function handleVisitReset() {

@@ -136,11 +136,21 @@ export function getSubPages(): MedoraPageRow[] {
 export function getSubPagesForPageUrl(
 	pageUrl: string | null | undefined
 ): MedoraPageRow[] {
+	return getSubPagesForPageUrlFromRows(pageUrl, getPageData());
+}
+
+/** Same as {@link getSubPagesForPageUrl} but uses an explicit page list (SSR layout data). */
+export function getSubPagesForPageUrlFromRows(
+	pageUrl: string | null | undefined,
+	rows: MedoraPageRow[]
+): MedoraPageRow[] {
 	const u = normPath(pageUrl);
 	if (!u) return [];
-	const parent = getPageData().find((p) => normPath(p.pageUrl) === u);
+	const parent = rows.find((p) => normPath(p.pageUrl) === u);
 	if (!parent) return [];
-	return getSubPagesForParentId(parent.id);
+	return rows
+		.filter((p) => p.parentId === parent.id)
+		.sort((a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0));
 }
 
 function getSubPagesForParentId(parentId: number): MedoraPageRow[] {

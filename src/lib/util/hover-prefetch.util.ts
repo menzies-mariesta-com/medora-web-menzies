@@ -40,8 +40,14 @@ function tierForApiUrl(url: string): string | undefined {
 }
 
 /** Convention API path for a page, ignoring its query. */
+/** Mirrored GET APIs that need `mode=` (or similar), not `page`/`pageSize`. */
+function supportsListPrefetchConvention(pagePath: string): boolean {
+	return !pagePath.includes('/inventory-setup/approval-config');
+}
+
 function conventionApiPath(pagePath: string): string | null {
 	if (!pagePath.startsWith('/medora/')) return null;
+	if (!supportsListPrefetchConvention(pagePath)) return null;
 	const apiPath = pagePath.replace(/^\/medora\//, '/api/medora/');
 	const tier = tierForApiUrl(apiPath);
 	if (!tier || tier === 'no-store') return null;

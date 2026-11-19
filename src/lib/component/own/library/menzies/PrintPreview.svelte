@@ -358,7 +358,6 @@
 					bind:this={iframeEl}
 					{title}
 					class="block border-0 bg-transparent"
-					sandbox="allow-same-origin"
 					scrolling="no"
 					style:transform={scale < 1 ? `scale(${scale})` : undefined}
 					style:transform-origin="top left"

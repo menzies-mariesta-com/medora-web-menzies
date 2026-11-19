@@ -9,6 +9,16 @@ import {
 
 const PREVIEW_ATTR = 'data-print-preview';
 
+/** Document-master body HTML may include `<script>`; preview must not execute them. */
+export function stripScriptTagsForSandboxedPreview(html: string): string {
+	if (typeof DOMParser !== 'undefined') {
+		const doc = new DOMParser().parseFromString(html, 'text/html');
+		doc.querySelectorAll('script').forEach((el) => el.remove());
+		return doc.documentElement.outerHTML;
+	}
+	return html.replace(/<script\b[\s\S]*?<\/script>/gi, '');
+}
+
 export type PrintPreviewScreenResult = {
 	meta: PrintDocumentPreviewMeta | null;
 	pageCount: number;
@@ -424,7 +434,7 @@ export async function mountPrintPreviewInIframe(
 		};
 		iframe.addEventListener('load', finish);
 		iframe.removeAttribute('src');
-		iframe.srcdoc = html;
+		iframe.srcdoc = stripScriptTagsForSandboxedPreview(html);
 		window.setTimeout(finish, 450);
 	});
 

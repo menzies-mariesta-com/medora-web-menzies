@@ -13,6 +13,7 @@ import {
 } from '$lib/util/print-document-html.util';
 import { buildDocumentMasterDownloadFileBase } from '$lib/util/print-download-filename.util';
 import { resolvePrintDownloadFileBaseFromHtml } from '$lib/util/print-document-preview-meta.util';
+import { stripScriptTagsForSandboxedPreview } from '$lib/util/print-document-preview-screen.util';
 import type {
 	ClinicalDocumentRow,
 	DocumentMasterPrintBootstrap
@@ -233,6 +234,11 @@ export async function printHtmlInIframe(
 		iframe = document.createElement('iframe');
 		iframe.id = iframeId;
 		iframe.setAttribute('title', 'print');
+		// Hidden print target: opt out of Grammarly (it hooks unload and spams policy violations).
+		iframe.setAttribute('data-gramm', 'false');
+		iframe.setAttribute('data-gramm_editor', 'false');
+		iframe.setAttribute('data-enable-grammarly', 'false');
+		iframe.setAttribute('spellcheck', 'false');
 		iframe.style.cssText =
 			'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;';
 		document.body.appendChild(iframe);
@@ -248,7 +254,7 @@ export async function printHtmlInIframe(
 		};
 		iframe!.addEventListener('load', finish);
 		iframe!.removeAttribute('src');
-		iframe!.srcdoc = html;
+		iframe!.srcdoc = stripScriptTagsForSandboxedPreview(html);
 		window.setTimeout(finish, 300);
 	});
 

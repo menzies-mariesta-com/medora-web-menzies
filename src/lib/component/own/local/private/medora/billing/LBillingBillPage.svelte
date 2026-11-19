@@ -60,6 +60,7 @@
 		resolveVisitBillTotalsFromLinesResponse,
 		type VisitBillTotals
 	} from '$lib/tool/billing/billing-visit-totals.util';
+	import { replaceCurrentRouteVisitId } from '$lib/util/medora-visit-url.util';
 
 	let {
 		visitTypeId,
@@ -975,8 +976,9 @@
 	});
 
 	function billThisVisitFromAll(id: string) {
-		VisitState.visitId = id;
 		billingViewAll = false;
+		replaceCurrentRouteVisitId(id);
+		VisitState.visitId = id;
 	}
 
 	function scopeMsg(key: string, fallback: string): string {

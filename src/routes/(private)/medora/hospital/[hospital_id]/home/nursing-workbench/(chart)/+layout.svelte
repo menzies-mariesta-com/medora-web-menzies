@@ -6,8 +6,11 @@
 	} from '$lib/model/enum/routes.enum';
 	import {
 		getSubPagesForPageUrl,
+		getSubPagesForPageUrlFromRows,
+		pageRowsFrom,
 		pathnameForPageMatch
 	} from '$lib/state/page.state.svelte';
+	import type { PageWithRelations } from '$lib/model/type/medora/page.type';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import LVisitInfoBar from '$lib/component/own/local/private/medora/visit/LVisitInfoBar.svelte';
@@ -25,9 +28,20 @@
 	let { children } = $props();
 
 	const routerUtil = new RouterUtil();
-	const chartSubPages = $derived(
-		getSubPagesForPageUrl(WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH)
-	);
+	const chartSubPages = $derived.by(() => {
+		const fromServer = (
+			page.data as { pageData?: PageWithRelations[] } | undefined
+		)?.pageData;
+		if (fromServer?.length) {
+			return getSubPagesForPageUrlFromRows(
+				WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH,
+				pageRowsFrom(fromServer)
+			);
+		}
+		return getSubPagesForPageUrl(
+			WebRoutesEnum.MEDORA_HOME_NURSING_WORKBENCH
+		);
+	});
 	let visitTypeId = $state<number | null | undefined>(undefined);
 	const currentPath = $derived(
 		(pathnameForPageMatch() ?? '')
@@ -151,8 +165,8 @@
 	}
 </script>
 
-{#if subPages.length > 0}
-	<div class="nursing-chart-wrapper">
+<div class="nursing-chart-wrapper">
+	{#if subPages.length > 0}
 		<LVisitInfoBar
 			visitId={selectedVisitId}
 			{hospitalId}
@@ -176,19 +190,13 @@
 				</button>
 			{/each}
 		</div>
-		<div class="nursing-chart-content">
-			{#if children}
-				{@render children()}
-			{/if}
-		</div>
-	</div>
-{:else}
-	<div>
+	{/if}
+	<div class="nursing-chart-content">
 		{#if children}
 			{@render children()}
 		{/if}
 	</div>
-{/if}
+</div>
 
 <style>
 	.nursing-chart-wrapper {
