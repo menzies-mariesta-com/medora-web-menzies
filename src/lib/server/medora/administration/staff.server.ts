@@ -8,17 +8,15 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import {
-	and,
-	count,
-	ilike,
-	ne,
-	or,
-	sql,
-	eq
-} from 'drizzle-orm';
+import { and, count, ilike, ne, or, sql, eq } from 'drizzle-orm';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
+import { auth } from '$lib/auth/server';
+import { resolveEmailAppOrigin } from '$lib/asset/email/email-brand';
+import { StringUtil } from '$lib/util/string.util.svelte';
+import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
+
+const { staffTable, staffHospitalTable, userTable } = table;
 
 const staffWithRelationsWith = {
 	title: true,
@@ -175,6 +173,60 @@ export async function deleteStaff(
 		.where(
 			and(eq(table.staffTable.id, params.id), hospitalCondition)
 		);
+}
+
+/**
+ * Re-issue the invite / password-reset email for a staff member in this hospital.
+ * The client cannot do this itself: it must be restricted to hospital staff rows,
+ * otherwise anyone could trigger mail for any address. Response is deliberately
+ * identical whether or not the address exists (no account enumeration).
+ */
+export async function resendStaffInvite(
+	event: RequestEvent,
+	params: { hospitalId: string; staffId: string }
+): Promise<void> {
+	const hospitalId = params.hospitalId;
+	await ensureCanAccessHospital(event, hospitalId);
+	if (!params.staffId) throw error(400, 'Staff id is required');
+
+	const rows = await ensureDb()
+		.select({ email: userTable.email })
+		.from(staffTable)
+		.innerJoin(userTable, eq(userTable.id, staffTable.userId))
+		.innerJoin(
+			staffHospitalTable,
+			eq(staffHospitalTable.staffId, staffTable.id)
+		)
+		.where(
+			and(
+				eq(staffTable.id, params.staffId),
+				eq(staffHospitalTable.hospitalId, hospitalId),
+				ne(staffTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.limit(1);
+
+	const email = rows[0]?.email?.trim();
+	// No-email placeholder accounts can never be invited.
+	if (!email || email.endsWith(StringUtil.NO_EMAIL_SUFFIX)) return;
+
+	const origin = resolveEmailAppOrigin();
+	try {
+		await auth.api.requestPasswordReset({
+			body: {
+				email,
+				redirectTo: `${origin}${WebRoutesEnum.RESET_PASSWORD}`
+			},
+			headers: new Headers({
+				'content-type': 'application/json',
+				origin
+			}),
+			asResponse: true
+		});
+	} catch (err) {
+		console.error('[staff] resend invite failed', err);
+		throw error(500, 'Could not send the invite email');
+	}
 }
 
 /** Session bootstrap: staff row + relations for the logged-in user (any hospital). */

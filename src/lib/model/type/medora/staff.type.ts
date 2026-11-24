@@ -7,6 +7,8 @@ export type AuthUser = {
 	id: string;
 	email?: string | null;
 	name?: string | null;
+	/** First time the user set their own password; null means the invite was never accepted. */
+	accountActivatedAt?: string | null;
 };
 
 export type StaffWithRelations = {

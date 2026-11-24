@@ -48,6 +48,16 @@ export const userTable = pgTable('user', {
 	mustChangePassword: boolean('must_change_password')
 		.notNull()
 		.default(false),
+	/**
+	 * First time the user set their own password (invite accepted). Null means the
+	 * emailed invite link was never used, so the staff list offers a resend.
+	 * `emailVerified` cannot serve this role: staff never go through email
+	 * verification, so it stays false even after a successful invite.
+	 */
+	accountActivatedAt: timestamp('account_activated_at', {
+		withTimezone: true,
+		mode: 'string'
+	}),
 	...timestamps
 });
 
@@ -121,6 +131,16 @@ export const twoFactorTable = pgTable('two_factor', {
 		.references(() => userTable.id, { onDelete: 'cascade' }),
 	secret: text('secret').notNull(),
 	backupCodes: text('backup_codes').notNull(),
+	/** better-auth twoFactor plugin (1.7+): enrollment / lockout state. */
+	verified: boolean('verified').notNull().default(true),
+	failedVerificationCount: integer('failed_verification_count')
+		.notNull()
+		.default(0),
+	/** mode: 'date' — the plugin writes a Date and compares `lockedUntil > new Date()`. */
+	lockedUntil: timestamp('locked_until', {
+		withTimezone: true,
+		mode: 'date'
+	}),
 	...timestamps
 });
 

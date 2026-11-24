@@ -9,6 +9,9 @@
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type { StaffWithRelations } from '$lib/model/type/medora/staff.type';
 	import MenziesTableViewEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableViewEditDeleteActions.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import LucideMail from '$lib/component/own/library/lucide/LucideMail.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import LStaffListViewEditModal from '$lib/component/own/local/private/medora/administration/staff/list/LStaffListViewEditModal.svelte';
@@ -32,11 +35,13 @@
 	const viewLock = createActionLock();
 	const editLock = createActionLock();
 	const deleteLock = createActionLock();
+	const resendLock = createActionLock();
 	const refreshLock = createActionLock();
 
 	let viewingStaffId = $state<string | null>(null);
 	let editingStaffId = $state<string | null>(null);
 	let deletingStaffId = $state<string | null>(null);
+	let resendingStaffId = $state<string | null>(null);
 
 	let staffResult =
 		$state<PaginatedResult<StaffWithRelations> | null>(null);
@@ -125,6 +130,34 @@
 		};
 	});
 
+	async function handleResendInvite(staffId: string) {
+		if (!hospitalId) return;
+		await resendLock.run(async () => {
+			resendingStaffId = staffId;
+			try {
+				const res = await fetch(staffListApiBase(hospitalId), {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ id: staffId })
+				});
+				if (!res.ok)
+					throw new Error(`Failed to resend invite (${res.status})`);
+				toastService.addToast(
+					m.staff_invite_resent(),
+					StatusColorEnum.INFO
+				);
+			} catch (err) {
+				console.error(err);
+				toastService.addToast(
+					m.failed_resend_staff_invite(),
+					StatusColorEnum.ERROR
+				);
+			} finally {
+				resendingStaffId = null;
+			}
+		});
+	}
+
 	async function handleDelete(staffId: string) {
 		if (!hospitalId) return;
 		await deleteLock.run(async () => {
@@ -187,6 +220,12 @@
 	/** Resolves when the full-screen staff dialog closes (mirrors `await dialogService.open` on branches). */
 	let staffDialogCloseResolver: (() => void) | null = null;
 
+	function awaitStaffDialogClose(): Promise<void> {
+		const { promise, resolve } = Promise.withResolvers<void>();
+		staffDialogCloseResolver = resolve;
+		return promise;
+	}
+
 	const registrationPath = $derived(
 		page.url.pathname.replace(/\/list\/?$/, '') + '/registration'
 	);
@@ -206,9 +245,7 @@
 			editingStaffId = null;
 			try {
 				staffDialog = { mode: 'view', staffId: id };
-				await new Promise<void>((resolve) => {
-					staffDialogCloseResolver = resolve;
-				});
+				await awaitStaffDialogClose();
 			} finally {
 				viewingStaffId = null;
 			}
@@ -221,9 +258,7 @@
 			viewingStaffId = null;
 			try {
 				staffDialog = { mode: 'edit', staffId: id };
-				await new Promise<void>((resolve) => {
-					staffDialogCloseResolver = resolve;
-				});
+				await awaitStaffDialogClose();
 			} finally {
 				editingStaffId = null;
 			}
@@ -342,6 +377,19 @@
 			header: m.status()
 		}),
 		{
+			id: 'accountStatus',
+			header: m.staff_account_status(),
+			widthClass: 'w-44 min-w-[11rem]',
+			filterable: false,
+			format: (_value, row) => {
+				const activatedAt = (row as StaffWithRelations).user
+					?.accountActivatedAt;
+				return activatedAt
+					? m.staff_account_opened()
+					: m.staff_account_not_opened();
+			}
+		},
+		{
 			id: 'createdAt',
 			header: m.created_at(),
 			widthClass: 'w-40 min-w-[10rem]',
@@ -398,24 +446,47 @@
 	>
 		{#snippet rowActions(row, rowIndex)}
 			{@const staffRow = row as StaffWithRelations}
-			<MenziesTableViewEditDeleteActions
-				onView={() => viewData(staffRow.id)}
-				onEdit={() => editData(staffRow.id)}
-				onDelete={() => handleDelete(staffRow.id)}
-				viewLoading={viewingStaffId === staffRow.id}
-				editLoading={editingStaffId === staffRow.id}
-				deleteLoading={deletingStaffId === staffRow.id}
-				disabled={isLoading}
-				viewDisabled={editingStaffId === staffRow.id ||
-					deletingStaffId === staffRow.id}
-				editDisabled={viewingStaffId === staffRow.id ||
-					deletingStaffId === staffRow.id}
-				deleteDisabled={viewingStaffId === staffRow.id ||
-					editingStaffId === staffRow.id}
-				viewTooltip={m.view_data()}
-				editTooltip={m.edit_data()}
-				deleteTooltip={m.delete_data()}
-			/>
+			{@const accountOpened = Boolean(
+				staffRow.user?.accountActivatedAt
+			)}
+			<MenziesTableRowActionGroup>
+				{#if !accountOpened}
+					<MenziesTableIconAction
+						tooltipText={m.staff_resend_invite()}
+						color="warning"
+						loading={resendingStaffId === staffRow.id}
+						disabled={isLoading ||
+							resendLock.pending ||
+							deleteLock.pending ||
+							editingStaffId === staffRow.id ||
+							deletingStaffId === staffRow.id}
+						loadingText=""
+						onClick={() => handleResendInvite(staffRow.id)}
+					>
+						{#snippet icon()}
+							<LucideMail className="size-3.5" />
+						{/snippet}
+					</MenziesTableIconAction>
+				{/if}
+				<MenziesTableViewEditDeleteActions
+					onView={() => viewData(staffRow.id)}
+					onEdit={() => editData(staffRow.id)}
+					onDelete={() => handleDelete(staffRow.id)}
+					viewLoading={viewingStaffId === staffRow.id}
+					editLoading={editingStaffId === staffRow.id}
+					deleteLoading={deletingStaffId === staffRow.id}
+					disabled={isLoading}
+					viewDisabled={editingStaffId === staffRow.id ||
+						deletingStaffId === staffRow.id}
+					editDisabled={viewingStaffId === staffRow.id ||
+						deletingStaffId === staffRow.id}
+					deleteDisabled={viewingStaffId === staffRow.id ||
+						editingStaffId === staffRow.id}
+					viewTooltip={m.view_data()}
+					editTooltip={m.edit_data()}
+					deleteTooltip={m.delete_data()}
+				/>
+			</MenziesTableRowActionGroup>
 		{/snippet}
 	</MenziesTable>
 </div>
