@@ -12,6 +12,7 @@
 	} from '$lib/tool/billing/billing-open-bills-batch.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { parseUuid } from '$lib/util/id.util';
+	import { replaceCurrentRouteVisitId } from '$lib/util/medora-visit-url.util';
 	import { formatMoneyAmount } from '$lib/util/number-display.util';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
@@ -145,6 +146,7 @@
 
 	function selectVisit(rowVisitId: string, patientName?: string) {
 		billingViewAll = false;
+		replaceCurrentRouteVisitId(rowVisitId);
 		VisitState.visitId = rowVisitId;
 		if (patientName) VisitState.patientName = patientName;
 	}

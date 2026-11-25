@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { stripScriptTagsForSandboxedPreview } from '$lib/util/print-document-preview-screen.util';
 import { buildPrintDocumentHtml } from '$lib/util/print-document-html.util';
 import {
 	mmToPreviewPx,
@@ -68,5 +69,16 @@ describe('print document preview meta', () => {
 		expect(resolvePrintDownloadFileBaseFromHtml(html)).toBe(
 			'bill_print-P001-V9'
 		);
+	});
+});
+
+describe('stripScriptTagsForSandboxedPreview', () => {
+	it('removes script tags so allow-same-origin sandbox needs no allow-scripts', () => {
+		const html =
+			'<html><body><p>x</p><script>alert(1)</script></body></html>';
+		expect(stripScriptTagsForSandboxedPreview(html)).not.toContain(
+			'<script'
+		);
+		expect(stripScriptTagsForSandboxedPreview(html)).toContain('<p>x</p>');
 	});
 });

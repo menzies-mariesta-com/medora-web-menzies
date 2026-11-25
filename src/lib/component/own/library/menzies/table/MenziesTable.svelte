@@ -12,7 +12,7 @@
 	  small client-sliced lists (e.g. embedded pickers).
 -->
 <script lang="ts">
-	import { createEventDispatcher, untrack, type Snippet } from 'svelte';
+	import { createEventDispatcher, type Snippet, untrack } from 'svelte';
 
 	import WashTable from '$lib/component/wash/table/WashTable.svelte';
 	import WashTableHeader from '$lib/component/wash/table/head/WashTableHeader.svelte';
@@ -299,6 +299,7 @@
 		const ac = new AbortController();
 
 		(async () => {
+			// untrack: writing masterFilterOptions must not re-subscribe this effect
 			const next: Partial<
 				Record<MenziesTableFilterMasterKey, MenziesSelectFilterOption[]>
 			> = {};

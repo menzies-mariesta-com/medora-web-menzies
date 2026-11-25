@@ -26,6 +26,11 @@
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+	import {
+		isSupersededVisitFetch,
+		shouldCommitNursingChartVisitLoad,
+		type NursingChartVisitLoadOutcome
+	} from '$lib/util/nursing-chart-visit-load.util';
 
 	type PatientVitalWithVisit = PatientDiagnosisListRow & {
 		visit?: { id: string; visitNo: string | null } | null;
@@ -204,29 +209,26 @@
 	async function fetchVisit(opts?: {
 		signal?: AbortSignal;
 		isCancelled?: () => boolean;
-	}): Promise<{
-		patientId: string;
-		hospitalId: string;
-	} | null> {
-		if (!visitId || !hospitalId) return null;
+	}): Promise<NursingChartVisitLoadOutcome> {
+		if (!visitId || !hospitalId) return 'error';
 		isLoadingVisit = true;
 		try {
 			const base = apiBase();
-			if (!base) return null;
+			if (!base) return 'error';
 			const res = await apiGet<{
 				data: { patientId: string; hospitalId: string } | null;
 			}>(`${base}?action=visitBasics&visitId=${visitId}`, opts?.signal);
-			if (opts?.isCancelled?.()) return null;
+			if (opts?.isCancelled?.()) return 'aborted';
 			if (!res.data) {
 				visit = null;
-				return null;
+				return 'not_found';
 			}
 			visit = res.data;
-			return res.data;
-		} catch (_err) {
-			if (opts?.isCancelled?.()) return null;
+			return 'ok';
+		} catch (err) {
+			if (isSupersededVisitFetch(err, opts?.isCancelled)) return 'aborted';
 			visit = null;
-			return null;
+			return 'error';
 		} finally {
 			if (!opts?.isCancelled?.()) isLoadingVisit = false;
 		}
@@ -297,24 +299,23 @@
 			let cancelled = false;
 			const ac = new AbortController();
 			void (async () => {
-				const resolvedVisit = await fetchVisit({
+				const outcome = await fetchVisit({
 					signal: ac.signal,
 					isCancelled: () => cancelled
 				});
-				if (cancelled) return;
-				if (resolvedVisit) {
-					await fetchVitals(
-						resolvedVisit.patientId,
-						resolvedVisit.hospitalId,
-						{
-							signal: ac.signal,
-							isCancelled: () => cancelled
-						}
-					);
+				if (cancelled || outcome === 'aborted') return;
+				if (outcome === 'ok' && visit) {
+					await fetchVitals(visit.patientId, visit.hospitalId, {
+						signal: ac.signal,
+						isCancelled: () => cancelled
+					});
 				}
-				// Only a finished load counts: a superseded attempt aborts before this,
-				// so the replacement run is not blocked by the guard.
-				if (!cancelled) lastLoadedVisitKey = visitKey;
+				if (
+					!cancelled &&
+					shouldCommitNursingChartVisitLoad(outcome)
+				) {
+					lastLoadedVisitKey = visitKey;
+				}
 			})();
 			return () => {
 				cancelled = true;

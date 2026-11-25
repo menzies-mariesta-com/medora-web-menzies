@@ -21,6 +21,11 @@
 	import { m } from '$lib/paraglide/messages';
 	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import {
+		isSupersededVisitFetch,
+		shouldCommitNursingChartVisitLoad,
+		type NursingChartVisitLoadOutcome
+	} from '$lib/util/nursing-chart-visit-load.util';
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -189,37 +194,32 @@
 	async function fetchVisit(opts?: {
 		signal?: AbortSignal;
 		isCancelled?: () => boolean;
-	}): Promise<{
-		patientId: string;
-		hospitalId: string;
-	} | null> {
-		if (!visitId || !hospitalId) return null;
+	}): Promise<NursingChartVisitLoadOutcome> {
+		if (!visitId || !hospitalId) return 'error';
 		isLoadingVisit = true;
 		try {
 			const res = await fetch(
 				`/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/allergy?mode=visit.get&visitId=${visitId}`,
 				{ signal: opts?.signal }
 			);
-			if (opts?.isCancelled?.()) return null;
+			if (opts?.isCancelled?.()) return 'aborted';
 			if (!res.ok)
 				throw new Error(`Visit load failed (${res.status})`);
 			const v = await res.json();
-			if (opts?.isCancelled?.()) return null;
+			if (opts?.isCancelled?.()) return 'aborted';
 			if (v) {
-				const nextVisit = {
+				visit = {
 					patientId: v.patientId,
 					hospitalId: v.hospitalId
 				};
-				visit = nextVisit;
-				return nextVisit;
-			} else {
-				visit = null;
-				return null;
+				return 'ok';
 			}
-		} catch {
-			if (opts?.isCancelled?.()) return null;
 			visit = null;
-			return null;
+			return 'not_found';
+		} catch (err) {
+			if (isSupersededVisitFetch(err, opts?.isCancelled)) return 'aborted';
+			visit = null;
+			return 'error';
 		} finally {
 			if (!opts?.isCancelled?.()) isLoadingVisit = false;
 		}
@@ -298,23 +298,23 @@
 			let cancelled = false;
 			const ac = new AbortController();
 			void (async () => {
-				const resolvedVisit = await fetchVisit({
+				const outcome = await fetchVisit({
 					signal: ac.signal,
 					isCancelled: () => cancelled
 				});
-				if (cancelled) return;
-				if (resolvedVisit) {
-					await fetchAllergies(
-						resolvedVisit.patientId,
-						resolvedVisit.hospitalId,
-						{
-							signal: ac.signal,
-							isCancelled: () => cancelled
-						}
-					);
+				if (cancelled || outcome === 'aborted') return;
+				if (outcome === 'ok' && visit) {
+					await fetchAllergies(visit.patientId, visit.hospitalId, {
+						signal: ac.signal,
+						isCancelled: () => cancelled
+					});
 				}
-				// Only a finished load counts: a superseded attempt aborts before this.
-				if (!cancelled) lastLoadedVisitKey = visitKey;
+				if (
+					!cancelled &&
+					shouldCommitNursingChartVisitLoad(outcome)
+				) {
+					lastLoadedVisitKey = visitKey;
+				}
 			})();
 			return () => {
 				cancelled = true;

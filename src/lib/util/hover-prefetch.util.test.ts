@@ -27,6 +27,11 @@ describe('prefetchUrlsFor', () => {
 		expect(prefetchUrlsFor(NO_API_PAGE)).toEqual([]);
 	});
 
+	it('skips mode-based APIs without page/pageSize list reads', () => {
+		const approval = `/medora/hospital/${HOSPITAL}/home/inventory-setup/approval-config`;
+		expect(prefetchUrlsFor(approval)).toEqual([]);
+	});
+
 	it('prefers the URL the page really opened with', () => {
 		const real = `/api/medora/hospital/${HOSPITAL}/home/administration/departments?pageSize=10&page=1`;
 		rememberPageFetch(MASTER_PAGE, real);

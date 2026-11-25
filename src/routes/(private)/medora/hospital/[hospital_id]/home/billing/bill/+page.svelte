@@ -18,7 +18,7 @@
 	let openBillsGrandTotal = $state('0');
 
 	const billPageKey = $derived(
-		`${visitId ?? ''}:${visitTypeId ?? ''}:${billingViewAll ? 'all' : 'one'}`
+		`${visitId ?? ''}:${billingViewAll ? 'all' : 'one'}`
 	);
 
 	$effect(() => {
@@ -31,6 +31,7 @@
 		}
 		let cancelled = false;
 		segmentLoading = true;
+		visitTypeId = null;
 		void fetchVisitTypeIdForBilling({ hospitalId: hid, visitId: id })
 			.then((typeId) => {
 				if (!cancelled) visitTypeId = typeId;

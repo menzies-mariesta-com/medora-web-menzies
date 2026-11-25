@@ -8,6 +8,11 @@
 	import LPatientAttachmentDialogContent from '$lib/component/own/local/private/medora/patient/attachment/LPatientAttachmentDialogContent.svelte';
 	import { PatientAttachmentDialogState } from '$lib/state/patient-attachment.dialog.state.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import {
+		isSupersededVisitFetch,
+		shouldCommitNursingChartVisitLoad,
+		type NursingChartVisitLoadOutcome
+	} from '$lib/util/nursing-chart-visit-load.util';
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -54,20 +59,26 @@
 	async function fetchVisit(opts?: {
 		signal?: AbortSignal;
 		isCancelled?: () => boolean;
-	}) {
-		if (!visitId || !hospitalId) {
-			visit = null;
-			return;
-		}
+	}): Promise<NursingChartVisitLoadOutcome> {
+		if (!visitId || !hospitalId) return 'error';
 		isLoadingVisit = true;
 		try {
 			const base = apiBase();
-			if (!base) return;
+			if (!base) return 'error';
 			const res = await apiGet<{
 				data: { patientId: string; hospitalId: string } | null;
 			}>(`${base}?action=visitBasics&visitId=${visitId}`, opts?.signal);
-			if (opts?.isCancelled?.()) return;
+			if (opts?.isCancelled?.()) return 'aborted';
+			if (!res.data) {
+				visit = null;
+				return 'not_found';
+			}
 			visit = res.data;
+			return 'ok';
+		} catch (err) {
+			if (isSupersededVisitFetch(err, opts?.isCancelled)) return 'aborted';
+			visit = null;
+			return 'error';
 		} finally {
 			if (!opts?.isCancelled?.()) isLoadingVisit = false;
 		}
@@ -80,12 +91,16 @@
 			let cancelled = false;
 			const ac = new AbortController();
 			void (async () => {
-				await fetchVisit({
+				const outcome = await fetchVisit({
 					signal: ac.signal,
 					isCancelled: () => cancelled
 				});
-				// Only a finished load counts: a superseded attempt aborts before this.
-				if (!cancelled) lastLoadedVisitId = visitId;
+				if (
+					!cancelled &&
+					shouldCommitNursingChartVisitLoad(outcome)
+				) {
+					lastLoadedVisitId = visitId;
+				}
 			})();
 			return () => {
 				cancelled = true;
