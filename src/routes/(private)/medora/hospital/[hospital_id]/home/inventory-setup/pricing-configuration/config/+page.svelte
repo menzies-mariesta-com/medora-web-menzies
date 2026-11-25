@@ -290,30 +290,30 @@
 	$effect(() => {
 		const navBranch = navbarSelectedBranchId;
 		void navBranch;
-		if (hospitalId && configApi) {
-			let cancelled = false;
-			const ac = new AbortController();
-			void loadOverview({ signal: ac.signal, isCancelled: () => cancelled });
-		}
-			return () => {
-				cancelled = true;
-				ac.abort();
-			};
+		if (!hospitalId || !configApi) return;
+
+		let cancelled = false;
+		const ac = new AbortController();
+		void loadOverview({ signal: ac.signal, isCancelled: () => cancelled });
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	$effect(() => {
 		const bid = branchId;
 		const mod = activeModule;
-		if (bid && configApi) {
-			let cancelled = false;
-			const ac = new AbortController();
-			void loadAssignment({ signal: ac.signal, isCancelled: () => cancelled });
-		}
 		void mod;
-			return () => {
-				cancelled = true;
-				ac.abort();
-			};
+		if (!bid || !configApi) return;
+
+		let cancelled = false;
+		const ac = new AbortController();
+		void loadAssignment({ signal: ac.signal, isCancelled: () => cancelled });
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	function configureFromOverview(row: ModulePricingAssignmentOverviewRow) {

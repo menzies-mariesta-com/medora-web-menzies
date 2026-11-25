@@ -3,7 +3,8 @@ import type { RequestHandler } from './$types';
 import {
 	deleteStaff,
 	getStaffByIdWithRelations,
-	getStaffListPaginated
+	getStaffListPaginated,
+	resendStaffInvite
 } from '$lib/server/medora/administration/staff.server';
 import { parsePaginationStatusIdParam } from '$lib/server/medora/paginated-entity-status-filter.server';
 
@@ -54,5 +55,19 @@ export const DELETE: RequestHandler = async (event) => {
 		unknown
 	>;
 	await deleteStaff(event, { hospitalId, id: String(body.id ?? '') });
+	return json({ ok: true });
+};
+
+/** Re-send the invite / password-reset email for one staff row. */
+export const POST: RequestHandler = async (event) => {
+	const hospitalId = event.params.hospital_id;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
+	await resendStaffInvite(event, {
+		hospitalId,
+		staffId: String(body.id ?? '')
+	});
 	return json({ ok: true });
 };

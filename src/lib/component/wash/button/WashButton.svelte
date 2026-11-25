@@ -64,8 +64,10 @@
 		soft = false,
 		dash = false,
 		title,
+		'aria-label': ariaLabel,
+		form,
 		children
-	} = $props<{
+	}: {
 		className?: string;
 		variant?: ButtonVariant;
 		size?: ButtonSize;
@@ -83,8 +85,12 @@
 		soft?: boolean;
 		dash?: boolean;
 		title?: string;
+		/** Accessible name for icon-only buttons; forwarded to the native `<button>`. */
+		'aria-label'?: string;
+		/** Associate with a form by id (button lives outside the `<form>`). */
+		form?: string;
 		children?: Snippet;
-	}>();
+	} = $props();
 
 	const isDisabled = $derived(Boolean(disabled || loading));
 
@@ -97,7 +103,10 @@
 
 	onMount(() => {
 		if (type) return;
-		const closestForm = btnEl?.closest('form');
+		// `form=` also makes a detached button submit — don't downgrade it.
+		const closestForm =
+			btnEl?.closest('form') ??
+			(form ? document.getElementById(form) : null);
 		resolvedType = closestForm ? 'submit' : 'button';
 	});
 
@@ -127,6 +136,8 @@
 	onclick={onClick}
 	disabled={isDisabled}
 	aria-busy={loading || undefined}
+	aria-label={ariaLabel}
+	{form}
 	{title}
 >
 	{#if loading}

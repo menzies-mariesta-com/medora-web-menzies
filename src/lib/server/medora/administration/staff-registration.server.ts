@@ -398,7 +398,8 @@ export async function createStaffRegistration(
 			await tx.insert(table.accountTable).values({
 				id: uuidV7(),
 				userId: user.id,
-				accountId: trimmedEmail,
+				// better-auth 1.7 identifies the credential account by userId
+				accountId: user.id,
 				providerId: 'credential',
 				password: hashedPassword
 			});

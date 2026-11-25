@@ -1,14 +1,52 @@
-/** IPD vs ED administration master data (unified ward/room/bed tables; `is_er` column). */
-export type AdministrationMasterScope = 'ipd' | 'er';
+import {
+	CARE_SETTING_VALUES,
+	CareSettingEnum,
+	parseCareSetting
+} from '$lib/model/enum/care-setting.enum';
 
-/** User-facing scope label on master list screens (DB/API still use `is_er` / `scope=er`). */
-export function masterScopeDisplayLabel(isEr: boolean | undefined): 'ED' | 'IPD' {
-	return isEr ? 'ED' : 'IPD';
+/**
+ * Care settings a master list screen can be scoped to. The old ED-only screens
+ * used `'er'`; that value still parses to `ED`.
+ */
+export type AdministrationMasterScope = 'ipd' | 'ed' | 'icu' | 'ot';
+
+const SCOPE_BY_CARE_SETTING: Record<
+	CareSettingEnum,
+	AdministrationMasterScope
+> = {
+	[CareSettingEnum.IPD]: 'ipd',
+	[CareSettingEnum.ED]: 'ed',
+	[CareSettingEnum.ICU]: 'icu',
+	[CareSettingEnum.OT]: 'ot'
+};
+
+export function careSettingOfScope(
+	scope: AdministrationMasterScope
+): CareSettingEnum {
+	return parseCareSetting(scope) ?? CareSettingEnum.IPD;
 }
 
-export function isErMasterScope(scope: AdministrationMasterScope): boolean {
-	return scope === 'er';
+export function masterScopeOfCareSetting(
+	careSetting: CareSettingEnum | undefined
+): AdministrationMasterScope {
+	return SCOPE_BY_CARE_SETTING[careSetting ?? CareSettingEnum.IPD];
 }
+
+/** User-facing care-setting label on master list screens. */
+export function masterScopeDisplayLabel(
+	careSetting: CareSettingEnum | string | undefined
+): string {
+	return parseCareSetting(careSetting) ?? CareSettingEnum.IPD;
+}
+
+export function isEdMasterScope(
+	scope: AdministrationMasterScope
+): boolean {
+	return careSettingOfScope(scope) === CareSettingEnum.ED;
+}
+
+export const ALL_MASTER_SCOPES: readonly AdministrationMasterScope[] =
+	CARE_SETTING_VALUES.map(masterScopeOfCareSetting);
 
 const adminBase = (hospitalId: string) =>
 	`/api/medora/hospital/${hospitalId}/home/administration`;
@@ -16,7 +54,7 @@ const adminBase = (hospitalId: string) =>
 export function masterScopeQuery(
 	scope: AdministrationMasterScope
 ): string {
-	return scope === 'er' ? 'scope=er' : 'scope=ipd';
+	return `scope=${scope}`;
 }
 
 export function administrationWardMasterApi(
@@ -54,8 +92,8 @@ export function administrationBedMasterApi(
 	return `${adminBase(hospitalId)}/bed-master`;
 }
 
-/** Unified ward list row (API returns wardCategoryId + isEr). */
-export function erWardRowAsUnified(row: {
+/** Unified ward list row (API returns wardCategoryId + careSetting). */
+export function wardRowAsUnified(row: {
 	id: number;
 	hospitalId: string;
 	branchId: string;
@@ -63,20 +101,24 @@ export function erWardRowAsUnified(row: {
 	name: string;
 	code: string | null;
 	statusId: number;
-	isEr?: boolean;
+	careSetting?: string;
 	branchName?: string | null;
 	wardCategoryName?: string | null;
 	wardMarkup?: string | null;
 }) {
 	return {
 		...row,
-		isEr: Boolean(row.isEr)
+		careSetting:
+			parseCareSetting(row.careSetting) ?? CareSettingEnum.IPD
 	};
 }
 
-export type UnifiedWardListRow = ReturnType<typeof erWardRowAsUnified>;
+export type UnifiedWardListRow = ReturnType<typeof wardRowAsUnified>;
 
-export function erRoomRowAsUnified(row: {
+/** Category rows carry a resolved `careSetting` (required) after list mapping. */
+export type UnifiedCategoryListRow = { careSetting: CareSettingEnum };
+
+export function roomRowAsUnified(row: {
 	id: number;
 	hospitalId: string;
 	wardId: number;
@@ -86,28 +128,34 @@ export function erRoomRowAsUnified(row: {
 	capacity: number;
 	amenities: string | null;
 	statusId: number;
-	isEr?: boolean;
+	careSetting?: string;
 	wardName?: string | null;
 	wardCode?: string | null;
 	roomCategoryName?: string | null;
 	roomMarkup?: string | null;
 	bedCount?: number;
 }) {
-	return { ...row, isEr: Boolean(row.isEr) };
+	return {
+		...row,
+		careSetting:
+			parseCareSetting(row.careSetting) ?? CareSettingEnum.IPD
+	};
 }
 
-export type UnifiedRoomListRow = ReturnType<typeof erRoomRowAsUnified>;
+export type UnifiedRoomListRow = ReturnType<typeof roomRowAsUnified>;
 
-export function erBedRowAsUnified(row: {
+export function bedRowAsUnified(row: {
 	id: number;
 	roomId: number;
 	hospitalId: string;
 	name: string;
 	code: string | null;
 	basePrice: string;
+	basePriceUnitId?: number | null;
+	basePriceUnitName?: string | null;
 	bedStatus: number;
 	statusId: number;
-	isEr?: boolean;
+	careSetting?: string;
 	roomName?: string | null;
 	roomCode?: string | null;
 	wardId?: number | null;
@@ -115,7 +163,11 @@ export function erBedRowAsUnified(row: {
 	wardCode?: string | null;
 	dailyTariff?: string | null;
 }) {
-	return { ...row, isEr: Boolean(row.isEr) };
+	return {
+		...row,
+		careSetting:
+			parseCareSetting(row.careSetting) ?? CareSettingEnum.IPD
+	};
 }
 
-export type UnifiedBedListRow = ReturnType<typeof erBedRowAsUnified>;
+export type UnifiedBedListRow = ReturnType<typeof bedRowAsUnified>;

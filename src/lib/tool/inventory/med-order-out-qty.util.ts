@@ -115,7 +115,7 @@ export function normalizeInternalMedOrderOutUnit(
 
 /** Purchase + issue unit options for external sale unit picker. */
 export function medOrderOutUnitOptions(
-	ium: MedOrderIumUnitIds & {
+	ium: Pick<MedOrderIumUnitIds, 'purchaseUnitId' | 'issueUnitId'> & {
 		purchaseUnitName?: string;
 		issueUnitName?: string;
 	}
@@ -140,7 +140,7 @@ export function medOrderOutUnitOptions(
 
 /** All distinct sale units across every conversion linked to the item. */
 export function medOrderOutUnitOptionsFromIumList(
-	iumList: (MedOrderIumUnitIds & {
+	iumList: (Pick<MedOrderIumUnitIds, 'purchaseUnitId' | 'issueUnitId'> & {
 		purchaseUnitName?: string;
 		issueUnitName?: string;
 	})[]
@@ -154,7 +154,11 @@ export function medOrderOutUnitOptionsFromIumList(
 	return [...byId.entries()].map(([value, label]) => ({ value, label }));
 }
 
-type MedOrderIumRow = MedOrderIumUnitIds & { id: number };
+type MedOrderIumRow = MedOrderIumUnitIds & {
+	id: number;
+	purchaseUnitName?: string | null;
+	issueUnitName?: string | null;
+};
 
 /**
  * Pick the item_unit_master whose purchase or issue unit matches the sale unit.

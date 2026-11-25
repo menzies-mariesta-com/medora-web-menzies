@@ -235,10 +235,13 @@ export async function seedInformationTables() {
 			(1100200, 'External Sales', 11, 1, null, '/medora/home/medication-order/external-sales', 2),
 
 			-- ── Module 12: Emergency ──
-			(1200100, 'Registration', 12, 1, null, '/medora/home/emergency/admission', 1),
-			(1200101, 'ED Patient Registration', 12, 1, 1200100, '/medora/home/emergency/admission/new', 1),
-			(1200102, 'New patient', 12, 1, 1200100, '/medora/home/emergency/admission/new-patient', 2),
-			(1200200, 'ED Bed Status', 12, 1, null, '/medora/home/emergency/bed-status', 2),
+			-- Registration (1200100–1200102) and ED Bed Status (1200200) are retired:
+			-- ADT admission and the ADT bed-status board cover ED. Rows stay inactive
+			-- because user_group_page grants reference their ids.
+			(1200100, 'Registration', 12, 2, null, '/medora/home/emergency/admission', 1),
+			(1200101, 'ED Patient Registration', 12, 2, 1200100, '/medora/home/emergency/admission/new', 1),
+			(1200102, 'New patient', 12, 2, 1200100, '/medora/home/emergency/admission/new-patient', 2),
+			(1200200, 'ED Bed Status', 12, 2, null, '/medora/home/emergency/bed-status', 2),
 			-- Boards keep their 4xxxxx ids (user_group_page grants reference them) though they now sit in Emergency.
 			(400110, 'Track Board', 12, 1, null, '/medora/home/nursing-workbench/track-board', 3),
 			(400112, 'Trauma Log', 12, 1, null, '/medora/home/nursing-workbench/trauma-log', 4),
@@ -300,7 +303,8 @@ export async function seedInformationTables() {
 		} catch (err) {
 			if (err instanceof WhoIcdCredentialsError) {
 				throw new Error(
-					`${err.message} Or set WHO_ICD_SKIP_SEED=1 to skip ICD during information seed (not recommended for real hospitals).`
+					`${err.message} Or set WHO_ICD_SKIP_SEED=1 to skip ICD during information seed (not recommended for real hospitals).`,
+					{ cause: err }
 				);
 			}
 			throw err;
@@ -341,7 +345,8 @@ export async function seedInformationTables() {
 		} catch (err) {
 			if (err instanceof SnomedRf2ImportError) {
 				throw new Error(
-					`${err.message} Or set SNOMED_SKIP_SEED=1 to skip SNOMED during information seed.`
+					`${err.message} Or set SNOMED_SKIP_SEED=1 to skip SNOMED during information seed.`,
+					{ cause: err }
 				);
 			}
 			throw err;

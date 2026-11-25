@@ -800,18 +800,18 @@ export type DocumentWithRelations = DocumentSchema & {
 	patientDocuments: any;
 };
 
-export async function getDocumentsWithRelations(): Promise<
-	DocumentWithRelations[]
-> {
-	return (await ensureDb().query.documentTable.findMany({
-		where: ne(table.documentTable.statusId, StatusEnum.DELETED),
-		with: {
-			documentType: true,
-			documentSetting: true,
-			status: true,
-			patientDocuments: true
-		}
-	})) as DocumentWithRelations[];
+/**
+ * Delegates to the document-master query: `documentType` is not a relation on
+ * `document` (the type link lives in `document_hospital_view`), so the inline
+ * `with: { documentType: true }` could never run.
+ */
+export async function getDocumentsWithRelations(
+	event: RequestEvent
+): Promise<DocumentWithRelations[]> {
+	const { getDocumentsWithRelations: listDocuments } = await import(
+		'$lib/server/medora/document-master/document.server'
+	);
+	return (await listDocuments(event)) as unknown as DocumentWithRelations[];
 }
 
 export async function getPatientDocumentsByVisitIdWithRelations(input: {

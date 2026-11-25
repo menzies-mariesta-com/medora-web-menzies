@@ -14,11 +14,15 @@ import {
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
 import { and, count, eq, ilike, ne } from 'drizzle-orm';
-import { isErScopeCondition } from '$lib/server/medora/ipd/master-is-er.util';
+import { careSettingScopeCondition } from '$lib/server/medora/ipd/master-care-setting.util';
+import type { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 export async function getRoomCategoryPaginated(
-	params: PaginationParams & { hospitalId: string; isEr?: boolean }
+	params: PaginationParams & {
+		hospitalId: string;
+		careSetting?: CareSettingEnum;
+	}
 ): Promise<PaginatedResult<RoomCategoryRow>> {
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
@@ -41,11 +45,11 @@ export async function getRoomCategoryPaginated(
 			ilike(table.roomCategoryTable.code, `%${codeFilter}%`)
 		);
 	}
-	const isErCond = isErScopeCondition(
+	const careSettingCond = careSettingScopeCondition(
 		table.roomCategoryTable,
-		params.isEr
+		params.careSetting
 	);
-	if (isErCond) conditions.push(isErCond);
+	if (careSettingCond) conditions.push(careSettingCond);
 	const whereClause = and(...conditions);
 	const [data, countResult] = await Promise.all([
 		ensureDb()
@@ -79,17 +83,17 @@ export async function getRoomCategoryPaginated(
 
 export async function listActiveRoomCategories(input: {
 	hospitalId: string;
-	isEr?: boolean;
+	careSetting?: CareSettingEnum;
 }): Promise<RoomCategorySchema[]> {
 	const conditions = [
 		eq(table.roomCategoryTable.hospitalId, input.hospitalId),
 		eq(table.roomCategoryTable.statusId, StatusEnum.ACTIVE)
 	];
-	const isErCond = isErScopeCondition(
+	const careSettingCond = careSettingScopeCondition(
 		table.roomCategoryTable,
-		input.isEr
+		input.careSetting
 	);
-	if (isErCond) conditions.push(isErCond);
+	if (careSettingCond) conditions.push(careSettingCond);
 	return ensureDb()
 		.select()
 		.from(table.roomCategoryTable)
@@ -119,12 +123,11 @@ export async function createRoomCategory(
 		.insert(table.roomCategoryTable)
 		.values({
 			...payload,
-			roomMarkup: String(payload.roomMarkup ?? '0'),
-			isEr: payload.isEr ?? false
+			roomMarkup: String(payload.roomMarkup ?? '0')
 		})
 		.returning();
 	if (!row) throw new Error('Insert failed');
-	void notifyHospitalMasterWrite(hospitalId);
+	void notifyHospitalMasterWrite(payload.hospitalId);
 
 	return row;
 }
@@ -135,6 +138,7 @@ export async function updateRoomCategory(payload: {
 	name?: string | null;
 	code?: string | null;
 	roomMarkup?: string | null;
+	careSetting?: CareSettingEnum;
 	statusId?: number | null;
 }): Promise<RoomCategorySchema> {
 	const { id, hospitalId, ...rest } = payload;

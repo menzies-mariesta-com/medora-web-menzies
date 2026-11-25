@@ -67,11 +67,11 @@
 			filterable: true
 		},
 		{
-			id: 'sourceOpdVisitNo',
+			id: 'sourceVisitNo',
 			header: 'From OPD',
 			widthClass: 'w-36 min-w-[8rem]',
 			filterable: false,
-			format: (_v, row) => row.sourceOpdVisitNo ?? '—'
+			format: (_v, row) => row.sourceVisitNo ?? '—'
 		},
 		{
 			id: 'patientName',

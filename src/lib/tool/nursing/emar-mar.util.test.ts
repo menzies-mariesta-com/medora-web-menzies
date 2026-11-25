@@ -35,7 +35,7 @@ const scheduleStub = (
 	id: number,
 	scheduledAt: string,
 	overrides: Partial<MedicationScheduleRow> = {}
-): MedicationScheduleRow => ({
+): (MedicationScheduleRow & MedicationLineRow) => ({
 	...lineStub({ lineId }),
 	id,
 	visitId: 'visit-1',
@@ -283,5 +283,67 @@ describe('buildMarGrid', () => {
 		expect(infusion?.isOnDemand).toBe(true);
 		expect(infusion?.isPrn).toBe(false);
 		expect(scheduledMarLines(grid).map((line) => line.lineId)).toEqual([1]);
+	});
+
+	const infusionLine = () =>
+		lineStub({
+			lineId: 7,
+			itemName: 'Normal Saline 1000 mL',
+			frequencyAbbreviation: 'Q24H',
+			frequencyPerDay: '1',
+			infusionType: 'continuous',
+			rateMlHr: '100'
+		});
+
+	const marker = (status: 'infusion_start' | 'infusion_stop', at: string) =>
+		adminStub({ id: 90, lineId: 7, administrationStatus: status, administeredAt: at });
+
+	function infusionLineFor(administrations: MedicationAdministrationRow[]) {
+		const grid = buildMarGrid({
+			schedules: [],
+			administrations,
+			prnLines: [infusionLine()],
+			now,
+			formatColumnLabel: (at) => at.slice(11, 16)
+		});
+		return grid.lines.find((line) => line.lineId === 7);
+	}
+
+	it('leaves a never-started infusion stopped', () => {
+		expect(infusionLineFor([])?.infusionRunning).toBe(false);
+	});
+
+	it('reads a lone start marker as running', () => {
+		expect(
+			infusionLineFor([marker('infusion_start', '2026-11-16T09:00:00.000Z')])
+				?.infusionRunning
+		).toBe(true);
+	});
+
+	it('reads a later stop marker as stopped', () => {
+		expect(
+			infusionLineFor([
+				marker('infusion_start', '2026-11-16T09:00:00.000Z'),
+				marker('infusion_stop', '2026-11-16T15:00:00.000Z')
+			])?.infusionRunning
+		).toBe(false);
+	});
+
+	it('lets a restart win over an earlier stop', () => {
+		expect(
+			infusionLineFor([
+				marker('infusion_start', '2026-11-16T09:00:00.000Z'),
+				marker('infusion_stop', '2026-11-16T15:00:00.000Z'),
+				marker('infusion_start', '2026-11-16T17:00:00.000Z')
+			])?.infusionRunning
+		).toBe(true);
+	});
+
+	it('keeps infusion markers out of the PRN last-given instant', () => {
+		expect(
+			infusionLineFor([
+				marker('infusion_start', '2026-11-16T20:30:00.000Z')
+			])?.lastGivenAt
+		).toBeNull();
 	});
 });

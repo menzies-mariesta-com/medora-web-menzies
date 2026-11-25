@@ -19,14 +19,6 @@ export type SurgicalCaseListRow = {
 	visitNo?: string | null;
 };
 
-export type OtRoomRow = {
-	id: number;
-	hospitalId: string;
-	branchId: string;
-	name: string;
-	sequenceNo: number;
-	statusId: number;
-};
 
 export type SurgicalCaseImplantRow = {
 	id: number;

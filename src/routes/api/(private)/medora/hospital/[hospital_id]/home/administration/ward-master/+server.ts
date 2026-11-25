@@ -1,7 +1,11 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as ward from '$lib/server/medora/ipd/ward.server';
-import { isErForMasterPicker, isErFromScopeQuery } from '$lib/server/medora/ipd/master-is-er.util';
+import {
+	careSettingForMasterPicker,
+	careSettingFromScopeQuery
+} from '$lib/server/medora/ipd/master-care-setting.util';
+import { parseCareSetting } from '$lib/model/enum/care-setting.enum';
 import { StatusEnum } from '$lib/model/enum/db-link';
 
 function hospitalIdFrom(event: RequestEvent): string {
@@ -23,15 +27,21 @@ export async function GET(event: RequestEvent) {
 	if (event.url.searchParams.get('active') === '1') {
 		const branchId =
 			event.url.searchParams.get('branchId') || undefined;
-		const isEr = isErForMasterPicker(
+		const careSetting = careSettingForMasterPicker(
 			event.url.searchParams.get('scope')
 		);
 		return json(
-			await ward.listActiveWards({ hospitalId, branchId, isEr })
+			await ward.listActiveWards({
+				hospitalId,
+				branchId,
+				careSetting
+			})
 		);
 	}
 
-	const isEr = isErFromScopeQuery(event.url.searchParams.get('scope'));
+	const careSetting = careSettingFromScopeQuery(
+		event.url.searchParams.get('scope')
+	);
 	const page = Number(event.url.searchParams.get('page') ?? '1');
 	const pageSize = Number(
 		event.url.searchParams.get('pageSize') ?? '10'
@@ -66,7 +76,7 @@ export async function GET(event: RequestEvent) {
 			statusId: Number.isFinite(statusId as number)
 				? statusId
 				: undefined,
-			isEr
+			careSetting
 		})
 	);
 }
@@ -83,7 +93,7 @@ export async function POST(event: RequestEvent) {
 	if (!Number.isFinite(wardCategoryId) || wardCategoryId <= 0) {
 		throw error(400, 'Ward category is required');
 	}
-	const isEr = Boolean(body.isEr);
+	const careSetting = parseCareSetting(body.careSetting) ?? undefined;
 	return json(
 		await ward.createWard({
 			hospitalId,
@@ -91,7 +101,7 @@ export async function POST(event: RequestEvent) {
 			wardCategoryId,
 			name,
 			code: body.code ? String(body.code).trim() : null,
-			isEr,
+			careSetting,
 			statusId:
 				body.statusId === StatusEnum.INACTIVE
 					? StatusEnum.INACTIVE
@@ -124,6 +134,7 @@ export async function PUT(event: RequestEvent) {
 	) {
 		throw error(400, 'Ward category is required');
 	}
+	const careSetting = parseCareSetting(body.careSetting) ?? undefined;
 	return json(
 		await ward.updateWard({
 			id,
@@ -137,6 +148,7 @@ export async function PUT(event: RequestEvent) {
 					: undefined,
 			branchId,
 			wardCategoryId,
+			careSetting,
 			statusId:
 				body.statusId !== undefined ? Number(body.statusId) : undefined
 		})

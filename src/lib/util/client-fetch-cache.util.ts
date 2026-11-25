@@ -200,6 +200,12 @@ export async function fetchJsonCached<T>(
 	const fallback = { ttlMs, staleMs };
 	const method = (init.method ?? 'GET').toUpperCase();
 	const key = cacheKey(url, method);
+	/**
+	 * Never hand a caller's signal to a shared request: the first caller aborting
+	 * would reject every caller that joined its in-flight promise. Each caller
+	 * gets its own abort view instead (`withCallerAbort`).
+	 */
+	const { signal, ...sharedInit } = init;
 	if (!isBrowser() || method !== 'GET' || bypass) {
 		/**
 		 * Concurrent bypass reads still collapse onto one request. The visit bar and
@@ -209,7 +215,6 @@ export async function fetchJsonCached<T>(
 		 * The shared request drops the caller's signal, so one component unmounting
 		 * cannot abort the read the other component is still waiting on.
 		 */
-		const { signal, ...sharedInit } = init;
 		const pending = inflight.get(key) as
 			| Promise<Fetched<T>>
 			| undefined;
@@ -235,7 +240,7 @@ export async function fetchJsonCached<T>(
 			| Promise<Fetched<T>>
 			| undefined;
 		if (!revalidate) {
-			const p = fetchAndParse<T>(url, init, fallback)
+			const p = fetchAndParse<T>(url, sharedInit, fallback)
 				.then((fetched) => {
 					if (!fetched.cache) store.delete(key);
 					return remember(key, fetched);
@@ -250,15 +255,17 @@ export async function fetchJsonCached<T>(
 	const pending = inflight.get(key) as
 		| Promise<Fetched<T>>
 		| undefined;
-	if (pending) return (await pending).data;
+	if (pending) return (await withCallerAbort(pending, signal)).data;
 
-	const p = fetchAndParse<T>(url, init, fallback).then((fetched) => {
-		if (!fetched.cache) store.delete(key);
-		return remember(key, fetched);
-	});
+	const p = fetchAndParse<T>(url, sharedInit, fallback).then(
+		(fetched) => {
+			if (!fetched.cache) store.delete(key);
+			return remember(key, fetched);
+		}
+	);
 	inflight.set(key, p);
 	try {
-		return await p;
+		return await withCallerAbort(p, signal);
 	} finally {
 		inflight.delete(key);
 	}
@@ -373,6 +380,12 @@ export async function cachedFetch(
 	}
 
 	const key = cacheKey(url, method);
+	/**
+	 * The shared request must not carry a caller's signal: the first caller
+	 * unmounting would abort the read every joiner is waiting on (surfacing as
+	 * "signal is aborted without reason"). Each caller gets its own abort view.
+	 */
+	const { signal, ...sharedInit } = init ?? {};
 	const now = Date.now();
 	const hit = responseStore.get(key);
 
@@ -382,8 +395,8 @@ export async function cachedFetch(
 
 	if (hit && now < hit.staleUntil) {
 		if (!responseInflight.has(key)) {
-			const p = fetchResponseEntry(input, init, key).finally(() =>
-				responseInflight.delete(key)
+			const p = fetchResponseEntry(input, sharedInit, key).finally(
+				() => responseInflight.delete(key)
 			);
 			responseInflight.set(key, p);
 			swallowBackgroundError(p);
@@ -393,16 +406,16 @@ export async function cachedFetch(
 
 	const pending = responseInflight.get(key);
 	if (pending) {
-		const entry = await pending;
+		const entry = await withCallerAbort(pending, signal);
 		return responseFromEntry(entry);
 	}
 
-	const p = fetchResponseEntry(input, init, key).finally(() =>
+	const p = fetchResponseEntry(input, sharedInit, key).finally(() =>
 		responseInflight.delete(key)
 	);
 	responseInflight.set(key, p);
 	try {
-		const entry = await p;
+		const entry = await withCallerAbort(p, signal);
 		return responseFromEntry(entry);
 	} finally {
 		responseInflight.delete(key);

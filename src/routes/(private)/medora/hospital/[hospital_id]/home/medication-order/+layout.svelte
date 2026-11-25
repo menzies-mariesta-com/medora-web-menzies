@@ -8,8 +8,10 @@
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import LVisitInfoBar from '$lib/component/own/local/private/medora/visit/LVisitInfoBar.svelte';
+	import LVisitPickerGate from '$lib/component/own/local/private/medora/visit/LVisitPickerGate.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { untrack } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	let { children } = $props();
 
@@ -60,7 +62,7 @@
 		} else if (!urlVisitId && VisitState.visitId) {
 			const vid = VisitState.visitId;
 			untrack(() => {
-				const search = new URLSearchParams(page.url.search);
+				const search = new SvelteURLSearchParams(page.url.search);
 				search.set('visitId', vid);
 				const base = page.url.pathname;
 				const url = `${base}?${search.toString()}`;
@@ -70,13 +72,17 @@
 	});
 
 	const selectedVisitId = $derived(VisitState.visitId);
+	// Gate on the URL, not session state: server and client agree, so no hydration flip.
+	const hasUrlVisit = $derived(
+		Boolean(page.url.searchParams.get('visitId')?.trim())
+	);
 
 	function handleVisitSelected(data: {
 		visitId: string;
 		patientName: string;
 	}) {
 		VisitState.select(data);
-		const search = new URLSearchParams(page.url.search);
+		const search = new SvelteURLSearchParams(page.url.search);
 		search.set('visitId', String(data.visitId));
 		const base = page.url.pathname;
 		const url =
@@ -88,7 +94,7 @@
 
 	function handleVisitReset() {
 		VisitState.reset();
-		const search = new URLSearchParams(page.url.search);
+		const search = new SvelteURLSearchParams(page.url.search);
 		search.delete('visitId');
 		const base = page.url.pathname;
 		const url =
@@ -103,7 +109,7 @@
 	{#if children}
 		{@render children()}
 	{/if}
-{:else}
+{:else if isExternalMedOrderPage || hasUrlVisit}
 	<div class="staff-subnav-wrapper">
 		{#if !isExternalMedOrderPage}
 			<LVisitInfoBar
@@ -140,6 +146,11 @@
 			{/if}
 		</div>
 	</div>
+{:else}
+	<LVisitPickerGate
+		listScope="hospital"
+		onVisitSelected={handleVisitSelected}
+	/>
 {/if}
 
 <style>

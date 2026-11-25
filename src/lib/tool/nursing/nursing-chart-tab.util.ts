@@ -70,6 +70,18 @@ export function nursingChartTabSlug(
 	return normalized.slice(CHART_PREFIX.length).split('/')[0] ?? '';
 }
 
+/** Chart tabs that still work with no visit selected (queue / board views). */
+const NO_VISIT_CHART_TABS = new Set(['triage']);
+
+/** True when the chart tab reads visit data, so the shell needs a selected visit. */
+export function isVisitChartTab(slug: string): boolean {
+	return (
+		slug !== '' &&
+		slug in NURSING_CHART_TABS &&
+		!NO_VISIT_CHART_TABS.has(slug)
+	);
+}
+
 /**
  * Fail-open: an unmapped tab or an unknown visit type keeps the tab visible.
  * Hiding navigation is a convenience, not a boundary — pages gate themselves.

@@ -1,0 +1,1 @@
+{"sessionId":"4c8664","runId":"initial","hypothesisId":"H1","location":"ward-category.server.ts:createWardCategory","message":"insert succeeded, before notify","data":{"payloadHospitalIdValue":"01a18880-9fd9-7de3-af92-b7aabdfa7c7a","rowHospitalId":"01a18880-9fd9-7de3-af92-b7aabdfa7c7a"},"timestamp":1795078739193}

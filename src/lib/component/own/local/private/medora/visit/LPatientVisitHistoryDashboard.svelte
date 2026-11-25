@@ -41,7 +41,7 @@
 	let datetimeUtil = new DateTimeUtil();
 
 	type VisitTableRow = {
-		id: number;
+		id: string;
 		visitId: string;
 		visitNo: string;
 		visitDateLabel: string;
@@ -89,7 +89,7 @@
 	let medicationLines = $state<VisitDashboardMedicationLineRow[]>([]);
 	let isLoading = $state(false);
 	let loadError = $state('');
-	let lastLoadedVisitId: number | null = null;
+	let lastLoadedVisitId: string | null = null;
 	let loadSeq = 0;
 
 	const hasPrescriptionData = $derived(
@@ -238,11 +238,11 @@
 		return (await res.json()) as T;
 	}
 
-	function dashboardApiUrl(visitIdValue: number): string {
+	function dashboardApiUrl(visitIdValue: string): string {
 		return `/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/patient-visit-history-dashboard?visitId=${visitIdValue}`;
 	}
 
-	async function loadDashboard(visitIdValue: number, opts?: {
+	async function loadDashboard(visitIdValue: string, opts?: {
 		signal?: AbortSignal;
 		isCancelled?: () => boolean;
 	}) {
@@ -466,17 +466,21 @@
 			return;
 		}
 		if (lastLoadedVisitId === visitId) return;
-			let cancelled = false;
-			const ac = new AbortController();
+
+		let cancelled = false;
+		const ac = new AbortController();
 		void (async () => {
-			await loadDashboard(visitId, { signal: ac.signal, isCancelled: () => cancelled });
+			await loadDashboard(visitId, {
+				signal: ac.signal,
+				isCancelled: () => cancelled
+			});
 			// Only a finished load counts: a superseded attempt aborts before this.
 			if (!cancelled) lastLoadedVisitId = visitId;
 		})();
-			return () => {
-				cancelled = true;
-				ac.abort();
-			};
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 </script>
 

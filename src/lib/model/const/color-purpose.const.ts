@@ -426,7 +426,9 @@ const ED_BOARD_ENTRIES: ColorCatalogEntry[] = (
 			? DAISYUI_DEFAULT_HEX.error
 			: code === EdBoardColumnEnum.FAST_TRACK
 				? DAISYUI_DEFAULT_HEX.success
-				: DAISYUI_DEFAULT_HEX.info
+				: code === EdBoardColumnEnum.WAITING_CLINICIAN
+					? DAISYUI_DEFAULT_HEX.warning
+					: DAISYUI_DEFAULT_HEX.info
 }));
 
 const SEVERITY_ENTRIES: ColorCatalogEntry[] = [

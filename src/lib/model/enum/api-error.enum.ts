@@ -3,5 +3,7 @@ export enum ApiErrorCodeEnum {
 	/** SYSTEM_ADMIN / OWNER mutation blocked until 2FA is enabled. */
 	TWO_FACTOR_REQUIRED = 'TWO_FACTOR_REQUIRED',
 	/** ED board column requires an assigned ER bed. */
-	ER_BED_REQUIRED = 'ER_BED_REQUIRED'
+	ER_BED_REQUIRED = 'ER_BED_REQUIRED',
+	/** ED visit already has a signed triage; re-triage needs an explicit amend. */
+	ED_TRIAGE_ALREADY_SIGNED = 'ED_TRIAGE_ALREADY_SIGNED'
 }

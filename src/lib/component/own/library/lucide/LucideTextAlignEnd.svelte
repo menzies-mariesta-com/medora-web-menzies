@@ -1,7 +1,9 @@
 <script lang="ts">
-	let { strokeWidth, className } = $props<{
+	let { strokeWidth, className, 'aria-hidden': ariaHidden = true } = $props<{
 		strokeWidth?: number;
 		className?: string;
+		/** Icons are decorative by default; pass `aria-hidden={false}` when the icon carries meaning. */
+		'aria-hidden'?: boolean | 'true' | 'false';
 	}>();
 </script>
 
@@ -16,5 +18,8 @@
 	stroke-linecap="round"
 	stroke-linejoin="round"
 	class="lucide lucide-text-align-end-icon lucide-text-align-end {className}"
+	aria-hidden={ariaHidden === false || ariaHidden === 'false'
+		? undefined
+		: 'true'}
 	><path d="M21 5H3" /><path d="M21 12H9" /><path d="M21 19H7" /></svg
 >

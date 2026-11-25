@@ -8,8 +8,7 @@
 	import AccountModal from '$lib/component/own/snippet/modal/AccountModal.svelte';
 	import MedoraNotifications from './MedoraNotifications.svelte';
 	import MedoraEcosystemNavLink from '$lib/component/own/local/private/medora/MedoraEcosystemNavLink.svelte';
-	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
-	import { resolve } from '$app/paths';
+	import { docsHomeHref } from '$lib/util/docs-help.util';
 	import { m } from '$lib/paraglide/messages';
 
 	let {
@@ -72,7 +71,7 @@
 			className="tooltip-primary"
 		>
 			<a
-				href={resolve(WebRoutesEnum.DOCS)}
+				href={docsHomeHref()}
 				target="_blank"
 				rel="noopener noreferrer"
 				class="btn btn-circle btn-ghost cursor-pointer"

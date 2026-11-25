@@ -99,6 +99,9 @@
 		VisitState.isClinicalVisitReadOnly
 	);
 
+	// Declared before the $derived readers below: they evaluate at init.
+	let visitRow = $state<PatientVisitRow | null>(null);
+
 	const sourceVisitId = $derived(
 		visitRow?.sourceVisitId?.trim() || null
 	);
@@ -123,7 +126,6 @@
 		);
 	}
 
-	let visitRow = $state<PatientVisitRow | null>(null);
 	let includeSourceVisit = $state(false);
 	/** Pending ADT admission order for this OPD visit (blocks re-order). */
 	let pendingAdmissionOrderId = $state<number | null>(null);
@@ -1038,8 +1040,8 @@
 		}
 		const url = `${medoraHospitalPageUrl(
 			hospitalId,
-			WebRoutesEnum.MEDORA_HOME_EMERGENCY_ADMISSION_NEW
-		)}?patientId=${encodeURIComponent(String(visitRow.patientId))}&sourceOpdVisitId=${encodeURIComponent(visitId)}`;
+			WebRoutesEnum.MEDORA_HOME_ADT_ADMISSION_NEW
+		)}?careSetting=ED&patientId=${encodeURIComponent(String(visitRow.patientId))}&sourceOpdVisitId=${encodeURIComponent(visitId)}`;
 		void goto(url);
 	}
 
@@ -1990,7 +1992,12 @@
 		</header>
 
 		<div class="emr-workspace-grid">
-			{#snippet glanceRowActions(onEdit, onDelete, editDisabled, deleteDisabled)}
+			{#snippet glanceRowActions(
+				onEdit: () => void,
+				onDelete: () => void,
+				editDisabled: boolean,
+				deleteDisabled: boolean
+			)}
 				<div
 					class="flex shrink-0 items-center gap-0.5"
 					role="group"

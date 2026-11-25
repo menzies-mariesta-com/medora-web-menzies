@@ -1,6 +1,10 @@
 import { sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { StatusEnum, IpdBedStatusEnum } from '$lib/model/enum/db-link';
+import {
+	StatusEnum,
+	IpdBedStatusEnum
+} from '$lib/model/enum/db-link';
+import { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 import { seedLogger } from '$lib/logger';
 
 type HospitalRow = { id: string; branch_id: string | null };
@@ -39,7 +43,7 @@ export async function seedDemoErMasterForHospitals(
 			await db.execute(sql`
 				SELECT id FROM ward
 				WHERE hospital_id = ${hospitalId}::uuid
-					AND is_er = true
+					AND care_setting = ${CareSettingEnum.ED}
 					AND code = 'ER-DEMO'
 				LIMIT 1
 			`)
@@ -49,22 +53,22 @@ export async function seedDemoErMasterForHospitals(
 		try {
 			const wcRows = rowsOf<{ id: number }>(
 				await db.execute(sql`
-					INSERT INTO ward_category (hospital_id, name, code, ward_markup, status_id, is_er)
-					VALUES (${hospitalId}::uuid, 'Emergency', 'ER-DEMO-CAT', 0, ${StatusEnum.ACTIVE}, true)
+					INSERT INTO ward_category (hospital_id, name, code, ward_markup, care_setting, status_id)
+					VALUES (${hospitalId}::uuid, 'Emergency', 'ER-DEMO-CAT', 0, ${CareSettingEnum.ED}, ${StatusEnum.ACTIVE})
 					RETURNING id
 				`)
 			);
 			const rcRows = rowsOf<{ id: number }>(
 				await db.execute(sql`
-					INSERT INTO room_category (hospital_id, name, code, room_markup, status_id, is_er)
-					VALUES (${hospitalId}::uuid, 'Emergency bay', 'ER-DEMO-RC', 0, ${StatusEnum.ACTIVE}, true)
+					INSERT INTO room_category (hospital_id, name, code, room_markup, care_setting, status_id)
+					VALUES (${hospitalId}::uuid, 'Emergency bay', 'ER-DEMO-RC', 0, ${CareSettingEnum.ED}, ${StatusEnum.ACTIVE})
 					RETURNING id
 				`)
 			);
 			const wardRows = rowsOf<{ id: number }>(
 				await db.execute(sql`
 					INSERT INTO ward (
-						hospital_id, branch_id, ward_category_id, name, code, status_id, is_er
+						hospital_id, branch_id, ward_category_id, name, code, care_setting, status_id
 					)
 					VALUES (
 						${hospitalId}::uuid,
@@ -72,8 +76,8 @@ export async function seedDemoErMasterForHospitals(
 						${wcRows[0]!.id},
 						'Emergency Ward',
 						'ER-DEMO',
-						${StatusEnum.ACTIVE},
-						true
+						${CareSettingEnum.ED},
+						${StatusEnum.ACTIVE}
 					)
 					RETURNING id
 				`)
@@ -81,7 +85,7 @@ export async function seedDemoErMasterForHospitals(
 			const roomRows = rowsOf<{ id: number }>(
 				await db.execute(sql`
 					INSERT INTO room (
-						hospital_id, ward_id, room_category_id, name, code, capacity, status_id, is_er
+						hospital_id, ward_id, room_category_id, name, code, capacity, care_setting, status_id
 					)
 					VALUES (
 						${hospitalId}::uuid,
@@ -90,8 +94,8 @@ export async function seedDemoErMasterForHospitals(
 						'Bay 1',
 						'B1',
 						0,
-						${StatusEnum.ACTIVE},
-						true
+						${CareSettingEnum.ED},
+						${StatusEnum.ACTIVE}
 					)
 					RETURNING id
 				`)
@@ -100,7 +104,7 @@ export async function seedDemoErMasterForHospitals(
 			for (let i = 1; i <= 6; i++) {
 				await db.execute(sql`
 					INSERT INTO bed (
-						room_id, hospital_id, name, code, base_price, bed_status, status_id, is_er
+						room_id, hospital_id, name, code, base_price, bed_status, care_setting, status_id
 					)
 					VALUES (
 						${roomId},
@@ -109,12 +113,14 @@ export async function seedDemoErMasterForHospitals(
 						${'B' + i},
 						0,
 						${IpdBedStatusEnum.FREE},
-						${StatusEnum.ACTIVE},
-						true
+						${CareSettingEnum.ED},
+						${StatusEnum.ACTIVE}
 					)
 				`);
 			}
-			seedLogger.info(`Seeded: demo ER beds for hospital ${hospitalId}`);
+			seedLogger.info(
+				`Seeded: demo ER beds for hospital ${hospitalId}`
+			);
 		} catch (e) {
 			seedLogger.warn(
 				`Skipped demo ER master for ${hospitalId}: ${e instanceof Error ? e.message : String(e)}`
@@ -127,9 +133,8 @@ export async function seedDemoErMasterForHospitals(
 async function runDemoErMasterSeedCli(): Promise<void> {
 	const { drizzle } = await import('drizzle-orm/neon-http');
 	const { neon } = await import('@neondatabase/serverless');
-	const { ensureDatabaseUrl } = await import(
-		'$lib/server/db/ensure-database-url'
-	);
+	const { ensureDatabaseUrl } =
+		await import('$lib/server/db/ensure-database-url');
 	const client = neon(ensureDatabaseUrl());
 	const db = drizzle(client);
 	await seedDemoErMasterForHospitals(db);

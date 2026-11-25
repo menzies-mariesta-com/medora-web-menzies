@@ -3,6 +3,7 @@ import { and, eq, ne } from 'drizzle-orm';
 import { ApiErrorCodeEnum } from '$lib/model/enum/api-error.enum';
 import { IpdBedStatusEnum, StatusEnum } from '$lib/model/enum/db-link';
 import { EdBoardColumnEnum } from '$lib/model/enum/perioperative.enum';
+import { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 
@@ -51,7 +52,7 @@ async function loadErBedLocation(input: {
 			and(
 				eq(table.bedTable.id, input.erBedId),
 				eq(table.bedTable.hospitalId, input.hospitalId),
-				eq(table.bedTable.isEr, true),
+				eq(table.bedTable.careSetting, CareSettingEnum.ED),
 				eq(table.bedTable.statusId, StatusEnum.ACTIVE),
 				ne(table.roomTable.statusId, StatusEnum.DELETED)
 			)
@@ -100,17 +101,32 @@ export async function assignErBedToEncounter(input: {
 	});
 
 	return ensureDb().transaction(async (tx) => {
-		if (enc.erBedId && enc.erBedId !== input.erBedId) {
+		if (enc.erBedId === input.erBedId) {
+			// Idempotent: the encounter already holds this bed.
+			return enc;
+		}
+
+		if (enc.erBedId) {
 			await tx
 				.update(table.bedTable)
 				.set({ bedStatus: IpdBedStatusEnum.FREE })
 				.where(eq(table.bedTable.id, enc.erBedId));
 		}
 
-		await tx
+		// Atomic claim: a concurrent admission/assignment cannot take this bed.
+		const [claimed] = await tx
 			.update(table.bedTable)
 			.set({ bedStatus: IpdBedStatusEnum.OCCUPIED })
-			.where(eq(table.bedTable.id, input.erBedId));
+			.where(
+				and(
+					eq(table.bedTable.id, input.erBedId),
+					eq(table.bedTable.bedStatus, IpdBedStatusEnum.FREE)
+				)
+			)
+			.returning({ id: table.bedTable.id });
+		if (!claimed) {
+			throw error(400, 'ED bed is not available');
+		}
 
 		const assignedAt = new Date().toISOString();
 		const [updated] = await tx

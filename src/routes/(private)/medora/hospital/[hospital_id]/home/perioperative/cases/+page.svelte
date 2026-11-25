@@ -4,7 +4,7 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import SurgicalCasePanel from '$lib/component/own/local/private/medora/perioperative/SurgicalCasePanel.svelte';
 	import type { SurgicalCaseListRow } from '$lib/model/type/medora/surgical-case.type';
-	import type { OtRoomRow } from '$lib/model/type/medora/surgical-case.type';
+	import type { RoomRow } from '$lib/model/type/medora/ipd/ipd.type';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -26,12 +26,12 @@
 	);
 	const roomApi = $derived(
 		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/perioperative/ot-room`
+			? `/api/medora/hospital/${hospitalId}/home/administration/room-master?active=1&scope=ot`
 			: ''
 	);
 
 	let cases = $state<SurgicalCaseListRow[]>([]);
-	let rooms = $state<OtRoomRow[]>([]);
+	let rooms = $state<RoomRow[]>([]);
 	let selected = $state<SurgicalCaseListRow | null>(null);
 	let newProcedure = $state('');
 	let scheduleRoomId = $state('');
@@ -54,7 +54,7 @@
 		if (!roomApi) return;
 		const res = await fetch(roomApi);
 		if (!res.ok) await throwUserFacingHttpError(res);
-		rooms = (await res.json()) as OtRoomRow[];
+		rooms = (await res.json()) as RoomRow[];
 	}
 
 	async function createCase() {
@@ -116,7 +116,7 @@
 			<div class="flex flex-wrap gap-2">
 				<WashInputField
 					className="input-sm flex-1"
-					placeholder={msg.periop_procedure_name()}
+					inputPlaceholderText={msg.periop_procedure_name()}
 					bind:value={newProcedure}
 				/>
 				<WashButton

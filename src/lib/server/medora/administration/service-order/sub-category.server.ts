@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { notifyHospitalMasterWrite } from '$lib/server/cache/notify-master-write.server';
+import { notifyGlobalMasterWrite } from '$lib/server/cache/notify-master-write.server';
 import {
 	and,
 	count,
@@ -151,7 +151,7 @@ export async function createSubCategory(
 		.values(input)
 		.returning();
 	if (!row) throw new Error('Failed to create sub-category');
-	void notifyHospitalMasterWrite(hospitalId);
+	notifyGlobalMasterWrite();
 
 	return row;
 }
@@ -168,7 +168,7 @@ export async function updateSubCategory(
 		.where(eq(table.subCategoryTable.id, id))
 		.returning();
 	if (!row) throw error(404, 'Sub-category not found');
-	void notifyHospitalMasterWrite(hospitalId);
+	notifyGlobalMasterWrite();
 
 	return row;
 }

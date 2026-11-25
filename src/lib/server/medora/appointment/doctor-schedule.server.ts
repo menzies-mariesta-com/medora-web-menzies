@@ -283,7 +283,7 @@ export async function createDoctorSchedule(
 		.values(payload)
 		.returning();
 	if (!row) throw new Error('Insert failed');
-	void notifyHospitalMasterWrite(hospitalId);
+	void notifyHospitalMasterWrite(payload.hospitalId);
 
 	return row;
 }
@@ -358,7 +358,7 @@ export async function updateDoctorSchedule(
 		.where(eq(table.doctorScheduleTable.id, id))
 		.returning();
 	if (!row) throw new Error('Update failed');
-	void notifyHospitalMasterWrite(hospitalId);
+	void notifyHospitalMasterWrite(nextHospitalId);
 
 	return row;
 }

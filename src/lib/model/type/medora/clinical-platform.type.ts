@@ -1,4 +1,5 @@
 import type { ClinicalOrderSetLineTypeEnum } from '$lib/model/enum/clinical-platform.enum';
+import type { ClinicalFormTemplateSchema } from '$lib/model/type/medora/clinical-form.type';
 
 export type ClinicalOrderSetRow = {
 	id: number;
@@ -53,6 +54,7 @@ export type MedicationScheduleRow = {
 	doseLabel: string | null;
 	itemName?: string;
 	lineNo?: number;
+	orderTypeName?: string | null;
 };
 
 export type MedicationAdministrationRow = {
@@ -61,21 +63,46 @@ export type MedicationAdministrationRow = {
 	lineId: number;
 	administrationStatus: string;
 	administeredAt: string;
+	nurseInitials?: string | null;
+	displayReason?: string | null;
+};
+
+/** One nursing care plan answers one problem: these are its four fields. */
+export type CarePlanFieldId =
+	| 'problem'
+	| 'goal'
+	| 'interventions'
+	| 'evaluation';
+
+/** `nursing_care_plan_instance.content_json`. Interventions are one per line. */
+export type CarePlanContent = Partial<
+	Record<CarePlanFieldId, string>
+>;
+
+/** `nursing_care_plan_template.sections_json`: the form schema plus prefill values. */
+export type CarePlanTemplateSchema = ClinicalFormTemplateSchema & {
+	defaults?: CarePlanContent;
 };
 
 export type NursingCarePlanTemplateRow = {
 	id: number;
 	title: string;
 	nandaLabel: string | null;
-	sectionsJson: unknown[];
+	sectionsJson: CarePlanTemplateSchema;
 };
 
 export type NursingCarePlanInstanceRow = {
 	id: number;
 	visitId: string;
 	templateId: number | null;
-	contentJson: Record<string, unknown>;
+	templateTitle: string | null;
+	nandaLabel: string | null;
+	contentJson: CarePlanContent;
 	signedAt: string | null;
+	signedByName: string | null;
+	/** Derived server-side from `signedAt` so the page never re-derives it. */
+	isSigned: boolean;
+	createdAt: string;
 };
 
 export type ClinicalAlertRow = {
@@ -140,4 +167,40 @@ export type RegistryMemberRow = {
 export type CdsScreenResult = {
 	alerts: PrescribingAlertRow[];
 	hasBlocking: boolean;
+};
+
+/** Medication order line as eMAR scheduling sees it (one row per order line). */
+export type MedicationLineRow = {
+	lineId: number;
+	lineNo: number;
+	itemName: string;
+	doseText: string;
+	routeName: string | null;
+	instructions: string | null;
+	orderTypeName: string | null;
+	frequencyAbbreviation: string | null;
+	/** Decimal comes back as a string from the driver; `dosesPerDay` normalizes it. */
+	frequencyPerDay: string | number | null;
+	infusionType: string | null;
+	rateMlHr: string | null;
+};
+
+/** Bed location of the patient for the active admission (eMAR dose dialog). */
+export type EmarBedLocation = {
+	wardName: string | null;
+	roomName: string | null;
+	bedName: string | null;
+};
+
+/** One visit's whole medication chart, as the eMAR page receives it. */
+export type EmarMarPayload = {
+	patient: {
+		name: string;
+		code: string | null;
+		visitNo: string | null;
+	};
+	bedLocation: EmarBedLocation | null;
+	lines: MedicationLineRow[];
+	schedules: (MedicationScheduleRow & MedicationLineRow)[];
+	administrations: MedicationAdministrationRow[];
 };

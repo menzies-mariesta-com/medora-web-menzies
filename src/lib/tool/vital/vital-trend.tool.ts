@@ -7,6 +7,7 @@ export type VitalTrendKey =
 	| 'bpDiastolic'
 	| 'pulse'
 	| 'temperature'
+	| 'respiration'
 	| 'weight'
 	| 'spO2'
 	| 'rbs';

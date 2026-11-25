@@ -1,6 +1,7 @@
 import { json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { listBedsForAdtStatus } from '$lib/server/medora/adt/bed-status.server';
+import { parseCareSetting } from '$lib/model/enum/care-setting.enum';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -10,14 +11,12 @@ function hospitalIdFrom(event: RequestEvent): string {
 export async function GET(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
-	const wardIdRaw = event.url.searchParams.get('wardId');
-	const bedStatusRaw = event.url.searchParams.get('bedStatus');
-	const wardId =
-		wardIdRaw != null && wardIdRaw !== '' ? Number(wardIdRaw) : undefined;
-	const bedStatus =
-		bedStatusRaw != null && bedStatusRaw !== ''
-			? Number(bedStatusRaw)
-			: undefined;
+	const numberParam = (key: string) => {
+		const raw = event.url.searchParams.get(key);
+		if (raw == null || raw === '') return undefined;
+		const value = Number(raw);
+		return Number.isFinite(value) ? value : undefined;
+	};
 	const clip = (key: string) => {
 		const value = event.url.searchParams.get(key)?.trim() ?? '';
 		return value ? value.slice(0, 80) : undefined;
@@ -25,10 +24,11 @@ export async function GET(event: RequestEvent) {
 	return json(
 		await listBedsForAdtStatus({
 			hospitalId,
-			wardId: Number.isFinite(wardId as number) ? wardId : undefined,
-			bedStatus: Number.isFinite(bedStatus as number)
-				? bedStatus
-				: undefined,
+			careSetting:
+				parseCareSetting(event.url.searchParams.get('careSetting')) ??
+				undefined,
+			wardId: numberParam('wardId'),
+			bedStatus: numberParam('bedStatus'),
 			patientName: clip('patientName'),
 			visitName: clip('visitName'),
 			bedName: clip('bedName'),

@@ -37,7 +37,7 @@ import type {
 	import LucideCircleQuestionMark from '$lib/component/own/library/lucide/LucideCircleQuestionMark.svelte';
 	import MedoraEcosystemNavLink from '$lib/component/own/local/private/medora/MedoraEcosystemNavLink.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { medoraPageUrlToDocsHref } from '$lib/util/docs-help.util';
+	import { docsHomeHref, medoraPageUrlToDocsHref } from '$lib/util/docs-help.util';
 	import { paraglideMsg } from '$lib/util/paraglide-fallback.util';
 
 	type StaffUserGroupForNav = { id: number; name: string | null };
@@ -94,19 +94,19 @@ import type {
 
 	const docsHelpHref = $derived.by(() => {
 		const hid = hospitalId ?? page.params.hospital_id ?? '';
-		if (!hid) return resolve(WebRoutesEnum.DOCS);
+		if (!hid) return docsHomeHref();
 		const dbUrl = requestPathToDbPageUrl(page.url.pathname, hid);
-		return medoraPageUrlToDocsHref(dbUrl) ?? resolve(WebRoutesEnum.DOCS);
+		return medoraPageUrlToDocsHref(dbUrl) ?? docsHomeHref();
 	});
 
 	const orderedModuleList = $derived.by(() =>
-		[...moduleList].sort(
+		moduleList.toSorted(
 			(a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0)
 		)
 	);
 
 	const orderedPageList = $derived.by(() =>
-		[...pageList].sort(
+		pageList.toSorted(
 			(a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0)
 		)
 	);

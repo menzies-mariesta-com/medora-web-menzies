@@ -18,15 +18,19 @@ export type ConsumptionBatchAllocationDraft = {
 };
 
 /** Item unit master row shape from item-master API (subset used on draft lines). */
-export type ConsumptionDraftLineIum = {
-	id: number;
-	conversionDisplay: string;
+/** The unit/conversion fields every stock-qty helper actually reads. */
+export type StockUnitConversion = {
 	purchaseUnitId: number;
 	issueUnitId: number;
-	purchaseUnitName: string;
-	issueUnitName: string;
 	purchaseConversionFactor: string;
 	issueConversionFactor: string;
+};
+
+export type ConsumptionDraftLineIum = StockUnitConversion & {
+	id: number;
+	conversionDisplay: string;
+	purchaseUnitName: string;
+	issueUnitName: string;
 };
 
 /** Draft line while editing consumption (UI ↔ modal). */

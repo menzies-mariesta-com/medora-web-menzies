@@ -8,6 +8,7 @@ import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.serve
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
 import { normalizeMoneyDecimal2dpOrZero } from '$lib/server/medora/money-field.server';
+import { isTaggingEffectiveOnDate } from '$lib/server/medora/billing/service-tagging-effective.server';
 
 /**
  * Idempotent: ensures one auto ER bed service line exists for the encounter.
@@ -59,11 +60,7 @@ export async function ensureErBedChargeServiceLine(input: {
 	}
 
 	const [svc] = await ensureDb()
-		.select({
-			id: table.serviceItemTable.id,
-			serviceAmount: table.serviceItemTable.serviceAmount,
-			serviceTaxAmount: table.serviceItemTable.serviceTaxAmount
-		})
+		.select({ id: table.serviceItemTable.id })
 		.from(table.serviceItemTable)
 		.where(
 			and(
@@ -75,11 +72,23 @@ export async function ensureErBedChargeServiceLine(input: {
 		.limit(1);
 	if (!svc) return null;
 
-	if (serviceAmount == null) {
-		serviceAmount = svc.serviceAmount;
-	}
-	if (serviceTaxAmount == null) {
-		serviceTaxAmount = svc.serviceTaxAmount;
+	// Amounts live on service_tagging, not service_item.
+	if (serviceAmount == null || serviceTaxAmount == null) {
+		const asOf = new Date().toISOString().slice(0, 10);
+		const taggings = await ensureDb()
+			.select()
+			.from(table.serviceTaggingTable)
+			.where(
+				and(
+					eq(table.serviceTaggingTable.serviceId, serviceId),
+					eq(table.serviceTaggingTable.statusId, StatusEnum.ACTIVE)
+				)
+			)
+			.orderBy(desc(table.serviceTaggingTable.validDate));
+		const tagging = taggings.find((t) => isTaggingEffectiveOnDate(t, asOf));
+		if (serviceAmount == null) serviceAmount = tagging?.serviceAmount ?? null;
+		if (serviceTaxAmount == null)
+			serviceTaxAmount = tagging?.serviceTaxAmount ?? null;
 	}
 
 	const now = new Date();

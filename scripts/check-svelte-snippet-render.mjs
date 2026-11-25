@@ -58,6 +58,18 @@ for (const file of files) {
 		: new Set();
 
 	const lines = text.split('\n');
+
+	// JS comment syntax above the first <script> is markup, so Svelte renders it as text.
+	const firstScript = text.search(/<script[\s>]/);
+	const head = firstScript === -1 ? text : text.slice(0, firstScript);
+	head.split('\n').forEach((headLine, index) => {
+		if (/^\s*(\/\*|\*|\/\/)/.test(headLine)) {
+			violations.push(
+				`${file}:${index + 1}: a comment above <script> renders as page text; move it inside the script block`
+			);
+		}
+	});
+
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i];
 

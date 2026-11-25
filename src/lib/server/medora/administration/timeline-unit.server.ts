@@ -3,13 +3,17 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { and, eq } from 'drizzle-orm';
-import { parseTimelineDurationDays } from '$lib/util/timeline-duration-days.util';
+import {
+	DEFAULT_TIMELINE_DURATION_DAYS,
+	DEFAULT_TIMELINE_UNIT_LABEL,
+	parseTimelineDurationDays
+} from '$lib/util/timeline-duration-days.util';
 
 export {
 	DEFAULT_TIMELINE_DURATION_DAYS,
 	DEFAULT_TIMELINE_UNIT_LABEL,
 	parseTimelineDurationDays
-} from '$lib/util/timeline-duration-days.util';
+};
 
 export type TimelineUnitMeta = {
 	id: number | null;

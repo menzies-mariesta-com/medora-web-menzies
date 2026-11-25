@@ -15,20 +15,32 @@ export function toDbMoney2dpOrNull(
 	return normalizeMoneyDecimal2dpOrNull(value);
 }
 
-function normalizeMoneyPatch<T extends Record<string, unknown>>(
-	payload: T,
-	keys: readonly (keyof T)[]
-): T {
-	const out = { ...payload };
+/**
+ * Money keys are rewritten to 2dp **strings** (or null). Returning `T` claimed
+ * the caller's numeric type survived, which broke the Drizzle insert types into
+ * `never`; `Record<MoneyKey, string | null>` restores the truth.
+ */
+type MoneyKey = string;
+/** Money keys become 2dp strings; `nullable` marks the columns that allow null. */
+type MoneyPatch<T, K extends MoneyKey, N extends K = never> = Omit<T, K> &
+	Record<Exclude<K, N>, string> &
+	Record<N, string | null>;
+
+function normalizeMoneyPatch<
+	T extends Record<string, unknown>,
+	K extends keyof T & MoneyKey,
+	N extends K = never
+>(payload: T, keys: readonly K[], nullableKeys: readonly N[] = []): MoneyPatch<T, K, N> {
+	const out: Record<string, unknown> = { ...payload };
 	for (const key of keys) {
 		if (!(key in out) || out[key] === undefined) continue;
 		const v = out[key];
 		out[key] =
 			v == null || String(v).trim() === ''
-				? (null as T[keyof T])
-				: (toDbMoney2dp(v as NumberDisplayInput) as T[keyof T]);
+				? null
+				: toDbMoney2dp(v as NumberDisplayInput);
 	}
-	return out;
+	return out as MoneyPatch<T, K, N>;
 }
 
 export function normalizeServiceOrderDetailWrite<
@@ -37,7 +49,7 @@ export function normalizeServiceOrderDetailWrite<
 		serviceAmount?: unknown;
 		serviceTaxAmount?: unknown;
 	}
->(payload: T): T {
+>(payload: T): MoneyPatch<T, 'discount' | 'serviceAmount' | 'serviceTaxAmount'> {
 	return normalizeMoneyPatch(payload, [
 		'discount',
 		'serviceAmount',
@@ -69,7 +81,17 @@ export function normalizeOpBillingHeaderWrite<
 		advanceAppliedAmount?: unknown;
 		amountPaid?: unknown;
 	}
->(payload: T): T {
+>(
+	payload: T
+): MoneyPatch<
+	T,
+	| 'linesSubtotal'
+	| 'discountPercent'
+	| 'discountAmount'
+	| 'totalAmount'
+	| 'advanceAppliedAmount'
+	| 'amountPaid'
+> {
 	return normalizeMoneyPatch(payload, [
 		'linesSubtotal',
 		'discountPercent',
@@ -87,18 +109,23 @@ export function normalizeOpBillingLineWrite<
 		serviceTaxAmount?: unknown;
 		lineTotal?: unknown;
 	}
->(payload: T): T {
-	const patched = normalizeMoneyPatch(payload, [
-		'discount',
-		'serviceAmount',
-		'serviceTaxAmount',
-		'lineTotal'
-	]);
+>(
+	payload: T
+): MoneyPatch<
+	T,
+	'discount' | 'serviceAmount' | 'serviceTaxAmount' | 'lineTotal',
+	'discount' | 'serviceAmount' | 'serviceTaxAmount'
+> {
+	const patched = normalizeMoneyPatch(
+		payload,
+		['discount', 'serviceAmount', 'serviceTaxAmount', 'lineTotal'],
+		['discount', 'serviceAmount', 'serviceTaxAmount']
+	);
 	if (
 		'lineTotal' in patched &&
 		(patched.lineTotal == null || String(patched.lineTotal).trim() === '')
 	) {
-		patched.lineTotal = toDbMoney2dp(0) as T[keyof T];
+		(patched as { lineTotal: string }).lineTotal = toDbMoney2dp(0);
 	}
 	return patched;
 }
@@ -110,6 +137,12 @@ export function normalizeIpBillingLineWrite<
 		serviceTaxAmount?: unknown;
 		lineTotal?: unknown;
 	}
->(payload: T): T {
+>(
+	payload: T
+): MoneyPatch<
+	T,
+	'discount' | 'serviceAmount' | 'serviceTaxAmount' | 'lineTotal',
+	'discount' | 'serviceAmount' | 'serviceTaxAmount'
+> {
 	return normalizeOpBillingLineWrite(payload);
 }

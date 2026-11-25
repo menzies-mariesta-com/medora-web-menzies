@@ -59,26 +59,26 @@
 	const msg = m as Record<string, (inputs?: object) => string>;
 
 	const countryOptions = $derived(
-		countryData.map((d) => ({
+		countryData.map((d: PatientRegCountryRow) => ({
 			value: String(d.id),
 			label: d.name ?? String(d.id)
 		}))
 	);
 	const stateOptions = $derived(
-		filteredStateData.map((d) => ({
+		filteredStateData.map((d: PatientRegStateRow) => ({
 			value: String(d.id),
 			label: d.name ?? String(d.id)
 		}))
 	);
 	const cityOptions = $derived(
-		filteredCityData.map((d) => ({
+		filteredCityData.map((d: PatientRegCityRow) => ({
 			value: String(d.id),
 			label: d.name ?? String(d.id)
 		}))
 	);
 	const postalCodeDisplay = $derived.by(() => {
 		const row = filteredPostalCodeData.find(
-			(d) => String(d.id) === selectedPostalCodeId
+			(d: PatientRegPostalCodeRow) => String(d.id) === selectedPostalCodeId
 		);
 		return row?.value != null ? String(row.value) : '';
 	});

@@ -376,10 +376,7 @@ function paginatePrintPreview(
 				'.print-body-slot .content'
 			) ?? pageClone.querySelector<HTMLElement>('.content');
 		if (contentTarget) {
-			contentTarget.innerHTML = '';
-			for (const make of slice) {
-				contentTarget.appendChild(make());
-			}
+			contentTarget.replaceChildren(...slice.map((make) => make()));
 			const firstChild = contentTarget.firstElementChild;
 			if (index > 0 && firstChild) {
 				truncateLeadingMargins(firstChild);

@@ -125,6 +125,7 @@ export enum WebRoutesEnum {
 
 	// Emergency module
 	MEDORA_HOME_EMERGENCY = '/medora/home/emergency',
+	/** Retired: ED registration is now the ADT admission form with `careSetting=ED`. */
 	MEDORA_HOME_EMERGENCY_ADMISSION = '/medora/home/emergency/admission',
 	MEDORA_HOME_EMERGENCY_ADMISSION_NEW = '/medora/home/emergency/admission/new',
 	MEDORA_HOME_BILLING_ER_BILLING = '/medora/home/billing/er-billing'

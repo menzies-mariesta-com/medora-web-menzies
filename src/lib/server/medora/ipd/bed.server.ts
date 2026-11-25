@@ -21,7 +21,11 @@ import {
 } from '$lib/model/type/pagination.type';
 import { and, count, desc, eq, ilike, ne, sql } from 'drizzle-orm';
 import { syncRoomCapacityFromBeds } from '$lib/server/medora/ipd/room.server';
-import { isErScopeCondition } from '$lib/server/medora/ipd/master-is-er.util';
+import { careSettingScopeCondition } from '$lib/server/medora/ipd/master-care-setting.util';
+import {
+	CareSettingEnum,
+	isInpatientCareSetting
+} from '$lib/model/enum/care-setting.enum';
 import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 import { assertActiveTimelineUnitId } from '$lib/server/medora/administration/timeline-unit.server';
 import { bedDailyRateSql } from '$lib/server/medora/ipd/tariff.server';
@@ -50,17 +54,14 @@ export async function getBedPaginated(
 		wardId?: number;
 		roomId?: number;
 		bedStatus?: number;
-		isEr?: boolean;
+		careSetting?: CareSettingEnum;
 	}
 ): Promise<PaginatedResult<BedRow>> {
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
 	const conditions = [
 		eq(table.bedTable.hospitalId, params.hospitalId),
-		paginatedEntityStatusEq(
-			table.bedTable.statusId,
-			params.statusId
-		)
+		paginatedEntityStatusEq(table.bedTable.statusId, params.statusId)
 	];
 	const nameFilter = params?.name?.trim();
 	if (nameFilter) {
@@ -79,8 +80,11 @@ export async function getBedPaginated(
 	if (typeof params.bedStatus === 'number') {
 		conditions.push(eq(table.bedTable.bedStatus, params.bedStatus));
 	}
-	const isErCond = isErScopeCondition(table.bedTable, params.isEr);
-	if (isErCond) conditions.push(isErCond);
+	const careSettingCond = careSettingScopeCondition(
+		table.bedTable,
+		params.careSetting
+	);
+	if (careSettingCond) conditions.push(careSettingCond);
 	const whereClause = and(...conditions);
 	const [data, countResult] = await Promise.all([
 		ensureDb()
@@ -94,7 +98,7 @@ export async function getBedPaginated(
 				basePriceUnitId: table.bedTable.basePriceUnitId,
 				bedStatus: table.bedTable.bedStatus,
 				statusId: table.bedTable.statusId,
-				isEr: table.bedTable.isEr,
+				careSetting: table.bedTable.careSetting,
 				roomName: table.roomTable.name,
 				roomCode: table.roomTable.code,
 				wardId: table.wardTable.id,
@@ -116,10 +120,7 @@ export async function getBedPaginated(
 			)
 			.innerJoin(
 				table.roomCategoryTable,
-				eq(
-					table.roomTable.roomCategoryId,
-					table.roomCategoryTable.id
-				)
+				eq(table.roomTable.roomCategoryId, table.roomCategoryTable.id)
 			)
 			.innerJoin(
 				table.wardTable,
@@ -127,10 +128,7 @@ export async function getBedPaginated(
 			)
 			.innerJoin(
 				table.wardCategoryTable,
-				eq(
-					table.wardTable.wardCategoryId,
-					table.wardCategoryTable.id
-				)
+				eq(table.wardTable.wardCategoryId, table.wardCategoryTable.id)
 			)
 			.leftJoin(
 				table.unitTable,
@@ -163,7 +161,7 @@ export async function listFreeBeds(input: {
 	hospitalId: string;
 	wardId?: number;
 	roomId?: number;
-	isEr?: boolean;
+	careSetting?: CareSettingEnum;
 }): Promise<
 	Array<
 		BedSchema & {
@@ -189,8 +187,11 @@ export async function listFreeBeds(input: {
 	if (typeof input.wardId === 'number') {
 		conditions.push(eq(table.roomTable.wardId, input.wardId));
 	}
-	const isErCond = isErScopeCondition(table.bedTable, input.isEr);
-	if (isErCond) conditions.push(isErCond);
+	const careSettingCond = careSettingScopeCondition(
+		table.bedTable,
+		input.careSetting
+	);
+	if (careSettingCond) conditions.push(careSettingCond);
 	const rows = await ensureDb()
 		.select({
 			id: table.bedTable.id,
@@ -199,8 +200,10 @@ export async function listFreeBeds(input: {
 			name: table.bedTable.name,
 			code: table.bedTable.code,
 			basePrice: table.bedTable.basePrice,
+			basePriceUnitId: table.bedTable.basePriceUnitId,
 			bedStatus: table.bedTable.bedStatus,
 			statusId: table.bedTable.statusId,
+			careSetting: table.bedTable.careSetting,
 			createdAt: table.bedTable.createdAt,
 			updatedAt: table.bedTable.updatedAt,
 			deletedAt: table.bedTable.deletedAt,
@@ -224,10 +227,7 @@ export async function listFreeBeds(input: {
 		)
 		.innerJoin(
 			table.roomCategoryTable,
-			eq(
-				table.roomTable.roomCategoryId,
-				table.roomCategoryTable.id
-			)
+			eq(table.roomTable.roomCategoryId, table.roomCategoryTable.id)
 		)
 		.innerJoin(
 			table.wardTable,
@@ -235,10 +235,7 @@ export async function listFreeBeds(input: {
 		)
 		.innerJoin(
 			table.wardCategoryTable,
-			eq(
-				table.wardTable.wardCategoryId,
-				table.wardCategoryTable.id
-			)
+			eq(table.wardTable.wardCategoryId, table.wardCategoryTable.id)
 		)
 		.leftJoin(
 			table.unitTable,
@@ -272,11 +269,14 @@ export async function createBed(
 		roomId: payload.roomId
 	});
 	const [roomRow] = await ensureDb()
-		.select({ isEr: table.roomTable.isEr })
+		.select({ careSetting: table.roomTable.careSetting })
 		.from(table.roomTable)
 		.where(eq(table.roomTable.id, payload.roomId))
 		.limit(1);
-	const isEr = payload.isEr ?? roomRow?.isEr ?? false;
+	const careSetting =
+		payload.careSetting ??
+		roomRow?.careSetting ??
+		CareSettingEnum.IPD;
 	const basePriceUnitId = await assertActiveTimelineUnitId(
 		payload.basePriceUnitId ?? null
 	);
@@ -287,12 +287,12 @@ export async function createBed(
 			basePrice: String(payload.basePrice ?? '0'),
 			basePriceUnitId,
 			bedStatus: payload.bedStatus ?? IpdBedStatusEnum.FREE,
-			isEr
+			careSetting
 		})
 		.returning();
 	if (!row) throw new Error('Insert failed');
 	await syncRoomCapacityFromBeds({ roomId: payload.roomId });
-	void notifyHospitalMasterWrite(hospitalId);
+	void notifyHospitalMasterWrite(payload.hospitalId);
 
 	return row;
 }
@@ -356,19 +356,31 @@ export async function updateBed(payload: {
 	return row;
 }
 
-export async function deleteBed(input: { id: number }): Promise<void> {
+export async function deleteBed(input: {
+	id: number;
+	hospitalId: string;
+}): Promise<void> {
 	const [current] = await ensureDb()
 		.select({ roomId: table.bedTable.roomId })
 		.from(table.bedTable)
-		.where(eq(table.bedTable.id, input.id))
+		.where(
+			and(
+				eq(table.bedTable.id, input.id),
+				eq(table.bedTable.hospitalId, input.hospitalId)
+			)
+		)
 		.limit(1);
+	if (!current) throw error(404, 'Bed not found');
 	await ensureDb()
 		.update(table.bedTable)
 		.set({ statusId: StatusEnum.DELETED })
-		.where(eq(table.bedTable.id, input.id));
-	if (current) {
-		await syncRoomCapacityFromBeds({ roomId: current.roomId });
-	}
+		.where(
+			and(
+				eq(table.bedTable.id, input.id),
+				eq(table.bedTable.hospitalId, input.hospitalId)
+			)
+		);
+	await syncRoomCapacityFromBeds({ roomId: current.roomId });
 }
 
 export async function markBedAvailable(input: {
@@ -392,59 +404,60 @@ export async function markBedAvailable(input: {
 		throw error(400, 'Cannot mark an occupied bed as available');
 	}
 
-	if (!bed.isEr) {
+	if (isInpatientCareSetting(bed.careSetting)) {
 		// Clearance gate: last admission on this bed must be discharged and IP bill closed.
 		const [lastAdmission] = await db
-		.select({
-			id: table.ipdAdmissionTable.id,
-			visitId: table.ipdAdmissionTable.visitId,
-			admissionStatus: table.ipdAdmissionTable.admissionStatus
-		})
-		.from(table.ipdAdmissionTable)
-		.where(
-			and(
-				eq(table.ipdAdmissionTable.bedId, input.id),
-				eq(table.ipdAdmissionTable.hospitalId, input.hospitalId),
-				ne(table.ipdAdmissionTable.statusId, StatusEnum.DELETED)
-			)
-		)
-		.orderBy(desc(table.ipdAdmissionTable.id))
-		.limit(1);
-
-	if (lastAdmission) {
-		if (
-			lastAdmission.admissionStatus !== IpdAdmissionStatusEnum.DISCHARGED
-		) {
-			throw error(
-				400,
-				'Bed cannot be freed until the admission is discharged'
-			);
-		}
-		const [ipBill] = await db
 			.select({
-				id: table.ipBillingTable.id,
-				statusTaggingId: table.ipBillingTable.statusTaggingId
+				id: table.ipdAdmissionTable.id,
+				visitId: table.ipdAdmissionTable.visitId,
+				admissionStatus: table.ipdAdmissionTable.admissionStatus
 			})
-			.from(table.ipBillingTable)
+			.from(table.ipdAdmissionTable)
 			.where(
 				and(
-					eq(table.ipBillingTable.visitId, lastAdmission.visitId),
-					eq(table.ipBillingTable.hospitalId, input.hospitalId),
-					ne(table.ipBillingTable.statusId, StatusEnum.DELETED)
+					eq(table.ipdAdmissionTable.bedId, input.id),
+					eq(table.ipdAdmissionTable.hospitalId, input.hospitalId),
+					ne(table.ipdAdmissionTable.statusId, StatusEnum.DELETED)
 				)
 			)
-			.orderBy(desc(table.ipBillingTable.id))
+			.orderBy(desc(table.ipdAdmissionTable.id))
 			.limit(1);
-		if (
-			!ipBill ||
-			ipBill.statusTaggingId !== BillingStatusTaggingEnum.CLOSED
-		) {
-			throw error(
-				400,
-				'Bed cannot be freed until the IP bill is closed (finance clearance)'
-			);
+
+		if (lastAdmission) {
+			if (
+				lastAdmission.admissionStatus !==
+				IpdAdmissionStatusEnum.DISCHARGED
+			) {
+				throw error(
+					400,
+					'Bed cannot be freed until the admission is discharged'
+				);
+			}
+			const [ipBill] = await db
+				.select({
+					id: table.ipBillingTable.id,
+					statusTaggingId: table.ipBillingTable.statusTaggingId
+				})
+				.from(table.ipBillingTable)
+				.where(
+					and(
+						eq(table.ipBillingTable.visitId, lastAdmission.visitId),
+						eq(table.ipBillingTable.hospitalId, input.hospitalId),
+						ne(table.ipBillingTable.statusId, StatusEnum.DELETED)
+					)
+				)
+				.orderBy(desc(table.ipBillingTable.id))
+				.limit(1);
+			if (
+				!ipBill ||
+				ipBill.statusTaggingId !== BillingStatusTaggingEnum.CLOSED
+			) {
+				throw error(
+					400,
+					'Bed cannot be freed until the IP bill is closed (finance clearance)'
+				);
+			}
 		}
-	}
 	}
 
 	const [row] = await db

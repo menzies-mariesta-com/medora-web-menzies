@@ -70,12 +70,16 @@ async function login() {
 		waitUntil: 'domcontentloaded',
 		timeout: 60000
 	});
+	await page.waitForSelector(
+		'#auth-login-email, input[name="email"], input[type="email"]',
+		{ timeout: 60000 }
+	);
 	await page.fill(
-		'input[name="email"], input[type="email"]',
+		'#auth-login-email, input[name="email"], input[type="email"]',
 		email
 	);
 	await page.fill(
-		'input[name="password"], input[type="password"]',
+		'#auth-login-password, input[name="password"], input[type="password"]',
 		password
 	);
 	await Promise.all([

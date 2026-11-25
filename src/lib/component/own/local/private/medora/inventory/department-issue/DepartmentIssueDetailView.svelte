@@ -61,11 +61,11 @@
 	let loading = $state(false);
 
 	const allocationsByLineId = $derived.by(() => {
-		const map: Record<number, DepartmentIssueAllocationRow[]> = {};
-		for (const a of detail?.allocations ?? []) {
-			(map[a.lineId] ??= []).push(a);
-		}
-		return map;
+		const grouped = Object.groupBy(
+			detail?.allocations ?? [],
+			(a) => a.lineId
+		);
+		return grouped as Record<number, DepartmentIssueAllocationRow[]>;
 	});
 
 	function formatExpiryDate(dateStr: string | null) {

@@ -3,6 +3,7 @@ import { VisitTypeEnum } from '$lib/model/enum/db-link';
 import {
 	filterNursingChartTabs,
 	isNursingChartTabVisible,
+	isVisitChartTab,
 	NURSING_CHART_DEFAULT_TAB,
 	nursingChartTabSlug
 } from '$lib/tool/nursing/nursing-chart-tab.util';
@@ -90,6 +91,16 @@ describe('isNursingChartTabVisible', () => {
 				isNursingChartTabVisible(NURSING_CHART_DEFAULT_TAB, type)
 			).toBe(true);
 		}
+	});
+});
+
+describe('isVisitChartTab', () => {
+	it('requires a visit on data tabs and no visit on board tabs', () => {
+		expect(isVisitChartTab('vital')).toBe(true);
+		expect(isVisitChartTab(NURSING_CHART_DEFAULT_TAB)).toBe(true);
+		expect(isVisitChartTab('triage')).toBe(false);
+		expect(isVisitChartTab('census')).toBe(false);
+		expect(isVisitChartTab('')).toBe(false);
 	});
 });
 

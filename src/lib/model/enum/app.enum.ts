@@ -7,5 +7,8 @@ export enum AppEnum {
 	/** Each password extend grants up to this many seconds from confirm time. */
 	SESSION_EXTEND_BUMP_SECONDS = 60 * 60 * 12,
 	/** Show expiry warning modal when remaining time is at or below this threshold. */
-	SESSION_EXPIRY_WARN_SECONDS = 15 * 60
+	SESSION_EXPIRY_WARN_SECONDS = 15 * 60,
+
+	/** Emailed staff invite / password-reset link lifetime (Better Auth `resetPasswordTokenExpiresIn`). */
+	PASSWORD_RESET_TTL_SECONDS = 60 * 60 * 24 * 3
 }

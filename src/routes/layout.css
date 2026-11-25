@@ -70,9 +70,16 @@ dialog.modal {
 	margin: 0;
 }
 
+/* Prevent scroll chaining to the page under modal dialogs (modern-web dialog guide). */
+dialog.modal:modal {
+	overscroll-behavior: contain;
+}
+
 /* Keep the page theme background visible when a modal is open. */
 dialog.modal::backdrop {
 	background: transparent !important;
+	overflow: hidden;
+	overscroll-behavior: contain;
 }
 .modal-backdrop {
 	background: transparent !important;

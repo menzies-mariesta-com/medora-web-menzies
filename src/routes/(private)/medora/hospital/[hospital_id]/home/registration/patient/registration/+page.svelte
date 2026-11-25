@@ -49,11 +49,18 @@
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 	import { pickPostalCodeIdForCity } from '$lib/tool/geo/pick-postal-for-city.util';
-	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { paraglideMsg } from '$lib/util/paraglide-fallback.util';
 
-	let { edRegistrationMode = false }: { edRegistrationMode?: boolean } =
-		$props();
+	/** Validated same-hospital return URL after creating a patient (ADT admission flow). */
+	const returnToUrl = $derived(safeReturnTo(page.url.searchParams.get('returnTo')));
+
+	function safeReturnTo(raw: string | null): string {
+		if (!raw) return '';
+		const match = raw.match(
+			/^\/medora\/hospital\/[^/]+\/home(\/[A-Za-z0-9\-_/?=&%.]*)?$/
+		);
+		return match ? raw : '';
+	}
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -1032,12 +1039,9 @@
 					patientCode
 				);
 
-				if (edRegistrationMode && hospitalIdFromUrl) {
+				if (returnToUrl) {
 					routerUtil.replaceRoute(
-						`${medoraHospitalPageUrl(
-							hospitalIdFromUrl,
-							'/medora/home/emergency/admission/new'
-						)}?patientId=${encodeURIComponent(patient.id)}`
+						`${returnToUrl}${returnToUrl.includes('?') ? '&' : '?'}patientId=${encodeURIComponent(patient.id)}`
 					);
 					return;
 				}
@@ -1293,12 +1297,11 @@
 						className="btn-primary btn-wide cursor-pointer"
 						loading={isLoading}
 						disabled={disableCreateSave}
-						aria-busy={isLoading}
 					>
-						{edRegistrationMode && !currentPatientId
+						{returnToUrl && !currentPatientId
 							? paraglideMsg(
 									'ed_admission_new_patient_save_continue',
-									'Save and continue to ER visit'
+									'Save and continue to admission'
 								)
 							: 'Save'}
 					</WashButton>

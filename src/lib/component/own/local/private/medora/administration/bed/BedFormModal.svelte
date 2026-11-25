@@ -8,6 +8,10 @@
 	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import {
+		CareSettingEnum,
+		careSettingLabel
+	} from '$lib/model/enum/care-setting.enum';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import type {
 		RoomRow,
@@ -43,10 +47,16 @@
 			: ''
 	);
 
-	let formIsEr = $state(false);
+	let formCareSetting = $state<CareSettingEnum>(CareSettingEnum.IPD);
 	const masterScope = $derived(
-		(formIsEr ? 'er' : 'ipd') satisfies AdministrationMasterScope
+		formCareSetting.toLowerCase() as AdministrationMasterScope
 	);
+	const careSettingOptions = [
+		CareSettingEnum.IPD,
+		CareSettingEnum.ED,
+		CareSettingEnum.ICU,
+		CareSettingEnum.OT
+	].map((value) => ({ value, label: careSettingLabel(value) }));
 	const bedApi = $derived(
 		hospitalId ? administrationBedMasterApi(hospitalId, masterScope) : ''
 	);
@@ -80,22 +90,22 @@
 	async function loadWards() {
 		if (!hospitalId) return;
 		const response = await fetch(
-			`${administrationApi}/ward-master?active=1${formIsEr ? '&scope=er' : ''}`,
+			`${administrationApi}/ward-master?active=1&scope=${formCareSetting.toLowerCase()}`,
 			{ credentials: 'include', cache: 'no-store' }
 		);
 		if (!response.ok) throw new Error('Failed to load wards');
 		wards = (await response.json()) as WardRow[];
 	}
 
-	async function loadRooms(wardId: number, opts?: {
-		signal?: AbortSignal;
-		isCancelled?: () => boolean;
-	}) {
+	async function loadRooms(wardId: number) {
 		if (!hospitalId || !wardId) {
 			rooms = [];
 			return;
 		}
-		const response = await fetch(`${administrationApi}/room-master?active=1&wardId=${wardId}${formIsEr ? '&scope=er' : ''}`, { credentials: 'include', cache: 'no-store', signal: opts?.signal });
+		const response = await fetch(
+			`${administrationApi}/room-master?active=1&wardId=${wardId}&scope=${formCareSetting.toLowerCase()}`,
+			{ credentials: 'include', cache: 'no-store' }
+		);
 		if (!response.ok) {
 			rooms = [];
 			return;
@@ -106,12 +116,14 @@
 	lifeCycleUtil.onMount(async () => {
 		isLoading = true;
 		try {
-			await loadWards();
 			const state = BedModalState;
-			formIsEr =
+			formCareSetting =
 				state.mode === 'edit'
-					? Boolean(state.editBed?.isEr)
-					: state.isEr;
+					? (state.editBed?.careSetting ?? CareSettingEnum.IPD)
+					: state.careSetting;
+			// Scope must be known before the ward list is fetched, else ED beds
+			// open with an IPD-only ward list.
+			await loadWards();
 			if (state.mode === 'edit' && state.editBed) {
 				formWardId = String(state.editBed.wardId ?? '');
 				formRoomId = String(state.editBed.roomId);
@@ -144,8 +156,6 @@
 				formActive = true;
 			}
 		} catch (error) {
-			if (error instanceof DOMException && error.name === 'AbortError') return;
-			if (opts?.isCancelled?.()) return;
 			toastService.addToast(
 				error instanceof Error
 					? error.message
@@ -153,7 +163,7 @@
 				StatusColorEnum.ERROR
 			);
 		} finally {
-			if (!opts?.isCancelled?.()) isLoading = false;
+			isLoading = false;
 		}
 	});
 
@@ -222,7 +232,7 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					...(isEdit ? { id: modalState.editBed?.id } : {}),
-					...(formIsEr ? { erRoomId: roomId } : { roomId }),
+					roomId,
 					name: formName.trim(),
 					code: formCode.trim() || null,
 					basePrice: formBasePrice.trim() || '0',
@@ -256,7 +266,7 @@
 			isSubmitting = false;
 		}
 	}
-	async function reloadForErScope() {
+	async function reloadForCareSetting() {
 		if (modalState.mode === 'edit') return;
 		formWardId = '';
 		formRoomId = '';
@@ -279,19 +289,18 @@
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<span class="shrink-0 sm:w-36">Emergency (ED)</span>
-				<label
-					class="flex max-w-80 flex-1 cursor-pointer items-center gap-2"
+				<label for="bed-care-setting" class="shrink-0 sm:w-36"
+					>Care setting <span class="text-error">*</span></label
 				>
-					<WashCheckbox
-						bind:checked={formIsEr}
+				<div class="max-w-80 flex-1">
+					<WashSelect
+						id="bed-care-setting"
+						bind:value={formCareSetting}
+						options={careSettingOptions}
 						disabled={isLoading || modalState.mode === 'edit'}
-						onCheckedChange={reloadForErScope}
+						onChange={reloadForCareSetting}
 					/>
-					<span class="text-sm opacity-80">
-						ED bed (ED bed status board)
-					</span>
-				</label>
+				</div>
 			</div>
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"

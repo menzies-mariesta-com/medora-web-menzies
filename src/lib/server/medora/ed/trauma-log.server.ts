@@ -12,6 +12,7 @@ import {
 	sql
 } from 'drizzle-orm';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -52,7 +53,7 @@ async function erBedLabel(
 			and(
 				eq(table.bedTable.id, erBedId),
 				eq(table.bedTable.hospitalId, hospitalId),
-				eq(table.bedTable.isEr, true)
+				eq(table.bedTable.careSetting, CareSettingEnum.ED)
 			)
 		)
 		.limit(1);
@@ -146,9 +147,10 @@ export async function listActiveTraumaRich(input: {
 	limit?: number;
 }): Promise<TraumaActivationRichRow[]> {
 	await ensureTraumaMastersForHospital(input.hospitalId);
-	const rows = await selectActivationBase(input.hospitalId, true).limit(
-		input.limit ?? 50
-	);
+	// selectActivationBase is async: await it before chaining `.limit()`.
+	const rows = await (
+		await selectActivationBase(input.hospitalId, true)
+	).limit(input.limit ?? 50);
 	return Promise.all(
 		rows.map((r) =>
 			mapRichRow({

@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { bearer, emailOTP, twoFactor } from 'better-auth/plugins';
+import { eq, sql } from 'drizzle-orm';
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
 import { uuidV7 } from '$lib/util/id.util';
@@ -91,6 +92,7 @@ export const auth = betterAuth({
 			verify: ({ password, hash }) =>
 				passwordHashUtil.verify({ password, hash })
 		},
+		resetPasswordTokenExpiresIn: AppEnum.PASSWORD_RESET_TTL_SECONDS,
 		sendResetPassword: async ({ user, url }) => {
 			if (tryConsumePasswordResetCapture(user.email, url)) return;
 			const { html, plainText } = renderResetPasswordEmail({ url });
@@ -100,6 +102,26 @@ export const auth = betterAuth({
 				message: plainText,
 				html
 			});
+		},
+		/**
+		 * Setting a password through the emailed link is the moment an invited
+		 * staff account becomes usable. Record it so the staff list can tell
+		 * "invite never used" from "invite accepted".
+		 */
+		onPasswordReset: async ({ user }) => {
+			const database = db;
+			if (!database) return;
+			try {
+				await database
+					.update(userTable)
+					.set({ accountActivatedAt: sql`now()` })
+					.where(eq(userTable.id, user.id));
+			} catch (err) {
+				authLogger.error(
+					'[auth] Failed to stamp accountActivatedAt',
+					err instanceof Error ? err : { error: String(err) }
+				);
+			}
 		}
 	},
 	advanced: {

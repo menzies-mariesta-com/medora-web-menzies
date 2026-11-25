@@ -52,21 +52,20 @@
 	</div>
 	<div class="card border p-4">
 		<LVitalTrendChart
-			title="Blood glucose (bars)"
+			title="Blood glucose"
 			seriesA={glucose}
 			yUnit="mg/dL"
-			drawAs="bars"
+			includeZero={false}
 			band={{ min: 74, max: 140 }}
 			emptyMessage="none"
 		/>
 	</div>
 	<div class="card border p-4">
 		<LVitalTrendChart
-			title="Weight (dots)"
+			title="Weight"
 			seriesA={[pt(0, 72), pt(2, 71.4), pt(4, 70.8)]}
 			yUnit="kg"
 			includeZero={false}
-			drawAs="dots"
 			emptyMessage="none"
 		/>
 	</div>

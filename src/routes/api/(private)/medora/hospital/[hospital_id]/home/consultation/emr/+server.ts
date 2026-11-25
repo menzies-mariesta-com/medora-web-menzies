@@ -200,7 +200,7 @@ export const GET: RequestHandler = async (event) => {
 			return json(await obs.getPatientDocumentById({ id }));
 		}
 		case 'documentMaster.list': {
-			return json(await obs.getDocumentsWithRelations());
+			return json(await obs.getDocumentsWithRelations(event));
 		}
 		case 'orderLine.list': {
 			if (!visitId)

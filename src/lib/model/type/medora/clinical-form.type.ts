@@ -1,3 +1,11 @@
+/** Column of a `table` field. Cells store strings in `valuesJson`. */
+export type ClinicalFormTableColumn = {
+	id: string;
+	label: string;
+	type: 'text' | 'number' | 'enum';
+	options?: { value: string; label: string }[];
+};
+
 /** Field definition stored in `clinical_form_template.schema_json`. */
 export type ClinicalFormFieldDef = {
 	id: string;
@@ -9,6 +17,7 @@ export type ClinicalFormFieldDef = {
 		| 'boolean'
 		| 'datetime'
 		| 'section'
+		| 'table'
 		| 'signature'
 		| 'witness_signature'
 		| 'signature_datetime';
@@ -16,6 +25,8 @@ export type ClinicalFormFieldDef = {
 	required?: boolean;
 	options?: { value: string; label: string }[];
 	sectionFields?: ClinicalFormFieldDef[];
+	/** Repeating rows, stored as `Record<columnId, string>[]` in the values blob. */
+	columns?: ClinicalFormTableColumn[];
 };
 
 export type ClinicalFormTemplateSchema = {
@@ -38,6 +49,10 @@ export type ClinicalFormInstanceRow = {
 	visitId: string;
 	surgicalCaseId: number | null;
 	templateId: number;
+	/** Legal register number for registered forms (MLC); null otherwise. */
+	formNumber: string | null;
+	/** Signed original this row amends, when it is an addendum. */
+	parentInstanceId: number | null;
 	templateCode: string | null;
 	templateTitle: string | null;
 	contextType: string;

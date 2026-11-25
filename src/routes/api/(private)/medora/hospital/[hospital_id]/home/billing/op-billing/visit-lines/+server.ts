@@ -32,10 +32,14 @@ import {
 	normalizeOpBillingLineWrite
 } from '$lib/server/medora/money-normalize.server';
 import { patientChargeFieldsForBillingLine } from '$lib/server/medora/inventory/patient-charge-pricing.server';
+import type { PatientChargePricingSnapshotFields } from '$lib/model/type/medora/patient-charge-pricing.type';
 
 type PendingDetailRow = PendingBillLineRow;
 
-function inventoryPricingSnapshotForBillLine(r: PendingDetailRow) {
+/** Explicit return type: a union here collapses the insert payload to `never`. */
+function inventoryPricingSnapshotForBillLine(
+	r: PendingDetailRow
+): PatientChargePricingSnapshotFields {
 	if (r.lineSource !== 'medication_order_line') {
 		return {
 			pricingFormulaTemplateId: null,
@@ -334,16 +338,13 @@ export async function _syncOpenOpBillingForVisit(opts: {
 					r.lineSource === 'medication_order_line'
 						? r.medicationOrderLineId
 						: null;
-				const departmentConsumptionLineId =
-					r.lineSource === 'department_consumption_line'
-						? r.departmentConsumptionLineId
-						: null;
+
 				return normalizeOpBillingLineWrite({
 					opBillingId: billingId,
 					lineIndex: idx + 1,
 					serviceOrderDetailId,
 					medicationOrderLineId,
-					departmentConsumptionLineId,
+					departmentConsumptionLineId: null,
 					serviceId: r.serviceId,
 					serviceNameSnapshot: r.serviceName ?? null,
 					subCategoryId: r.subCategoryId ?? null,
@@ -516,6 +517,8 @@ export const GET: RequestHandler = async (event) => {
 export const POST: RequestHandler = async (event) => {
 	const { request, locals, params } = event;
 	if (!locals.user) throw error(401, 'Unauthorized');
+	// Captured: the narrowing above is lost inside the transaction closure.
+	const userId = locals.user.id;
 	const staffId = locals.staff?.id ?? null;
 	if (!staffId) throw error(403, 'Staff account required');
 
@@ -588,6 +591,8 @@ export const POST: RequestHandler = async (event) => {
 			);
 		}
 
+		// Captured: the guard above does not narrow inside the transaction closure.
+		const billingId = sync.billingId;
 		const db = ensureDb();
 		let billNo = sync.billingRow.billNo?.trim() || null;
 		if (!billNo) {
@@ -603,14 +608,14 @@ export const POST: RequestHandler = async (event) => {
 					billNo,
 					statusTaggingId: BillingStatusTaggingEnum.CLOSED,
 					updatedAt: nowIso,
-					updatedBy: locals.user.id
+					updatedBy: userId
 				})
-				.where(eq(table.opBillingTable.id, sync.billingId));
+				.where(eq(table.opBillingTable.id, billingId));
 
 			await closeExternalSaleVisitOnOpBillClosed(tx, {
 				hospitalId,
 				visitId,
-				userId: locals.user.id,
+				userId,
 				nowIso
 			});
 		});
@@ -683,7 +688,7 @@ export const POST: RequestHandler = async (event) => {
 				discountAmount,
 				totalAmount,
 				updatedAt: nowIso,
-				updatedBy: locals.user.id
+				updatedBy: userId
 			}),
 			discountTypeId,
 			discountedByStaffId: staffId,

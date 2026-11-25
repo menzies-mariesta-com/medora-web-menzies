@@ -467,6 +467,13 @@ export const ROUTE_PERMISSION: Record<string, RoutePermission> = {
 			POST: PageActionEnum.CREATE
 		}
 	},
+	'/mlc-documentation': {
+		pageUrls: ['/medora/home/nursing-workbench/mlc-documentation'],
+		actions: {
+			GET: PageActionEnum.VIEW,
+			POST: PageActionEnum.CREATE
+		}
+	},
 	'/consultation': {
 		pageUrls: [
 			'/medora/home/consultation/emr',
@@ -607,27 +614,11 @@ export const ROUTE_PERMISSION: Record<string, RoutePermission> = {
 		action: PageActionEnum.PRINT
 	},
 	'/emergency': {
-		pageUrls: [
-			'/medora/home/emergency/admission',
-			'/medora/home/emergency/bed-status',
-			'/medora/home/nursing-workbench/track-board',
-			'/medora/home/nursing-workbench/triage'
-		],
+		pageUrls: ['/medora/home/nursing-workbench/track-board'],
 		actions: {
 			GET: PageActionEnum.VIEW,
 			POST: PageActionEnum.CREATE
 		}
-	},
-	'/emergency/admission': {
-		pageUrls: ['/medora/home/emergency/admission'],
-		actions: {
-			GET: PageActionEnum.VIEW,
-			POST: PageActionEnum.CREATE
-		}
-	},
-	'/emergency/bed-status': {
-		pageUrls: ['/medora/home/emergency/bed-status'],
-		action: PageActionEnum.VIEW
 	},
 	'/emr/visit-list': { homeWide: true },
 	'/inventory-setup/approval-config': {
@@ -899,7 +890,9 @@ export const ROUTE_PERMISSION: Record<string, RoutePermission> = {
 		pageUrls: ['/medora/home/nursing-workbench/care-plan'],
 		actions: {
 			GET: PageActionEnum.VIEW,
-			POST: PageActionEnum.CREATE
+			POST: PageActionEnum.CREATE,
+			PUT: PageActionEnum.EDIT,
+			DELETE: PageActionEnum.DELETE
 		}
 	},
 	'/nursing-workbench/emar': {
@@ -992,6 +985,15 @@ export const ROUTE_PERMISSION: Record<string, RoutePermission> = {
 			POST: PageActionEnum.CREATE
 		}
 	},
+	// One POST covers triage / draft / amend; the map allows one action per
+	// method, so amend is gated by CREATE (the page exposes both in its catalog).
+	'/nursing-workbench/triage': {
+		pageUrls: ['/medora/home/nursing-workbench/triage'],
+		actions: {
+			GET: PageActionEnum.VIEW,
+			POST: PageActionEnum.CREATE
+		}
+	},
 	'/obstetrics': {
 		pageUrls: [
 			'/medora/home/obstetrics/labor-board',
@@ -1010,17 +1012,6 @@ export const ROUTE_PERMISSION: Record<string, RoutePermission> = {
 			'/medora/home/perioperative/procedure-log'
 		],
 		action: PageActionEnum.VIEW
-	},
-	'/perioperative/ot-room': {
-		pageUrls: [
-			'/medora/home/perioperative/ot-board',
-			'/medora/home/perioperative/cases',
-			'/medora/home/perioperative/room-setup'
-		],
-		actions: {
-			GET: PageActionEnum.VIEW,
-			POST: PageActionEnum.CREATE
-		}
 	},
 	'/perioperative/surgical-case': {
 		pageUrls: [

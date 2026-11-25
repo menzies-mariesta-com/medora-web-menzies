@@ -90,14 +90,14 @@ export async function listSurgicalCases(input: {
 	const rows = await ensureDb()
 		.select({
 			case: table.surgicalCaseTable,
-			otRoomName: table.otRoomTable.name,
+			otRoomName: table.roomTable.name,
 			patientName: sql<string>`concat(${table.patientTable.firstName}, ' ', coalesce(${table.patientTable.lastName}, ''))`,
 			visitNo: table.patientVisitTable.visitNo
 		})
 		.from(table.surgicalCaseTable)
 		.leftJoin(
-			table.otRoomTable,
-			eq(table.surgicalCaseTable.otRoomId, table.otRoomTable.id)
+			table.roomTable,
+			eq(table.surgicalCaseTable.otRoomId, table.roomTable.id)
 		)
 		.innerJoin(
 			table.patientTable,
@@ -420,7 +420,10 @@ export async function listCaseAudit(input: {
 	hospitalId: string;
 	caseId: number;
 }) {
-	await getSurgicalCaseById(input);
+	await getSurgicalCaseById({
+		hospitalId: input.hospitalId,
+		id: input.caseId
+	});
 	return ensureDb()
 		.select()
 		.from(table.surgicalCaseAuditTable)
@@ -456,7 +459,10 @@ export async function listCaseImplants(input: {
 	hospitalId: string;
 	caseId: number;
 }) {
-	await getSurgicalCaseById(input);
+	await getSurgicalCaseById({
+		hospitalId: input.hospitalId,
+		id: input.caseId
+	});
 	return ensureDb()
 		.select({
 			implant: table.surgicalCaseImplantTable,

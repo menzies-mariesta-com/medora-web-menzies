@@ -203,13 +203,39 @@ export async function createPatientVital(
 ): Promise<PatientDiagnosisSchema> {
 	requireUser(event);
 	await ensureCanAccessHospital(event, input.hospitalId);
+	return insertPatientVital({
+		...input,
+		userId: event.locals.user?.id ?? null
+	});
+}
 
+/**
+ * Event-free insert for server-side flows that already passed auth
+ * (e.g. ED triage signing). Prefer `createPatientVital` in API routes.
+ */
+export async function insertPatientVital(
+	input: Omit<
+		PatientDiagnosisSchema,
+		| 'id'
+		| 'createdAt'
+		| 'updatedAt'
+		| 'deletedAt'
+		| 'createdBy'
+		| 'updatedBy'
+	> & {
+		hospitalId: string;
+		patientId: string;
+		visitId: string;
+		userId?: string | null;
+	}
+): Promise<PatientDiagnosisSchema> {
+	const { userId = null, ...values } = input;
 	const [row] = await ensureDb()
 		.insert(table.patientDiagnosisTable)
 		.values({
-			...input,
-			createdBy: event.locals.user?.id ?? null,
-			updatedBy: event.locals.user?.id ?? null
+			...values,
+			createdBy: userId,
+			updatedBy: userId
 		} as any)
 		.returning();
 	if (!row) throw error(500, 'Failed to create vital');

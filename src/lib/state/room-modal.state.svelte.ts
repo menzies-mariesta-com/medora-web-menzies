@@ -1,14 +1,15 @@
+import { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 import type { RoomRow } from '$lib/model/type/medora/ipd/ipd.type';
 
-export type RoomModalEditRow = RoomRow & { isEr?: boolean };
+export type RoomModalEditRow = RoomRow & { careSetting?: CareSettingEnum };
 
 /** Set before opening Create/Edit room modal. */
 export const RoomModalState = $state<{
 	mode: 'create' | 'edit';
 	editRoom: RoomModalEditRow | null;
-	isEr: boolean;
+	careSetting: CareSettingEnum;
 }>({
 	mode: 'create',
 	editRoom: null,
-	isEr: false
+	careSetting: CareSettingEnum.IPD
 });

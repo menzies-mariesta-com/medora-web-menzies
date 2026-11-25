@@ -1,5 +1,5 @@
 export type PatientVisitWithRelationsLite = {
-	id: number;
+	id: string;
 	patientId: string | null;
 	hospitalId: string | null;
 	branchId?: string | null;
@@ -72,4 +72,33 @@ export type VisitDashboardPayload = {
 	vitalSymptoms: string[];
 	prescriptionNotes: VisitDashboardPrescriptionNoteRow[];
 	medicationLines: VisitDashboardMedicationLineRow[];
+};
+
+/** One vitals reading row for the Visual dashboard (trend series + table page). */
+export type VisitVisualVitalRow = {
+	id: number;
+	visitId: string;
+	visitNo: string | null;
+	recordedAt: string | null;
+	weight: string | null;
+	bpSystolic: string | null;
+	bpDiastolic: string | null;
+	pulse: string | null;
+	temperature: string | null;
+	respiration: string | null;
+	spO2: string | null;
+	rbs: string | null;
+};
+
+/** GET /api/.../patient-visit-history-dashboard/visual */
+export type VisitVisualPayload = {
+	patientId: string;
+	/** Oldest-first trend points (capped). */
+	series: VisitVisualVitalRow[];
+	table: {
+		rows: VisitVisualVitalRow[];
+		total: number;
+		page: number;
+		pageSize: number;
+	};
 };

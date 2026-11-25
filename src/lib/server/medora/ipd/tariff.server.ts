@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 import type { BedTariffContext } from '$lib/model/type/medora/ipd/ipd.type';
 import { and, eq, sql } from 'drizzle-orm';
 import { toDbMoney2dp } from '$lib/server/medora/money-normalize.server';
@@ -11,7 +12,9 @@ function money(value: string | number | null | undefined): string {
 	return toDbMoney2dp(value ?? 0);
 }
 
-function sumMoney(...parts: Array<string | number | null | undefined>): string {
+function sumMoney(
+	...parts: Array<string | number | null | undefined>
+): string {
 	const total = parts.reduce<number>(
 		(acc, p) => acc + Number(p ?? 0),
 		0
@@ -101,7 +104,8 @@ export async function resolveBedTariffContext(input: {
 			wardStatusId: table.wardTable.statusId,
 			wardCategoryStatusId: table.wardCategoryTable.statusId,
 			roomCategoryStatusId: table.roomCategoryTable.statusId,
-			branchId: table.wardTable.branchId
+			branchId: table.wardTable.branchId,
+			careSetting: table.bedTable.careSetting
 		})
 		.from(table.bedTable)
 		.innerJoin(
@@ -110,10 +114,7 @@ export async function resolveBedTariffContext(input: {
 		)
 		.innerJoin(
 			table.roomCategoryTable,
-			eq(
-				table.roomTable.roomCategoryId,
-				table.roomCategoryTable.id
-			)
+			eq(table.roomTable.roomCategoryId, table.roomCategoryTable.id)
 		)
 		.innerJoin(
 			table.wardTable,
@@ -161,6 +162,7 @@ export async function resolveBedTariffContext(input: {
 		bedName: row.bedName,
 		roomName: row.roomName,
 		wardName: row.wardName,
+		careSetting: row.careSetting,
 		bedBasePrice,
 		roomMarkup,
 		wardMarkup,

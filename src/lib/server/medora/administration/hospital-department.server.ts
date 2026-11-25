@@ -100,7 +100,7 @@ export async function createHospitalDepartment(
 		.values(payload)
 		.returning();
 	if (!row) throw new Error('Insert failed');
-	void notifyHospitalMasterWrite(hospitalId);
+	void notifyHospitalMasterWrite(payload.hospitalId);
 
 	return row;
 }

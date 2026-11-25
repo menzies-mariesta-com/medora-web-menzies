@@ -258,4 +258,37 @@ describe('cachedFetch', () => {
 
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
+
+	it('one caller aborting does not reject a caller joined to the same request', async () => {
+		let resolveFetch: (res: Response) => void = () => {};
+		const fetchMock = vi.fn().mockImplementation(
+			() =>
+				new Promise<Response>((resolve) => {
+					resolveFetch = resolve;
+				})
+		);
+		vi.stubGlobal('window', {} as Window);
+		vi.stubGlobal('fetch', fetchMock);
+
+		// Triage reads mode=settings twice in one mount (panel + color map):
+		// the first caller's unmount must not abort the second's read.
+		const controller = new AbortController();
+		const aborted = cachedFetch('/api/triage?mode=settings', {
+			signal: controller.signal
+		});
+		const kept = cachedFetch('/api/triage?mode=settings');
+
+		controller.abort();
+		resolveFetch(
+			new Response(JSON.stringify({ ok: 1 }), {
+				status: 200,
+				headers: { 'cache-control': 'private, max-age=60' }
+			})
+		);
+
+		await expect(kept).resolves.toBeInstanceOf(Response);
+		await expect(kept.then((r) => r.json())).resolves.toEqual({ ok: 1 });
+		await expect(aborted).rejects.toThrow();
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
 });

@@ -150,8 +150,7 @@ export async function getPatientBillDetail(
 			...mapIpBill(row),
 			branchName: row.branch?.name ?? null,
 			lines: row.lines
-				.slice()
-				.sort((a, b) => a.lineIndex - b.lineIndex)
+				.toSorted((a, b) => a.lineIndex - b.lineIndex)
 				.map(mapBillLine)
 		};
 	}
@@ -174,8 +173,7 @@ export async function getPatientBillDetail(
 		...mapOpBill(row),
 		branchName: row.branch?.name ?? null,
 		lines: row.lines
-			.slice()
-			.sort((a, b) => a.lineIndex - b.lineIndex)
+			.toSorted((a, b) => a.lineIndex - b.lineIndex)
 			.map(mapBillLine)
 	};
 }

@@ -1,11 +1,5 @@
-/**
- * BCMA administration dialog: the scan step for one due dose, plus the
- * hold/refuse branch that forces a reason code.
- *
- * The page owns submitting; this component only collects input and reports the
- * chosen outcome, so the same dialog serves the grid cells and the PRN list.
- */
 <script lang="ts">
+	// BCMA dialog: collects one due dose and reports the outcome; the page submits.
 	import { m } from '$lib/paraglide/messages';
 	import { MedicationHoldReasonEnum } from '$lib/model/enum/clinical-platform.enum';
 	import type { EmarBedLocation } from '$lib/model/type/medora/clinical-platform.type';

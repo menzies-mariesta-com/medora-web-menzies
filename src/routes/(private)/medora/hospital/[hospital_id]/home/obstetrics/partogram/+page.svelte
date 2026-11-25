@@ -6,22 +6,49 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { m } from '$lib/paraglide/messages';
+	import LVisitPickerGate from '$lib/component/own/local/private/medora/visit/LVisitPickerGate.svelte';
+	import { VisitState } from '$lib/state/visit.state.svelte';
+	import { RouterUtil } from '$lib/util/router.util.svelte';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(page.params.hospital_id ?? '');
-	const visitId = $derived(page.url.searchParams.get('visitId') ?? '');
+	const visitId = $derived(
+		page.url.searchParams.get('visitId') ?? ''
+	);
+	const routerUtil = new RouterUtil();
+
+	function handleVisitSelected(data: {
+		visitId: string;
+		patientName: string;
+	}) {
+		VisitState.select(data);
+		const search = new SvelteURLSearchParams(page.url.search);
+		search.set('visitId', String(data.visitId));
+		routerUtil.replaceRoute(
+			`${page.url.pathname}?${search.toString()}`
+		);
+	}
 	const obsApi = $derived(
-		hospitalId ? `/api/medora/hospital/${hospitalId}/home/obstetrics` : ''
+		hospitalId
+			? `/api/medora/hospital/${hospitalId}/home/obstetrics`
+			: ''
 	);
 	const formApi = $derived(
-		hospitalId ? `/api/medora/hospital/${hospitalId}/home/clinical-form` : ''
+		hospitalId
+			? `/api/medora/hospital/${hospitalId}/home/clinical-form`
+			: ''
 	);
 
-	let partogramSchema = $state<ClinicalFormTemplateSchema | null>(null);
-	let deliverySchema = $state<ClinicalFormTemplateSchema | null>(null);
+	let partogramSchema = $state<ClinicalFormTemplateSchema | null>(
+		null
+	);
+	let deliverySchema = $state<ClinicalFormTemplateSchema | null>(
+		null
+	);
 	let partogramValues = $state<Record<string, unknown>>({});
 	let deliveryValues = $state<Record<string, unknown>>({});
 	let linkCSection = $state(true);
@@ -32,24 +59,32 @@
 		isCancelled?: () => boolean;
 	}) {
 		for (const code of ['ld_partogram_v1', 'ld_delivery_record_v1']) {
-			const res = await fetch(`${formApi}?mode=template&code=${encodeURIComponent(code)}`, { signal: opts?.signal });
+			const res = await fetch(
+				`${formApi}?mode=template&code=${encodeURIComponent(code)}`,
+				{ signal: opts?.signal }
+			);
 			if (!res.ok) await throwUserFacingHttpError(res);
 			const tpl = (await res.json()) as {
 				schemaJson: ClinicalFormTemplateSchema;
 			};
-			if (code === 'ld_partogram_v1') partogramSchema = tpl.schemaJson;
+			if (code === 'ld_partogram_v1')
+				partogramSchema = tpl.schemaJson;
 			else deliverySchema = tpl.schemaJson;
 		}
 	}
 
 	$effect(() => {
-			let cancelled = false;
-			const ac = new AbortController();
-		if (formApi) void loadTemplates({ signal: ac.signal, isCancelled: () => cancelled });
-			return () => {
-				cancelled = true;
-				ac.abort();
-			};
+		let cancelled = false;
+		const ac = new AbortController();
+		if (formApi)
+			void loadTemplates({
+				signal: ac.signal,
+				isCancelled: () => cancelled
+			});
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 
 	async function savePartogram() {
@@ -102,14 +137,21 @@
 </script>
 
 <div class="mx-auto flex max-w-3xl flex-col gap-6 p-4">
-	<h1 class="text-primary text-lg font-bold">{msg.ld_partogram_title()}</h1>
+	<h1 class="text-lg font-bold text-primary">
+		{msg.ld_partogram_title()}
+	</h1>
 	{#if !visitId}
-		<p class="text-error text-sm">{msg.ld_visit_required()}</p>
+		<LVisitPickerGate onVisitSelected={handleVisitSelected} />
 	{:else}
 		{#if partogramSchema}
 			<section>
-				<h2 class="text-secondary mb-2 font-bold">{msg.ld_partogram_section()}</h2>
-				<ClinicalFormRenderer schema={partogramSchema} bind:values={partogramValues} />
+				<h2 class="mb-2 font-bold text-secondary">
+					{msg.ld_partogram_section()}
+				</h2>
+				<ClinicalFormRenderer
+					schema={partogramSchema}
+					bind:values={partogramValues}
+				/>
 				<WashButton
 					className="btn-primary mt-2 cursor-pointer"
 					loading={submitting}
@@ -122,15 +164,22 @@
 		{/if}
 		{#if deliverySchema}
 			<section>
-				<h2 class="text-secondary mb-2 font-bold">{msg.ld_delivery_section()}</h2>
-				<ClinicalFormRenderer schema={deliverySchema} bind:values={deliveryValues} />
+				<h2 class="mb-2 font-bold text-secondary">
+					{msg.ld_delivery_section()}
+				</h2>
+				<ClinicalFormRenderer
+					schema={deliverySchema}
+					bind:values={deliveryValues}
+				/>
 				<label class="label cursor-pointer justify-start gap-2">
 					<input
 						type="checkbox"
 						class="checkbox checkbox-sm"
 						bind:checked={linkCSection}
 					/>
-					<span class="label-text text-sm">{msg.ld_link_c_section_case()}</span>
+					<span class="label-text text-sm"
+						>{msg.ld_link_c_section_case()}</span
+					>
 				</label>
 				<WashButton
 					className="btn-success mt-2 cursor-pointer"

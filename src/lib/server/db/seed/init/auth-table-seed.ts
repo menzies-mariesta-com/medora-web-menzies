@@ -64,7 +64,6 @@ export async function seedAuthTables() {
 
 	const hashedPassword = await hashPassword(password);
 	const userId = uuidV7();
-	const accountId = uuidV7();
 	const inserted = rowsOf<{ id: string }>(
 		await db.execute(sql`
 			INSERT INTO "user" (
@@ -87,7 +86,7 @@ export async function seedAuthTables() {
 		INSERT INTO account (
 			id, user_id, account_id, provider_id, password, created_at, updated_at
 		) VALUES (
-			${accountId}, ${inserted[0].id}, ${email}, 'credential', ${hashedPassword}, now(), now()
+			${uuidV7()}, ${inserted[0].id}, ${inserted[0].id}, 'credential', ${hashedPassword}, now(), now()
 		)
 	`);
 	seedLogger.info(`Created SYSTEM_ADMIN user: ${email}`);

@@ -99,7 +99,6 @@ describe('med-order-out-qty', () => {
 	it('aggregates sale units across conversions', () => {
 		const opts = medOrderOutUnitOptionsFromIumList([
 			{
-				id: 1,
 				purchaseUnitId: 10,
 				issueUnitId: 20,
 				purchaseUnitName: 'Box',
@@ -108,7 +107,6 @@ describe('med-order-out-qty', () => {
 				issueConversionFactor: '1'
 			},
 			{
-				id: 2,
 				purchaseUnitId: 30,
 				issueUnitId: 20,
 				purchaseUnitName: 'Strip',

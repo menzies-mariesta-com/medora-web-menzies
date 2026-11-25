@@ -512,7 +512,7 @@
 							type="button"
 							className="btn-sm btn-secondary cursor-pointer"
 							disabled={readOnly || !selectedOrderSetId}
-							onclick={() => void applyOrderSet()}
+							onClick={() => void applyOrderSet()}
 						>
 							{msg.clinical_apply_order_set()}
 						</WashButton>
@@ -537,7 +537,7 @@
 								className="btn-sm btn-primary cursor-pointer"
 								loading={isOverridingCds}
 								disabled={isOverridingCds || !cdsOverrideReason.trim()}
-								onclick={() => void confirmCdsOverride()}
+								onClick={() => void confirmCdsOverride()}
 							>
 								{msg.clinical_cds_override()}
 							</WashButton>

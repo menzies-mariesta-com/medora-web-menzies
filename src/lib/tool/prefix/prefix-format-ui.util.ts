@@ -46,7 +46,9 @@ export function defaultFormatPartsForStorageKey(
 		storageKey === 'DEPARTMENT_ISSUE_NO' ||
 		storageKey === 'DEPARTMENT_CONSUMPTION_NO' ||
 		storageKey === 'BILL_NO' ||
-		storageKey === 'IP_BILL_NO'
+		storageKey === 'IP_BILL_NO' ||
+		// Scoped per branch, so the branch must appear or two branches collide.
+		storageKey === 'MLC_NO'
 	) {
 		return [
 			{ id: newPartId(), kind: 'field', path: 'financial_year.code' },

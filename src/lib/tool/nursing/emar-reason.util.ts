@@ -23,10 +23,12 @@ export const EMAR_REASON_MESSAGE_KEYS: Record<
 export function emarReasonOptions(
 	msg: Record<string, (inputs?: object) => string>
 ): { value: string; label: string }[] {
-	return Object.values(MedicationHoldReasonEnum).map((reason) => ({
-		value: reason,
-		label: msg[EMAR_REASON_MESSAGE_KEYS[reason]]?.() ?? reason
-	}));
+	return Object.values(MedicationHoldReasonEnum).map(
+		(reason: MedicationHoldReasonEnum) => ({
+			value: reason,
+			label: msg[EMAR_REASON_MESSAGE_KEYS[reason]]?.() ?? reason
+		})
+	);
 }
 
 /** Human label for a stored reason code; falls back to the raw code. */

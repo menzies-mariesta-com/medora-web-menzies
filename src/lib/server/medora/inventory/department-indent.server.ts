@@ -532,7 +532,8 @@ export async function getDepartmentIndentById(
 	const canCancel = await checkUserCanCancelDepartmentIndent(
 		input.hospitalId,
 		joined.indent,
-		userId
+		userId,
+		roleId
 	);
 
 	// Department issue is now a separate document/table.

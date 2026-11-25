@@ -14,6 +14,7 @@
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import LVisitInfoBar from '$lib/component/own/local/private/medora/visit/LVisitInfoBar.svelte';
+	import LVisitPickerGate from '$lib/component/own/local/private/medora/visit/LVisitPickerGate.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { untrack } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
@@ -22,6 +23,7 @@
 	import {
 		filterNursingChartTabs,
 		isNursingChartTabVisible,
+		isVisitChartTab,
 		nursingChartTabSlug
 	} from '$lib/tool/nursing/nursing-chart-tab.util';
 
@@ -89,7 +91,17 @@
 		}
 	});
 
+	// Gate on the URL, not session state: server and client agree, so no hydration flip.
 	const selectedVisitId = $derived(VisitState.visitId);
+	const urlVisitId = $derived(
+		page.url.searchParams.get('visitId') ?? ''
+	);
+
+	/** Board tabs (census / track board / trauma log) need no visit; chart tabs do. */
+	const needsVisit = $derived(
+		isVisitChartTab(nursingChartTabSlug(currentPath))
+	);
+	const showChart = $derived(!needsVisit || Boolean(urlVisitId));
 
 	const subPages = $derived(
 		filterNursingChartTabs(
@@ -166,7 +178,7 @@
 </script>
 
 <div class="nursing-chart-wrapper">
-	{#if subPages.length > 0}
+	{#if subPages.length > 0 && showChart}
 		<LVisitInfoBar
 			visitId={selectedVisitId}
 			{hospitalId}
@@ -191,11 +203,18 @@
 			{/each}
 		</div>
 	{/if}
-	<div class="nursing-chart-content">
-		{#if children}
-			{@render children()}
-		{/if}
-	</div>
+	{#if showChart}
+		<div class="nursing-chart-content">
+			{#if children}
+				{@render children()}
+			{/if}
+		</div>
+	{:else}
+		<LVisitPickerGate
+			listScope="hospital"
+			onVisitSelected={handleVisitSelected}
+		/>
+	{/if}
 </div>
 
 <style>

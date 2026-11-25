@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import type { OtRoomRow } from '$lib/model/type/medora/surgical-case.type';
 	import type { SurgicalCaseListRow } from '$lib/model/type/medora/surgical-case.type';
+	import type { RoomRow } from '$lib/model/type/medora/ipd/ipd.type';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { connectPerioperativeSse } from '$lib/util/perioperative-sse.util.svelte';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
@@ -21,13 +21,14 @@
 			? `/api/medora/hospital/${hospitalId}/home/perioperative/surgical-case`
 			: ''
 	);
+	/** OT rooms are `room` rows with `care_setting = 'OT'`. */
 	const roomApi = $derived(
 		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/perioperative/ot-room`
+			? `/api/medora/hospital/${hospitalId}/home/administration/room-master?active=1&scope=ot`
 			: ''
 	);
 
-	let rooms = $state<OtRoomRow[]>([]);
+	let rooms = $state<RoomRow[]>([]);
 	let cases = $state<SurgicalCaseListRow[]>([]);
 	let loading = $state(false);
 
@@ -41,7 +42,7 @@
 			]);
 			if (!rRes.ok) await throwUserFacingHttpError(rRes);
 			if (!cRes.ok) await throwUserFacingHttpError(cRes);
-			rooms = (await rRes.json()) as OtRoomRow[];
+			rooms = (await rRes.json()) as RoomRow[];
 			cases = (await cRes.json()) as SurgicalCaseListRow[];
 		} finally {
 			loading = false;

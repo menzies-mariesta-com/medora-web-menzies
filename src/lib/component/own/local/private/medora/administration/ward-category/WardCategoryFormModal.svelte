@@ -2,10 +2,15 @@
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import {
+		CareSettingEnum,
+		careSettingLabel
+	} from '$lib/model/enum/care-setting.enum';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -26,10 +31,16 @@
 			? page.params.hospital_id
 			: ''
 	);
-	let formIsEr = $state(false);
+	let formCareSetting = $state<CareSettingEnum>(CareSettingEnum.IPD);
 	const masterScope = $derived(
-		(formIsEr ? 'er' : 'ipd') satisfies AdministrationMasterScope
+		formCareSetting.toLowerCase() as AdministrationMasterScope
 	);
+	const careSettingOptions = [
+		CareSettingEnum.IPD,
+		CareSettingEnum.ED,
+		CareSettingEnum.ICU,
+		CareSettingEnum.OT
+	].map((value) => ({ value, label: careSettingLabel(value) }));
 	const categoryApi = $derived(
 		hospitalId
 			? administrationWardCategoryApi(hospitalId, masterScope)
@@ -46,10 +57,10 @@
 
 	lifeCycleUtil.onMount(() => {
 		const state = WardCategoryModalState;
-		formIsEr =
+		formCareSetting =
 			state.mode === 'edit'
-				? Boolean(state.editCategory?.isEr)
-				: state.isEr;
+				? (state.editCategory?.careSetting ?? CareSettingEnum.IPD)
+				: state.careSetting;
 		if (state.mode === 'edit' && state.editCategory) {
 			formName = state.editCategory.name ?? '';
 			formCode = state.editCategory.code ?? '';
@@ -90,6 +101,7 @@
 					name: formName.trim(),
 					code: formCode.trim() || null,
 					wardMarkup: formWardMarkup.trim() || '0',
+					careSetting: formCareSetting,
 					statusId: formActive
 						? StatusEnum.ACTIVE
 						: StatusEnum.INACTIVE
@@ -126,16 +138,17 @@
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<span class="shrink-0 sm:w-36">Emergency (ED)</span>
-				<label
-					class="flex max-w-80 flex-1 cursor-pointer items-center gap-2"
+				<label for="ward-category-care-setting" class="shrink-0 sm:w-36"
+					>Care setting <span class="text-error">*</span></label
 				>
-					<WashCheckbox
-						bind:checked={formIsEr}
+				<div class="max-w-80 flex-1">
+					<WashSelect
+						id="ward-category-care-setting"
+						bind:value={formCareSetting}
+						options={careSettingOptions}
 						disabled={modalState.mode === 'edit'}
 					/>
-					<span class="text-sm opacity-80">ED ward category</span>
-				</label>
+				</div>
 			</div>
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"

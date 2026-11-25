@@ -241,10 +241,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 					locale: string;
 				}) => {
 					event.request = request;
-					return resolve(event, {
-						transformPageChunk: ({ html }) =>
-							html.replace('%paraglide.lang%', locale)
-					}).then((resolved) => finalizeAppResponse(event, resolved));
+					return Promise.resolve(
+						resolve(event, {
+							transformPageChunk: ({ html }) =>
+								html.replace('%paraglide.lang%', locale)
+						})
+					).then((resolved) => finalizeAppResponse(event, resolved));
 				}
 			);
 			if (pathname.startsWith('/api/doctor/')) {

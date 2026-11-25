@@ -347,7 +347,6 @@ async function seedDoctorsForHospital(
 			'Doctor';
 		const fullName = `${firstName} ${lastName}`;
 		const userId = uuidV7();
-		const accountId = uuidV7();
 		const staffId = uuidV7();
 		const specializationId =
 			specializationIds[(seq - 1) % specializationIds.length] ?? 1;
@@ -390,9 +389,9 @@ async function seedDoctorsForHospital(
 			sql`
 			INSERT INTO account (id, user_id, account_id, provider_id, password)
 			VALUES (
-				${accountId},
+				${uuidV7()},
 				${userId},
-				${email},
+				${userId},
 				'credential',
 				${hashedPassword}
 			)

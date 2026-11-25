@@ -26,6 +26,20 @@ describe('getApiCachePolicy', () => {
 		expect(policy.mode).toBe('no-store');
 	});
 
+	it('denies caching of MLC medico-legal records', () => {
+		expect(
+			API_ROUTE_TIER_BY_TEMPLATE[
+				'/api/medora/hospital/:hospital_id/home/mlc-documentation'
+			]
+		).toBe('no-store');
+
+		const policy = getApiCachePolicy(
+			'/api/medora/hospital/01a0cd12-1af6-7839-a4ce-6d834497a0ba/home/mlc-documentation',
+			new URLSearchParams({ mode: 'bootstrap' })
+		);
+		expect(policy.mode).toBe('no-store');
+	});
+
 	it('caches master admin route tier', () => {
 		const policy = getApiCachePolicy(
 			'/api/medora/hospital/01a0cd12-1af6-7839-a4ce-6d834497a0ba/home/administration/bed-master',

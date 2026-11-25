@@ -23,12 +23,12 @@
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 	const wardApi = $derived(
 		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/administration/ward-master?active=1&scope=er`
+			? `/api/medora/hospital/${hospitalId}/home/administration/ward-master?active=1&scope=ed`
 			: ''
 	);
 	const bedApi = $derived(
 		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/administration/bed-master?free=1&scope=er`
+			? `/api/medora/hospital/${hospitalId}/home/administration/bed-master?free=1&scope=ed`
 			: ''
 	);
 	const edApi = $derived(
@@ -209,7 +209,6 @@
 				: 'btn-primary cursor-pointer'}
 			loading={submitting}
 			disabled={submitting || selectedBedId == null}
-			aria-busy={submitting}
 			onClick={() => submitAssign()}
 		>
 			{msg.assign?.() ?? 'Assign'}

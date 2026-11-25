@@ -174,14 +174,12 @@ export async function createPatientVisitRecord(
 	);
 
 	if (sourceVisitId != null) {
-		await assertValidSourceVisit(
-			{
-				hospitalId: payload.hospitalId,
-				patientId: payload.patientId,
-				sourceVisitId
-			},
+		await assertValidSourceVisit({
+			hospitalId: payload.hospitalId,
+			patientId: payload.patientId,
+			sourceVisitId,
 			db
-		);
+		});
 	}
 
 	const { sourceVisitId: _drop, ...insertPayload } = payload;

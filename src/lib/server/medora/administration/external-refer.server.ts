@@ -119,7 +119,7 @@ export async function createExternalRefer(
 		.values(payload)
 		.returning();
 	if (!row) throw error(500, 'Insert failed');
-	void notifyHospitalMasterWrite(hospitalId);
+	void notifyHospitalMasterWrite(payload.hospitalId);
 
 	return row;
 }
@@ -145,7 +145,7 @@ export async function updateExternalRefer(
 		)
 		.returning();
 	if (!row) throw error(500, 'Update failed');
-	void notifyHospitalMasterWrite(hospitalId);
+	void notifyHospitalMasterWrite(payload.hospitalId);
 
 	return row;
 }

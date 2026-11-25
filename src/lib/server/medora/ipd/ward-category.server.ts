@@ -14,11 +14,15 @@ import {
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
 import { and, count, eq, ilike, ne } from 'drizzle-orm';
-import { isErScopeCondition } from '$lib/server/medora/ipd/master-is-er.util';
+import { careSettingScopeCondition } from '$lib/server/medora/ipd/master-care-setting.util';
+import type { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 import { paginatedEntityStatusEq } from '$lib/server/medora/paginated-entity-status-filter.server';
 
 export async function getWardCategoryPaginated(
-	params: PaginationParams & { hospitalId: string; isEr?: boolean }
+	params: PaginationParams & {
+		hospitalId: string;
+		careSetting?: CareSettingEnum;
+	}
 ): Promise<PaginatedResult<WardCategoryRow>> {
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
@@ -41,11 +45,11 @@ export async function getWardCategoryPaginated(
 			ilike(table.wardCategoryTable.code, `%${codeFilter}%`)
 		);
 	}
-	const isErCond = isErScopeCondition(
+	const careSettingCond = careSettingScopeCondition(
 		table.wardCategoryTable,
-		params.isEr
+		params.careSetting
 	);
-	if (isErCond) conditions.push(isErCond);
+	if (careSettingCond) conditions.push(careSettingCond);
 	const whereClause = and(...conditions);
 	const [data, countResult] = await Promise.all([
 		ensureDb()
@@ -55,7 +59,6 @@ export async function getWardCategoryPaginated(
 				name: table.wardCategoryTable.name,
 				code: table.wardCategoryTable.code,
 				wardMarkup: table.wardCategoryTable.wardMarkup,
-				isEr: table.wardCategoryTable.isEr,
 				statusId: table.wardCategoryTable.statusId
 			})
 			.from(table.wardCategoryTable)
@@ -80,17 +83,17 @@ export async function getWardCategoryPaginated(
 
 export async function listActiveWardCategories(input: {
 	hospitalId: string;
-	isEr?: boolean;
+	careSetting?: CareSettingEnum;
 }): Promise<WardCategorySchema[]> {
 	const conditions = [
 		eq(table.wardCategoryTable.hospitalId, input.hospitalId),
 		eq(table.wardCategoryTable.statusId, StatusEnum.ACTIVE)
 	];
-	const isErCond = isErScopeCondition(
+	const careSettingCond = careSettingScopeCondition(
 		table.wardCategoryTable,
-		input.isEr
+		input.careSetting
 	);
-	if (isErCond) conditions.push(isErCond);
+	if (careSettingCond) conditions.push(careSettingCond);
 	return ensureDb()
 		.select()
 		.from(table.wardCategoryTable)
@@ -120,12 +123,11 @@ export async function createWardCategory(
 		.insert(table.wardCategoryTable)
 		.values({
 			...payload,
-			wardMarkup: String(payload.wardMarkup ?? '0'),
-			isEr: payload.isEr ?? false
+			wardMarkup: String(payload.wardMarkup ?? '0')
 		})
 		.returning();
 	if (!row) throw new Error('Insert failed');
-	void notifyHospitalMasterWrite(hospitalId);
+	void notifyHospitalMasterWrite(payload.hospitalId);
 
 	return row;
 }
@@ -136,6 +138,7 @@ export async function updateWardCategory(payload: {
 	name?: string | null;
 	code?: string | null;
 	wardMarkup?: string | null;
+	careSetting?: CareSettingEnum;
 	statusId?: number | null;
 }): Promise<WardCategorySchema> {
 	const { id, hospitalId, ...rest } = payload;
