@@ -89,6 +89,7 @@ function classify(template, getEnabled) {
 		return 'no-store';
 	}
 	if (/\/home\/nursing-workbench\//.test(t)) return 'no-store';
+	if (/\/home\/mlc-documentation/.test(t)) return 'no-store';
 	if (/\/home\/emergency/.test(t) && !/\/administration\//.test(t)) {
 		return 'no-store';
 	}

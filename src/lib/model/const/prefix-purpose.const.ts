@@ -24,7 +24,9 @@ export const PREFIX_PURPOSE_STORAGE = {
 	/** Walk-in external sale receipt number. */
 	MEDICATION_ORDER_RECEIPT_NO: 'MEDICATION_ORDER_RECEIPT_NO',
 	/** OP and IP final bill numbers (one hospital-wide format). */
-	BILL_NO: 'BILL_NO'
+	BILL_NO: 'BILL_NO',
+	/** Medico-legal case register number. */
+	MLC_NO: 'MLC_NO'
 } as const;
 
 export type PrefixPurposeStorageKey =
@@ -58,7 +60,8 @@ export type PrefixPurposeId =
 	| 'dc'
 	| 'med_order_batch'
 	| 'med_order_receipt'
-	| 'bill';
+	| 'bill'
+	| 'mlc';
 
 export interface PrefixPurposeDefinition {
 	readonly id: PrefixPurposeId;
@@ -99,7 +102,8 @@ export const PREFIX_PURPOSES: readonly PrefixPurposeDefinition[] = [
 		id: 'med_order_receipt',
 		storageKey: PREFIX_PURPOSE_STORAGE.MEDICATION_ORDER_RECEIPT_NO
 	},
-	{ id: 'bill', storageKey: PREFIX_PURPOSE_STORAGE.BILL_NO }
+	{ id: 'bill', storageKey: PREFIX_PURPOSE_STORAGE.BILL_NO },
+	{ id: 'mlc', storageKey: PREFIX_PURPOSE_STORAGE.MLC_NO }
 ] as const;
 
 export function findPurposeByStorageKey(

@@ -6447,10 +6447,17 @@ export const clinicalFormInstanceTable = pgTable(
 			.notNull()
 			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
 		surgicalCaseId: integer('surgical_case_id'),
+		/** Signed original this row amends. Addenda never mutate their parent. */
+		parentInstanceId: integer('parent_instance_id').references(
+			(): AnyPgColumn => clinicalFormInstanceTable.id,
+			{ onDelete: 'set null' }
+		),
 		templateId: integer('template_id')
 			.notNull()
 			.references(() => clinicalFormTemplateTable.id),
 		contextType: varchar('context_type', { length: 64 }).notNull(),
+		/** Legal register number (MLC_NO prefix); null for non-registered forms. */
+		formNumber: varchar('form_number', { length: 64 }),
 		valuesJson: jsonb('values_json').notNull().default({}),
 		statusTaggingId: integer('status_tagging_id').references(
 			() => statusTaggingTable.id
@@ -6468,7 +6475,14 @@ export const clinicalFormInstanceTable = pgTable(
 	},
 	(t) => [
 		index('clinical_form_instance_visit_idx').on(t.visitId),
-		index('clinical_form_instance_case_idx').on(t.surgicalCaseId)
+		index('clinical_form_instance_case_idx').on(t.surgicalCaseId),
+		index('clinical_form_instance_context_idx').on(
+			t.visitId,
+			t.contextType
+		),
+		uniqueIndex('clinical_form_instance_mlc_no_uidx')
+			.on(t.hospitalId, t.formNumber)
+			.where(sql`${t.formNumber} IS NOT NULL`)
 	]
 );
 

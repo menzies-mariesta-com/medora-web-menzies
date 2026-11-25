@@ -9,7 +9,7 @@ export type ApiRouteTierId =
 	| 'dashboard-short'
 	| 'default-short';
 
-/** Per-route GET cache tier (212 API handlers). */
+/** Per-route GET cache tier (213 API handlers). */
 export const API_ROUTE_TIER_BY_TEMPLATE: Record<string, ApiRouteTierId> = {
 	"/api/ai/chat": "no-store",
 	"/api/cron/inventory-stock-alerts": "no-store",
@@ -166,6 +166,7 @@ export const API_ROUTE_TIER_BY_TEMPLATE: Record<string, ApiRouteTierId> = {
 	"/api/medora/hospital/:hospital_id/home/inventory/stock": "no-store",
 	"/api/medora/hospital/:hospital_id/home/medication-order/external-sales": "no-store",
 	"/api/medora/hospital/:hospital_id/home/medication-order/internal-sales": "no-store",
+	"/api/medora/hospital/:hospital_id/home/mlc-documentation": "no-store",
 	"/api/medora/hospital/:hospital_id/home/nursing-workbench/care-plan": "no-store",
 	"/api/medora/hospital/:hospital_id/home/nursing-workbench/emar": "no-store",
 	"/api/medora/hospital/:hospital_id/home/nursing-workbench/emr/allergy": "no-store",

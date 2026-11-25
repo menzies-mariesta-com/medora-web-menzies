@@ -467,6 +467,13 @@ export const ROUTE_PERMISSION: Record<string, RoutePermission> = {
 			POST: PageActionEnum.CREATE
 		}
 	},
+	'/mlc-documentation': {
+		pageUrls: ['/medora/home/nursing-workbench/mlc-documentation'],
+		actions: {
+			GET: PageActionEnum.VIEW,
+			POST: PageActionEnum.CREATE
+		}
+	},
 	'/consultation': {
 		pageUrls: [
 			'/medora/home/consultation/emr',

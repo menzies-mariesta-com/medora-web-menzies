@@ -21,7 +21,8 @@ export function defaultCounterScopeForPrefixKey(
 		prefixKey === 'DEPARTMENT_ISSUE_NO' ||
 		prefixKey === 'DEPARTMENT_CONSUMPTION_NO' ||
 		prefixKey === 'BILL_NO' ||
-		prefixKey === 'IP_BILL_NO'
+		prefixKey === 'IP_BILL_NO' ||
+		prefixKey === 'MLC_NO'
 	) {
 		return {
 			includeBranch: true,
