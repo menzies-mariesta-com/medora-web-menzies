@@ -1,4 +1,5 @@
 /** UI / API shapes for IPD ADT (not Drizzle schema). */
+import type { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 
 export type WardCategoryRow = {
 	id: number;
@@ -6,7 +7,7 @@ export type WardCategoryRow = {
 	name: string;
 	code: string | null;
 	wardMarkup: string;
-	isEr?: boolean;
+	careSetting?: CareSettingEnum;
 	statusId: number;
 };
 
@@ -16,7 +17,7 @@ export type RoomCategoryRow = {
 	name: string;
 	code: string | null;
 	roomMarkup: string;
-	isEr?: boolean;
+	careSetting?: CareSettingEnum;
 	statusId: number;
 };
 
@@ -27,7 +28,7 @@ export type WardRow = {
 	wardCategoryId: number;
 	name: string;
 	code: string | null;
-	isEr?: boolean;
+	careSetting?: CareSettingEnum;
 	statusId: number;
 	branchName?: string | null;
 	wardCategoryName?: string | null;
@@ -43,7 +44,7 @@ export type RoomRow = {
 	code: string | null;
 	capacity: number;
 	amenities: string | null;
-	isEr?: boolean;
+	careSetting?: CareSettingEnum;
 	statusId: number;
 	wardName?: string | null;
 	wardCode?: string | null;
@@ -63,7 +64,7 @@ export type BedRow = {
 	basePriceUnitName?: string | null;
 	timelineDurationDays?: string | null;
 	bedStatus: number;
-	isEr?: boolean;
+	careSetting?: CareSettingEnum;
 	statusId: number;
 	roomName?: string | null;
 	roomCode?: string | null;
@@ -82,6 +83,8 @@ export type BedTariffContext = {
 	bedName: string | null;
 	roomName: string | null;
 	wardName: string | null;
+	/** Care setting of the resolved bed. */
+	careSetting: CareSettingEnum;
 	bedBasePrice: string;
 	/** Room markup percent. */
 	roomMarkup: string;
@@ -104,6 +107,7 @@ export type IpdCensusRow = {
 	branchId: string;
 	wardId: number;
 	wardName: string | null;
+	careSetting: CareSettingEnum;
 	roomId: number;
 	roomName: string | null;
 	bedId: number;
@@ -119,6 +123,12 @@ export type IpdCensusRow = {
 };
 
 /** Unfinished OPD visit eligible as ADT admission source */
+/** Where a bed's occupancy comes from, on the unified ADT board. */
+export type AdtBedOccupancySource =
+	| 'admission'
+	| 'encounter'
+	| 'surgical';
+
 export type AdtSourceOpdVisitRow = {
 	visitId: string;
 	visitNo: string | null;
@@ -135,6 +145,8 @@ export type AdmitToIpdPayload = {
 	admittingDoctorId?: string | null;
 	reasonNotes?: string | null;
 	branchId: string;
+	/** Care setting of the bed being admitted to; must match the bed. */
+	careSetting?: CareSettingEnum;
 	/** When admitting from a prior visit (e.g. OPD). */
 	sourceVisitId?: string | null;
 	/** @deprecated use sourceVisitId */
@@ -234,7 +246,8 @@ export type AccommodationBillingPolicyRow = {
 };
 
 /** @deprecated Use {@link AccommodationBillingPolicyRow} */
-export type IpdAccommodationBillingPolicyRow = AccommodationBillingPolicyRow;
+export type IpdAccommodationBillingPolicyRow =
+	AccommodationBillingPolicyRow;
 
 export type AccommodationChargeLine = {
 	segmentId: number;

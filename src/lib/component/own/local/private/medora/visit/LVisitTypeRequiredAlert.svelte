@@ -88,7 +88,7 @@
 			detail={phase.message}
 			className="z-0 min-w-0 flex-1"
 		/>
-		<WashButton type="button" tone="secondary" size="sm" onclick={onRetry}>
+		<WashButton type="button" variant="secondary" size="sm" onClick={onRetry}>
 			{msg.visit_gate_retry?.() ?? 'Retry'}
 		</WashButton>
 	</div>

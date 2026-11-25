@@ -13,6 +13,7 @@
 	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
 	import LucideStethoscope from '$lib/component/own/library/lucide/LucideStethoscope.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { CareSettingEnum, parseCareSetting } from '$lib/model/enum/care-setting.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { IpdBedStatusEnum } from '$lib/model/enum/db-link';
 	import type { AdtBedStatusRow } from '$lib/model/type/medora/adt/adt.type';
@@ -55,7 +56,10 @@
 
 	let rows = $state<AdtBedStatusRow[]>([]);
 	let wards = $state<WardRow[]>([]);
-	let wardFilter = $state('');
+	let careSettingFilter = $state(
+		parseCareSetting(page.url.searchParams.get('careSetting')) ?? ''
+	);
+	let wardFilter = $state(page.url.searchParams.get('wardId') ?? '');
 	let statusFilter = $state('');
 	let patientFilter = $state('');
 	let visitFilter = $state('');
@@ -69,6 +73,13 @@
 		{ value: String(IpdBedStatusEnum.OCCUPIED), label: 'Occupied' },
 		{ value: String(IpdBedStatusEnum.BLOCKED), label: 'Blocked' },
 		{ value: String(IpdBedStatusEnum.CLEANING), label: 'Cleaning' }
+	];
+	const careSettingOptions = [
+		{ value: '', label: 'All care settings' },
+		{ value: CareSettingEnum.IPD, label: 'IPD' },
+		{ value: CareSettingEnum.ED, label: 'ED' },
+		{ value: CareSettingEnum.ICU, label: 'ICU' },
+		{ value: CareSettingEnum.OT, label: 'OT' }
 	];
 	const wardOptions = $derived([
 		{ value: '', label: 'All wards' },
@@ -158,6 +169,7 @@
 		isLoading = true;
 		try {
 			const qs = new URLSearchParams();
+			if (careSettingFilter) qs.set('careSetting', careSettingFilter);
 			if (wardFilter) qs.set('wardId', wardFilter);
 			if (statusFilter) qs.set('bedStatus', statusFilter);
 			const patientName = patientFilter.trim();
@@ -186,8 +198,27 @@
 
 	async function loadWards() {
 		if (!wardApi) return;
-		const res = await fetch(wardApi, { credentials: 'include' });
-		if (res.ok) wards = (await res.json()) as WardRow[];
+		const scopes = careSettingFilter
+			? [careSettingFilter.toLowerCase()]
+			: [
+					CareSettingEnum.IPD.toLowerCase(),
+					CareSettingEnum.ED.toLowerCase(),
+					CareSettingEnum.ICU.toLowerCase(),
+					CareSettingEnum.OT.toLowerCase()
+				];
+		const responses = await Promise.all(
+			scopes.map((scope) =>
+				fetch(`${wardApi}&scope=${scope}`, { credentials: 'include' })
+			)
+		);
+		const lists = await Promise.all(
+			responses.map(async (res) =>
+				res.ok ? ((await res.json()) as WardRow[]) : []
+			)
+		);
+		wards = lists
+			.flat()
+			.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
 	}
 
 	function rememberVisit(row: AdtBedStatusRow) {
@@ -255,6 +286,7 @@
 
 	function resetFilters() {
 		if (searchTimer) clearTimeout(searchTimer);
+		careSettingFilter = '';
 		wardFilter = '';
 		statusFilter = '';
 		patientFilter = '';
@@ -291,6 +323,22 @@
 		<WashCardBody
 			className="grid grid-cols-1 items-end gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
 		>
+			<div class="min-w-0 w-full">
+				<label class="label-ink mb-1 block text-sm" for="adt-bed-care-setting"
+					>Care setting</label
+				>
+				<WashSelect
+					id="adt-bed-care-setting"
+					className="w-full"
+					options={careSettingOptions}
+					bind:value={careSettingFilter}
+					onChange={() => {
+						wardFilter = '';
+						void loadWards();
+						void load();
+					}}
+				/>
+			</div>
 			<div class="min-w-0 w-full">
 				<label class="label-ink mb-1 block text-sm" for="adt-bed-ward"
 					>Ward</label
@@ -433,7 +481,9 @@
 									{@const canDischarge =
 										!!bed.admissionId &&
 										bed.bedStatus === IpdBedStatusEnum.OCCUPIED}
-									{@const canOpenChart = !!bed.visitId}
+									{@const canOpenChart =
+										!!bed.visitId &&
+										bed.occupancySource !== 'surgical'}
 									<WashCard className="h-40 w-full min-w-0">
 										<WashCardBody className="flex h-full min-h-0 flex-col p-3">
 											<div class="flex items-center justify-between gap-1.5">
@@ -448,6 +498,16 @@
 												>
 													{statusLabel(bed.bedStatus)}
 												</span>
+											</div>
+											<div class="mt-1 flex min-w-0 items-center gap-1">
+												<span class="badge badge-xs badge-ghost shrink-0">
+													{bed.careSetting}
+												</span>
+												{#if bed.dischargedInBed}
+													<span class="badge badge-xs badge-info shrink-0">
+														Discharged, in bed
+													</span>
+												{/if}
 											</div>
 											<div class="mt-2 min-w-0 space-y-0.5">
 												<p class="truncate text-xs leading-tight">

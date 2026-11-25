@@ -1,7 +1,10 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as bed from '$lib/server/medora/ipd/bed.server';
-import { isErForMasterPicker, isErFromScopeQuery } from '$lib/server/medora/ipd/master-is-er.util';
+import {
+	careSettingForMasterPicker,
+	careSettingFromScopeQuery
+} from '$lib/server/medora/ipd/master-care-setting.util';
 import {
 	IpdBedStatusEnum,
 	StatusEnum
@@ -45,14 +48,16 @@ export async function GET(event: RequestEvent) {
 				hospitalId,
 				wardId: Number.isFinite(wardId as number) ? wardId : undefined,
 				roomId: Number.isFinite(roomId as number) ? roomId : undefined,
-				isEr: isErForMasterPicker(
+				careSetting: careSettingForMasterPicker(
 					event.url.searchParams.get('scope')
 				)
 			})
 		);
 	}
 
-	const isEr = isErFromScopeQuery(event.url.searchParams.get('scope'));
+	const careSetting = careSettingFromScopeQuery(
+		event.url.searchParams.get('scope')
+	);
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
 	const pageSize = Number(
@@ -96,7 +101,7 @@ export async function GET(event: RequestEvent) {
 			statusId: Number.isFinite(statusId as number)
 				? statusId
 				: undefined,
-			isEr
+			careSetting
 		})
 	);
 }
@@ -206,6 +211,6 @@ export async function DELETE(event: RequestEvent) {
 	const id = Number(event.url.searchParams.get('id') ?? '0');
 	if (!Number.isFinite(id) || id <= 0)
 		throw error(400, 'id is required');
-	await bed.deleteBed({ id });
+	await bed.deleteBed({ id, hospitalId });
 	return json({ ok: true });
 }

@@ -106,7 +106,7 @@ export async function searchRxnormConcepts(input: {
 }
 
 function sortRxnormResults(rows: RxnormConceptDto[]): RxnormConceptDto[] {
-	return [...rows].sort((a, b) => {
+	return rows.toSorted((a, b) => {
 		const ra = TTY_RANK[a.tty] ?? 99;
 		const rb = TTY_RANK[b.tty] ?? 99;
 		if (ra !== rb) return ra - rb;

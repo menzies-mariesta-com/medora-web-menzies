@@ -162,3 +162,22 @@ export async function acuityDisplayForTriageLevelId(
 		.limit(1);
 	return row ? String(row.level) : null;
 }
+
+/** Resolve the hospital's master row for a 1-5 level number (ED triage signing). */
+export async function getEdTriageLevelIdByLevel(input: {
+	hospitalId: string;
+	level: number;
+}): Promise<number | null> {
+	const [row] = await ensureDb()
+		.select({ id: table.edTriageLevelTable.id })
+		.from(table.edTriageLevelTable)
+		.where(
+			and(
+				eq(table.edTriageLevelTable.hospitalId, input.hospitalId),
+				eq(table.edTriageLevelTable.level, input.level),
+				eq(table.edTriageLevelTable.statusId, StatusEnum.ACTIVE)
+			)
+		)
+		.limit(1);
+	return row?.id ?? null;
+}

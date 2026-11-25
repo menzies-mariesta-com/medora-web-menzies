@@ -21,7 +21,7 @@ async function parseJson<T>(res: Response): Promise<T> {
 function sortByLabel(
 	options: MenziesSelectFilterOption[]
 ): MenziesSelectFilterOption[] {
-	return [...options].sort((a, b) => a.label.localeCompare(b.label));
+	return options.toSorted((a, b) => a.label.localeCompare(b.label));
 }
 
 /** Store master (all hospital stores), not scoped to current table rows. */

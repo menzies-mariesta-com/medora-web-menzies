@@ -19,7 +19,7 @@ export function toastLine(entity: string, action: string): string {
 export function toastSuccess(
 	toast: ToastService,
 	entity: string,
-	action: string,
+	action = '',
 	detail?: string
 ) {
 	toast.addSuccessToast(toastLine(entity, action), detail);
@@ -28,7 +28,7 @@ export function toastSuccess(
 export function toastInfo(
 	toast: ToastService,
 	entity: string,
-	action: string,
+	action = '',
 	detail?: string
 ) {
 	toast.addInfoToast(toastLine(entity, action), detail);
@@ -37,7 +37,7 @@ export function toastInfo(
 export function toastWarning(
 	toast: ToastService,
 	entity: string,
-	action: string,
+	action = '',
 	detail?: string
 ) {
 	toast.addWarningToast(toastLine(entity, action), detail);

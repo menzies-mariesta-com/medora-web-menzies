@@ -12,7 +12,7 @@
 	<div class="tooltip tooltip-info" data-tip={m.docs_in_app_help()}>
 		<a
 			class="btn btn-ghost btn-square btn-info cursor-pointer"
-			href="{href}?from=app"
+			href="{href}#from-app"
 			target="_blank"
 			rel="noopener noreferrer"
 			aria-label={m.docs_in_app_help()}

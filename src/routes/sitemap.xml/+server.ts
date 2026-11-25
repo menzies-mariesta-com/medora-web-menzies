@@ -1,7 +1,6 @@
 import type { RequestHandler } from './$types';
 import { getSiteOrigin } from '$lib/server/seo/site-origin.server';
 import { PUBLIC_SITEMAP_PATHS, absoluteUrl } from '$lib/util/seo.util';
-import { getDocsManifest } from '$lib/docs/load-doc.server';
 
 function escapeXml(value: string): string {
 	return value
@@ -15,11 +14,8 @@ function escapeXml(value: string): string {
 export const GET: RequestHandler = async () => {
 	const origin = getSiteOrigin();
 	const lastmod = new Date().toISOString().slice(0, 10);
-	const manifest = getDocsManifest();
-	const paths = [
-		...PUBLIC_SITEMAP_PATHS,
-		...manifest.prerenderPaths.filter((p) => p !== '/docs')
-	];
+	// Public docs moved to the landing site, so this sitemap lists app pages only.
+	const paths = [...PUBLIC_SITEMAP_PATHS];
 
 	const urls = [...new Set(paths)]
 		.map((path) => {

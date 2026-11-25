@@ -17,6 +17,7 @@ export async function GET(event: RequestEvent) {
 	const visitId = parseUuid(event.url.searchParams.get('visitId'));
 	const mode = event.url.searchParams.get('mode') ?? 'bootstrap';
 
+	if (!visitId) throw error(400, 'visitId is required');
 	if (mode !== 'bootstrap') throw error(400, `Unknown mode: ${mode}`);
 
 	const [visit, documents, textPlaceholders] = await Promise.all([

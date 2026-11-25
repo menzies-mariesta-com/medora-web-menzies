@@ -57,6 +57,8 @@ export type MarLine = {
 	isOnDemand: boolean;
 	/** Continuous pump infusion: charted with start/stop, not per due dose. */
 	isInfusion: boolean;
+	/** Latest infusion marker on this line is a start (pump running now). */
+	infusionRunning: boolean;
 	infusionType: string | null;
 	rateMlHr: string | null;
 	lastGivenAt: string | null;
@@ -114,6 +116,22 @@ export function isOneTimeOrder(
 ): boolean {
 	return ONE_TIME_ORDER_TYPES.has(
 		(orderTypeName ?? '').trim().toLowerCase()
+	);
+}
+
+/**
+ * Charted on demand rather than against a due instant: every PRN and every
+ * continuous pump infusion. The MAR grid and the schedule planner share this
+ * one classification so they can never disagree.
+ */
+export function isOnDemandLine(line: {
+	frequencyAbbreviation: string | null | undefined;
+	orderTypeName: string | null | undefined;
+	infusionType: string | null | undefined;
+}): boolean {
+	return (
+		isPrnOrder(line.frequencyAbbreviation, line.orderTypeName) ||
+		line.infusionType === MedicationInfusionTypeEnum.CONTINUOUS
 	);
 }
 
@@ -254,13 +272,39 @@ function minuteBucket(at: string): number | null {
 	return Number.isFinite(ms) ? Math.floor(ms / MS_PER_MINUTE) : null;
 }
 
+/** Latest infusion marker on a line, so the card shows whether the pump runs. */
+function latestInfusionMarker(
+	rows: MedicationAdministrationRow[],
+	lineId: number
+): MedicationAdministrationRow | null {
+	let best: MedicationAdministrationRow | null = null;
+	let bestMs = -Infinity;
+	for (const row of rows) {
+		if (row.lineId !== lineId) continue;
+		if (
+			row.administrationStatus !==
+				MedicationAdministrationStatusEnum.INFUSION_START &&
+			row.administrationStatus !==
+				MedicationAdministrationStatusEnum.INFUSION_STOP
+		)
+			continue;
+		const ms = toMs(row.administeredAt);
+		if (Number.isFinite(ms) && ms > bestMs) {
+			bestMs = ms;
+			best = row;
+		}
+	}
+	return best;
+}
+
 /**
  * Group due doses into MAR rows (order lines) × time columns. `prnLines` adds
  * as-needed / infusion rows with no time cells — the page lists them separately
  * with their hard-stop countdown.
  */
 export function buildMarGrid(input: {
-	schedules: MedicationScheduleRow[];
+	/** Each due row carries its order line's labels; the grid never queries. */
+	schedules: (MedicationScheduleRow & MedicationLineRow)[];
 	administrations: MedicationAdministrationRow[];
 	prnLines?: MedicationLineRow[];
 	now?: string | Date;
@@ -295,7 +339,7 @@ export function buildMarGrid(input: {
 		const prn = isPrnOrder(meta.frequencyAbbreviation, meta.orderTypeName);
 		const infusion =
 			meta.infusionType === MedicationInfusionTypeEnum.CONTINUOUS;
-		const onDemand = scheduledAt == null || prn || infusion;
+		const onDemand = scheduledAt == null || isOnDemandLine(meta);
 		const lastGivenAt = latestGivenAt(input.administrations, meta.lineId);
 		return {
 			lineId: meta.lineId,
@@ -311,6 +355,10 @@ export function buildMarGrid(input: {
 			isPrn: prn,
 			isOnDemand: onDemand,
 			isInfusion: infusion,
+			infusionRunning:
+				latestInfusionMarker(input.administrations, meta.lineId)
+					?.administrationStatus ===
+				MedicationAdministrationStatusEnum.INFUSION_START,
 			infusionType: meta.infusionType,
 			rateMlHr: meta.rateMlHr,
 			lastGivenAt,

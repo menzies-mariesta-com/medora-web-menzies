@@ -624,6 +624,27 @@
       "when": 1795286400000,
       "tag": "0088_user_group_page_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1795290000000,
+      "tag": "0089_ed_encounter_triage_signing",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1795293600000,
+      "tag": "0090_care_setting",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1795297200000,
+      "tag": "0091_mlc_documentation",
+      "breakpoints": true
     }
   ]
 }

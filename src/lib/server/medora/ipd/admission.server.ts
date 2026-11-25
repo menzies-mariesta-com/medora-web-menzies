@@ -20,13 +20,18 @@ import {
 	VisitStatusTaggingEnum,
 	VisitTypeEnum
 } from '$lib/model/enum/db-link';
+import { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 import {
 	normalizePagination,
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
-import { resolveBedTariffContext, bedDailyRateSql } from '$lib/server/medora/ipd/tariff.server';
+import { assertDischargeSummarySigned } from '$lib/server/medora/clinical/discharge-summary.server';
+import {
+	resolveBedTariffContext,
+	bedDailyRateSql
+} from '$lib/server/medora/ipd/tariff.server';
 import { timelineDurationDaysToDbString } from '$lib/util/timeline-duration-days.util';
 import {
 	and,
@@ -239,6 +244,19 @@ export async function admitVisitToIpd(
 	if (ctx.branchId !== payload.branchId) {
 		throw error(400, 'Bed does not belong to this branch');
 	}
+	if (ctx.careSetting === CareSettingEnum.ED) {
+		throw error(
+			400,
+			'ED beds are admitted through the emergency flow'
+		);
+	}
+	const requestedCareSetting = payload.careSetting ?? ctx.careSetting;
+	if (requestedCareSetting !== ctx.careSetting) {
+		throw error(
+			400,
+			`Bed is a ${ctx.careSetting} bed, not ${requestedCareSetting}`
+		);
+	}
 	if (
 		typeof payload.wardId === 'number' &&
 		payload.wardId !== ctx.wardId
@@ -263,7 +281,10 @@ export async function admitVisitToIpd(
 			: null;
 
 	if (sourceVisitId != null) {
-		const linked = await findActiveAdmissionForSourceVisit(sourceVisitId, db);
+		const linked = await findActiveAdmissionForSourceVisit(
+			sourceVisitId,
+			db
+		);
 		if (linked) {
 			throw error(
 				400,
@@ -282,7 +303,8 @@ export async function admitVisitToIpd(
 	if (!admittingDoctorId && admissionOrderId != null) {
 		const [orderDoc] = await db
 			.select({
-				orderingDoctorId: table.ipdAdmissionOrderTable.orderingDoctorId
+				orderingDoctorId:
+					table.ipdAdmissionOrderTable.orderingDoctorId
 			})
 			.from(table.ipdAdmissionOrderTable)
 			.where(
@@ -292,7 +314,10 @@ export async function admitVisitToIpd(
 						table.ipdAdmissionOrderTable.hospitalId,
 						payload.hospitalId
 					),
-					ne(table.ipdAdmissionOrderTable.statusId, StatusEnum.DELETED)
+					ne(
+						table.ipdAdmissionOrderTable.statusId,
+						StatusEnum.DELETED
+					)
 				)
 			)
 			.limit(1);
@@ -318,9 +343,8 @@ export async function admitVisitToIpd(
 	});
 
 	const admittedAt = new Date().toISOString();
-	const { createPatientVisitRecord } = await import(
-		'$lib/server/medora/patient-visit/patient-visit.server'
-	);
+	const { createPatientVisitRecord } =
+		await import('$lib/server/medora/patient-visit/patient-visit.server');
 
 	return db.transaction(async (tx) => {
 		// Atomic claim: only one concurrent admission can take a free bed.
@@ -346,8 +370,7 @@ export async function admitVisitToIpd(
 					id: table.ipdAdmissionOrderTable.id,
 					statusTaggingId:
 						table.ipdAdmissionOrderTable.statusTaggingId,
-					sourceVisitId:
-						table.ipdAdmissionOrderTable.sourceVisitId,
+					sourceVisitId: table.ipdAdmissionOrderTable.sourceVisitId,
 					patientId: table.ipdAdmissionOrderTable.patientId
 				})
 				.from(table.ipdAdmissionOrderTable)
@@ -690,7 +713,9 @@ export async function closeIpdVisit(input: {
 		return;
 	}
 	const [admission] = await db
-		.select({ admissionStatus: table.ipdAdmissionTable.admissionStatus })
+		.select({
+			admissionStatus: table.ipdAdmissionTable.admissionStatus
+		})
 		.from(table.ipdAdmissionTable)
 		.where(
 			and(
@@ -722,6 +747,7 @@ export async function getIpdCensusPaginated(
 		hospitalId: string;
 		branchId?: string;
 		wardId?: number;
+		careSetting?: CareSettingEnum;
 		search?: string;
 	}
 ): Promise<PaginatedResult<IpdCensusRow>> {
@@ -743,6 +769,11 @@ export async function getIpdCensusPaginated(
 	if (typeof params.wardId === 'number') {
 		conditions.push(
 			eq(table.ipdAdmissionTable.wardId, params.wardId)
+		);
+	}
+	if (params.careSetting) {
+		conditions.push(
+			eq(table.bedTable.careSetting, params.careSetting)
 		);
 	}
 	const search = params.search?.trim();
@@ -775,6 +806,7 @@ export async function getIpdCensusPaginated(
 			branchId: table.ipdAdmissionTable.branchId,
 			wardId: table.ipdAdmissionTable.wardId,
 			wardName: table.wardTable.name,
+			careSetting: table.bedTable.careSetting,
 			roomId: table.ipdAdmissionTable.roomId,
 			roomName: table.roomTable.name,
 			bedId: table.ipdAdmissionTable.bedId,
@@ -811,10 +843,7 @@ export async function getIpdCensusPaginated(
 		)
 		.leftJoin(
 			table.wardCategoryTable,
-			eq(
-				table.wardTable.wardCategoryId,
-				table.wardCategoryTable.id
-			)
+			eq(table.wardTable.wardCategoryId, table.wardCategoryTable.id)
 		)
 		.leftJoin(
 			table.roomTable,
@@ -822,10 +851,7 @@ export async function getIpdCensusPaginated(
 		)
 		.leftJoin(
 			table.roomCategoryTable,
-			eq(
-				table.roomTable.roomCategoryId,
-				table.roomCategoryTable.id
-			)
+			eq(table.roomTable.roomCategoryId, table.roomCategoryTable.id)
 		)
 		.leftJoin(
 			table.bedTable,
@@ -863,6 +889,10 @@ export async function getIpdCensusPaginated(
 				table.patientTable,
 				eq(table.patientVisitTable.patientId, table.patientTable.id)
 			)
+			.leftJoin(
+				table.bedTable,
+				eq(table.ipdAdmissionTable.bedId, table.bedTable.id)
+			)
 			.where(whereClause)
 	]);
 
@@ -881,6 +911,7 @@ export async function getIpdCensusPaginated(
 		branchId: r.branchId,
 		wardId: r.wardId,
 		wardName: r.wardName,
+		careSetting: r.careSetting ?? CareSettingEnum.IPD,
 		roomId: r.roomId,
 		roomName: r.roomName,
 		bedId: r.bedId,

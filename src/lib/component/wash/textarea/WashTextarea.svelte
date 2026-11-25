@@ -3,14 +3,24 @@
 		id,
 		placeholder,
 		className,
-		value = $bindable()
+		value = $bindable(),
+		disabled = false,
+		oninput
 	} = $props<{
 		id?: string;
 		placeholder?: string;
 		className?: string;
 		value?: string;
+		disabled?: boolean;
+		oninput?: (event: Event) => void;
 	}>();
 </script>
 
-<textarea {id} class="textarea {className}" {placeholder} bind:value
+<textarea
+	{id}
+	{disabled}
+	class="textarea {className}"
+	{placeholder}
+	bind:value
+	{oninput}
 ></textarea>

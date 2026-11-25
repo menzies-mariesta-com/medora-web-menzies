@@ -1,3 +1,9 @@
+<script lang="ts" module>
+	export type SessionExtendDialogResult = {
+		sessionExpiresAt: string;
+	};
+</script>
+
 <script lang="ts">
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
@@ -10,13 +16,9 @@
 	import { m } from '$lib/paraglide/messages';
 	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
 	import { sessionExtendMessageParams } from '$lib/util/session-extend-message.util';
-const msg = m as Record<string, (inputs?: object) => string>;
+	const msg = m as Record<string, (inputs?: object) => string>;
 	const toastService = new ToastService();
 	const sessionExtendMsg = sessionExtendMessageParams();
-
-	export type SessionExtendDialogResult = {
-		sessionExpiresAt: string;
-	};
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 

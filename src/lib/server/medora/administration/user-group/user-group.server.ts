@@ -133,7 +133,7 @@ export async function updateUserGroup(
 		.where(eq(table.userGroupTable.id, id))
 		.returning();
 	if (!updated) throw error(404, 'User group not found');
-	void notifyHospitalMasterWrite(hospitalId);
+	void notifyHospitalMasterWrite(hidUpdate);
 
 	return updated;
 }

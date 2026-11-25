@@ -260,7 +260,7 @@
 					disabled={submitting}
 					onClick={handleWhoSave}
 				>
-					<LucideCircleCheck class="size-4" aria-hidden="true" />
+					<LucideCircleCheck className="size-4" aria-hidden="true" />
 					{msg.periop_sign_save()}
 				</WashButton>
 			</WashCardBody>

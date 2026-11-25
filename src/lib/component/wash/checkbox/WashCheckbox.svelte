@@ -3,11 +3,13 @@
 		className,
 		id,
 		checked = $bindable(),
+		disabled = false,
 		onCheckedChange
 	} = $props<{
 		className?: string;
 		id?: string;
 		checked?: boolean;
+		disabled?: boolean;
 		/** Fires after the checkbox value changes (typically user input). */
 		onCheckedChange?: () => void;
 	}>();
@@ -17,6 +19,7 @@
 	{id}
 	type="checkbox"
 	bind:checked
+	{disabled}
 	class="checkbox {className}"
 	onchange={() => onCheckedChange?.()}
 />

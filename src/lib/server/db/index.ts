@@ -231,7 +231,7 @@ function buildSoftDeleteSet(
 }
 
 /** Replace-via-DELETE+INSERT tables; must not soft-delete tombstones. */
-function usesHardDeleteForTable(tableDef: TableLike): boolean {
+function usesHardDeleteForTable(tableDef: object): boolean {
 	return (
 		tableDef === schema.opBillingLineTable ||
 		tableDef === schema.ipBillingLineTable ||
@@ -332,7 +332,7 @@ function withAudit(
 					const softDeleteSet = buildSoftDeleteSet(tableDef, userId);
 					if (
 						Object.keys(softDeleteSet).length === 0 ||
-						usesHardDeleteForTable(tableDef as TableLike)
+						usesHardDeleteForTable(tableDef)
 					) {
 						return hardDeleteBuilder;
 					}

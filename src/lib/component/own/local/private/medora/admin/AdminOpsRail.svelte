@@ -87,7 +87,11 @@
 		return map[key]?.() ?? key;
 	}
 
-	async function loadOps(opts?: { silent?: boolean }) {
+	async function loadOps(opts?: {
+		silent?: boolean;
+		signal?: AbortSignal;
+		isCancelled?: () => boolean;
+	}) {
 		const silent = opts?.silent === true;
 		if (silent) refreshing = true;
 		else loading = true;
@@ -116,12 +120,18 @@
 
 	$effect(() => {
 		const key = refreshKey;
-			let cancelled = false;
-			const ac = new AbortController();
-		if (key > 0) void loadOps({ silent: true }, { signal: ac.signal, isCancelled: () => cancelled });
-			return () => {
-				cancelled = true;
-				ac.abort();
+		if (key <= 0) return;
+
+		let cancelled = false;
+		const ac = new AbortController();
+		void loadOps({
+			silent: true,
+			signal: ac.signal,
+			isCancelled: () => cancelled
+		});
+		return () => {
+			cancelled = true;
+			ac.abort();
 			};
 	});
 </script>

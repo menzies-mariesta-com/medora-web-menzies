@@ -1,5 +1,8 @@
 import { error } from '@sveltejs/kit';
-import { toFixedDecimalString } from '$lib/util/number-display.util';
+import {
+	toFixedDecimalString,
+	type NumberDisplayInput
+} from '$lib/util/number-display.util';
 
 function asTrimmedString(v: unknown): string {
 	return typeof v === 'string' ? v.trim() : String(v ?? '').trim();
@@ -45,14 +48,14 @@ export function optionalMoneyDecimal2dp(
 
 /** Normalize nullable DB/API money without throwing (legacy rows). */
 export function normalizeMoneyDecimal2dpOrNull(
-	value: string | null | undefined
+	value: NumberDisplayInput
 ): string | null {
 	if (value == null || String(value).trim() === '') return null;
 	return toFixedDecimalString(value, 2);
 }
 
 export function normalizeMoneyDecimal2dpOrZero(
-	value: string | null | undefined
+	value: NumberDisplayInput
 ): string {
 	return normalizeMoneyDecimal2dpOrNull(value) ?? '0.00';
 }

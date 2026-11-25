@@ -12,7 +12,7 @@
 	  small client-sliced lists (e.g. embedded pickers).
 -->
 <script lang="ts">
-	import { createEventDispatcher, type Snippet } from 'svelte';
+	import { createEventDispatcher, untrack, type Snippet } from 'svelte';
 
 	import WashTable from '$lib/component/wash/table/WashTable.svelte';
 	import WashTableHeader from '$lib/component/wash/table/head/WashTableHeader.svelte';
@@ -301,7 +301,7 @@
 		(async () => {
 			const next: Partial<
 				Record<MenziesTableFilterMasterKey, MenziesSelectFilterOption[]>
-			> = { ...masterFilterOptions };
+			> = {};
 
 			for (const key of keysNeeded) {
 				try {
@@ -319,7 +319,10 @@
 			}
 
 			if (loadId !== masterFilterLoadId) return;
-			masterFilterOptions = next;
+			masterFilterOptions = {
+				...untrack(() => masterFilterOptions),
+				...next
+			};
 		})();
 
 		return () => {
@@ -745,7 +748,13 @@
 		</div>
 	{/if}
 
-	<div class={tableScrollClass}>
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex — keyboard scroll per responsive-table guide -->
+	<div
+		class={tableScrollClass}
+		tabindex="0"
+		role="region"
+		aria-label={title?.trim() ? title : 'Data table'}
+	>
 		<WashTable
 			useRecipe={false}
 			className="table table-zebra [&_tbody_tr]:hover:bg-primary/40 w-max min-w-full"
@@ -753,7 +762,10 @@
 			<WashTableHeader className="{chromeSurfaceClass} sticky top-0 z-10">
 				<tr>
 					{#if hasActionsColumn}
-						<th class="menzies-table-actions-col text-center align-middle">
+						<th
+							scope="col"
+							class="menzies-table-actions-col text-center align-middle"
+						>
 							<span class="menzies-table-header-cell font-bold"
 								>{actionsHeader}</span
 							>
@@ -761,6 +773,7 @@
 					{/if}
 					{#each displayColumns as column (column.id)}
 						<th
+							scope="col"
 							class={`text-center align-middle ${column.headerClass ?? column.widthClass ?? ''}`.trim()}
 						>
 							<span class="menzies-table-header-cell font-bold"
@@ -773,6 +786,7 @@
 					<tr>
 						{#if hasActionsColumn}
 							<th
+								scope="col"
 								class="menzies-table-actions-col text-center align-middle"
 							></th>
 						{/if}
@@ -781,6 +795,7 @@
 							{@const filterType = column.filterType ?? 'text'}
 							{@const selectOptions = resolveSelectFilterOptions(column)}
 							<th
+								scope="col"
 								class={`text-center align-middle ${column.headerClass ?? column.widthClass ?? ''}`.trim()}
 							>
 								{#if isFilterable}

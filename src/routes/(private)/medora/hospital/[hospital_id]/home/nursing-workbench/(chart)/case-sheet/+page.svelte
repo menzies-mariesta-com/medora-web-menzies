@@ -12,6 +12,7 @@
 		ServiceOrderDetailListRow
 	} from '$lib/model/type/medora/ui-rows.type';
 	import { m } from '$lib/paraglide/messages';
+	import type { VitalRow } from '$lib/util/case-sheet-print-body.util';
 	import { DocumentTypeId } from '$lib/model/constant/document-type-id.constant';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import type { CaseSheetPrintFormatters } from '$lib/util/case-sheet-print-body.util';
@@ -30,7 +31,10 @@
 		uploadPatientAttachmentPdf
 	} from '$lib/util/html-to-pdf.util';
 	import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
-	import { formatNumberDisplay } from '$lib/util/number-display.util';
+	import {
+	formatNumberDisplay,
+	type NumberDisplayInput
+} from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { printByFromPage } from '$lib/tool/emr/document-master-client-print.util';
 	import { PageActionEnum } from '$lib/model/enum/page-action.enum';
@@ -98,9 +102,7 @@
 		return String(value);
 	}
 
-	function getVitalDisplayDate(
-		v: PatientDiagnosisListRow
-	): string | null {
+	function getVitalDisplayDate(v: VitalRow): string | null {
 		return v.vitalDateTime ?? v.createdAt ?? null;
 	}
 
@@ -161,7 +163,8 @@
 			formatDateTime: (value) =>
 				formatMenziesTableDateTime(value, '–'),
 			formatVital,
-			formatNumberDisplay,
+			formatNumberDisplay: (value) =>
+				formatNumberDisplay(value as NumberDisplayInput),
 			getVitalDisplayDate
 		};
 	}

@@ -1,5 +1,8 @@
 import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/medora/department-consumption-detail.type';
-import type { ConsumptionDraftLineIum } from '$lib/model/type/medora/department-consumption-detail.type';
+import type {
+	ConsumptionDraftLineIum,
+	StockUnitConversion
+} from '$lib/model/type/medora/department-consumption-detail.type';
 import type { InventoryStockLotDto } from '$lib/model/type/medora/inventory-stock-lot.type';
 import { mapStockLotToBatchAllocationDraft } from '$lib/tool/inventory/map-stock-lot-to-batch-draft.util';
 import {
@@ -143,7 +146,7 @@ export function syncMedOrderFefoAllocations(input: {
 	batchAllocations: ConsumptionBatchAllocationDraft[];
 	qtyOut: string;
 	outUnitId: number;
-	ium: ConsumptionDraftLineIum | null;
+	ium: StockUnitConversion | null;
 }): ConsumptionBatchAllocationDraft[] {
 	const { batchAllocations, qtyOut, outUnitId, ium } = input;
 	if (!ium || batchAllocations.length === 0 || outUnitId <= 0) {
@@ -175,7 +178,7 @@ export function applyDraftReservationsToLots(
 	lots: ConsumptionBatchAllocationDraft[],
 	draftLines: MedOrderDraftLineStockReservation[],
 	itemId: number,
-	ium: ConsumptionDraftLineIum | null
+	ium: StockUnitConversion | null
 ): ConsumptionBatchAllocationDraft[] {
 	if (!ium || lots.length === 0) return lots;
 	const pf = ium.purchaseConversionFactor;
@@ -207,7 +210,7 @@ export function applyDraftReservationsToLots(
 export function syncQtyOutFromAllocations(
 	allocations: ConsumptionBatchAllocationDraft[],
 	outUnitId: number,
-	ium: ConsumptionDraftLineIum | null
+	ium: StockUnitConversion | null
 ): string {
 	const purchaseTotal = sumAllocationPurchaseQty(allocations);
 	if (!purchaseTotal || !ium || outUnitId <= 0) return '';
@@ -246,7 +249,7 @@ export function sumAllocationPurchaseQty(
 
 export function validateMedOrderInventoryLine(input: {
 	batchAllocations: ConsumptionBatchAllocationDraft[];
-	ium: ConsumptionDraftLineIum | null;
+	ium: StockUnitConversion | null;
 	qtyOut: string;
 	outUnitId: number;
 	unitSalePrice: string;

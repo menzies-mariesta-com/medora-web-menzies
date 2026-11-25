@@ -289,8 +289,8 @@
 			format: (_value, row) =>
 				`${row.bpSystolic ?? '–'}/${row.bpDiastolic ?? '–'}`,
 			cellClassGetter: (row) =>
-				vitalTextClass(row.bpSystolic, 'bpSystolic') ||
-				vitalTextClass(row.bpDiastolic, 'bpDiastolic')
+				vitalTextClass(row.bpSystolic, VitalEnum.BP_SYSTOLIC) ||
+				vitalTextClass(row.bpDiastolic, VitalEnum.BP_DIASTOLIC)
 		},
 		{
 			id: 'pulse',
@@ -298,7 +298,7 @@
 			widthClass: 'w-20 min-w-[5rem]',
 			filterable: false,
 			format: (_value, row) => row.pulse ?? '–',
-			cellClassGetter: (row) => vitalTextClass(row.pulse, 'pulse')
+			cellClassGetter: (row) => vitalTextClass(row.pulse, VitalEnum.PULSE)
 		},
 		{
 			id: 'temperature',
@@ -307,7 +307,7 @@
 			filterable: false,
 			format: (_value, row) => row.temperature ?? '–',
 			cellClassGetter: (row) =>
-				vitalTextClass(row.temperature, 'temperature')
+				vitalTextClass(row.temperature, VitalEnum.TEMPERATURE)
 		},
 		{
 			id: 'respiration',
@@ -316,7 +316,7 @@
 			filterable: false,
 			format: (_value, row) => row.respiration ?? '–',
 			cellClassGetter: (row) =>
-				vitalTextClass(row.respiration, 'respiration')
+				vitalTextClass(row.respiration, VitalEnum.RESPIRATION)
 		},
 		{
 			id: 'spO2',
@@ -324,7 +324,7 @@
 			widthClass: 'w-20 min-w-[5rem]',
 			filterable: false,
 			format: (_value, row) => row.spO2 ?? '–',
-			cellClassGetter: (row) => vitalTextClass(row.spO2, 'spO2')
+			cellClassGetter: (row) => vitalTextClass(row.spO2, VitalEnum.SP_O2)
 		},
 		{
 			id: 'weight',
@@ -339,7 +339,7 @@
 			widthClass: 'w-28 min-w-[7rem]',
 			filterable: false,
 			format: (_value, row) => row.rbs ?? '–',
-			cellClassGetter: (row) => vitalTextClass(row.rbs, 'rbs')
+			cellClassGetter: (row) => vitalTextClass(row.rbs, VitalEnum.RBS)
 		}
 	];
 </script>
@@ -457,7 +457,6 @@
 						seriesA={weightSeries}
 						yUnit="kg"
 						includeZero={false}
-						drawAs="dots"
 						emptyMessage={m.visit_visual_no_trend()}
 					/>
 				</div>
@@ -476,7 +475,7 @@
 						title={m.visit_visual_chart_glucose()}
 						seriesA={glucoseSeries}
 						yUnit="mg/dL"
-						drawAs="bars"
+						includeZero={false}
 						band={VITAL_REFERENCE_RANGES[VitalEnum.RBS as VitalKey]}
 						emptyMessage={m.visit_visual_no_trend()}
 					/>

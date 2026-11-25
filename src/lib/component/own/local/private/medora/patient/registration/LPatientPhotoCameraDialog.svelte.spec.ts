@@ -4,7 +4,8 @@ import {
 	it,
 	vi,
 	beforeEach,
-	afterEach
+	afterEach,
+	type Mock
 } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import LPatientPhotoCameraDialog from './LPatientPhotoCameraDialog.svelte';
@@ -17,8 +18,8 @@ import LPatientPhotoCameraDialog from './LPatientPhotoCameraDialog.svelte';
 
 type Harness = {
 	streamTracks: { stopped: number };
-	confirm: ReturnType<typeof vi.fn>;
-	cancel: ReturnType<typeof vi.fn>;
+	confirm: Mock<(data?: unknown) => void | Promise<void>>;
+	cancel: Mock<() => void>;
 };
 
 function stubCamera(options?: { rejectWith?: string }): Harness {
@@ -54,8 +55,8 @@ function stubCamera(options?: { rejectWith?: string }): Harness {
 	});
 	return {
 		streamTracks,
-		confirm: vi.fn(),
-		cancel: vi.fn()
+		confirm: vi.fn<(data?: unknown) => void | Promise<void>>(),
+		cancel: vi.fn<() => void>()
 	};
 }
 

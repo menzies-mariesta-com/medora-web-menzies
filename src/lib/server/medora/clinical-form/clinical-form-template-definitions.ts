@@ -473,8 +473,204 @@ export const SYSTEM_CLINICAL_FORM_TEMPLATES: {
 		}
 	},
 	{
-		code: 'ed_mlc_documentation_v1',
+		code: 'ed_mlc_documentation_v2',
 		title: 'MLC documentation',
+		schemaJson: {
+			sections: [
+				{
+					id: 'incident',
+					type: 'section',
+					label: 'Incident',
+					sectionFields: [
+						{
+							id: 'incident_datetime',
+							type: 'datetime',
+							label: 'Incident date/time',
+							required: true
+						},
+						{
+							id: 'incident_location',
+							type: 'text',
+							label: 'Place of incident',
+							required: true
+						},
+						{
+							id: 'police_station',
+							type: 'text',
+							label: 'Police station',
+							required: true
+						},
+						{
+							id: 'fir_no',
+							type: 'text',
+							label: 'FIR / crime reference no'
+						},
+						{
+							id: 'brought_by',
+							type: 'text',
+							label: 'Brought by (name)'
+						},
+						{
+							id: 'brought_by_relation',
+							type: 'text',
+							label:
+								'Relationship / designation of person bringing the case'
+						}
+					]
+				},
+				{
+					id: 'history',
+					type: 'section',
+					label: 'History',
+					sectionFields: [
+						{
+							id: 'alleged_history',
+							type: 'textarea',
+							label: 'Alleged history as narrated',
+							required: true
+						},
+						{
+							id: 'consciousness_state',
+							type: 'enum',
+							label: 'State at examination',
+							required: true,
+							options: [
+								{
+									value: 'oriented',
+									label: 'Conscious and oriented'
+								},
+								{ value: 'drowsy', label: 'Drowsy' },
+								{ value: 'unconscious', label: 'Unconscious' },
+								{
+									value: 'intoxicated',
+									label: 'Apparently intoxicated'
+								}
+							]
+						}
+					]
+				},
+				{
+					id: 'examination',
+					type: 'section',
+					label: 'Examination',
+					sectionFields: [
+						{
+							id: 'exam_general',
+							type: 'textarea',
+							label: 'General examination findings',
+							required: true
+						},
+						{
+							id: 'exam_injuries',
+							type: 'table',
+							label: 'Injuries',
+							required: true,
+							columns: [
+								{ id: 'region', label: 'Region', type: 'text' },
+								{
+									id: 'nature',
+									label: 'Nature',
+									type: 'enum',
+									options: [
+										{ value: 'abrasion', label: 'Abrasion' },
+										{ value: 'contusion', label: 'Contusion' },
+										{ value: 'laceration', label: 'Laceration' },
+										{
+											value: 'incised_wound',
+											label: 'Incised wound'
+										},
+										{ value: 'stab_wound', label: 'Stab wound' },
+										{ value: 'burn', label: 'Burn' },
+										{ value: 'fracture', label: 'Fracture' },
+										{ value: 'bite', label: 'Bite mark' }
+									]
+								},
+								{ id: 'size', label: 'Size', type: 'text' },
+								{ id: 'age', label: 'Age of injury', type: 'text' },
+								{ id: 'remarks', label: 'Remarks', type: 'text' }
+							]
+						}
+					]
+				},
+				{
+					id: 'opinion',
+					type: 'section',
+					label: 'Opinion',
+					sectionFields: [
+						{
+							id: 'nature_of_weapon',
+							type: 'enum',
+							label: 'Nature of weapon',
+							options: [
+								{ value: 'blunt', label: 'Blunt' },
+								{ value: 'sharp', label: 'Sharp' },
+								{ value: 'firearm', label: 'Firearm' },
+								{ value: 'thermal', label: 'Thermal' },
+								{ value: 'other', label: 'Other' },
+								{ value: 'not_applicable', label: 'Not applicable' }
+							]
+						},
+						{
+							id: 'injury_age',
+							type: 'text',
+							label: 'Opinion on age of injuries'
+						},
+						{
+							id: 'opinion',
+							type: 'textarea',
+							label: 'Opinion of the examining doctor',
+							required: true
+						},
+						{
+							id: 'advised_referral',
+							type: 'text',
+							label: 'Referral / admission advised'
+						}
+					]
+				},
+				{
+					id: 'signatures',
+					type: 'section',
+					label: 'Attestation',
+					sectionFields: [
+						{
+							id: 'doctor_signature',
+							type: 'signature',
+							label: 'Examining doctor',
+							required: true
+						},
+						{
+							id: 'doctor_signed_at',
+							type: 'signature_datetime',
+							label: 'Signed at',
+							required: true
+						},
+						{
+							id: 'witness_name',
+							type: 'text',
+							label: 'Witness name and designation',
+							required: true
+						},
+						{
+							id: 'witness_signature',
+							type: 'witness_signature',
+							label: 'Witness signature',
+							required: true
+						},
+						{
+							id: 'witness_signed_at',
+							type: 'signature_datetime',
+							label: 'Witness signed at',
+							required: true
+						}
+					]
+				}
+			]
+		}
+	},
+	{
+		code: 'ed_mlc_documentation_v1',
+		title: 'MLC documentation (legacy v1)',
 		schemaJson: {
 			sections: [
 				{

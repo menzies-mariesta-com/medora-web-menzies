@@ -144,6 +144,8 @@
 			return m.prefix_configuration_purpose_med_order_receipt();
 		if (p.id === 'bill')
 			return m.prefix_configuration_purpose_bill();
+		if (p.id === 'mlc')
+			return m.prefix_configuration_purpose_mlc();
 		return m.prefix_configuration_purpose_order();
 	}
 
@@ -184,6 +186,9 @@
 		if (p.id === 'bill') {
 			return m.prefix_configuration_purpose_bill_help();
 		}
+		if (p.id === 'mlc') {
+			return m.prefix_configuration_purpose_mlc_help();
+		}
 		return m.prefix_configuration_purpose_order_help();
 	}
 
@@ -208,6 +213,8 @@
 			return m.prefix_configuration_edit_med_order_receipt_title();
 		if (p.id === 'bill')
 			return m.prefix_configuration_edit_bill_title();
+		if (p.id === 'mlc')
+			return m.prefix_configuration_edit_mlc_title();
 		return m.prefix_configuration_edit_order_title();
 	}
 

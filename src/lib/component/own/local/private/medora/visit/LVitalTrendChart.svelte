@@ -1,9 +1,5 @@
 <script lang="ts">
-	import {
-		D3Util,
-		type BarChartOptions,
-		type LineChartOptions
-	} from '$lib/util/d3.util';
+	import { D3Util, type LineChartOptions } from '$lib/util/d3.util';
 	import { m } from '$lib/paraglide/messages';
 	import type {
 		VitalTrendPoint,
@@ -22,7 +18,6 @@
 		yUnit = '',
 		includeZero = true,
 		band,
-		drawAs = 'line',
 		emptyMessage
 	} = $props<{
 		title: string;
@@ -34,7 +29,6 @@
 		includeZero?: boolean;
 		/** Normal reference range, shaded behind the data. */
 		band?: { min: number; max: number };
-		drawAs?: 'line' | 'dots' | 'bars';
 		emptyMessage: string;
 	}>();
 
@@ -51,18 +45,9 @@
 			b: (seriesB ?? []).map((p) => [p.at, p.value]),
 			zero: includeZero,
 			unit: yUnit,
-			band,
-			drawAs
+			band
 		})
 	);
-
-	/** Bars need a label per reading; the axis is band-scaled, not time-scaled. */
-	function barLabel(at: number): string {
-		return new Date(at).toLocaleDateString(undefined, {
-			month: 'short',
-			day: 'numeric'
-		});
-	}
 
 	function tooltipFor(d: Point): string {
 		const value = yUnit ? `${d.value} ${yUnit}` : `${d.value}`;
@@ -90,21 +75,6 @@
 			}
 			if (!hasData) return;
 
-			if (drawAs === 'bars') {
-				const options: BarChartOptions<Point> = {
-					container: host,
-					data: seriesA,
-					width,
-					height,
-					xAccessor: (d) => barLabel(d.at),
-					yAccessor: (d) => d.value,
-					band,
-					tooltipFormatter: tooltipFor
-				};
-				D3Util.createBarChart(options);
-				return;
-			}
-
 			const options: LineChartOptions<Point> = {
 				container: host,
 				// The x axis spans both series; extra series draw their own points.
@@ -116,7 +86,7 @@
 				xScaleType: 'time',
 				includeZero,
 				band,
-				drawAs: drawAs === 'dots' ? 'dots' : 'line',
+				showArea: true,
 				theme: { lineColor: SERIES_A_COLOR },
 				tooltipFormatter: tooltipFor,
 				series:
@@ -126,8 +96,7 @@
 									data: seriesB,
 									yAccessor: (d: Point) => d.value,
 									color: SERIES_B_COLOR,
-									label: seriesBLabel,
-									drawAs: drawAs === 'dots' ? 'dots' : 'line'
+									label: seriesBLabel
 								}
 							]
 						: []

@@ -501,7 +501,7 @@
 					);
 					orderId = created.id;
 				} else {
-					const sorted = [...existingOrders].sort(
+					const sorted = existingOrders.toSorted(
 						(a, b) => b.id - a.id
 					);
 					orderId = sorted[0]!.id;

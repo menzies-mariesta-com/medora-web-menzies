@@ -1,6 +1,7 @@
 export enum EdBoardColumnEnum {
 	WAITING_TRIAGE = 'waiting_triage',
 	TRIAGE = 'triage',
+	WAITING_CLINICIAN = 'waiting_clinician',
 	FAST_TRACK = 'fast_track',
 	MAJORS = 'majors',
 	RESUS = 'resus',

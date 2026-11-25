@@ -8,14 +8,16 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import type { WardRow } from '$lib/model/type/medora/ipd/ipd.type';
 	import {
 		administrationWardMasterApi,
-		erWardRowAsUnified,
+		wardRowAsUnified,
 		masterScopeDisplayLabel,
+		masterScopeOfCareSetting,
 		type UnifiedWardListRow
 	} from '$lib/tool/medora/administration-master-scope.util';
 	import { m } from '$lib/paraglide/messages';
@@ -51,7 +53,7 @@
 			header: 'Scope',
 			widthClass: 'w-20 min-w-[4rem]',
 			filterable: false,
-			format: (_v, row) => masterScopeDisplayLabel(row.isEr)
+			format: (_v, row) => masterScopeDisplayLabel(row.careSetting)
 		},
 		{
 			id: 'id',
@@ -110,59 +112,39 @@
 		}
 	];
 
-	async function fetchScopePage(scope: 'ipd' | 'er') {
-		if (!hospitalId) {
-			return { data: [] as UnifiedWardListRow[], total: 0, totalPages: 1 };
-		}
-		const api = administrationWardMasterApi(hospitalId, scope);
-		const query = new SvelteURLSearchParams({
-			page: String(currentPage),
-			pageSize: String(Number(pageSizeStr) || 10)
-		});
-		query.set('scope', scope);
-		const name = tableFilters.name?.trim();
-		const code = tableFilters.code?.trim();
-		const statusId = Number(tableFilters.status);
-		if (name) query.set('name', name);
-		if (code) query.set('code', code);
-		if (Number.isFinite(statusId) && statusId > 0) {
-			query.set('statusId', String(statusId));
-		}
-		const response = await fetch(`${api}?${query.toString()}`, {
-			credentials: 'include',
-			cache: 'no-store'
-		});
-		if (!response.ok) {
-			const text = await response.text().catch(() => '');
-			throw new Error(text || `Load failed: ${response.status}`);
-		}
-		const result = (await response.json()) as {
-			data: WardRow[];
-			total: number;
-			totalPages: number;
-		};
-		const data = result.data.map((r) =>
-			erWardRowAsUnified({
-				...r,
-				isEr: r.isEr ?? scope === 'er'
-			})
-		);
-		return { ...result, data };
-	}
-
 	async function fetchRows() {
 		if (!hospitalId) return;
 		isLoading = true;
 		try {
-			const [ipd, er] = await Promise.all([
-				fetchScopePage('ipd'),
-				fetchScopePage('er')
-			]);
-			rows = [...ipd.data, ...er.data].sort((a, b) =>
-				(a.name ?? '').localeCompare(b.name ?? '')
-			);
-			total = ipd.total + er.total;
-			totalPages = Math.max(ipd.totalPages, er.totalPages, 1);
+			const api = administrationWardMasterApi(hospitalId, 'ipd');
+			const query = new SvelteURLSearchParams({
+				page: String(currentPage),
+				pageSize: String(Number(pageSizeStr) || 10)
+			});
+			const name = tableFilters.name?.trim();
+			const code = tableFilters.code?.trim();
+			const statusId = Number(tableFilters.status);
+			if (name) query.set('name', name);
+			if (code) query.set('code', code);
+			if (Number.isFinite(statusId) && statusId > 0) {
+				query.set('statusId', String(statusId));
+			}
+			const response = await fetch(`${api}?${query.toString()}`, {
+				credentials: 'include',
+				cache: 'no-store'
+			});
+			if (!response.ok) {
+				const text = await response.text().catch(() => '');
+				throw new Error(text || `Load failed: ${response.status}`);
+			}
+			const result = (await response.json()) as {
+				data: WardRow[];
+				total: number;
+				totalPages: number;
+			};
+			rows = result.data.map(wardRowAsUnified);
+			total = result.total;
+			totalPages = result.totalPages;
 		} catch (error) {
 			toastService.addToast(
 				error instanceof Error
@@ -185,7 +167,7 @@
 	async function openCreate() {
 		WardModalState.mode = 'create';
 		WardModalState.editWard = null;
-		WardModalState.isEr = false;
+		WardModalState.careSetting = CareSettingEnum.IPD;
 		const result = await dialogService.open({
 			title: 'New Ward',
 			component: WardFormModal
@@ -196,7 +178,7 @@
 	async function openEdit(row: UnifiedWardListRow) {
 		WardModalState.mode = 'edit';
 		WardModalState.editWard = row;
-		WardModalState.isEr = Boolean(row.isEr);
+		WardModalState.careSetting = row.careSetting;
 		const result = await dialogService.open({
 			title: 'Edit Ward',
 			component: WardFormModal
@@ -213,7 +195,7 @@
 		if (!result.confirmed || !hospitalId) return;
 		const wardApi = administrationWardMasterApi(
 			hospitalId,
-			row.isEr ? 'er' : 'ipd'
+			masterScopeOfCareSetting(row.careSetting)
 		);
 
 		try {

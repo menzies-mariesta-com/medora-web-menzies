@@ -1,4 +1,4 @@
-import { json, type RequestEvent } from '@sveltejs/kit';
+import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { z } from 'zod';
 import {
 	createPatientVital,
@@ -20,8 +20,8 @@ export async function GET(event: RequestEvent) {
 	const action = event.url.searchParams.get('action') ?? 'list';
 
 	if (action === 'visitBasics') {
-		const visitId = parseUuid(event.url.searchParams.get('visitId') ?? 0
-		);
+		const visitId = parseUuid(event.url.searchParams.get('visitId'));
+		if (!visitId) throw error(400, 'visitId is required');
 		const data = await getVisitBasicsForVital(event, {
 			hospitalId,
 			visitId

@@ -92,7 +92,8 @@ async function ensureOwnerUser(
 	await ensureDb().insert(accountTable).values({
 		id: uuidV7(),
 		userId: user.id,
-		accountId: normalized,
+		// better-auth 1.7 identifies the credential account by userId
+		accountId: user.id,
 		providerId: 'credential',
 		password: hashedPassword
 	});

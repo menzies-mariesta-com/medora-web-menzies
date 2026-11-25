@@ -60,7 +60,7 @@ export async function updateFinancialYear(
 		.where(eq(table.financialYearTable.id, id))
 		.returning();
 	if (!updated) throw new Error('Failed to update financial year');
-	void notifyHospitalMasterWrite(hospitalId);
+	void notifyHospitalMasterWrite(row.hospitalId);
 
 	return updated;
 }

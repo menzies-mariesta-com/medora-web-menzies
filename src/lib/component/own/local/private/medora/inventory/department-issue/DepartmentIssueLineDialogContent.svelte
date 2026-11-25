@@ -247,26 +247,26 @@
 		// Hydrate item meta (IUM + default conversion) the same way as Consumption.
 		if (!draftLine.lockItem || draftLine.itemId == null) return;
 
+		let cancelled = false;
+		const ac = new AbortController();
+		const opts = { signal: ac.signal, isCancelled: () => cancelled };
+
 		if (draftLine.iumList.length === 0) {
 			lastAutoBatchFetchKey = null;
-			void hydrateLineItemMeta(draftLine, draftLine.itemId, { signal: ac.signal, isCancelled: () => cancelled });
-			return;
-		}
-
-		// Batch rows live in local state; guard so “no stock” (still []) does not loop forever.
-		if (
+			void hydrateLineItemMeta(draftLine, draftLine.itemId, opts);
+		} else if (
+			// Batch rows live in local state; guard so “no stock” (still []) does not loop forever.
 			batchAllocations.length === 0 &&
 			lastAutoBatchFetchKey !== batchAutoFetchKey
 		) {
 			lastAutoBatchFetchKey = batchAutoFetchKey;
-			let cancelled = false;
-			const ac = new AbortController();
-			void refreshBatchAllocations(draftLine, { signal: ac.signal, isCancelled: () => cancelled });
+			void refreshBatchAllocations(draftLine, opts);
 		}
-			return () => {
-				cancelled = true;
-				ac.abort();
-			};
+
+		return () => {
+			cancelled = true;
+			ac.abort();
+		};
 	});
 </script>
 

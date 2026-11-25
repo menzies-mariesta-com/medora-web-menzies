@@ -1,7 +1,11 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as wardCategory from '$lib/server/medora/ipd/ward-category.server';
-import { isErForMasterPicker, isErFromScopeQuery } from '$lib/server/medora/ipd/master-is-er.util';
+import {
+	careSettingForMasterPicker,
+	careSettingFromScopeQuery
+} from '$lib/server/medora/ipd/master-care-setting.util';
+import { parseCareSetting } from '$lib/model/enum/care-setting.enum';
 import { StatusEnum } from '$lib/model/enum/db-link';
 
 function hospitalIdFrom(event: RequestEvent): string {
@@ -24,14 +28,16 @@ export async function GET(event: RequestEvent) {
 		return json(
 			await wardCategory.listActiveWardCategories({
 				hospitalId,
-				isEr: isErForMasterPicker(
+				careSetting: careSettingForMasterPicker(
 					event.url.searchParams.get('scope')
 				)
 			})
 		);
 	}
 
-	const isEr = isErFromScopeQuery(event.url.searchParams.get('scope'));
+	const careSetting = careSettingFromScopeQuery(
+		event.url.searchParams.get('scope')
+	);
 	const page = Number(event.url.searchParams.get('page') ?? '1');
 	const pageSize = Number(
 		event.url.searchParams.get('pageSize') ?? '10'
@@ -54,7 +60,7 @@ export async function GET(event: RequestEvent) {
 			statusId: Number.isFinite(statusId as number)
 				? statusId
 				: undefined,
-			isEr
+			careSetting
 		})
 	);
 }
@@ -71,7 +77,7 @@ export async function POST(event: RequestEvent) {
 			name,
 			code: body.code ? String(body.code).trim() : null,
 			wardMarkup: String(body.wardMarkup ?? '0'),
-			isEr: Boolean(body.isEr),
+			careSetting: parseCareSetting(body.careSetting) ?? undefined,
 			statusId:
 				body.statusId === StatusEnum.INACTIVE
 					? StatusEnum.INACTIVE
@@ -102,6 +108,7 @@ export async function PUT(event: RequestEvent) {
 				body.wardMarkup !== undefined
 					? String(body.wardMarkup)
 					: undefined,
+			careSetting: parseCareSetting(body.careSetting) ?? undefined,
 			statusId:
 				body.statusId !== undefined ? Number(body.statusId) : undefined
 		})

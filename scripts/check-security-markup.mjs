@@ -11,7 +11,6 @@ const ROOT = process.cwd();
 /** Paths relative to repo root. */
 const HTML_ALLOWLIST = new Set([
 	'src/lib/component/own/snippet/seo/SeoHead.svelte',
-	'src/lib/component/own/global/public/docs/DocsArticle.svelte',
 	'src/lib/component/own/library/mari/text-editor/rich-editor/MariRichEditorPreview.svelte'
 ]);
 

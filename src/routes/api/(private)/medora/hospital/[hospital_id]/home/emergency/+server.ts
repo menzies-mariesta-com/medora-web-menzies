@@ -110,29 +110,6 @@ export async function POST(event: RequestEvent) {
 			})
 		);
 	}
-	if (action === 'triage') {
-		return json(
-			await ed.saveEdTriage({
-				hospitalId,
-				visitId: parseUuid(body.visitId, 'visitId'),
-				triageSystem: body.triageSystem
-					? String(body.triageSystem)
-					: undefined,
-				templateCode: String(body.templateCode ?? ''),
-				valuesJson:
-					(body.valuesJson as Record<string, unknown>) ?? {},
-				sign: Boolean(body.sign),
-				staffId,
-				triageSystemOverrideReason: body.triageSystemOverrideReason
-					? String(body.triageSystemOverrideReason)
-					: null,
-				erBedId:
-					body.erBedId != null && body.erBedId !== ''
-						? Number(body.erBedId)
-						: undefined
-			})
-		);
-	}
 	if (action === 'trauma_activate') {
 		if (!staffId) throw error(401, 'Unauthorized');
 		return json(

@@ -17,7 +17,11 @@ declare global {
 	const __APP_VERSION__: string;
 
 	namespace App {
-		// interface Error {}
+		/** Machine-readable API error code returned in `error(status, { code, message })` bodies. */
+		interface Error {
+			code?: string;
+			message: string;
+		}
 		interface Locals {
 			session?: Session | null;
 			user?: User | null;

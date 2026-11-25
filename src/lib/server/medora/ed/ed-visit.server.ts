@@ -7,10 +7,15 @@ import { VisitTypeEnum } from '$lib/model/enum/db-link';
 export async function assertEdVisitForHospital(input: {
 	hospitalId: string;
 	visitId: string;
-}): Promise<{ branchId: string | null; visitTypeId: number | null }> {
+}): Promise<{
+	branchId: string | null;
+	patientId: string;
+	visitTypeId: number | null;
+}> {
 	const [visit] = await ensureDb()
 		.select({
 			branchId: table.patientVisitTable.branchId,
+			patientId: table.patientVisitTable.patientId,
 			visitTypeId: table.patientVisitTable.visitTypeId,
 			hospitalId: table.patientVisitTable.hospitalId
 		})
@@ -28,6 +33,7 @@ export async function assertEdVisitForHospital(input: {
 	}
 	return {
 		branchId: visit.branchId,
+		patientId: visit.patientId,
 		visitTypeId: visit.visitTypeId
 	};
 }

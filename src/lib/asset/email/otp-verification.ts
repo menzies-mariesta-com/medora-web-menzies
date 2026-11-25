@@ -14,7 +14,8 @@ import { escapeHtml } from './email-escape';
 export type OtpEmailType =
 	| 'sign-in'
 	| 'email-verification'
-	| 'forget-password';
+	| 'forget-password'
+	| 'change-email';
 
 export interface OtpVerificationEmailParams {
 	otp: string;

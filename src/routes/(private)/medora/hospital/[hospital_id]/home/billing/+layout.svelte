@@ -3,6 +3,7 @@
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import LVisitInfoBar from '$lib/component/own/local/private/medora/visit/LVisitInfoBar.svelte';
+	import LVisitPickerGate from '$lib/component/own/local/private/medora/visit/LVisitPickerGate.svelte';
 	import { untrack } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
@@ -10,7 +11,13 @@
 
 	const routerUtil = new RouterUtil();
 	const hospitalId = $derived(page.params.hospital_id);
-	const isEmbed = $derived(page.url.searchParams.get('embed') === '1');
+	const isEmbed = $derived(
+		page.url.searchParams.get('embed') === '1'
+	);
+	// Gate on the URL, not session state: server and client agree, so no hydration flip.
+	const hasUrlVisit = $derived(
+		Boolean(page.url.searchParams.get('visitId')?.trim())
+	);
 
 	$effect(() => {
 		const urlVisitId = page.url.searchParams.get('visitId') ?? '';
@@ -62,18 +69,28 @@
 </script>
 
 <div class="billing-wrapper">
-	<LVisitInfoBar
-		visitId={selectedVisitId}
-		{hospitalId}
-		listScope="hospital"
-		onVisitSelected={handleVisitSelected}
-		onVisitReset={handleVisitReset}
-	/>
-	<div class="billing-content" class:billing-content-embed={isEmbed}>
-		{#if children}
-			{@render children()}
-		{/if}
-	</div>
+	{#if hasUrlVisit}
+		<LVisitInfoBar
+			visitId={selectedVisitId}
+			{hospitalId}
+			listScope="hospital"
+			onVisitSelected={handleVisitSelected}
+			onVisitReset={handleVisitReset}
+		/>
+		<div
+			class="billing-content"
+			class:billing-content-embed={isEmbed}
+		>
+			{#if children}
+				{@render children()}
+			{/if}
+		</div>
+	{:else}
+		<LVisitPickerGate
+			listScope="hospital"
+			onVisitSelected={handleVisitSelected}
+		/>
+	{/if}
 </div>
 
 <style>

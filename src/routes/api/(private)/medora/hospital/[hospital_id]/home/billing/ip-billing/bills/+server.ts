@@ -71,7 +71,7 @@ export const POST: RequestHandler = async (event) => {
 	});
 	if (!bill) throw error(404, 'Bill not found');
 
-	const lines = [...(bill.lines ?? [])].sort(
+	const lines = (bill.lines ?? []).toSorted(
 		(a, b) => (a.lineIndex ?? 0) - (b.lineIndex ?? 0)
 	);
 

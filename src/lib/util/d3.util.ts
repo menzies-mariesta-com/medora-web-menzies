@@ -54,6 +54,8 @@ export interface LineChartOptions<T> extends BaseChartOptions<T> {
 	series?: LineSeries<T>[];
 	/** Shaded normal-range rect behind the lines. */
 	band?: { min: number; max: number; color?: string };
+	/** Tint the area between each line and the chart floor with its colour. */
+	showArea?: boolean;
 	tooltipFormatter?: (d: T) => string;
 }
 
@@ -190,6 +192,7 @@ export class D3Util {
 			includeZero = false,
 			series = [],
 			band,
+			showArea = false,
 			tooltipFormatter
 		} = options;
 
@@ -380,9 +383,24 @@ export class D3Util {
 
 			// A single reading has no line to draw, so its dot is the chart.
 			const drawLine = s.drawAs !== 'dots' && s.data.length > 1;
+			if (drawLine && showArea) {
+				const area = d3
+					.area()
+					.curve(curve as any)
+					.x(pointX)
+					.y0(innerHeight)
+					.y1(pointY);
+				g.append('path')
+					.datum(s.data)
+					.attr('class', 'series-area')
+					.attr('fill', s.color)
+					.attr('fill-opacity', 0.12)
+					.attr('stroke', 'none')
+					.attr('d', area as any);
+			}
 			if (drawLine) {
 				const line = d3
-					.line<T>()
+					.line()
 					.curve(curve as any)
 					.x(pointX)
 					.y(pointY);
@@ -518,7 +536,9 @@ export class D3Util {
 			.axisBottom(xScale)
 			.tickSizeOuter(0)
 			.tickValues(xDomain.filter((_d, i) => i % labelStep === 0))
-			.tickFormat((value) => labels[Number(value)] ?? '');
+			.tickFormat((value: number | { valueOf(): number }) =>
+				labels[Number(value)] ?? ''
+			);
 		const yAxis = d3.axisLeft(yScale).ticks(5).tickSizeOuter(0);
 
 		g.append('g')

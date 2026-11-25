@@ -10,6 +10,7 @@
 		dateOfBirthMinIso
 	} from '$lib/util/date-of-birth-range.util';
 	import { normalizeTime } from '$lib/util/wash-calendar-date.util';
+	import { attachFormFieldAriaInvalidSync } from '$lib/util/form-field-aria-invalid.util';
 
 	let {
 		id,
@@ -155,6 +156,11 @@
 		const ro = new ResizeObserver(() => syncOverflowTitle(el));
 		ro.observe(el);
 		return () => ro.disconnect();
+	});
+
+	$effect(() => {
+		if (isWashPicker) return;
+		return attachFormFieldAriaInvalidSync(textInputEl);
 	});
 </script>
 

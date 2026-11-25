@@ -180,6 +180,7 @@ function isRetryableNetworkError(err: unknown): boolean {
 		(typeof e?.cause?.message === 'string' ? e.cause.message : '');
 	const msg = String(e?.message || err || '');
 	return (
+		e?.name === 'TimeoutError' ||
 		code === 'UND_ERR_CONNECT_TIMEOUT' ||
 		code === 'UND_ERR_HEADERS_TIMEOUT' ||
 		code === 'UND_ERR_BODY_TIMEOUT' ||
@@ -204,10 +205,13 @@ async function fetchWithRetry(
 	const timeoutMs = requestTimeoutMs();
 	let lastErr: unknown;
 	for (let attempt = 1; attempt <= retries; attempt++) {
-		const controller = new AbortController();
-		const timer = setTimeout(() => controller.abort(), timeoutMs);
+		const timeoutSignal = AbortSignal.timeout(timeoutMs);
+		const signal =
+			init.signal != null
+				? AbortSignal.any([init.signal, timeoutSignal])
+				: timeoutSignal;
 		try {
-			return await fetch(url, { ...init, signal: controller.signal });
+			return await fetch(url, { ...init, signal });
 		} catch (err) {
 			lastErr = err;
 			if (!isRetryableNetworkError(err) || attempt === retries) {
@@ -218,8 +222,6 @@ async function fetchWithRetry(
 				`${label} network error (attempt ${attempt}/${retries}): ${(err as { cause?: { code?: string }; name?: string; message?: string })?.cause?.code || (err as Error)?.name || (err as Error)?.message || err}. Retrying in ${waitMs}ms...`
 			);
 			await sleep(waitMs);
-		} finally {
-			clearTimeout(timer);
 		}
 	}
 	const e = lastErr as {

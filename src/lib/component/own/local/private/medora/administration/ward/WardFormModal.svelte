@@ -7,6 +7,10 @@
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import {
+		CareSettingEnum,
+		careSettingLabel
+	} from '$lib/model/enum/care-setting.enum';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 import type { WardCategoryRow } from '$lib/model/type/medora/ipd/ipd.type';
 	import { m } from '$lib/paraglide/messages';
@@ -37,11 +41,17 @@ import type { WardCategoryRow } from '$lib/model/type/medora/ipd/ipd.type';
 			: ''
 	);
 
-	let formIsEr = $state(false);
+	let formCareSetting = $state<CareSettingEnum>(CareSettingEnum.IPD);
 
 	const masterScope = $derived(
-		(formIsEr ? 'er' : 'ipd') satisfies AdministrationMasterScope
+		formCareSetting.toLowerCase() as AdministrationMasterScope
 	);
+	const careSettingOptions = [
+		CareSettingEnum.IPD,
+		CareSettingEnum.ED,
+		CareSettingEnum.ICU,
+		CareSettingEnum.OT
+	].map((value) => ({ value, label: careSettingLabel(value) }));
 	const wardApi = $derived(
 		hospitalId ? administrationWardMasterApi(hospitalId, masterScope) : ''
 	);
@@ -109,10 +119,10 @@ import type { WardCategoryRow } from '$lib/model/type/medora/ipd/ipd.type';
 			const branchList = await fetchBranches();
 			branches = branchList;
 			const state = WardModalState;
-			formIsEr =
+			formCareSetting =
 				state.mode === 'edit'
-					? Boolean(state.editWard?.isEr)
-					: state.isEr;
+					? (state.editWard?.careSetting ?? CareSettingEnum.IPD)
+					: state.careSetting;
 			const categoryList = await fetchCategories();
 			categories = categoryList;
 			if (state.mode === 'edit' && state.editWard) {
@@ -181,7 +191,7 @@ import type { WardCategoryRow } from '$lib/model/type/medora/ipd/ipd.type';
 					code: formCode.trim() || null,
 					branchId: formBranchId,
 					wardCategoryId,
-					isEr: formIsEr,
+					careSetting: formCareSetting,
 					statusId: formActive
 						? StatusEnum.ACTIVE
 						: StatusEnum.INACTIVE
@@ -231,19 +241,21 @@ import type { WardCategoryRow } from '$lib/model/type/medora/ipd/ipd.type';
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<span class="shrink-0 sm:w-36">Emergency (ED)</span>
-				<label
-					class="flex max-w-80 flex-1 cursor-pointer items-center gap-2"
+				<label for="ward-care-setting" class="shrink-0 sm:w-36"
+					>Care setting <span class="text-error">*</span></label
 				>
-					<WashCheckbox
-						bind:checked={formIsEr}
+				<div class="max-w-80 flex-1">
+					<WashSelect
+						id="ward-care-setting"
+						bind:value={formCareSetting}
+						options={careSettingOptions}
 						disabled={isLoading || modalState.mode === 'edit'}
-						onCheckedChange={reloadCategoriesForScope}
+						onChange={reloadCategoriesForScope}
 					/>
 					<span class="text-sm opacity-80">
-						ED ward (shown on ED bed status)
+						Categories are filtered by this setting
 					</span>
-				</label>
+				</div>
 			</div>
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"

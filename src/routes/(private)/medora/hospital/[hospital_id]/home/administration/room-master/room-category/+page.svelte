@@ -8,6 +8,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { CareSettingEnum, parseCareSetting } from '$lib/model/enum/care-setting.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
@@ -15,6 +16,7 @@
 	import {
 		administrationRoomCategoryApi,
 		masterScopeDisplayLabel,
+		masterScopeOfCareSetting,
 		type UnifiedCategoryListRow
 	} from '$lib/tool/medora/administration-master-scope.util';
 	import { m } from '$lib/paraglide/messages';
@@ -57,7 +59,7 @@
 			header: 'Scope',
 			widthClass: 'w-20 min-w-[4rem]',
 			filterable: false,
-			format: (_v, row) => masterScopeDisplayLabel(row.isEr)
+			format: (_v, row) => masterScopeDisplayLabel(row.careSetting)
 		},
 		{
 			id: 'id',
@@ -102,63 +104,41 @@
 		}
 	];
 
-	async function fetchScopePage(scope: 'ipd' | 'er') {
-		if (!categoryApi) {
-			return {
-				data: [] as (RoomCategoryRow & UnifiedCategoryListRow)[],
-				total: 0,
-				totalPages: 1
-			};
-		}
-		const query = new SvelteURLSearchParams({
-			page: String(currentPage),
-			pageSize: String(Number(pageSizeStr) || 10)
-		});
-		if (scope === 'er') query.set('scope', 'er');
-		else query.set('scope', 'ipd');
-		const name = tableFilters.name?.trim();
-		const code = tableFilters.code?.trim();
-		const statusId = Number(tableFilters.status);
-		if (name) query.set('name', name);
-		if (code) query.set('code', code);
-		if (Number.isFinite(statusId) && statusId > 0) {
-			query.set('statusId', String(statusId));
-		}
-		const response = await fetch(`${categoryApi}?${query.toString()}`, {
-			credentials: 'include',
-			cache: 'no-store'
-		});
-		if (!response.ok) {
-			const text = await response.text().catch(() => '');
-			throw new Error(text || `Load failed: ${response.status}`);
-		}
-		const result = (await response.json()) as {
-			data: RoomCategoryRow[];
-			total: number;
-			totalPages: number;
-		};
-		return {
-			...result,
-			data: result.data.map((r) => ({
-				...r,
-				isEr: scope === 'er'
-			}))
-		};
-	}
-
 	async function fetchRows() {
 		if (!categoryApi) return;
 		isLoading = true;
 		try {
-			const [ipd, er] = await Promise.all([
-				fetchScopePage('ipd'),
-				fetchScopePage('er')
-			]);
-			rows = [...ipd.data, ...er.data].sort((a, b) =>
-				(a.name ?? '').localeCompare(b.name ?? '')
-			);
-			total = ipd.total + er.total;
-			totalPages = Math.max(ipd.totalPages, er.totalPages, 1);
+			const query = new SvelteURLSearchParams({
+				page: String(currentPage),
+				pageSize: String(Number(pageSizeStr) || 10)
+			});
+			const name = tableFilters.name?.trim();
+			const code = tableFilters.code?.trim();
+			const statusId = Number(tableFilters.status);
+			if (name) query.set('name', name);
+			if (code) query.set('code', code);
+			if (Number.isFinite(statusId) && statusId > 0) {
+				query.set('statusId', String(statusId));
+			}
+			const response = await fetch(`${categoryApi}?${query.toString()}`, {
+				credentials: 'include',
+				cache: 'no-store'
+			});
+			if (!response.ok) {
+				const text = await response.text().catch(() => '');
+				throw new Error(text || `Load failed: ${response.status}`);
+			}
+			const result = (await response.json()) as {
+				data: RoomCategoryRow[];
+				total: number;
+				totalPages: number;
+			};
+			rows = result.data.map((r) => ({
+				...r,
+				careSetting: parseCareSetting(r.careSetting) ?? CareSettingEnum.IPD
+			}));
+			total = result.total;
+			totalPages = result.totalPages;
 		} catch (error) {
 			toastService.addToast(
 				error instanceof Error
@@ -181,7 +161,7 @@
 	async function openCreate() {
 		RoomCategoryModalState.mode = 'create';
 		RoomCategoryModalState.editCategory = null;
-		RoomCategoryModalState.isEr = false;
+		RoomCategoryModalState.careSetting = CareSettingEnum.IPD;
 		const result = await dialogService.open({
 			title: 'New Room Category',
 			component: RoomCategoryFormModal
@@ -192,7 +172,7 @@
 	async function openEdit(row: RoomCategoryRow & UnifiedCategoryListRow) {
 		RoomCategoryModalState.mode = 'edit';
 		RoomCategoryModalState.editCategory = row;
-		RoomCategoryModalState.isEr = Boolean(row.isEr);
+		RoomCategoryModalState.careSetting = row.careSetting;
 		const result = await dialogService.open({
 			title: 'Edit Room Category',
 			component: RoomCategoryFormModal
@@ -209,7 +189,7 @@
 		if (!result.confirmed || !hospitalId) return;
 		const api = administrationRoomCategoryApi(
 			hospitalId,
-			row.isEr ? 'er' : 'ipd'
+			masterScopeOfCareSetting(row.careSetting)
 		);
 
 		try {

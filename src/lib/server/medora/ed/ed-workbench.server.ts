@@ -5,12 +5,12 @@ import {
 	EdBoardColumnEnum,
 	PerioperativeSseEventTypeEnum
 } from '$lib/model/enum/perioperative.enum';
+import { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { saveFormInstance } from '$lib/server/medora/clinical-form/clinical-form.server';
-import { getOrCreateHospitalPerioperativeSetting } from '$lib/server/medora/perioperative/hospital-perioperative-setting.server';
 import { publishPerioperativeEvent } from '$lib/server/medora/perioperative/perioperative-event-bus.server';
-import { edBoardColumnRequiresErBed } from '$lib/server/medora/ed/ed-er-bed.constants';
+import { saveFormInstance } from '$lib/server/medora/clinical-form/clinical-form.server';
+import { edBoardColumnRequiresErBed } from '$lib/model/const/ed-board-column.const';
 import {
 	assignErBedToEncounter,
 	assignErBedToEncounterWithCharges,
@@ -21,6 +21,8 @@ import {
 export async function ensureEdEncounter(input: {
 	hospitalId: string;
 	visitId: string;
+	/** Callers that publish their own board event pass false to keep one event per request. */
+	publishEvent?: boolean;
 }) {
 	const [visit] = await ensureDb()
 		.select({
@@ -54,11 +56,13 @@ export async function ensureEdEncounter(input: {
 			boardColumn: EdBoardColumnEnum.WAITING_TRIAGE
 		})
 		.returning();
-	publishPerioperativeEvent({
-		type: PerioperativeSseEventTypeEnum.ED_BOARD,
-		hospitalId: input.hospitalId,
-		data: { visitId: input.visitId }
-	});
+	if (input.publishEvent !== false) {
+		publishPerioperativeEvent({
+			type: PerioperativeSseEventTypeEnum.ED_BOARD,
+			hospitalId: input.hospitalId,
+			data: { visitId: input.visitId }
+		});
+	}
 	return row!;
 }
 
@@ -68,7 +72,12 @@ export async function listEdBoard(input: { hospitalId: string }) {
 			encounter: table.edEncounterTable,
 			visitNo: table.patientVisitTable.visitNo,
 			chiefComplaint: table.patientVisitTable.chiefComplaint,
-			patientName: sql<string>`concat(${table.patientTable.firstName}, ' ', coalesce(${table.patientTable.lastName}, ''))`
+			patientName: sql<string>`concat(${table.patientTable.firstName}, ' ', coalesce(${table.patientTable.lastName}, ''))`,
+			erBedLabel: sql<string | null>`nullif(concat_ws(' / ',
+				coalesce(nullif(trim(${table.wardTable.code}), ''), nullif(trim(${table.wardTable.name}), '')),
+				coalesce(nullif(trim(${table.roomTable.code}), ''), nullif(trim(${table.roomTable.name}), '')),
+				coalesce(nullif(trim(${table.bedTable.code}), ''), nullif(trim(${table.bedTable.name}), ''))
+			), '')`
 		})
 		.from(table.edEncounterTable)
 		.innerJoin(
@@ -79,6 +88,16 @@ export async function listEdBoard(input: { hospitalId: string }) {
 			table.patientTable,
 			eq(table.patientVisitTable.patientId, table.patientTable.id)
 		)
+		.leftJoin(
+			table.bedTable,
+			and(
+				eq(table.bedTable.id, table.edEncounterTable.erBedId),
+				eq(table.bedTable.hospitalId, input.hospitalId),
+				eq(table.bedTable.careSetting, CareSettingEnum.ED)
+			)
+		)
+		.leftJoin(table.roomTable, eq(table.bedTable.roomId, table.roomTable.id))
+		.leftJoin(table.wardTable, eq(table.roomTable.wardId, table.wardTable.id))
 		.where(
 			and(
 				eq(table.edEncounterTable.hospitalId, input.hospitalId),
@@ -92,68 +111,20 @@ export async function listEdBoard(input: { hospitalId: string }) {
 		.orderBy(table.edEncounterTable.arrivedAt);
 
 	const now = Date.now();
-	return Promise.all(
-		rows.map(async (r) => {
-			const arrived = Date.parse(r.encounter.arrivedAt);
-			const waitMinutes = Number.isFinite(arrived)
-				? Math.max(0, Math.floor((now - arrived) / 60000))
-				: 0;
-			const erBedLabel = await loadErBedDisplayLabel({
-				hospitalId: input.hospitalId,
-				erWardId: r.encounter.erWardId,
-				erRoomId: r.encounter.erRoomId,
-				erBedId: r.encounter.erBedId
-			});
-			return {
-				...r.encounter,
-				visitNo: r.visitNo,
-				chiefComplaint: r.chiefComplaint,
-				patientName: r.patientName?.trim() || null,
-				waitMinutes,
-				erBedLabel
-			};
-		})
-	);
-}
-
-async function loadErBedDisplayLabel(input: {
-	hospitalId: string;
-	erWardId: number | null;
-	erRoomId: number | null;
-	erBedId: number | null;
-}): Promise<string | null> {
-	if (input.erBedId == null) return null;
-	const [row] = await ensureDb()
-		.select({
-			wardCode: table.wardTable.code,
-			wardName: table.wardTable.name,
-			roomCode: table.roomTable.code,
-			roomName: table.roomTable.name,
-			bedCode: table.bedTable.code,
-			bedName: table.bedTable.name
-		})
-		.from(table.bedTable)
-		.innerJoin(
-			table.roomTable,
-			eq(table.bedTable.roomId, table.roomTable.id)
-		)
-		.innerJoin(
-			table.wardTable,
-			eq(table.roomTable.wardId, table.wardTable.id)
-		)
-		.where(
-			and(
-				eq(table.bedTable.id, input.erBedId),
-				eq(table.bedTable.hospitalId, input.hospitalId),
-				eq(table.bedTable.isEr, true)
-			)
-		)
-		.limit(1);
-	if (!row) return null;
-	const ward = row.wardCode?.trim() || row.wardName?.trim() || '';
-	const room = row.roomCode?.trim() || row.roomName?.trim() || '';
-	const bed = row.bedCode?.trim() || row.bedName?.trim() || '';
-	return [ward, room, bed].filter(Boolean).join(' / ') || null;
+	return rows.map((r) => {
+		const arrived = Date.parse(r.encounter.arrivedAt);
+		const waitMinutes = Number.isFinite(arrived)
+			? Math.max(0, Math.floor((now - arrived) / 60000))
+			: 0;
+		return {
+			...r.encounter,
+			visitNo: r.visitNo,
+			chiefComplaint: r.chiefComplaint,
+			patientName: r.patientName?.trim() || null,
+			waitMinutes,
+			erBedLabel: r.erBedLabel ?? null
+		};
+	});
 }
 
 export async function updateEdBoardColumn(input: {
@@ -243,104 +214,6 @@ export async function assignEdErBed(input: {
 		data: { visitId: input.visitId, erBedId: input.erBedId }
 	});
 	return row;
-}
-
-export async function saveEdTriage(input: {
-	hospitalId: string;
-	visitId: string;
-	triageSystem?: string;
-	templateCode: string;
-	valuesJson: Record<string, unknown>;
-	sign?: boolean;
-	staffId?: string | null;
-	triageSystemOverrideReason?: string | null;
-	erBedId?: number;
-}) {
-	await ensureEdEncounter({
-		hospitalId: input.hospitalId,
-		visitId: input.visitId
-	});
-	const settings = await getOrCreateHospitalPerioperativeSetting(
-		input.hospitalId
-	);
-	const triageSystem =
-		input.triageSystem ?? settings.defaultEdTriageSystem ?? 'esi';
-
-	const instance = await saveFormInstance({
-		hospitalId: input.hospitalId,
-		visitId: input.visitId,
-		templateCode: input.templateCode,
-		contextType: 'triage',
-		valuesJson: {
-			...input.valuesJson,
-			...(input.triageSystemOverrideReason
-				? { triage_system_override_reason: input.triageSystemOverrideReason }
-				: {})
-		},
-		sign: input.sign,
-		staffId: input.staffId
-	});
-
-	let acuityLevel: string | null = null;
-	const vals = input.valuesJson;
-	if ('esi_level' in vals) acuityLevel = String(vals.esi_level ?? '');
-	if ('mts_category' in vals) acuityLevel = String(vals.mts_category ?? '');
-
-	const fastTrack =
-		Boolean(vals.fast_track) ||
-		acuityLevel === '4' ||
-		acuityLevel === '5' ||
-		acuityLevel === 'green' ||
-		acuityLevel === 'blue';
-
-	const boardColumn = fastTrack
-		? EdBoardColumnEnum.FAST_TRACK
-		: EdBoardColumnEnum.MAJORS;
-
-	if (
-		edBoardColumnRequiresErBed(boardColumn) &&
-		typeof input.erBedId !== 'number'
-	) {
-		const enc = await ensureDb().query.edEncounterTable.findFirst({
-			where: (t, { eq, and }) =>
-				and(
-					eq(t.visitId, input.visitId),
-					eq(t.hospitalId, input.hospitalId)
-				)
-		});
-		if (!enc?.erBedId) throwErBedRequired();
-	}
-
-	if (typeof input.erBedId === 'number') {
-		await assignErBedToEncounter({
-			hospitalId: input.hospitalId,
-			visitId: input.visitId,
-			erBedId: input.erBedId
-		});
-	}
-
-	await ensureDb()
-		.update(table.edEncounterTable)
-		.set({
-			triageSystem,
-			triageFormInstanceId: instance.id,
-			acuityLevel,
-			fastTrack,
-			boardColumn
-		})
-		.where(
-			and(
-				eq(table.edEncounterTable.visitId, input.visitId),
-				eq(table.edEncounterTable.hospitalId, input.hospitalId)
-			)
-		);
-
-	publishPerioperativeEvent({
-		type: PerioperativeSseEventTypeEnum.ED_BOARD,
-		hospitalId: input.hospitalId,
-		data: { visitId: input.visitId, triage: true }
-	});
-	return instance;
 }
 
 export async function activateTrauma(input: {

@@ -16,14 +16,18 @@ import {
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
 import { and, count, eq, ilike, ne, sql } from 'drizzle-orm';
-import { isErScopeCondition } from '$lib/server/medora/ipd/master-is-er.util';
+import { careSettingScopeCondition } from '$lib/server/medora/ipd/master-care-setting.util';
+import type { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 
 async function assertWardInHospital(input: {
 	hospitalId: string;
 	wardId: number;
-}): Promise<{ isEr: boolean }> {
+}): Promise<{ careSetting: CareSettingEnum }> {
 	const [ward] = await ensureDb()
-		.select({ id: table.wardTable.id, isEr: table.wardTable.isEr })
+		.select({
+			id: table.wardTable.id,
+			careSetting: table.wardTable.careSetting
+		})
 		.from(table.wardTable)
 		.where(
 			and(
@@ -34,18 +38,18 @@ async function assertWardInHospital(input: {
 		)
 		.limit(1);
 	if (!ward) throw error(400, 'Ward not found for this hospital');
-	return { isEr: ward.isEr };
+	return { careSetting: ward.careSetting };
 }
 
 async function assertCategoryInHospital(input: {
 	hospitalId: string;
 	roomCategoryId: number;
-	isEr?: boolean;
+	careSetting?: CareSettingEnum;
 }): Promise<void> {
 	const [cat] = await ensureDb()
 		.select({
 			id: table.roomCategoryTable.id,
-			isEr: table.roomCategoryTable.isEr
+			careSetting: table.roomCategoryTable.careSetting
 		})
 		.from(table.roomCategoryTable)
 		.where(
@@ -59,11 +63,11 @@ async function assertCategoryInHospital(input: {
 	if (!cat) {
 		throw error(400, 'Room category not found for this hospital');
 	}
-	if (input.isEr === true && !cat.isEr) {
-		throw error(400, 'Room category must be for Emergency (ED)');
-	}
-	if (input.isEr === false && cat.isEr) {
-		throw error(400, 'Room category must be for IPD');
+	if (input.careSetting && cat.careSetting !== input.careSetting) {
+		throw error(
+			400,
+			`Room category is for ${cat.careSetting}, not ${input.careSetting}`
+		);
 	}
 }
 
@@ -72,17 +76,14 @@ export async function getRoomPaginated(
 		hospitalId: string;
 		wardId?: number;
 		roomCategoryId?: number;
-		isEr?: boolean;
+		careSetting?: CareSettingEnum;
 	}
 ): Promise<PaginatedResult<RoomRow>> {
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
 	const conditions = [
 		eq(table.roomTable.hospitalId, params.hospitalId),
-		paginatedEntityStatusEq(
-			table.roomTable.statusId,
-			params.statusId
-		)
+		paginatedEntityStatusEq(table.roomTable.statusId, params.statusId)
 	];
 	const nameFilter = params?.name?.trim();
 	if (nameFilter) {
@@ -100,8 +101,11 @@ export async function getRoomPaginated(
 			eq(table.roomTable.roomCategoryId, params.roomCategoryId)
 		);
 	}
-	const isErCond = isErScopeCondition(table.roomTable, params.isEr);
-	if (isErCond) conditions.push(isErCond);
+	const careSettingCond = careSettingScopeCondition(
+		table.roomTable,
+		params.careSetting
+	);
+	if (careSettingCond) conditions.push(careSettingCond);
 	const whereClause = and(...conditions);
 	const bedCountSq = ensureDb()
 		.select({
@@ -125,7 +129,7 @@ export async function getRoomPaginated(
 				capacity: table.roomTable.capacity,
 				amenities: table.roomTable.amenities,
 				statusId: table.roomTable.statusId,
-				isEr: table.roomTable.isEr,
+				careSetting: table.roomTable.careSetting,
 				wardName: table.wardTable.name,
 				wardCode: table.wardTable.code,
 				roomCategoryName: table.roomCategoryTable.name,
@@ -141,10 +145,7 @@ export async function getRoomPaginated(
 			)
 			.leftJoin(
 				table.roomCategoryTable,
-				eq(
-					table.roomTable.roomCategoryId,
-					table.roomCategoryTable.id
-				)
+				eq(table.roomTable.roomCategoryId, table.roomCategoryTable.id)
 			)
 			.leftJoin(bedCountSq, eq(bedCountSq.roomId, table.roomTable.id))
 			.where(whereClause)
@@ -169,7 +170,7 @@ export async function getRoomPaginated(
 export async function listActiveRooms(input: {
 	hospitalId: string;
 	wardId?: number | null;
-	isEr?: boolean;
+	careSetting?: CareSettingEnum;
 }): Promise<RoomSchema[]> {
 	const conditions = [
 		eq(table.roomTable.hospitalId, input.hospitalId),
@@ -178,8 +179,11 @@ export async function listActiveRooms(input: {
 	if (typeof input.wardId === 'number') {
 		conditions.push(eq(table.roomTable.wardId, input.wardId));
 	}
-	const isErCond = isErScopeCondition(table.roomTable, input.isEr);
-	if (isErCond) conditions.push(isErCond);
+	const careSettingCond = careSettingScopeCondition(
+		table.roomTable,
+		input.careSetting
+	);
+	if (careSettingCond) conditions.push(careSettingCond);
 	return ensureDb()
 		.select()
 		.from(table.roomTable)
@@ -239,23 +243,23 @@ export async function createRoom(
 		hospitalId: payload.hospitalId,
 		wardId: payload.wardId
 	});
-	const isEr = payload.isEr ?? ward.isEr;
+	const careSetting = payload.careSetting ?? ward.careSetting;
 	await assertCategoryInHospital({
 		hospitalId: payload.hospitalId,
 		roomCategoryId: payload.roomCategoryId,
-		isEr
+		careSetting
 	});
 	const [row] = await ensureDb()
 		.insert(table.roomTable)
 		.values({
 			...payload,
-			isEr,
+			careSetting,
 			/** Empty room until beds are assigned. */
 			capacity: 0
 		})
 		.returning();
 	if (!row) throw new Error('Insert failed');
-	void notifyHospitalMasterWrite(hospitalId);
+	void notifyHospitalMasterWrite(payload.hospitalId);
 
 	return row;
 }
@@ -268,6 +272,7 @@ export async function updateRoom(payload: {
 	name?: string | null;
 	code?: string | null;
 	amenities?: string | null;
+	careSetting?: CareSettingEnum;
 	statusId?: number | null;
 }): Promise<RoomSchema> {
 	const { id, hospitalId, ...rest } = payload;

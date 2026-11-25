@@ -97,7 +97,8 @@
 				);
 				return;
 			}
-			if (!data?.totpURI) {
+			// better-auth 1.7: enable() returns a union; only the totp method has a URI.
+			if (data?.method !== 'totp') {
 				toastService.addToast(
 					m.toast_action_failed(),
 					StatusColorEnum.ERROR

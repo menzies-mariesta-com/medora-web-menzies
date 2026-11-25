@@ -54,7 +54,7 @@ export function buildCaseSheetDocumentMasterPrintOptions(input: {
 	};
 }): Omit<
 	PrintFromDocumentMasterOptions,
-	'hospitalId' | 'documentCode' | 'iframeId'
+	'hospitalId' | 'documentTypeId' | 'documentCode' | 'iframeId'
 > {
 	const printedAt = formatMenziesTableDateTime(new Date());
 

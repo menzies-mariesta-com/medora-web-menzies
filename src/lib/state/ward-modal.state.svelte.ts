@@ -1,14 +1,15 @@
+import { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 import type { WardRow } from '$lib/model/type/medora/ipd/ipd.type';
 
-export type WardModalEditRow = WardRow & { isEr?: boolean };
+export type WardModalEditRow = WardRow & { careSetting?: CareSettingEnum };
 
 /** Set before opening Create/Edit ward modal. */
 export const WardModalState = $state<{
 	mode: 'create' | 'edit';
 	editWard: WardModalEditRow | null;
-	isEr: boolean;
+	careSetting: CareSettingEnum;
 }>({
 	mode: 'create',
 	editWard: null,
-	isEr: false
+	careSetting: CareSettingEnum.IPD
 });

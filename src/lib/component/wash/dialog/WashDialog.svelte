@@ -225,6 +225,7 @@
 	});
 
 	function handleClose() {
+		if (dialogEl) dialogEl.returnValue = '';
 		onClose();
 	}
 
@@ -239,6 +240,7 @@
 	bind:this={dialogEl}
 	{id}
 	class={dialogClass}
+	closedby={closeOnOutsideClick ? 'any' : 'closerequest'}
 	aria-labelledby={hasHeader ? titleId : undefined}
 	aria-describedby={resolvedDescription || descSnippet ? descId : undefined}
 	onclose={handleClose}

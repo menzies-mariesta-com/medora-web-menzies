@@ -84,7 +84,7 @@
 	});
 
 	const sortedPages = $derived.by(() =>
-		[...allPages].sort((a, b) => {
+		allPages.toSorted((a, b) => {
 			const moduleA = a.moduleId ?? Number.MAX_SAFE_INTEGER;
 			const moduleB = b.moduleId ?? Number.MAX_SAFE_INTEGER;
 			if (moduleA !== moduleB) return moduleA - moduleB;

@@ -12,7 +12,7 @@
 		readApiErrorCode
 	} from '$lib/util/er-bed-gate.util';
 	import { redirectIfTwoFactorRequired } from '$lib/util/two-factor-gate.util';
-	import { edBoardColumnRequiresErBed } from '$lib/tool/ed/ed-board-bed.util';
+	import { edBoardColumnRequiresErBed } from '$lib/model/const/ed-board-column.const';
 	import LEdAssignErBedDialogContent from '$lib/component/own/local/private/medora/emergency/LEdAssignErBedDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -34,6 +34,7 @@
 	const columns = [
 		EdBoardColumnEnum.WAITING_TRIAGE,
 		EdBoardColumnEnum.TRIAGE,
+		EdBoardColumnEnum.WAITING_CLINICIAN,
 		EdBoardColumnEnum.FAST_TRACK,
 		EdBoardColumnEnum.MAJORS,
 		EdBoardColumnEnum.RESUS,
@@ -73,6 +74,8 @@
 				return msg.ed_col_waiting_triage();
 			case EdBoardColumnEnum.TRIAGE:
 				return msg.ed_col_triage();
+			case EdBoardColumnEnum.WAITING_CLINICIAN:
+				return msg.ed_col_waiting_clinician();
 			case EdBoardColumnEnum.FAST_TRACK:
 				return msg.ed_col_fast_track();
 			case EdBoardColumnEnum.MAJORS:
@@ -168,7 +171,7 @@
 			{msg.ed_refresh()}
 		</WashButton>
 	</div>
-	<div class="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-x-auto md:grid-cols-3 xl:grid-cols-6">
+	<div class="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-x-auto md:grid-cols-3 xl:grid-cols-7">
 		{#each columns as col (col)}
 			<section
 				class="bg-base-200 flex min-h-48 min-w-[14rem] flex-col rounded-box p-2"

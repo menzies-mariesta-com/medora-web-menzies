@@ -7,6 +7,10 @@
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import {
+		CareSettingEnum,
+		careSettingLabel
+	} from '$lib/model/enum/care-setting.enum';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import type {
 		RoomCategoryRow,
@@ -32,10 +36,17 @@
 			? page.params.hospital_id
 			: ''
 	);
-	let formIsEr = $state(false);
+	let formCareSetting = $state<CareSettingEnum>(CareSettingEnum.IPD);
 	const masterScope = $derived(
-		(formIsEr ? 'er' : 'ipd') satisfies AdministrationMasterScope
+		formCareSetting.toLowerCase() as AdministrationMasterScope
 	);
+	const careSettingOptions = [
+		CareSettingEnum.IPD,
+		CareSettingEnum.ED,
+		CareSettingEnum.ICU,
+		CareSettingEnum.OT
+	].map((value) => ({ value, label: careSettingLabel(value) }));
+	const scopeQuery = $derived(`scope=${formCareSetting.toLowerCase()}`);
 	const administrationBase = $derived(
 		hospitalId
 			? `/api/medora/hospital/${hospitalId}/home/administration`
@@ -81,19 +92,19 @@
 	lifeCycleUtil.onMount(async () => {
 		try {
 			const state = RoomModalState;
-			formIsEr =
+			formCareSetting =
 				state.mode === 'edit'
-					? Boolean(state.editRoom?.isEr)
-					: state.isEr;
+					? (state.editRoom?.careSetting ?? CareSettingEnum.IPD)
+					: state.careSetting;
 			const wardRes = administrationBase
 				? await fetch(
-						`${administrationBase}/ward-master?active=1${formIsEr ? '&scope=er' : ''}`,
+						`${administrationBase}/ward-master?active=1&${scopeQuery}`,
 						{ credentials: 'include', cache: 'no-store' }
 					)
 				: null;
 			const catRes = categoryApi
 				? await fetch(
-						`${categoryApi}?active=1${formIsEr ? '&scope=er' : '&scope=ipd'}`,
+						`${categoryApi}?active=1&${scopeQuery}`,
 						{
 						credentials: 'include',
 						cache: 'no-store'
@@ -177,9 +188,7 @@
 				body: JSON.stringify({
 					...(isEdit ? { id: modalState.editRoom?.id } : {}),
 					wardId,
-					...(formIsEr
-						? { erRoomCategoryId: roomCategoryId }
-						: { roomCategoryId }),
+					roomCategoryId,
 					name: formName.trim(),
 					code: formCode.trim() || null,
 					amenities: formAmenities.trim() || null,
@@ -212,19 +221,19 @@
 		}
 	}
 
-	async function reloadForErScope() {
+	async function reloadForCareSetting() {
 		if (modalState.mode === 'edit') return;
 		try {
 			if (!administrationBase || !categoryApi) return;
 			const [wardRes, catRes] = await Promise.all([
 				fetch(
-					`${administrationBase}/ward-master?active=1${formIsEr ? '&scope=er' : ''}`,
+					`${administrationBase}/ward-master?active=1&${scopeQuery}`,
 					{ credentials: 'include', cache: 'no-store' }
 				),
-				fetch(`${categoryApi}?active=1`, {
-					credentials: 'include',
-					cache: 'no-store'
-				})
+				fetch(
+					`${categoryApi}?active=1&${scopeQuery}`,
+					{ credentials: 'include', cache: 'no-store' }
+				)
 			]);
 			if (wardRes.ok) wards = (await wardRes.json()) as WardRow[];
 			if (catRes.ok) {
@@ -248,19 +257,21 @@
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<span class="shrink-0 sm:w-36">Emergency (ED)</span>
-				<label
-					class="flex max-w-80 flex-1 cursor-pointer items-center gap-2"
+				<label for="room-care-setting" class="shrink-0 sm:w-36"
+					>Care setting <span class="text-error">*</span></label
 				>
-					<WashCheckbox
-						bind:checked={formIsEr}
+				<div class="max-w-80 flex-1">
+					<WashSelect
+						id="room-care-setting"
+						bind:value={formCareSetting}
+						options={careSettingOptions}
 						disabled={isLoading || modalState.mode === 'edit'}
-						onCheckedChange={reloadForErScope}
+						onChange={reloadForCareSetting}
 					/>
 					<span class="text-sm opacity-80">
-						ED room (ED bed status)
+						Applies to this room and its beds
 					</span>
-				</label>
+				</div>
 			</div>
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"

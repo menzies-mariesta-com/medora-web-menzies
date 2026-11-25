@@ -267,6 +267,7 @@
 					: Math.max(0, netTotal - advanceCreditDisplay)
 				: netTotal)
 	);
+	const hasDiscount = $derived(discountValue > 0);
 	const hasDiscountDisplay = $derived(
 		visitBillTotals?.hasDiscount ?? hasDiscount
 	);
@@ -304,8 +305,6 @@
 			: bm(key);
 		return tr(getter, fallback);
 	}
-
-	const hasDiscount = $derived(discountValue > 0);
 
 	const canCloseBill = $derived(
 		Boolean(billingReadiness?.canCloseBill) &&

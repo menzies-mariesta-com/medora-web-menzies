@@ -351,14 +351,6 @@ export async function updatePatientUserInHospital(
 		.set(updates as any)
 		.where(eq(userTable.id, patient.userId));
 
-	// Keep credential accountId in sync when updating email.
-	if (typeof userEmail === 'string' && userEmail.trim()) {
-		await ensureDb()
-			.update(accountTable)
-			.set({ accountId: userEmail.trim() } as any)
-			.where(eq(accountTable.userId, patient.userId));
-	}
-
 	return { ok: true };
 }
 
@@ -544,7 +536,8 @@ export async function createPatientWithUserInHospital(
 	await ensureDb().insert(accountTable).values({
 		id: uuidV7(),
 		userId: user.id,
-		accountId: authEmail,
+		// better-auth 1.7 identifies the credential account by userId
+		accountId: user.id,
 		providerId: 'credential',
 		password: hashedPassword
 	});
@@ -629,10 +622,6 @@ export async function createPatientWithUserInHospital(
 			.update(userTable)
 			.set({ email: stableNoEmail } as any)
 			.where(eq(userTable.id, user.id));
-		await ensureDb()
-			.update(accountTable)
-			.set({ accountId: stableNoEmail } as any)
-			.where(eq(accountTable.userId, user.id));
 		authEmail = stableNoEmail;
 	}
 

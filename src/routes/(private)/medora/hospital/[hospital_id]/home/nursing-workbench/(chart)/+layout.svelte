@@ -11,6 +11,7 @@
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import LVisitInfoBar from '$lib/component/own/local/private/medora/visit/LVisitInfoBar.svelte';
+	import LVisitPickerGate from '$lib/component/own/local/private/medora/visit/LVisitPickerGate.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { untrack } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
@@ -19,6 +20,7 @@
 	import {
 		filterNursingChartTabs,
 		isNursingChartTabVisible,
+		isVisitChartTab,
 		nursingChartTabSlug
 	} from '$lib/tool/nursing/nursing-chart-tab.util';
 
@@ -75,7 +77,17 @@
 		}
 	});
 
+	// Gate on the URL, not session state: server and client agree, so no hydration flip.
 	const selectedVisitId = $derived(VisitState.visitId);
+	const urlVisitId = $derived(
+		page.url.searchParams.get('visitId') ?? ''
+	);
+
+	/** Board tabs (census / track board / trauma log) need no visit; chart tabs do. */
+	const needsVisit = $derived(
+		isVisitChartTab(nursingChartTabSlug(currentPath))
+	);
+	const showChart = $derived(!needsVisit || Boolean(urlVisitId));
 
 	const subPages = $derived(
 		filterNursingChartTabs(
@@ -152,36 +164,43 @@
 </script>
 
 {#if subPages.length > 0}
-	<div class="nursing-chart-wrapper">
-		<LVisitInfoBar
-			visitId={selectedVisitId}
-			{hospitalId}
+	{#if showChart}
+		<div class="nursing-chart-wrapper">
+			<LVisitInfoBar
+				visitId={selectedVisitId}
+				{hospitalId}
+				listScope="hospital"
+				onVisitSelected={handleVisitSelected}
+				onVisitReset={handleVisitReset}
+			/>
+			<div role="tablist" class="nursing-chart-tabs">
+				{#each subPages as sub (sub.id)}
+					<button
+						type="button"
+						role="tab"
+						class="nursing-chart-tab"
+						class:active={pathMatches(sub.pageUrl)}
+						onclick={() => {
+							const url = navUrl(sub.pageUrl);
+							if (url) routerUtil.replaceRoute(url);
+						}}
+					>
+						{sub.name ?? m.untitled()}
+					</button>
+				{/each}
+			</div>
+			<div class="nursing-chart-content">
+				{#if children}
+					{@render children()}
+				{/if}
+			</div>
+		</div>
+	{:else}
+		<LVisitPickerGate
 			listScope="hospital"
 			onVisitSelected={handleVisitSelected}
-			onVisitReset={handleVisitReset}
 		/>
-		<div role="tablist" class="nursing-chart-tabs">
-			{#each subPages as sub (sub.id)}
-				<button
-					type="button"
-					role="tab"
-					class="nursing-chart-tab"
-					class:active={pathMatches(sub.pageUrl)}
-					onclick={() => {
-						const url = navUrl(sub.pageUrl);
-						if (url) routerUtil.replaceRoute(url);
-					}}
-				>
-					{sub.name ?? m.untitled()}
-				</button>
-			{/each}
-		</div>
-		<div class="nursing-chart-content">
-			{#if children}
-				{@render children()}
-			{/if}
-		</div>
-	</div>
+	{/if}
 {:else}
 	<div>
 		{#if children}

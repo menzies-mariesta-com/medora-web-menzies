@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
-	import { medoraHospitalPageUrl, WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import {
+		medoraHospitalPageUrl,
+		WebRoutesEnum
+	} from '$lib/model/enum/routes.enum';
 	import {
 		getSubPagesForPageUrl,
 		pathnameForPageMatch
@@ -9,6 +12,7 @@
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import LVisitInfoBar from '$lib/component/own/local/private/medora/visit/LVisitInfoBar.svelte';
+	import LVisitPickerGate from '$lib/component/own/local/private/medora/visit/LVisitPickerGate.svelte';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
@@ -18,6 +22,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { toastError } from '$lib/util/toast-copy.util';
 	import { untrack } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	let { children } = $props();
@@ -31,7 +36,9 @@
 		getSubPagesForPageUrl(WebRoutesEnum.MEDORA_HOME_CONSULTATION_CPOE)
 	);
 	const referSubPages = $derived(
-		getSubPagesForPageUrl(WebRoutesEnum.MEDORA_HOME_CONSULTATION_CPOE_REFER)
+		getSubPagesForPageUrl(
+			WebRoutesEnum.MEDORA_HOME_CONSULTATION_CPOE_REFER
+		)
 	);
 	const currentPath = $derived(
 		(pathnameForPageMatch() ?? '')
@@ -71,7 +78,7 @@
 		} else if (!urlVisitId && VisitState.visitId) {
 			const vid = VisitState.visitId;
 			untrack(() => {
-				const search = new URLSearchParams(page.url.search);
+				const search = new SvelteURLSearchParams(page.url.search);
 				search.set('visitId', vid);
 				const base = page.url.pathname;
 				const url = `${base}?${search.toString()}`;
@@ -83,6 +90,10 @@
 	const selectedVisitId = $derived(VisitState.visitId);
 	const clinicalVisitReadOnly = $derived(
 		VisitState.isClinicalVisitReadOnly
+	);
+	// Gate on the URL, not session state: server and client agree, so no hydration flip.
+	const hasUrlVisit = $derived(
+		Boolean(page.url.searchParams.get('visitId')?.trim())
 	);
 
 	function getApiBase(): string {
@@ -105,7 +116,7 @@
 	}
 
 	async function handleUnsignVisit() {
-		const visitId = (parseUuid(VisitState.visitId) ?? '');
+		const visitId = parseUuid(VisitState.visitId) ?? '';
 		if (!visitId) return;
 
 		const result = await dialogService.open({
@@ -138,7 +149,7 @@
 		patientName: string;
 	}) {
 		VisitState.select(data);
-		const search = new URLSearchParams(page.url.search);
+		const search = new SvelteURLSearchParams(page.url.search);
 		search.set('visitId', String(data.visitId));
 		const base = page.url.pathname;
 		const url =
@@ -150,7 +161,7 @@
 
 	function handleVisitReset() {
 		VisitState.reset();
-		const search = new URLSearchParams(page.url.search);
+		const search = new SvelteURLSearchParams(page.url.search);
 		search.delete('visitId');
 		const base = page.url.pathname;
 		const url =
@@ -164,7 +175,7 @@
 {#snippet signedBannerTrailing()}
 	<button
 		type="button"
-		class="btn btn-square min-h-8 min-w-8 border-0 text-current btn-ghost btn-sm hover:bg-current/10"
+		class="btn btn-square btn-ghost btn-sm min-h-8 min-w-8 border-0 text-current hover:bg-current/10"
 		aria-label={msg.clinical_visit_unsign_x_aria()}
 		onclick={handleUnsignVisit}
 	>
@@ -173,67 +184,74 @@
 {/snippet}
 
 <div class="emr-subnav-wrapper">
-	<LVisitInfoBar
-		visitId={selectedVisitId}
-		{hospitalId}
-		onVisitSelected={handleVisitSelected}
-		onVisitReset={handleVisitReset}
-	/>
-
-	{#if subPages.length > 0}
-		<div role="tablist" class="emr-subnav-tabs">
-			{#each subPages as sub (sub.id)}
-				<button
-					type="button"
-					role="tab"
-					class="emr-subnav-tab"
-					class:active={pathMatches(sub.pageUrl)}
-					onclick={() => {
-						const url = navUrl(sub.pageUrl);
-						if (url) routerUtil.replaceRoute(url);
-					}}
-				>
-					{sub.name ?? m.untitled()}
-				</button>
-			{/each}
-		</div>
-	{/if}
-
-	{#if isOnReferSection && referSubPages.length > 0}
-		<div role="tablist" class="emr-subnav-tabs emr-subnav-tabs-nested">
-			{#each referSubPages as sub (sub.id)}
-				<button
-					type="button"
-					role="tab"
-					class="emr-subnav-tab emr-subnav-tab-nested"
-					class:active={pathMatches(sub.pageUrl)}
-					onclick={() => {
-						const url = navUrl(sub.pageUrl);
-						if (url) routerUtil.replaceRoute(url);
-					}}
-				>
-					{sub.name ?? m.untitled()}
-				</button>
-			{/each}
-		</div>
-	{/if}
-
-	{#if clinicalVisitReadOnly}
-		<WashAlert
-			type={StatusColorEnum.WARNING}
-			message={m.clinical_visit_signed_banner()}
-			trailing={signedBannerTrailing}
-			className="mb-2"
+	{#if hasUrlVisit}
+		<LVisitInfoBar
+			visitId={selectedVisitId}
+			{hospitalId}
+			onVisitSelected={handleVisitSelected}
+			onVisitReset={handleVisitReset}
 		/>
-	{/if}
-	<div
-		class="emr-subnav-content"
-		class:clinical-visit-locked={clinicalVisitReadOnly}
-	>
-		{#if children}
-			{@render children()}
+
+		{#if subPages.length > 0}
+			<div role="tablist" class="emr-subnav-tabs">
+				{#each subPages as sub (sub.id)}
+					<button
+						type="button"
+						role="tab"
+						class="emr-subnav-tab"
+						class:active={pathMatches(sub.pageUrl)}
+						onclick={() => {
+							const url = navUrl(sub.pageUrl);
+							if (url) routerUtil.replaceRoute(url);
+						}}
+					>
+						{sub.name ?? m.untitled()}
+					</button>
+				{/each}
+			</div>
 		{/if}
-	</div>
+
+		{#if isOnReferSection && referSubPages.length > 0}
+			<div
+				role="tablist"
+				class="emr-subnav-tabs emr-subnav-tabs-nested"
+			>
+				{#each referSubPages as sub (sub.id)}
+					<button
+						type="button"
+						role="tab"
+						class="emr-subnav-tab emr-subnav-tab-nested"
+						class:active={pathMatches(sub.pageUrl)}
+						onclick={() => {
+							const url = navUrl(sub.pageUrl);
+							if (url) routerUtil.replaceRoute(url);
+						}}
+					>
+						{sub.name ?? m.untitled()}
+					</button>
+				{/each}
+			</div>
+		{/if}
+
+		{#if clinicalVisitReadOnly}
+			<WashAlert
+				type={StatusColorEnum.WARNING}
+				message={m.clinical_visit_signed_banner()}
+				trailing={signedBannerTrailing}
+				className="mb-2"
+			/>
+		{/if}
+		<div
+			class="emr-subnav-content"
+			class:clinical-visit-locked={clinicalVisitReadOnly}
+		>
+			{#if children}
+				{@render children()}
+			{/if}
+		</div>
+	{:else}
+		<LVisitPickerGate onVisitSelected={handleVisitSelected} />
+	{/if}
 </div>
 
 <style>

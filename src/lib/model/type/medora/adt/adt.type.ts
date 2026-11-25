@@ -1,20 +1,32 @@
 /** UI / API shapes for ADT module (not Drizzle schema). */
+import type { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
+import type { AdtBedOccupancySource } from '$lib/model/type/medora/ipd/ipd.type';
 
 export type AdtBedStatusRow = {
 	id: number;
 	name: string | null;
 	code: string | null;
 	bedStatus: number;
+	/** Care setting of the bed (IPD / ED / ICU / OT). */
+	careSetting: CareSettingEnum;
 	wardId: number | null;
 	wardName: string | null;
 	roomId: number;
 	roomName: string | null;
 	dailyTariff?: string | null;
-	/** When occupied — active admission if any */
+	/** Occupying record, when occupied. */
+	occupancySource: AdtBedOccupancySource | null;
+	/** IPD admission id (IPD / ICU / OT beds). */
 	admissionId?: number | null;
+	/** ED encounter id (ED beds). */
+	encounterId?: number | null;
+	/** Active surgical case id (OT rooms in use). */
+	surgicalCaseId?: number | null;
 	visitId?: string | null;
 	visitNo?: string | null;
 	patientName?: string | null;
+	/** ED only: patient discharged but the bed is held. */
+	dischargedInBed?: boolean;
 };
 
 export type AdtBookingRow = {

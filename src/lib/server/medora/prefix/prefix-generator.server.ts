@@ -38,7 +38,8 @@ function defaultFormatSpecForKey(
 		prefixKey === PREFIX_PURPOSE_STORAGE.DEPARTMENT_ISSUE_NO ||
 		prefixKey === PREFIX_PURPOSE_STORAGE.DEPARTMENT_CONSUMPTION_NO ||
 		prefixKey === PREFIX_PURPOSE_STORAGE.BILL_NO ||
-		prefixKey === 'IP_BILL_NO'
+		prefixKey === 'IP_BILL_NO' ||
+		prefixKey === PREFIX_PURPOSE_STORAGE.MLC_NO
 	) {
 		return {
 			parts: [

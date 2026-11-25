@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { untrack } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import LVisitInfoBar from '$lib/component/own/local/private/medora/visit/LVisitInfoBar.svelte';
+	import LVisitPickerGate from '$lib/component/own/local/private/medora/visit/LVisitPickerGate.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 
@@ -10,6 +12,10 @@
 	const routerUtil = new RouterUtil();
 	const hospitalId = $derived(page.params.hospital_id);
 	const selectedVisitId = $derived(VisitState.visitId);
+	// Gate on the URL, not session state: server and client agree, so no hydration flip.
+	const hasUrlVisit = $derived(
+		Boolean(page.url.searchParams.get('visitId')?.trim())
+	);
 
 	$effect(() => {
 		const urlVisitId = page.url.searchParams.get('visitId') ?? '';
@@ -21,7 +27,7 @@
 		} else if (!urlVisitId && VisitState.visitId) {
 			const vid = VisitState.visitId;
 			untrack(() => {
-				const search = new URLSearchParams(page.url.search);
+				const search = new SvelteURLSearchParams(page.url.search);
 				search.set('visitId', vid);
 				routerUtil.replaceRoute(
 					`${page.url.pathname}?${search.toString()}`
@@ -35,7 +41,7 @@
 		patientName: string;
 	}) {
 		VisitState.select(data);
-		const search = new URLSearchParams(page.url.search);
+		const search = new SvelteURLSearchParams(page.url.search);
 		search.set('visitId', String(data.visitId));
 		const qs = search.toString();
 		routerUtil.replaceRoute(
@@ -45,7 +51,7 @@
 
 	function handleVisitReset() {
 		VisitState.reset();
-		const search = new URLSearchParams(page.url.search);
+		const search = new SvelteURLSearchParams(page.url.search);
 		search.delete('visitId');
 		const qs = search.toString();
 		routerUtil.replaceRoute(
@@ -54,12 +60,16 @@
 	}
 </script>
 
-<LVisitInfoBar
-	visitId={selectedVisitId}
-	{hospitalId}
-	onVisitSelected={handleVisitSelected}
-	onVisitReset={handleVisitReset}
-/>
-{#if children}
-	{@render children()}
+{#if hasUrlVisit}
+	<LVisitInfoBar
+		visitId={selectedVisitId}
+		{hospitalId}
+		onVisitSelected={handleVisitSelected}
+		onVisitReset={handleVisitReset}
+	/>
+	{#if children}
+		{@render children()}
+	{/if}
+{:else}
+	<LVisitPickerGate onVisitSelected={handleVisitSelected} />
 {/if}

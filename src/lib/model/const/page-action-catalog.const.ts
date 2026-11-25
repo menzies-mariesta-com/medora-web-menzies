@@ -144,8 +144,10 @@ export const PAGE_ACTIONS_BY_PAGE_URL: Record<
 		PageActionEnum.EDIT,
 		PageActionEnum.EXPORT
 	],
+	// Board writes: assign/transfer ED bed, discharge encounter.
 	'/medora/home/nursing-workbench/track-board': [
 		PageActionEnum.VIEW,
+		PageActionEnum.CREATE,
 		PageActionEnum.EXPORT
 	],
 	'/medora/home/nursing-workbench/trauma-log': [

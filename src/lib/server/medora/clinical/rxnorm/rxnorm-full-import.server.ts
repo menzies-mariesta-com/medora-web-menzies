@@ -159,7 +159,7 @@ async function parseFromZip(
 	const concepts: RxnormConceptUpsertRow[] = [];
 	const conceptSeen = new Set<string>();
 
-	log(`Parsing RXNCONSO from ${consoPath}`);
+	opts.log(`Parsing RXNCONSO from ${consoPath}`);
 	await readLines(
 		consoPath,
 		(line) => {
@@ -183,7 +183,7 @@ async function parseFromZip(
 
 	const rels: RxnormRelUpsertRow[] = [];
 	const relSeen = new Set<string>();
-	log(`Parsing RXNREL from ${relPath}`);
+	opts.log(`Parsing RXNREL from ${relPath}`);
 	await readLines(
 		relPath,
 		(line) => {
@@ -208,7 +208,7 @@ async function parseFromZip(
 	if (opts.includeNdc) {
 		try {
 			const satPath = extractRrf(zipPath, 'RXNSAT.RRF', extractDir);
-			log(`Parsing RXNSAT NDC from ${satPath}`);
+			opts.log(`Parsing RXNSAT NDC from ${satPath}`);
 			const ndcSeen = new Set<string>();
 			await readLines(
 				satPath,

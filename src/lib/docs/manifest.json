@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-11-17T07:51:43.893Z",
+  "generatedAt": "2026-11-24T10:26:07.719Z",
   "version": "1.5.0",
   "stats": {
     "modules": 15,
-    "workflows": 140,
-    "apis": 212,
+    "workflows": 136,
+    "apis": 210,
     "templates": 381,
     "journalSections": 13
   },
@@ -101,7 +101,7 @@
         "nursing-workbench-patient-attachment",
         "nursing-workbench-emar",
         "nursing-workbench-care-plan",
-        "nursing-workbench-triage",
+        "emergency-triage",
         "nursing-workbench-mlc-documentation"
       ]
     },
@@ -219,10 +219,6 @@
       "moduleId": 12,
       "moduleUrl": "/medora/home/emergency",
       "workflows": [
-        "emergency-admission",
-        "emergency-admission-new",
-        "emergency-admission-new-patient",
-        "emergency-bed-status",
         "nursing-workbench-track-board",
         "nursing-workbench-trauma-log"
       ]
@@ -1201,8 +1197,8 @@
       "contentFile": "workflows/nursing-workbench-care-plan.md"
     },
     {
-      "slug": "nursing-workbench-triage",
-      "path": "/docs/workflows/nursing-workbench-triage",
+      "slug": "emergency-triage",
+      "path": "/docs/workflows/emergency-triage",
       "title": "Triage",
       "pageId": 400111,
       "moduleId": 4,
@@ -1213,7 +1209,7 @@
       "sectionTitle": null,
       "subTabTitle": null,
       "parentPageTitle": "Nursing Workbench",
-      "contentFile": "workflows/nursing-workbench-triage.md"
+      "contentFile": "workflows/emergency-triage.md"
     },
     {
       "slug": "nursing-workbench-mlc-documentation",
@@ -2026,66 +2022,6 @@
       "contentFile": "workflows/medication-order-external-sales.md"
     },
     {
-      "slug": "emergency-admission",
-      "path": "/docs/workflows/emergency-admission",
-      "title": "Registration",
-      "pageId": 1200100,
-      "moduleId": 12,
-      "moduleName": "Emergency",
-      "moduleSlug": "emergency",
-      "pageUrl": "/medora/home/emergency/admission",
-      "capturePageUrl": "/medora/home/emergency/admission/new",
-      "sectionTitle": "Registration",
-      "subTabTitle": "ED Patient Registration",
-      "parentPageTitle": null,
-      "contentFile": "workflows/emergency-admission.md"
-    },
-    {
-      "slug": "emergency-admission-new",
-      "path": "/docs/workflows/emergency-admission-new",
-      "title": "ED Patient Registration",
-      "pageId": 1200101,
-      "moduleId": 12,
-      "moduleName": "Emergency",
-      "moduleSlug": "emergency",
-      "pageUrl": "/medora/home/emergency/admission/new",
-      "capturePageUrl": "/medora/home/emergency/admission/new",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": "Registration",
-      "contentFile": "workflows/emergency-admission-new.md"
-    },
-    {
-      "slug": "emergency-admission-new-patient",
-      "path": "/docs/workflows/emergency-admission-new-patient",
-      "title": "New patient",
-      "pageId": 1200102,
-      "moduleId": 12,
-      "moduleName": "Emergency",
-      "moduleSlug": "emergency",
-      "pageUrl": "/medora/home/emergency/admission/new-patient",
-      "capturePageUrl": "/medora/home/emergency/admission/new-patient",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": "Registration",
-      "contentFile": "workflows/emergency-admission-new-patient.md"
-    },
-    {
-      "slug": "emergency-bed-status",
-      "path": "/docs/workflows/emergency-bed-status",
-      "title": "ED Bed Status",
-      "pageId": 1200200,
-      "moduleId": 12,
-      "moduleName": "Emergency",
-      "moduleSlug": "emergency",
-      "pageUrl": "/medora/home/emergency/bed-status",
-      "capturePageUrl": "/medora/home/emergency/bed-status",
-      "sectionTitle": null,
-      "subTabTitle": null,
-      "parentPageTitle": null,
-      "contentFile": "workflows/emergency-bed-status.md"
-    },
-    {
       "slug": "nursing-workbench-track-board",
       "path": "/docs/workflows/nursing-workbench-track-board",
       "title": "Track Board",
@@ -2552,7 +2488,7 @@
       "slug": "emergency",
       "title": "Emergency",
       "workflows": [
-        "nursing-workbench-triage"
+        "emergency-triage"
       ]
     }
   ],
@@ -2664,8 +2600,6 @@
     "/api/(private)/medora/hospital/[hospital_id]/home/diagnostics/lab/worklist",
     "/api/(private)/medora/hospital/[hospital_id]/home/document-print",
     "/api/(private)/medora/hospital/[hospital_id]/home/emergency",
-    "/api/(private)/medora/hospital/[hospital_id]/home/emergency/admission",
-    "/api/(private)/medora/hospital/[hospital_id]/home/emergency/bed-status",
     "/api/(private)/medora/hospital/[hospital_id]/home/emr/visit-list",
     "/api/(private)/medora/hospital/[hospital_id]/home/inventory/department-consumption",
     "/api/(private)/medora/hospital/[hospital_id]/home/inventory/department-consumption/approve",
@@ -2725,9 +2659,9 @@
     "/api/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/emr/vital",
     "/api/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/ipd/census",
     "/api/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/trauma-log",
+    "/api/(private)/medora/hospital/[hospital_id]/home/nursing-workbench/triage",
     "/api/(private)/medora/hospital/[hospital_id]/home/obstetrics",
     "/api/(private)/medora/hospital/[hospital_id]/home/perioperative/events",
-    "/api/(private)/medora/hospital/[hospital_id]/home/perioperative/ot-room",
     "/api/(private)/medora/hospital/[hospital_id]/home/perioperative/surgical-case",
     "/api/(private)/medora/hospital/[hospital_id]/home/registration/patient/list",
     "/api/(private)/medora/hospital/[hospital_id]/home/registration/patient/registration",
@@ -3145,7 +3079,7 @@
     },
     {
       "title": "Triage",
-      "href": "/docs/workflows/nursing-workbench-triage",
+      "href": "/docs/workflows/emergency-triage",
       "category": "Workflow",
       "keywords": "Nursing Workbench /medora/home/nursing-workbench/triage"
     },
@@ -3472,30 +3406,6 @@
       "href": "/docs/workflows/medication-order-external-sales",
       "category": "Workflow",
       "keywords": "Medication Order /medora/home/medication-order/external-sales"
-    },
-    {
-      "title": "Registration",
-      "href": "/docs/workflows/emergency-admission",
-      "category": "Workflow",
-      "keywords": "Emergency /medora/home/emergency/admission"
-    },
-    {
-      "title": "ED Patient Registration",
-      "href": "/docs/workflows/emergency-admission-new",
-      "category": "Workflow",
-      "keywords": "Emergency /medora/home/emergency/admission/new"
-    },
-    {
-      "title": "New patient",
-      "href": "/docs/workflows/emergency-admission-new-patient",
-      "category": "Workflow",
-      "keywords": "Emergency /medora/home/emergency/admission/new-patient"
-    },
-    {
-      "title": "ED Bed Status",
-      "href": "/docs/workflows/emergency-bed-status",
-      "category": "Workflow",
-      "keywords": "Emergency /medora/home/emergency/bed-status"
     },
     {
       "title": "Track Board",
@@ -3851,7 +3761,7 @@
     "/docs/workflows/nursing-workbench-patient-attachment",
     "/docs/workflows/nursing-workbench-emar",
     "/docs/workflows/nursing-workbench-care-plan",
-    "/docs/workflows/nursing-workbench-triage",
+    "/docs/workflows/emergency-triage",
     "/docs/workflows/nursing-workbench-mlc-documentation",
     "/docs/workflows/consultation-emr",
     "/docs/workflows/consultation-cpoe",
@@ -3906,10 +3816,6 @@
     "/docs/workflows/inventory-reports-movement",
     "/docs/workflows/medication-order-internal-sales",
     "/docs/workflows/medication-order-external-sales",
-    "/docs/workflows/emergency-admission",
-    "/docs/workflows/emergency-admission-new",
-    "/docs/workflows/emergency-admission-new-patient",
-    "/docs/workflows/emergency-bed-status",
     "/docs/workflows/nursing-workbench-track-board",
     "/docs/workflows/nursing-workbench-trauma-log",
     "/docs/workflows/perioperative-ot-board",

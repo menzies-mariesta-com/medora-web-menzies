@@ -153,7 +153,7 @@
 	async function savePolicy() {
 		if (!apiBase || saveLock.pending) return;
 		if (trimmed(leastBillDurationUnitId) === '') {
-			toastService.error(
+			toastService.addErrorToast(
 				paraglideMsg(
 					'ip_billing_setup_accommodation_least_unit_required',
 					'Select a unit for least duration to bill.'
@@ -178,7 +178,7 @@
 			});
 			if (!res.ok) {
 				const text = await res.text();
-				toastService.error(
+				toastService.addErrorToast(
 					sanitizeUserFacingErrorText(text, { status: res.status }) ||
 						paraglideMsg(
 							'ip_billing_setup_accommodation_save_failed',

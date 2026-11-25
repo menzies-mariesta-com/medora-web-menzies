@@ -30,7 +30,7 @@ type AllergyRow = {
 	reaction?: string | null;
 };
 
-type VitalRow = {
+export type VitalRow = {
 	id?: number | string;
 	vitalDateTime?: string | null;
 	createdAt?: string | null;

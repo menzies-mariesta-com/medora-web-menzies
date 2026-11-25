@@ -8,14 +8,16 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { CareSettingEnum } from '$lib/model/enum/care-setting.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import type { RoomRow } from '$lib/model/type/medora/ipd/ipd.type';
 	import {
 		administrationRoomMasterApi,
-		erRoomRowAsUnified,
+		roomRowAsUnified,
 		masterScopeDisplayLabel,
+		masterScopeOfCareSetting,
 		type UnifiedRoomListRow
 	} from '$lib/tool/medora/administration-master-scope.util';
 	import { m } from '$lib/paraglide/messages';
@@ -50,7 +52,7 @@
 			header: 'Scope',
 			widthClass: 'w-20 min-w-[4rem]',
 			filterable: false,
-			format: (_v, row) => masterScopeDisplayLabel(row.isEr)
+			format: (_v, row) => masterScopeDisplayLabel(row.careSetting)
 		},
 		{
 			id: 'id',
@@ -116,59 +118,39 @@
 		}
 	];
 
-	async function fetchScopePage(scope: 'ipd' | 'er') {
-		if (!hospitalId) {
-			return { data: [] as UnifiedRoomListRow[], total: 0, totalPages: 1 };
-		}
-		const api = administrationRoomMasterApi(hospitalId, scope);
-		const query = new SvelteURLSearchParams({
-			page: String(currentPage),
-			pageSize: String(Number(pageSizeStr) || 10),
-			scope
-		});
-		const name = tableFilters.name?.trim();
-		const code = tableFilters.code?.trim();
-		const statusId = Number(tableFilters.status);
-		if (name) query.set('name', name);
-		if (code) query.set('code', code);
-		if (Number.isFinite(statusId) && statusId > 0) {
-			query.set('statusId', String(statusId));
-		}
-		const response = await fetch(`${api}?${query.toString()}`, {
-			credentials: 'include',
-			cache: 'no-store'
-		});
-		if (!response.ok) {
-			const text = await response.text().catch(() => '');
-			throw new Error(text || `Load failed: ${response.status}`);
-		}
-		const result = (await response.json()) as {
-			data: RoomRow[];
-			total: number;
-			totalPages: number;
-		};
-		const data = result.data.map((r) =>
-			erRoomRowAsUnified({
-				...r,
-				isEr: r.isEr ?? scope === 'er'
-			})
-		);
-		return { ...result, data };
-	}
-
 	async function fetchRows() {
 		if (!hospitalId) return;
 		isLoading = true;
 		try {
-			const [ipd, er] = await Promise.all([
-				fetchScopePage('ipd'),
-				fetchScopePage('er')
-			]);
-			rows = [...ipd.data, ...er.data].sort((a, b) =>
-				(a.name ?? '').localeCompare(b.name ?? '')
-			);
-			total = ipd.total + er.total;
-			totalPages = Math.max(ipd.totalPages, er.totalPages, 1);
+			const api = administrationRoomMasterApi(hospitalId, 'ipd');
+			const query = new SvelteURLSearchParams({
+				page: String(currentPage),
+				pageSize: String(Number(pageSizeStr) || 10)
+			});
+			const name = tableFilters.name?.trim();
+			const code = tableFilters.code?.trim();
+			const statusId = Number(tableFilters.status);
+			if (name) query.set('name', name);
+			if (code) query.set('code', code);
+			if (Number.isFinite(statusId) && statusId > 0) {
+				query.set('statusId', String(statusId));
+			}
+			const response = await fetch(`${api}?${query.toString()}`, {
+				credentials: 'include',
+				cache: 'no-store'
+			});
+			if (!response.ok) {
+				const text = await response.text().catch(() => '');
+				throw new Error(text || `Load failed: ${response.status}`);
+			}
+			const result = (await response.json()) as {
+				data: RoomRow[];
+				total: number;
+				totalPages: number;
+			};
+			rows = result.data.map(roomRowAsUnified);
+			total = result.total;
+			totalPages = result.totalPages;
 		} catch (error) {
 			toastService.addToast(
 				error instanceof Error
@@ -191,7 +173,7 @@
 	async function openCreate() {
 		RoomModalState.mode = 'create';
 		RoomModalState.editRoom = null;
-		RoomModalState.isEr = false;
+		RoomModalState.careSetting = CareSettingEnum.IPD;
 		const result = await dialogService.open({
 			title: 'New Room',
 			component: RoomFormModal
@@ -202,7 +184,7 @@
 	async function openEdit(row: UnifiedRoomListRow) {
 		RoomModalState.mode = 'edit';
 		RoomModalState.editRoom = row;
-		RoomModalState.isEr = Boolean(row.isEr);
+		RoomModalState.careSetting = row.careSetting;
 		const result = await dialogService.open({
 			title: 'Edit Room',
 			component: RoomFormModal
@@ -219,7 +201,7 @@
 		if (!result.confirmed || !hospitalId) return;
 		const roomApi = administrationRoomMasterApi(
 			hospitalId,
-			row.isEr ? 'er' : 'ipd'
+			masterScopeOfCareSetting(row.careSetting)
 		);
 
 		try {
